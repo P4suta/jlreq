@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Release configuration. Nothing here publishes automatically: the workspace is at 0.0.0
+# and the abstractions are deliberately frozen before the implementation exists
+# (see docs/adr/), so the first published version should be a decision, not a side effect
+# of merging.
+#
+# The crates move as one version. `jlreq-class` without a matching `jlreq-spacing` is not a
+# combination anyone should have to reason about, and the conformance suite addresses the
+# workspace as a whole.
+
+[workspace]
+dependencies_update = false
+release_always = false
+# Pre-1.0 the public surface is still being discovered. A future release phase must choose
+# and document its own compatibility policy rather than silently freezing this.
+semver_check = false
+git_tag_enable = false
+git_release_enable = false
+changelog_update = false
+
+[[package]]
+name = "jlreq-class"
+version_group = "kumihan"
+
+[[package]]
+name = "jlreq-spacing"
+version_group = "kumihan"
+
+[[package]]
+name = "jlreq-line"
+version_group = "kumihan"
+
+[[package]]
+name = "jlreq-inline"
+version_group = "kumihan"
+
+[[package]]
+name = "jlreq"
+version_group = "kumihan"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+changelog_include = [
+  "jlreq-class",
+  "jlreq-spacing",
+  "jlreq-line",
+  "jlreq-inline",
+  "jlreq-conform",
+]
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+git_release_enable = true
+git_release_draft = true
+
+[[package]]
+name = "jlreq-conform"
+version_group = "kumihan"

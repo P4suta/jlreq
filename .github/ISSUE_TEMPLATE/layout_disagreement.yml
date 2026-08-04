@@ -1,0 +1,70 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Layout disagreement
+description: This library composes something differently from the specification, or from another implementation
+labels: ["conformance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when the output is wrong or debatable, rather than the bug report.
+
+        Layout disagreements are the substance of this project, not noise. A well-formed
+        one becomes a case in `jlreq-conform` whether or not this library turns out to be
+        the one at fault — including cases where the disagreement is with a browser or with
+        LaTeX's `jlreq` class and we are the ones who are right. See
+        [ADR 0006](../../docs/adr/0006-conformance-suite-as-artifact.md).
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Input
+      description: The text, the advances you supplied, and the line measure.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What this library produced
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: basis
+    attributes:
+      label: Specification basis
+      description: The JLReq section or JIS X 4051 clause your expectation comes from.
+      placeholder: "JLReq 3.1.3"
+    validations:
+      required: true
+
+  - type: input
+    id: other
+    attributes:
+      label: Other implementations
+      description: >-
+        Optional. What TeX, a browser, or InDesign does with the same input, if you checked.
+        A disagreement between them is useful information even when it does not settle
+        anything.
+
+  - type: checkboxes
+    id: alternatives
+    attributes:
+      label: Before submitting
+      options:
+        - label: >-
+            I checked whether JLReq permits both outcomes. If it does, this is a request for
+            an option rather than a bug.

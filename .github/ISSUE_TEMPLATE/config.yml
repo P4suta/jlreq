@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+blank_issues_enabled: false
+contact_links:
+  - name: Requirements for Japanese Text Layout (JLReq)
+    url: https://www.w3.org/TR/jlreq/
+    about: The specification this library implements. Available in Japanese and English.
+  - name: Security vulnerability
+    url: https://github.com/P4suta/kumihan/security/advisories/new
+    about: Report privately instead of opening an issue. See SECURITY.md for what counts.

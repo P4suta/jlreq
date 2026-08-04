@@ -1,0 +1,15 @@
+# Default owner for everything.
+* @P4suta
+
+# Architecture-affecting files require extra scrutiny.
+/Cargo.toml @P4suta
+/Cargo.lock @P4suta
+/rust-toolchain.toml @P4suta
+/.github/ @P4suta
+
+# The frozen decisions. A change here changes what the library is allowed to be.
+/docs/adr/ @P4suta
+/ARCHITECTURE.md @P4suta
+
+# The gate that keeps the layout core free of std, I/O, font, and float dependencies.
+/xtask/ @P4suta
