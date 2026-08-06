@@ -1,0 +1,642 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The conformance deferral ledger: the inventoried rules whose conformance case a later
+# milestone writes, each naming that milestone.
+#
+# CONTRIBUTING.md states that a rule without a case is incomplete, and
+# docs/adr/0013-rules-are-addressed-by-specification-address.md makes that arithmetic: the
+# `conform` gate subtracts the rules the cases declare from the rules the inventory names,
+# and the `spec-links` gate subtracts them from the rules the layout core cites. The
+# inventory is generated whole — spec/derived/rules.tsv names every rule of § 3 and of
+# Appendices B through F at once — while the suite is written milestone by milestone. Both
+# subtractions therefore have a remainder that is nothing but the schedule.
+#
+# Without this file a gate could only choose between two false sentences: that the rules
+# are covered, by weakening the subtraction until the remainder disappeared, or that the
+# workspace is broken, by failing over a milestone that has not happened yet. Neither is
+# true, so a third state is written down instead. A rule is
+#
+#   covered   — a case in crates/jlreq-conform/cases names it, or a `covers` family credits
+#               it; or
+#   deferred  — a `[[deferred]]` table below names it and the milestone that will cover it;
+#               or
+#   uncovered — neither, which fails `conform` and names the rule.
+#
+# Deferred is not exempt. Every `conform` run prints the count of deferred rules and the
+# count per milestone, so the debt is stated in numbers on a green run, and `spec-links`
+# reports how many of the cited rules it passed over for this reason. The entry expires by
+# itself: the moment any case names the rule, the rule is covered and the entry is a
+# violation, because a deferral that outlived its milestone is a claim about the future
+# that the present has already answered. Deleting the entry is the reviewable act that says
+# the rule now has a case; nothing is switched on by hand.
+#
+# The other half of the subtraction is written here too, because a schedule with only one
+# direction is not an accounting. A `[[deferred]]` table says which milestone *will* cover a
+# rule; an `[[owned]]` table says which milestone's cases already *do*, and it is held to the
+# opposite invariant — the rule must be covered now, and it must not be deferred by anything.
+# Until M0-b the rules M0 answers were named in this header and nowhere a gate could read, so
+# one of them could be dropped from the cases and given a `[[deferred]]` entry naming a later
+# milestone with every gate staying green; that is measured and closed. `conform` also fails
+# a rule a case covers that no `[[owned]]` entry names, so a case cannot credit a rule to
+# nobody — which is the route a `kind: "boundary"` case took, published for a layer that
+# answers nothing yet and crediting its rules to the coverage gate with no reviewer in the
+# path. Both routes now end at the same file, the same `milestone` and the same `why`.
+#
+# Schema. One `[[deferred]]` or `[[owned]]` table per rule, with these three keys and no
+# others:
+#
+#   rule       The specification address of an inventoried rule, in the canonical rendering
+#              of `jlreq_spec::Address` — `3.1.9`, `B.2#3`, `B.1@cl-05,cl-05` — with no
+#              section sign. One table per rule across both tables, and the address must be
+#              one spec/derived/rules.tsv carries: deferring a rule the inventory does not
+#              name defers nothing.
+#   milestone  The milestone whose conformance cases close it, or have closed it, spelled as
+#              ROADMAP.md heads it: `M0` through `M6`. ROADMAP.md is what a milestone *is*;
+#              this file only names one, and `conform` rejects a name that document does not
+#              declare. On an `[[owned]]` entry it names the milestone whose *layer* answers
+#              the rule, which is not always the milestone that wrote the case: a boundary
+#              case published at M0-b for a rule `jlreq-spacing` answers at M1 is covered
+#              now and attempted by nothing, and the entry says both.
+#   why        Which answer the rule states and which crate produces it, in a sentence a
+#              reviewer can disagree with. On an `[[owned]]` entry whose cases no layer of
+#              this workspace answers yet, it says that too, because a published case that is
+#              never attempted is a statement to another implementation rather than a
+#              measurement of this one.
+#
+# The assignment below follows one principle, so that disagreeing with an entry is
+# disagreeing with something: a rule is deferred to the milestone that builds the crate
+# whose answer the rule states. Line breaking, line adjustment, indents and tab positions
+# are `jlreq-line` and arrive at M1, together with Appendices C, D and E, which are the
+# tables that layer reads. Inter-character spacing amounts are `jlreq-spacing` and arrive at
+# M2, together with Appendix B. A whole-paragraph decision arrives at M3, the nine inline
+# constructs and Appendix F at M4, and a rule whose subject exists only in vertical
+# composition at M5.
+#
+# The rules M0 answers are not deferred; they are recorded under `[[owned]]` at the foot of
+# this file, which is where the sentence that used to sit here became something a gate can
+# read. § 3.9.1 and § 3.9.2 state the classification itself; § C.3, § C.2 notes 1 to 3,
+# § B.2 notes 14 to 16 and § E.2 notes 1 to 3 state the class an occurrence at a line head is
+# treated as belonging to, which is the reclassification `jlreq-class` answers; § 3.1.2,
+# § 3.2.4 and § 3.2.6 are the three sentences outside Appendix A that a declared frame fires,
+# and M0-b's cases declare them where their own rationale already argued from them. If a case
+# for one of them is deleted, the `[[owned]]` entry is what fails.
+#
+# § 3.9.3 was in that list until M0-b read it against the document and found it is not a
+# classification rule at all: what it states is that line-head and line-end permission, the
+# positioning method there, and the amount between two adjacent characters are all indexed
+# by the pair of classes in a two-dimensional table. No classification case can reach it, so
+# it is deferred below to the milestone that builds the first of those matrices.
+#
+# What this file cannot check is named rather than glossed. Nothing here reads which
+# milestone the workspace is writing, so an entry naming a milestone already under way is
+# not a violation; what makes such an entry visible is the per-milestone census on every
+# run, and what ends it is a case. And no gate can know that the milestone named is the
+# right one — that is the reviewer's judgment, which is what `why` is for and why this file
+# is owned by the code owners in .github/CODEOWNERS.
+#
+# The order is the inventory's own: § 3 in section order, then the appendix sections, then
+# the appendix notes, so this file and spec/derived/rules.tsv can be read side by side.
+
+[[deferred]]
+rule = "3.1.1"
+milestone = "M5"
+why = "The rule lists the punctuation marks that are used in one writing mode and not the other, so a case can only show it once vertical composition exists."
+
+[[deferred]]
+rule = "3.1.3"
+milestone = "M2"
+why = "The space after IDEOGRAPHIC COMMA and around KATAKANA MIDDLE DOT is set solid in the cases the rule lists; docs/direction-sites.toml already reads it as a spacing amount `jlreq-spacing` carries as data."
+
+[[deferred]]
+rule = "3.1.4"
+milestone = "M2"
+why = "The rule states the amounts where opening brackets, closing brackets, commas, full stops and middle dots follow one another, which is the boundary answer `jlreq-spacing` produces."
+
+[[deferred]]
+rule = "3.1.5"
+milestone = "M2"
+why = "The rule states the space between the line head and an opening bracket, which is Table 1's line-head row read by `jlreq-spacing`."
+
+[[deferred]]
+rule = "3.1.6"
+milestone = "M2"
+why = "The rule states the full-width frame of the dividing punctuation marks and the spacing around them, which `jlreq-spacing` answers."
+
+
+[[deferred]]
+rule = "3.1.9"
+milestone = "M2"
+why = "The rule states the half em after a closing bracket at the line end and the solid alternative; both are spacing amounts `jlreq-spacing` answers, and the worked case of docs/design/conformance.md is written against them."
+
+
+[[deferred]]
+rule = "3.1.12"
+milestone = "M1"
+why = "The rule works through pulling up and pushing down, which are the two directions of the line adjustment `jlreq-line` performs."
+
+[[deferred]]
+rule = "3.2.1"
+milestone = "M2"
+why = "The rule opens the mixed Japanese and Western composition section, whose answer is the space between the two scripts that `jlreq-spacing` carries."
+
+[[deferred]]
+rule = "3.2.2"
+milestone = "M2"
+why = "The rule states the spacing between Japanese and Western characters in horizontal composition, which `jlreq-spacing` answers."
+
+[[deferred]]
+rule = "3.2.3"
+milestone = "M5"
+why = "The rule states how Western text is set in vertical composition, so its case needs the vertical writing mode."
+
+[[deferred]]
+rule = "3.2.5"
+milestone = "M4"
+why = "Tate-chu-yoko (縦中横) is a segment built and placed by `jlreq-inline`."
+
+[[deferred]]
+rule = "3.3.1"
+milestone = "M4"
+why = "The rule states where ruby (ルビ, interlinear annotation) is used, and ruby is placed by `jlreq-inline`."
+
+[[deferred]]
+rule = "3.3.2"
+milestone = "M4"
+why = "The choice of the base characters an annotation covers is declared by the caller and lowered by `jlreq-inline`."
+
+[[deferred]]
+rule = "3.3.3"
+milestone = "M4"
+why = "The two ruby sizes and the anisotropy between them are read from the annotation stream by `jlreq-inline`."
+
+[[deferred]]
+rule = "3.3.4"
+milestone = "M4"
+why = "The side ruby is placed on is one answer `jlreq-inline` produces for both writing modes from a single rule."
+
+[[deferred]]
+rule = "3.3.5"
+milestone = "M4"
+why = "Mono ruby positioning, including the katatsuki (肩付き) alignment docs/direction-sites.toml defers to `jlreq-inline`."
+
+[[deferred]]
+rule = "3.3.6"
+milestone = "M4"
+why = "Group ruby distributes one annotation across a base run, which `jlreq-inline` places."
+
+[[deferred]]
+rule = "3.3.7"
+milestone = "M4"
+why = "Jukugo ruby positioning applies Appendix F's distribution, which `jlreq-inline` places."
+
+
+[[deferred]]
+rule = "3.3.9"
+milestone = "M4"
+why = "Emphasis dots (圏点) repeat one mark at a fixed size over a base run, which `jlreq-inline` places."
+
+[[deferred]]
+rule = "3.4.1"
+milestone = "M4"
+why = "Warichu (割注) is an inline cutting note, one of the constructs `jlreq-inline` builds."
+
+
+[[deferred]]
+rule = "3.4.3"
+milestone = "M4"
+why = "An inline cutting note straddling two lines is a segment `jlreq-inline` splits across the seam it shares with `jlreq-line`."
+
+[[deferred]]
+rule = "3.5.1"
+milestone = "M1"
+why = "The line head indent of a paragraph's first line is composition input that `jlreq-line` places the first line against."
+
+[[deferred]]
+rule = "3.5.2"
+milestone = "M1"
+why = "A line head or line end indent changes the measure a line is composed against, which is `jlreq-line`'s answer."
+
+[[deferred]]
+rule = "3.5.3"
+milestone = "M1"
+why = "Single line alignment distributes a run shorter than the measure over it, which docs/design/api-spine.md places in `jlreq-line` at M1."
+
+[[deferred]]
+rule = "3.5.4"
+milestone = "M3"
+why = "Widow adjustment moves a break so that the last line of a paragraph carries enough characters, which is a whole-paragraph decision and arrives with the objective."
+
+[[deferred]]
+rule = "3.6.1"
+milestone = "M1"
+why = "Tab setting aligns runs at declared positions inside a line, which `jlreq-line` places."
+
+[[deferred]]
+rule = "3.6.2"
+milestone = "M1"
+why = "The kinds of tab setting are the alignment answers `jlreq-line` produces at a tab position."
+
+[[deferred]]
+rule = "3.6.3"
+milestone = "M1"
+why = "Setting the text between two tab signs, and the bracket behavior at a tab position, is a line composition step of `jlreq-line`."
+
+
+[[deferred]]
+rule = "3.7.2"
+milestone = "M4"
+why = "Furiwake (振分け) distributes several phrases over a given length, which `jlreq-inline` places."
+
+[[deferred]]
+rule = "3.7.3"
+milestone = "M4"
+why = "Jidori (字取り) sets a run to an explicitly given number of ems, which `jlreq-inline` places."
+
+[[deferred]]
+rule = "3.7.4"
+milestone = "M4"
+why = "Math symbols and operators are set with the spacing this rule states around a formula that `jlreq-inline` builds."
+
+[[deferred]]
+rule = "3.8.1"
+milestone = "M1"
+why = "Whether a line needs adjustment at all is the entry to the ladder `jlreq-line` runs."
+
+[[deferred]]
+rule = "3.8.2"
+milestone = "M1"
+why = "The order of reduction, hanging punctuation (ぶら下げ, burasage) and expansion is the ladder itself, which `jlreq-line` runs."
+
+[[deferred]]
+rule = "3.8.3"
+milestone = "M1"
+why = "The reduction procedure drains Appendix D's opportunities in their stated order, which `jlreq-line` runs."
+
+[[deferred]]
+rule = "3.8.4"
+milestone = "M1"
+why = "The expansion procedure drains Appendix E's opportunities in their stated order, which `jlreq-line` runs."
+
+[[deferred]]
+rule = "3.9.3"
+milestone = "M1"
+why = "The rule states that a class decides line-head and line-end permission, the positioning method there and the amount between two adjacent characters, and that all of it is indexed by the pair of classes in a two-dimensional table. Nothing it states is a classification answer, so no M0 case reaches it; the first matrix a case can exercise is Table 2, which `jlreq-line` reads."
+
+[[deferred]]
+rule = "B"
+milestone = "M2"
+why = "Appendix B is Table 1 and its notes: the space between two adjacent characters, which is `jlreq-spacing`'s whole subject."
+
+[[deferred]]
+rule = "C"
+milestone = "M1"
+why = "Appendix C is Table 2: whether a line may break between two adjacent characters, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "D"
+milestone = "M1"
+why = "Appendix D is Tables 3 to 5: which spaces may be reduced during line adjustment, which `jlreq-line` drains."
+
+[[deferred]]
+rule = "D.1"
+milestone = "M1"
+why = "The legend states what a cell of Tables 3 to 5 means, including the priority ordinal the reduction ladder drains in."
+
+[[deferred]]
+rule = "E"
+milestone = "M1"
+why = "Appendix E is Table 6: which spaces may be expanded during line adjustment, which `jlreq-line` drains."
+
+[[deferred]]
+rule = "F"
+milestone = "M4"
+why = "Appendix F states how a jukugo ruby annotation is distributed over its base characters, which `jlreq-inline` places."
+
+[[deferred]]
+rule = "F.1"
+milestone = "M4"
+why = "The first distribution principle of jukugo ruby, which `jlreq-inline` applies."
+
+[[deferred]]
+rule = "F.2"
+milestone = "M4"
+why = "The second distribution principle of jukugo ruby, which `jlreq-inline` applies."
+
+[[deferred]]
+rule = "F.3"
+milestone = "M4"
+why = "Jukugo ruby distribution against a line that has been expanded, which `jlreq-inline` places over the space line adjustment left."
+
+[[deferred]]
+rule = "F.4"
+milestone = "M4"
+why = "The worked examples of jukugo ruby distribution under expansion, which `jlreq-inline` must reproduce."
+
+[[deferred]]
+rule = "B.2#1"
+milestone = "M4"
+why = "The note states how far ruby text may be extended over a preceding opening bracket, which is the overhang `jlreq-inline` answers."
+
+[[deferred]]
+rule = "B.2#2"
+milestone = "M2"
+why = "The note states the preferred half em between a closing bracket and the line end and the solid alternative, which `jlreq-spacing` answers as two permitted readings."
+
+[[deferred]]
+rule = "B.2#3"
+milestone = "M2"
+why = "The note states that the space between two middle dots is the sum of the quarter em each of them carries, which `jlreq-spacing` answers as two conditional spaces rather than one amount."
+
+[[deferred]]
+rule = "B.2#4"
+milestone = "M2"
+why = "The note states the preferred quarter em between a middle dot and the line end and the solid alternative, which `jlreq-spacing` answers."
+
+[[deferred]]
+rule = "B.2#5"
+milestone = "M2"
+why = "The note states that the space between a full stop or comma and a following middle dot is the sum of the two amounts those characters carry, which `jlreq-spacing` answers."
+
+[[deferred]]
+rule = "B.2#6"
+milestone = "M2"
+why = "The note states the preferred half em between a full stop or comma and the line end and the solid alternative, which `jlreq-spacing` answers."
+
+
+[[deferred]]
+rule = "B.2#8"
+milestone = "M4"
+why = "The note states how far ruby text may be extended over a full-width ideographic space, which is the overhang `jlreq-inline` answers."
+
+[[deferred]]
+rule = "B.2#9"
+milestone = "M4"
+why = "The note hands two adjacent characters of one ornamented character complex to § 3.7.1, so the answer is the construct's own placement in `jlreq-inline`."
+
+
+[[deferred]]
+rule = "B.2#11"
+milestone = "M4"
+why = "The note hands two adjacent characters of one jukugo-ruby character complex to § 3.3.7, so the answer is the construct's own placement in `jlreq-inline`."
+
+[[deferred]]
+rule = "B.2#12"
+milestone = "M2"
+why = "The note states the quarter em between a preceding unit symbol and a trailing middle dot, and which character carries it, which `jlreq-spacing` answers."
+
+[[deferred]]
+rule = "B.2#13"
+milestone = "M2"
+why = "The note states that a Western word space occupies no visible space at a line head or line end, which is a spacing answer `jlreq-spacing` gives at the line edges."
+
+[[deferred]]
+rule = "B.2#17"
+milestone = "M2"
+why = "The note states the preferred zero space between the line head and an opening bracket and the alternative that keeps the conditional half em, which `jlreq-spacing` answers as two permitted readings."
+
+[[deferred]]
+rule = "C.2#4"
+milestone = "M1"
+why = "The note lets the one em after a dividing punctuation mark be a full-width ideographic space, and Table 2 then decides the break around it, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "C.2#5"
+milestone = "M1"
+why = "The note lists the pairs of inseparable characters with no break opportunity between them, which `jlreq-line` answers."
+
+
+[[deferred]]
+rule = "C.2#8"
+milestone = "M1"
+why = "The note allows a break between two jukugo-ruby character complexes and denies one inside a complex, which `jlreq-line` answers."
+
+
+[[deferred]]
+rule = "C.2#10"
+milestone = "M1"
+why = "The note records both readings of a break between grouped numerals and following Western characters, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "C.2#11"
+milestone = "M1"
+why = "The note allows a break between Western characters and a following postfixed abbreviation except where the rule names, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "C.2#12"
+milestone = "M1"
+why = "The note denies a break between two Western characters, so a break inside a word exists only where the caller's candidates put one, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "C.2#13"
+milestone = "M1"
+why = "The note denies a break inside one tate-chu-yoko run and allows one between two of them, which `jlreq-line` answers."
+
+[[deferred]]
+rule = "D.2#1"
+milestone = "M1"
+why = "The note states that the unadjusted space between two middle dots is the sum of the quarter em each carries, so reduction has two spaces to drain rather than one."
+
+[[deferred]]
+rule = "D.2#2"
+milestone = "M1"
+why = "The note states the unadjusted space where a full stop is followed by a middle dot, which is what the reduction ladder starts from."
+
+[[deferred]]
+rule = "D.2#3"
+milestone = "M1"
+why = "The note states the unadjusted space where a comma is followed by a middle dot, which is what the reduction ladder starts from."
+
+[[deferred]]
+rule = "D.2#4"
+milestone = "M1"
+why = "The note denies any reduction of a Western word space at a line head or line end, because there is no visible space there to reduce."
+
+[[deferred]]
+rule = "D.2#5"
+milestone = "M1"
+why = "The note lets Table 3, and only Table 3, reduce the quarter ems around a middle dot to nothing, which is a strictness-dependent answer of the reduction ladder."
+
+[[deferred]]
+rule = "E.2#4"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity of up to a quarter em between two inseparable characters of different kinds, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#5"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity of up to a quarter em between two different ornamented character complexes, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#6"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity between two different simple-ruby character complexes and denies one inside a complex, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#7"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity between two different jukugo-ruby character complexes and denies one inside a complex, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#8"
+milestone = "M1"
+why = "The note denies any expansion between a preceding grouped numeral and a trailing postfixed abbreviation, which the expansion ladder must respect."
+
+[[deferred]]
+rule = "E.2#9"
+milestone = "M1"
+why = "The note records the alternative third order expansion opportunity between a grouped numeral and a trailing Western character, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#10"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity between a Western character and a trailing postfixed abbreviation, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#11"
+milestone = "M1"
+why = "The note records the alternative fourth order expansion opportunity between two Western characters, which the expansion ladder drains."
+
+[[deferred]]
+rule = "E.2#12"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity between two different tate-chu-yoko runs and denies one inside a run, which the expansion ladder drains."
+
+# The rules a milestone already covers. See the header: an entry is held to the opposite
+# invariant from a deferral, so removing the case fails rather than passing.
+
+[[owned]]
+rule = "3.1.2"
+milestone = "M0"
+why = "The rule states the character advance of cl-01, cl-02, cl-05, cl-06 and cl-07 as half-width, which is what separates those listings from §A.27's on a declared frame, and it is the reason `Text::new` requires a frame on their keys at all (ADR 0018). Forty-two classification cases rest their answer on it. The conditional space the same section states is Table 1 data and arrives with `jlreq-spacing`; the coverage gate is per rule, and a later milestone adding composition cases to a covered rule is not a state this file records."
+
+[[owned]]
+rule = "3.2.4"
+milestone = "M0"
+why = "The rule and its Note put full-width and fixed-width Latin letters and European numerals with the ideographs (cl-19), which is one of the three answers a declared frame gives a key both §A.19 and §A.27 name; twenty-seven classification cases turn on it."
+
+[[owned]]
+rule = "3.2.6"
+milestone = "M0"
+why = "The Note states the other two: proportional Western text is cl-27, and a half-width European numeral mixed with Japanese text is cl-24. It is the one sentence outside Appendix A that gives an occurrence to a class which is membership in a construct, and twenty-three classification cases turn on it."
+
+[[owned]]
+rule = "3.9.1"
+milestone = "M0"
+why = "The rule states that positioning varies with the character class, the writing mode, the neighbors and the adjustment in force, which is why a class is a property of an occurrence rather than of a code point (ADR 0008); ninety-nine classification cases cite it beside the table they read."
+
+[[owned]]
+rule = "3.9.2"
+milestone = "M0"
+why = "The rule groups characters into the thirty classes and hands the membership to Appendix A. Every answer `jlreq-class` produces opens its provenance chain here."
+
+[[owned]]
+rule = "3.7.1"
+milestone = "M0"
+why = "The rule states that a mathematical formula is set as Western text, which is what puts its characters in cl-27 rather than in the class the same key carries in Japanese running text; ten classification cases read it."
+
+[[owned]]
+rule = "3.1.10"
+milestone = "M0"
+why = "The rule states that a line may not break inside a grouped numeral (連数字), a unit symbol or a Western word, which is what makes cl-24, cl-25 and cl-27 runs rather than per-occurrence answers; six classification cases read it as the reason a construct is what decides those classes."
+
+[[owned]]
+rule = "C.3"
+milestone = "M0"
+why = "The addendum states the four levels of line-breaking convention and the classes each relaxes, and §C.2's notes define the strictest by reference to it, so it is the selector the reclassification reads (`kinsoku.level`, `kinsoku.relaxation_mechanism`); thirty classification cases record the readings it permits."
+
+[[owned]]
+rule = "C.2#1"
+milestone = "M0"
+why = "The note moves an iteration mark (cl-09) at a line head into cl-19 and says to read the ideographic cells, which is a change of class rather than of permission and therefore `jlreq-class`'s answer."
+
+[[owned]]
+rule = "C.2#2"
+milestone = "M0"
+why = "The note treats a prolonged sound mark (cl-10) as katakana (cl-16) under the relaxed conventions, which is the same mechanism read over §A.10's key."
+
+[[owned]]
+rule = "C.2#3"
+milestone = "M0"
+why = "The note treats a small kana (cl-11) as the full-size kana, which is the same mechanism read over §A.11's forty keys and the reason `spec/derived/scripts.tsv` is generated."
+
+[[owned]]
+rule = "B.2#14"
+milestone = "M0"
+why = "The note states the three ways an iteration mark at a line head may be dealt with, one of which is the reclassification §C.2 note 1 states; it is the permission `Question::ITERATION_MARK_AT_LINE_HEAD` carries."
+
+[[owned]]
+rule = "B.2#15"
+milestone = "M0"
+why = "The note is §C.2 note 2's spacing half, and the class it names is what `jlreq-class` answers when the relaxation is in force."
+
+[[owned]]
+rule = "B.2#16"
+milestone = "M0"
+why = "The note is §C.2 note 3's spacing half, over the small kana."
+
+[[owned]]
+rule = "E.2#1"
+milestone = "M0"
+why = "The note is §C.2 note 1's expansion half; the class an iteration mark is treated as belonging to is the same answer read from the other ladder."
+
+[[owned]]
+rule = "E.2#2"
+milestone = "M0"
+why = "The note is §C.2 note 2's expansion half, over the prolonged sound mark."
+
+[[owned]]
+rule = "E.2#3"
+milestone = "M0"
+why = "The note is §C.2 note 3's expansion half, over the small kana."
+
+[[owned]]
+rule = "3.1.7"
+milestone = "M1"
+why = "The line-head prohibition is `jlreq-line`'s answer and no layer of this workspace produces one yet. Its case is published now because the classification the prohibition is stated over is what M0 answers: A.6/line-start-prohibition/every-kinsoku-level asks the boundary question, is reported as not attempted, and is a statement to another implementation rather than a measurement of this one."
+
+[[owned]]
+rule = "3.1.8"
+milestone = "M1"
+why = "The line-end prohibition, published as a boundary case for the reason §3.1.7's is and answered by nothing here yet."
+
+[[owned]]
+rule = "3.1.11"
+milestone = "M1"
+why = "The rule forbids a break between two consecutive middle dots and the like; its case asks the boundary question, which `jlreq-spacing` and `jlreq-line` will answer at M1."
+
+[[owned]]
+rule = "3.3.8"
+milestone = "M1"
+why = "The rule states where a line may break in the presence of ruby, which is a boundary answer; the case is published and not yet attempted."
+
+[[owned]]
+rule = "3.4.2"
+milestone = "M1"
+why = "The rule states the warichu (割注) within one line, and its case asks whether the line may break inside one, which no layer answers yet."
+
+[[owned]]
+rule = "B.2#7"
+milestone = "M1"
+why = "The note states how far ruby may overhang the katakana and the other classes beside it, which the boundary answer carries as `ruby_overhang`; two cases ask for it and nothing answers them yet."
+
+[[owned]]
+rule = "B.2#10"
+milestone = "M1"
+why = "The note states the spacing at the boundary its case asks about, which `jlreq-spacing` answers at M1."
+
+[[owned]]
+rule = "C.2#6"
+milestone = "M1"
+why = "The note permits a break the matrix prohibits, which is the boundary answer four cases ask for and none receives yet."
+
+[[owned]]
+rule = "C.2#7"
+milestone = "M1"
+why = "The note permits a further break of the same kind, published as two boundary cases."
+
+[[owned]]
+rule = "C.2#9"
+milestone = "M1"
+why = "The note is read by one classification case and by two boundary cases; the classification half is answered today and the breakability half is `jlreq-line`'s at M1."

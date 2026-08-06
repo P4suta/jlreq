@@ -30,6 +30,15 @@
 //! set has not been generated, the census below says so and the checks that need it
 //! degrade to the part that is still decidable, rather than reporting that they passed.
 //!
+//! The subtraction has a third answer besides covered and uncovered, and
+//! `crate::deferral` is where it is written down. The inventory is generated whole while
+//! the suite is written milestone by milestone, so most of what a run finds uncovered today
+//! is nothing but the schedule; `docs/conformance-deferrals.toml` names each such rule and
+//! the milestone whose cases close it, this gate holds every entry to the inventory and to
+//! `ROADMAP.md`, fails the ones a case has already answered, and counts the rest out loud on
+//! every run. Deferred is therefore a state rather than an exemption: it is declared, it is
+//! checked, it is reported in numbers, and it ends by itself.
+//!
 //! The suite itself is read the same way, because declared coverage is a subtraction and
 //! either operand can be the one that does not exist yet. A `cases` directory holding no
 //! case is a suite someone has started, and every inventoried rule is subtracted from it;
@@ -51,6 +60,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::deferral::{self, LEDGER, Ledger, Milestones};
 use crate::shared::{self, Gate};
 
 /// The `conform` gate, as the dispatcher sees it.
@@ -58,8 +68,9 @@ pub(crate) const GATE: Gate = Gate {
     name: "conform",
     purpose: concat!(
         "every conformance case holds the published format, case ids are unique, and ",
-        "every inventoried rule has a case as far as the suite and the two inventories ",
-        "exist — the census above says which of those a run could not read"
+        "every inventoried rule either has a case or is deferred to a named milestone, as ",
+        "far as the suite and the two inventories exist — the census above says which of ",
+        "those a run could not read and how much is deferred"
     ),
     reference: "docs/design/conformance.md",
     run,
@@ -73,6 +84,11 @@ const SCHEMA_FILE: &str = "crates/jlreq-conform/cases.schema.json";
 const RULES_INVENTORY: &str = "spec/derived/rules.tsv";
 /// The policy space the overlay keys of a case are generated alongside.
 const QUESTIONS_INVENTORY: &str = "spec/derived/questions.tsv";
+/// Every section the published rendering numbers, which is what an address inside an
+/// expectation resolves against where the rule inventory does not carry it: Appendix A is
+/// held as data rather than as rules, so §A.28 is a section a case may cite as provenance
+/// and never a rule a case may cover.
+const ANCHORS_INVENTORY: &str = "spec/derived/anchors.tsv";
 /// The crate that declares the fixed-point denominator.
 const UNIT_CRATE: &str = "crates/jlreq-unit/src";
 
@@ -118,9 +134,15 @@ struct Suite {
     /// Every address in the rule inventory, once it is generated.
     rules: Option<BTreeSet<String>>,
     /// Every question path in the policy space, once it is generated.
-    questions: Option<BTreeSet<String>>,
+    questions: Option<BTreeMap<String, BTreeSet<String>>>,
+    /// Every numbered section of the rendering, once it is derived.
+    anchors: Option<BTreeSet<String>>,
     /// Units per ideographic em, read from the crate that declares it.
     units_per_em: Option<i64>,
+    /// The rules a later milestone covers, and which milestone that is.
+    deferrals: Ledger,
+    /// The milestones `ROADMAP.md` declares, which a deferral names one of.
+    milestones: Milestones,
 }
 
 impl Suite {
@@ -137,8 +159,11 @@ impl Suite {
             files,
             schema: read_if_present(&root.join(SCHEMA_FILE))?,
             rules: read_inventory(&root.join(RULES_INVENTORY), "address")?,
-            questions: read_inventory(&root.join(QUESTIONS_INVENTORY), "question")?,
+            questions: read_questions(&root.join(QUESTIONS_INVENTORY))?,
+            anchors: read_inventory(&root.join(ANCHORS_INVENTORY), "address")?,
             units_per_em: units_per_em(root)?,
+            deferrals: Ledger::read(root)?,
+            milestones: Milestones::read(root)?,
         })
     }
 
@@ -162,8 +187,27 @@ impl Suite {
         violations.extend(unique_ids(&cases));
         violations.extend(frame_pairs(&cases));
         violations.extend(self.coverage(&cases));
+        violations.extend(self.deferrals.examine(deferral::Reference {
+            inventory: self.rules.as_ref(),
+            covered: Some(&self.covered(&cases)),
+            milestones: &self.milestones,
+        }));
         violations.extend(check_schema(self.schema.as_deref(), !self.files.is_empty()));
         (self.census(&cases), violations)
+    }
+
+    /// Every rule the suite covers today: the addresses the cases name, and the addresses
+    /// the `covers` families credit.
+    ///
+    /// Without the inventory a family credits nothing, because a pattern names rules by
+    /// being matched against them and there is nothing to match. That is the same reading
+    /// `coverage` takes, and it is what keeps a deferral from being called stale by a
+    /// pattern nobody could resolve.
+    fn covered<'a>(&'a self, cases: &'a [Case]) -> BTreeSet<&'a str> {
+        match self.rules.as_ref() {
+            Some(inventory) => declared_addresses(cases, inventory),
+            None => cases.iter().flat_map(Case::rules).collect(),
+        }
     }
 
     /// Whether the published suite exists at all.
@@ -187,6 +231,13 @@ impl Suite {
     /// gate may give; a gate that fails because a later milestone has not happened yet
     /// reports the schedule rather than the invariant. Creating the directory turns the
     /// check on, whether or not a case is in it.
+    ///
+    /// What the subtraction leaves is *uncovered*, which is not the same thing as *not
+    /// written yet*. `docs/conformance-deferrals.toml` is the difference: a rule named there
+    /// is deferred to a milestone, is counted in the census, and is subtracted here, and a
+    /// rule that is neither covered nor deferred fails. That is the whole reason this gate
+    /// can hold "every rule gets a conformance case" from the first case file rather than
+    /// from the last milestone (`crate::deferral`).
     fn coverage(&self, cases: &[Case]) -> Vec<String> {
         let Some(inventory) = self.rules.as_ref() else {
             if cases.is_empty() {
@@ -201,17 +252,20 @@ impl Suite {
         if self.suite_is_unstarted(cases) {
             return Vec::new();
         }
-        let mut found = unresolved_addresses(cases, inventory);
+        let mut found = unresolved_addresses(cases, inventory, self.anchors.as_ref());
         let declared = declared_addresses(cases, inventory);
+        let deferred = self.deferrals.rules();
         let uncovered: Vec<&str> = inventory
             .iter()
-            .filter(|rule| !declared.contains(rule.as_str()))
+            .filter(|rule| !declared.contains(rule.as_str()) && !deferred.contains(rule.as_str()))
             .map(String::as_str)
             .collect();
         if !uncovered.is_empty() {
             found.push(format!(
-                "{count} inventoried rule(s) have no conformance case, the first being {sample}; \
-                 CONTRIBUTING.md makes a rule without a case incomplete (ADR 0013)",
+                "{count} inventoried rule(s) have neither a conformance case nor a deferral, \
+                 the first being {sample}; CONTRIBUTING.md makes a rule without a case \
+                 incomplete, and a rule a later milestone covers is declared in {LEDGER} \
+                 rather than left out (ADR 0013)",
                 count = uncovered.len(),
                 sample = sample_of(&uncovered)
             ));
@@ -232,9 +286,22 @@ impl Suite {
                 format!("{CASES_DIR} does not exist yet, so the suite is the empty set")
             },
             format!(
-                "{cases} case(s) naming {rules} distinct rule address(es)",
+                "{cases} case(s) naming {rules} distinct rule address(es): {classify} \
+                 classify, {boundary} boundary, {compose} compose, of which {pairs} form a \
+                 §3.1.2 frame pair",
                 cases = cases.len(),
-                rules = declared.len()
+                rules = declared.len(),
+                classify = cases.iter().filter(|case| case.asks("classify")).count(),
+                boundary = cases.iter().filter(|case| case.asks("boundary")).count(),
+                compose = cases.iter().filter(|case| case.asks("compose")).count(),
+                pairs = cases
+                    .iter()
+                    .filter(|case| case.asks("compose")
+                        && matches!(
+                            case.id.rsplit_once('/').map(|(_, variant)| variant),
+                            Some("half-em-frame" | "full-em-frame")
+                        ))
+                    .count()
             ),
             match self.rules.as_ref() {
                 Some(rules) => format!(
@@ -269,6 +336,7 @@ impl Suite {
                 },
             },
         ];
+        lines.push(self.deferrals.census(self.rules.as_ref()));
         if self.suite_is_unstarted(cases) {
             lines.push(match self.rules.as_ref() {
                 Some(rules) => format!(
@@ -282,9 +350,44 @@ impl Suite {
                      {RULES_INVENTORY} exists yet (ADR 0013)"
                 ),
             });
+            return lines;
+        }
+        if let Some(inventory) = self.rules.as_ref() {
+            let (with_case, deferred, neither) =
+                split(inventory, &self.covered(cases), &self.deferrals.rules());
+            lines.push(format!(
+                "declared coverage: {with_case} of {total} inventoried rule(s) have a case, \
+                 {deferred} are deferred to a later milestone, {neither} are neither",
+                total = inventory.len()
+            ));
         }
         lines
     }
+}
+
+/// How the inventory divides into the three states a rule can be in.
+///
+/// A rule that is both covered and deferred counts as covered here, because it is: the
+/// deferral is the thing that has gone stale, and `Ledger::examine` reports it as such
+/// rather than this line reporting the same fact as a second number.
+fn split(
+    inventory: &BTreeSet<String>,
+    covered: &BTreeSet<&str>,
+    deferred: &BTreeSet<&str>,
+) -> (usize, usize, usize) {
+    let mut with_case = 0usize;
+    let mut with_deferral = 0usize;
+    let mut with_neither = 0usize;
+    for rule in inventory {
+        if covered.contains(rule.as_str()) {
+            with_case = with_case.saturating_add(1);
+        } else if deferred.contains(rule.as_str()) {
+            with_deferral = with_deferral.saturating_add(1);
+        } else {
+            with_neither = with_neither.saturating_add(1);
+        }
+    }
+    (with_case, with_deferral, with_neither)
 }
 
 /// One case, kept for the checks that span cases.
@@ -310,6 +413,31 @@ impl Case {
             .collect()
     }
 
+    /// Whether this case asks one of the three questions.
+    fn asks(&self, kind: &str) -> bool {
+        self.body
+            .get("input")
+            .and_then(|input| input.get("kind"))
+            .and_then(Json::as_text)
+            == Some(kind)
+    }
+
+    /// Every address this case names inside an expectation, unparsed.
+    ///
+    /// `expect.class.rules` is the case's own statement of what decided the answer, and the
+    /// runner deliberately never compares it: ADR 0006 requires an implementation to answer
+    /// the question rather than to reproduce this project's chain of specification
+    /// addresses. Nothing held it to anything either, so it was the one place §C.3, §C.2#2,
+    /// §B.2#15 and §E.2#2 appeared as the provenance of a specific answer and the one place
+    /// no gate could read. It is provenance rather than coverage — a rule named only here is
+    /// not covered by the case and is not subtracted from the inventory — so it is held to
+    /// the grammar and to the inventory and to nothing else.
+    fn cited(&self) -> Vec<&str> {
+        let mut found = Vec::new();
+        cited_rules(&self.body, false, &mut found);
+        found
+    }
+
     /// The family patterns this case claims, unparsed.
     fn covers(&self) -> Vec<&str> {
         self.body
@@ -327,8 +455,14 @@ impl Case {
 struct Reference<'a> {
     /// Units per ideographic em, when the crate declaring it could be read.
     units_per_em: Option<i64>,
-    /// The generated policy space, when it exists.
-    questions: Option<&'a BTreeSet<String>>,
+    /// The generated policy space, when it exists: each question path with every choice
+    /// name `spec/derived/questions.tsv` records it as permitting.
+    ///
+    /// The answers are read as well as the paths, because a choice was checked for being a
+    /// non-empty string and nothing else: `kinsoku.level = banana` passed the gate and then
+    /// applied to nothing at run time, which is the failure the stable dotted paths exist to
+    /// prevent, one column over.
+    questions: Option<&'a BTreeMap<String, BTreeSet<String>>>,
 }
 
 /// The case files of the suite, in a stable order.
@@ -374,6 +508,75 @@ fn read_inventory(path: &Path, column: &str) -> io::Result<Option<BTreeSet<Strin
         return Ok(None);
     };
     inventory_column(&source, column, path).map(Some)
+}
+
+/// The generated policy space: every question path with the choices it permits.
+///
+/// Two columns of one file rather than one, because a case names a (question, choice) pair
+/// and only half of it was ever held to the document. `permits` is the column
+/// `xtask/src/policy.rs` derives from the sentence each row quotes, so a choice name it does
+/// not list is a name the specification does not permit.
+fn read_questions(path: &Path) -> io::Result<Option<BTreeMap<String, BTreeSet<String>>>> {
+    let Some(source) = read_if_present(path)? else {
+        return Ok(None);
+    };
+    let questions = inventory_rows(&source, &["question", "permits"], path)?;
+    Ok(Some(
+        questions
+            .into_iter()
+            .map(|row| {
+                let permits = row
+                    .get(1)
+                    .map(|permits| {
+                        permits
+                            .split_whitespace()
+                            .map(str::to_owned)
+                            .collect::<BTreeSet<String>>()
+                    })
+                    .unwrap_or_default();
+                (row.first().cloned().unwrap_or_default(), permits)
+            })
+            .collect(),
+    ))
+}
+
+/// Several columns of a tab-separated inventory, row by row, read the way one column is.
+fn inventory_rows(source: &str, columns: &[&str], path: &Path) -> io::Result<Vec<Vec<String>>> {
+    let Some(header) = source.lines().find(|line| !is_skippable(line)) else {
+        return Ok(Vec::new());
+    };
+    let mut indices = Vec::new();
+    for column in columns {
+        let Some(index) = header.split('\t').position(|name| name.trim() == *column) else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "{path} has no `{column}` column; docs/design/generation.md names it",
+                    path = path.display()
+                ),
+            ));
+        };
+        indices.push(index);
+    }
+    Ok(source
+        .lines()
+        .skip_while(|line| is_skippable(line))
+        .skip(1)
+        .filter(|line| !is_skippable(line))
+        .map(|line| {
+            let fields: Vec<&str> = line.split('\t').collect();
+            indices
+                .iter()
+                .map(|index| {
+                    fields
+                        .get(*index)
+                        .map(|field| field.trim().to_owned())
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<String>>()
+        })
+        .filter(|row| row.first().is_some_and(|first| !first.is_empty()))
+        .collect())
 }
 
 /// One column of an inventory that has already been read, as its own function so the row
@@ -671,7 +874,86 @@ fn check_case(case: &Json, section: &str, reference: Reference) -> Vec<String> {
     found.extend(check_permitted(case.get("permitted"), reference));
     found.extend(check_forbidden(case.get("forbidden")));
     found.extend(check_disagreements(case.get("disagreements")));
+    found.extend(check_question(case));
     walk_amounts(case, "", false, reference, &mut found);
+    found
+}
+
+/// Every expectation of one case is about the question the case asked, and about the same
+/// occurrence of it.
+///
+/// Two holes in the published format, and each of them made a case that cannot fail. A
+/// `permitted` entry stating no `class` over a `classify` case was compared against nothing
+/// and scored as agreement, so an expectation that omits the very field its case is about
+/// passed both this gate and the runner. And the ordinal a case asks about is taken from its
+/// first stated expectation, after which every entry is measured against that one answer, so
+/// an entry naming another ordinal is about an occurrence nobody asked about: as a
+/// `forbidden` entry it silently excluded a correct answer, and as a `permitted` one it
+/// could never be satisfied.
+///
+/// A `forbidden` entry may still state a different *kind* — it states only the fields it
+/// forbids, and a line geometry says nothing about a classification — which is why the field
+/// requirement is `permitted`'s alone and the ordinal requirement is both's.
+fn check_question(case: &Json) -> Vec<String> {
+    let Some(kind) = case
+        .get("input")
+        .and_then(|input| input.get("kind"))
+        .and_then(Json::as_text)
+    else {
+        return Vec::new();
+    };
+    let (field, ordinal, alternatives) = match kind {
+        "classify" => ("class", "item", &["class"][..]),
+        "boundary" => ("boundary", "before", &["boundary"][..]),
+        _ => ("lines", "", &["lines", "violations"][..]),
+    };
+    let mut found = Vec::new();
+    let mut asked: Option<i64> = None;
+    for (side, entries) in [
+        ("permitted", case.get("permitted")),
+        ("forbidden", case.get("forbidden")),
+    ] {
+        for (index, entry) in entries
+            .and_then(Json::as_array)
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+        {
+            let at = format!("{side}[{index}]");
+            let Some(expect) = entry.get("expect") else {
+                continue;
+            };
+            let stated = alternatives
+                .iter()
+                .any(|alternative| expect.get(alternative).is_some());
+            if side == "permitted" && !stated {
+                found.push(format!(
+                    "`{at}.expect` states none of {alternatives:?}, and the case asks the \
+                     `{kind}` question; an expectation that omits the field its case is \
+                     about is one no answer can fail"
+                ));
+            }
+            if ordinal.is_empty() {
+                continue;
+            }
+            let Some(stated) = expect
+                .get(field)
+                .and_then(|about| about.get(ordinal))
+                .and_then(Json::as_integer)
+            else {
+                continue;
+            };
+            match asked {
+                None => asked = Some(stated),
+                Some(first) if first != stated => found.push(format!(
+                    "`{at}.expect.{field}.{ordinal}` is {stated} and an earlier expectation \
+                     of this case names {first}; a case is one input and one question, and \
+                     the runner measures one answer against every entry"
+                )),
+                Some(_) => {},
+            }
+        }
+    }
     found
 }
 
@@ -1250,14 +1532,12 @@ fn check_overlay(
         return (found, overlay);
     };
     for (question, choice) in members {
+        let permits = reference.questions.map(|known| known.get(question));
         if !is_path(question) {
             found.push(format!(
                 "`{at}.policy` names `{question}`, which is not a question path"
             ));
-        } else if reference
-            .questions
-            .is_some_and(|known| !known.contains(question))
-        {
+        } else if permits == Some(None) {
             found.push(format!(
                 "`{at}.policy` names `{question}`, which the generated policy space does \
                  not contain"
@@ -1265,6 +1545,17 @@ fn check_overlay(
         }
         match choice.as_text() {
             Some(name) if !name.is_empty() => {
+                if let Some(Some(permitted)) = permits {
+                    if !permitted.contains(name) {
+                        found.push(format!(
+                            "`{at}.policy.{question}` is `{name}`, which is not one of the \
+                             answer(s) spec/derived/questions.tsv records `{question}` as \
+                             permitting: {permitted:?}. A choice the policy space does not \
+                             have applies to nothing, so the entry would be unreachable \
+                             rather than wrong"
+                        ));
+                    }
+                }
                 overlay.insert(question.clone(), name.to_owned());
             },
             _ => found.push(format!(
@@ -1413,6 +1704,9 @@ fn walk_amounts(
                 };
                 if key == "trims" {
                     found.extend(check_trims(child, &below, inside_forbidden));
+                }
+                if key == "rules" && !at.is_empty() {
+                    found.extend(check_addresses(value, key, false));
                 }
                 walk_amounts(
                     child,
@@ -1682,10 +1976,19 @@ fn unique_ids(cases: &[Case]) -> Vec<String> {
 /// declared frame and the advance that frame describes. An implementation that adds Table
 /// 1's half em to an advance that already contains it fails the second case on `extent`;
 /// one that shortens the caller's advance without saying so fails on `trims`.
+///
+/// It is ADR 0017's assertion about *composition*, so it is asked of composition cases and
+/// of nothing else. A classification pair may name the same two variants and mean the
+/// opposite thing — the frame is what separates §A.1's listing of a key from §A.27's, so
+/// there the expectations differ precisely because the frames do — and holding such a pair
+/// to "identical except `trims`" would fail it for the wrong reason. §A.1 avoids the
+/// collision today by naming its parenthesis pair `japanese-context-half-em` and
+/// `western-context-proportional`, which is a naming convention and not a check; this is
+/// the check.
 fn frame_pairs(cases: &[Case]) -> Vec<String> {
     let mut halves: BTreeMap<&str, &Case> = BTreeMap::new();
     let mut fulls: BTreeMap<&str, &Case> = BTreeMap::new();
-    for case in cases {
+    for case in cases.iter().filter(|case| case.asks("compose")) {
         let Some((subject, variant)) = case.id.rsplit_once('/') else {
             continue;
         };
@@ -1860,13 +2163,61 @@ fn declared_addresses<'a>(cases: &'a [Case], inventory: &'a BTreeSet<String>) ->
 /// untested claim, and a case naming an address the inventory does not have is a citation
 /// to nothing. A `covers` pattern that credits nothing is the same failure in the family
 /// form, so it is reported the same way.
-fn unresolved_addresses(cases: &[Case], inventory: &BTreeSet<String>) -> Vec<String> {
+/// Every `rules` entry below the top level of one case, in document order.
+///
+/// `inside` says whether the value being walked is already under an expectation, so the
+/// case's own top-level `rules` — which is coverage and is subtracted — is not collected
+/// twice under a different name.
+fn cited_rules<'a>(value: &'a Json, inside: bool, found: &mut Vec<&'a str>) {
+    match value {
+        Json::Object(members) => {
+            for (key, child) in members {
+                if inside && key == "rules" {
+                    found.extend(
+                        child
+                            .as_array()
+                            .unwrap_or_default()
+                            .iter()
+                            .filter_map(Json::as_text),
+                    );
+                }
+                cited_rules(child, inside || key == "expect", found);
+            }
+        },
+        Json::Array(entries) => {
+            for entry in entries {
+                cited_rules(entry, inside, found);
+            }
+        },
+        _ => {},
+    }
+}
+
+fn unresolved_addresses(
+    cases: &[Case],
+    inventory: &BTreeSet<String>,
+    anchors: Option<&BTreeSet<String>>,
+) -> Vec<String> {
     let mut found = Vec::new();
     for case in cases {
         for rule in case.rules() {
             if !inventory.contains(rule) {
                 found.push(format!(
                     "{file}: {id}: names `{rule}`, which the rule inventory does not contain",
+                    file = case.file,
+                    id = case.id
+                ));
+            }
+        }
+        for rule in case.cited() {
+            let resolves =
+                inventory.contains(rule) || anchors.is_none_or(|sections| sections.contains(rule));
+            if !resolves {
+                found.push(format!(
+                    "{file}: {id}: cites `{rule}` inside an expectation, and it is neither an \
+                     inventoried rule nor a section the rendering numbers; the field is the \
+                     provenance a reader adjudicates by, and an address nothing resolves is \
+                     worse there than nowhere",
                     file = case.file,
                     id = case.id
                 ));
@@ -2362,14 +2713,14 @@ impl Reader<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::path::Path;
 
     use super::{
-        Case, Json, REQUIRED_BY_SHAPE, RULES_INVENTORY, Reference, Suite, accept_arguments,
-        check_input, check_permitted, check_schema, check_trims, declared_addresses,
-        declared_units_per_em, examine_file, frame_pairs, inventory_column, is_path, parse_address,
-        unique_ids, unresolved_addresses,
+        Case, Json, Ledger, Milestones, REQUIRED_BY_SHAPE, RULES_INVENTORY, Reference, Suite,
+        accept_arguments, check_input, check_permitted, check_schema, check_trims,
+        declared_addresses, declared_units_per_em, deferral, examine_file, frame_pairs,
+        inventory_column, is_path, parse_address, unique_ids, unresolved_addresses,
     };
     use crate::shared;
 
@@ -2585,7 +2936,7 @@ mod tests {
             .collect()
     }
 
-    /// A suite with nothing generated behind it.
+    /// A suite with nothing generated behind it and nothing deferred.
     fn bare_suite() -> Suite {
         Suite {
             directory_exists: false,
@@ -2593,8 +2944,19 @@ mod tests {
             schema: None,
             rules: None,
             questions: None,
+            anchors: None,
             units_per_em: Some(720),
+            deferrals: Ledger::default(),
+            milestones: Milestones::default(),
         }
+    }
+
+    /// A ledger deferring one rule of `inventory` to a milestone.
+    fn deferring(rule: &str, milestone: &str) -> Ledger {
+        Ledger::of(&format!(
+            "[[deferred]]\nrule = \"{rule}\"\nmilestone = \"{milestone}\"\n\
+             why = \"The fixture's reason.\"\n"
+        ))
     }
 
     /// The cases of one fixture file.
@@ -3082,11 +3444,12 @@ mod tests {
         assert!(
             found
                 .iter()
-                .any(|message| message.contains("2 inventoried rule(s) have no conformance case")),
+                .any(|message| message
+                    .contains("2 inventoried rule(s) have neither a conformance case")),
             "{found:#?}"
         );
         let unknown = MINIMAL.replace("[\"3.1.9\"]", "[\"3.1.9\", \"B.2#4\"]");
-        let found = unresolved_addresses(&cases_of(&file_with(&unknown)), &inventory());
+        let found = unresolved_addresses(&cases_of(&file_with(&unknown)), &inventory(), None);
         assert!(
             found
                 .iter()
@@ -3115,6 +3478,65 @@ mod tests {
     }
 
     #[test]
+    fn a_deferred_rule_is_not_uncovered_and_is_counted_in_the_census() {
+        let mut suite = bare_suite();
+        suite.rules = Some(inventory());
+        suite.directory_exists = true;
+        suite.deferrals = Ledger::of(
+            "[[deferred]]\nrule = \"B.1@cl-05,cl-05\"\nmilestone = \"M2\"\nwhy = \"a\"\n\
+             [[deferred]]\nrule = \"B.1@cl-05,cl-19\"\nmilestone = \"M2\"\nwhy = \"b\"\n",
+        );
+        let cases = cases_of(&file_with(MINIMAL));
+        assert!(
+            suite.coverage(&cases).is_empty(),
+            "every rule now has a case or a deferral: {found:#?}",
+            found = suite.coverage(&cases)
+        );
+        let census = suite.census(&cases);
+        assert!(
+            census.iter().any(
+                |line| line.contains("defers 2 of the 3 inventoried rule(s)")
+                    && line.contains("M2 2")
+            ),
+            "the debt is counted out loud on a green run: {census:#?}"
+        );
+        assert!(
+            census.iter().any(|line| line.contains(
+                "1 of 3 inventoried rule(s) have a case, 2 are deferred to a later \
+                 milestone, 0 are neither"
+            )),
+            "{census:#?}"
+        );
+    }
+
+    #[test]
+    fn a_rule_that_is_neither_covered_nor_deferred_fails_and_a_stale_deferral_does_too() {
+        let mut suite = bare_suite();
+        suite.rules = Some(inventory());
+        suite.directory_exists = true;
+        suite.deferrals = deferring("B.1@cl-05,cl-05", "M2");
+        let cases = cases_of(&file_with(MINIMAL));
+        let found = suite.coverage(&cases);
+        assert!(
+            found.iter().any(|message| message
+                .contains("1 inventoried rule(s) have neither a conformance case nor a deferral")),
+            "deferring one of the two uncovered rules leaves the other uncovered: {found:#?}"
+        );
+        suite.deferrals = deferring("3.1.9", "M2");
+        let found = suite.deferrals.examine(deferral::Reference {
+            inventory: suite.rules.as_ref(),
+            covered: Some(&suite.covered(&cases)),
+            milestones: &suite.milestones,
+        });
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("already covers it")),
+            "and deferring a rule the suite covers is stale rather than harmless: {found:#?}"
+        );
+    }
+
+    #[test]
     fn a_suite_directory_that_exists_is_subtracted_from_even_when_it_is_empty() {
         let mut suite = bare_suite();
         suite.rules = Some(inventory());
@@ -3123,7 +3545,8 @@ mod tests {
         assert!(
             found
                 .iter()
-                .any(|message| message.contains("3 inventoried rule(s) have no conformance case")),
+                .any(|message| message
+                    .contains("3 inventoried rule(s) have neither a conformance case")),
             "creating the directory is what turns the subtraction on: {found:#?}"
         );
         assert!(
@@ -3162,7 +3585,7 @@ mod tests {
             "\"rules\": [\"3.1.9\"], \"covers\": [\"B.1@cl-05,*\"],",
         );
         let cases = cases_of(&file_with(&row));
-        assert!(unresolved_addresses(&cases, &inventory()).is_empty());
+        assert!(unresolved_addresses(&cases, &inventory(), None).is_empty());
         assert_eq!(
             declared_addresses(&cases, &inventory()).len(),
             3,
@@ -3172,7 +3595,7 @@ mod tests {
             "\"rules\": [\"3.1.9\"],",
             "\"rules\": [\"3.1.9\"], \"covers\": [\"B.1@cl-99,*\"],",
         );
-        let found = unresolved_addresses(&cases_of(&file_with(&dead)), &inventory());
+        let found = unresolved_addresses(&cases_of(&file_with(&dead)), &inventory(), None);
         assert!(
             found
                 .iter()
@@ -3252,7 +3675,14 @@ mod tests {
         assert!(!is_path("spacing..level"));
         assert!(!is_path("Spacing.level"));
         assert!(!is_path(""));
-        let unknown: BTreeSet<String> = ["kinsoku.level".to_owned()].into_iter().collect();
+        let unknown: BTreeMap<String, BTreeSet<String>> = [(
+            "kinsoku.level".to_owned(),
+            ["strict".to_owned(), "loose".to_owned()]
+                .into_iter()
+                .collect(),
+        )]
+        .into_iter()
+        .collect();
         let policy = json(
             r#"[{ "policy": { "spacing.line_end_punctuation": "solid" }, "source": "a",
                   "expect": { "lines": [] } }]"#,
@@ -3271,6 +3701,47 @@ mod tests {
     }
 
     #[test]
+    fn a_choice_the_specification_does_not_permit_is_refused_by_name() {
+        // The other half of the pair. A choice name was checked for being a non-empty
+        // string and nothing else, so `kinsoku.level = banana` passed the gate and then
+        // applied to nothing at run time — the entry became unreachable rather than wrong,
+        // which is the failure the stable dotted paths exist to prevent.
+        let known: BTreeMap<String, BTreeSet<String>> = [(
+            "kinsoku.level".to_owned(),
+            ["strict".to_owned(), "loose".to_owned()]
+                .into_iter()
+                .collect(),
+        )]
+        .into_iter()
+        .collect();
+        let reference = Reference {
+            units_per_em: Some(720),
+            questions: Some(&known),
+        };
+        let invented = json(
+            r#"[{ "policy": {}, "source": "a", "expect": { "lines": [] } },
+                { "policy": { "kinsoku.level": "banana" }, "source": "b",
+                  "expect": { "lines": [] } }]"#,
+        );
+        let found = check_permitted(Some(&invented), reference);
+        assert!(
+            found.iter().any(|message| message.contains(
+                "is `banana`, which is not one of the answer(s) spec/derived/questions.tsv"
+            )),
+            "{found:#?}"
+        );
+        let permitted = json(
+            r#"[{ "policy": {}, "source": "a", "expect": { "lines": [] } },
+                { "policy": { "kinsoku.level": "loose" }, "source": "b",
+                  "expect": { "lines": [] } }]"#,
+        );
+        assert!(
+            check_permitted(Some(&permitted), reference).is_empty(),
+            "and an answer the row records is accepted"
+        );
+    }
+
+    #[test]
     fn the_gate_takes_the_spelling_the_design_uses_and_nothing_else() {
         assert!(accept_arguments(&[]).is_ok());
         assert!(accept_arguments(&["--check".to_owned()]).is_ok());
@@ -3283,13 +3754,26 @@ mod tests {
         let suite = Suite::read(&root).expect("the suite and its inventories are readable");
         let (census, violations) = suite.examine();
         assert!(violations.is_empty(), "{violations:#?}");
-        assert_eq!(census.len(), 6, "{census:#?}");
+        assert_eq!(census.len(), 7, "{census:#?}");
         assert!(
             census
                 .iter()
-                .any(|line| line.starts_with("declared coverage: did not run")),
-            "the suite has not been started, and a run that did not say so would be \
-             reporting a coverage it never subtracted: {census:#?}"
+                .any(|line| line.contains("rule(s) to a later milestone: ")),
+            "the deferral census is printed on every run, green or not: {census:#?}"
+        );
+        assert!(
+            census.iter().any(
+                |line| line.starts_with("declared coverage: ") && !line.contains("did not run")
+            ),
+            "the cases directory exists, so the subtraction runs and the census states it \
+             in numbers; the `did not run` wording this assertion carried until M0-b was \
+             the M0-a state, when creating the directory was still ahead: {census:#?}"
+        );
+        assert!(
+            census
+                .iter()
+                .any(|line| line.contains("case(s) naming") && line.contains("rule address")),
+            "the suite is read and counted, not merely found: {census:#?}"
         );
     }
 }

@@ -168,7 +168,7 @@ fn workspace_members(manifest: &str) -> Vec<String> {
     let mut inside_members = false;
 
     for line in manifest.lines() {
-        let line = without_comment(line).trim();
+        let line = before_comment(line).trim();
         if line.is_empty() {
             continue;
         }
@@ -201,7 +201,7 @@ fn workspace_members(manifest: &str) -> Vec<String> {
 fn package_name(manifest: &str) -> Option<&str> {
     let mut inside_package = false;
     for line in manifest.lines() {
-        let line = without_comment(line).trim();
+        let line = before_comment(line).trim();
         if let Some(header) = table_header(line) {
             inside_package = header == "package";
             continue;
@@ -224,17 +224,48 @@ fn table_header(line: &str) -> Option<&str> {
         .map(str::trim)
 }
 
+/// The name inside an `[[array]]` header, if the line is one.
+pub(crate) fn array_header(line: &str) -> Option<&str> {
+    line.strip_prefix("[[")
+        .and_then(|rest| rest.strip_suffix("]]"))
+        .map(str::trim)
+}
+
 /// Everything before the first `#` that is not inside a string.
-fn without_comment(line: &str) -> &str {
-    let mut inside_string = false;
+pub(crate) fn before_comment(line: &str) -> &str {
+    let mut inside = false;
+    let mut escaped = false;
     for (index, character) in line.char_indices() {
         match character {
-            '"' => inside_string = !inside_string,
-            '#' if !inside_string => return line.get(..index).unwrap_or(line),
-            _ => {},
+            '\\' if inside => escaped = !escaped,
+            '"' if !escaped => inside = !inside,
+            '#' if !inside => return line.get(..index).unwrap_or(line),
+            _ => escaped = false,
         }
     }
     line
+}
+
+/// The contents of a one-line basic string, when that is all the rest of the line holds.
+///
+/// The one form the control files this repository hand-rolls a reader for are written in.
+/// A value in any other form is `None` rather than a best effort, so that a line a reader
+/// cannot read is a finding rather than a silence.
+pub(crate) fn basic_string(rest: &str) -> Option<&str> {
+    let opened = rest.trim_start().strip_prefix('"')?;
+    let mut escaped = false;
+    for (index, character) in opened.char_indices() {
+        match character {
+            '\\' if !escaped => escaped = true,
+            '"' if !escaped => {
+                let value = opened.get(..index)?;
+                let tail = opened.get(index.saturating_add(1)..)?;
+                return tail.trim().is_empty().then_some(value);
+            },
+            _ => escaped = false,
+        }
+    }
+    None
 }
 
 /// The string literals on a line, in order, without their quotes.
@@ -516,8 +547,8 @@ pub(crate) fn class(text: &str) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::{
-        NON_CORE_MEMBERS, address, core_crates, package_name, quoted_values, table_header,
-        without_comment, workspace_members, workspace_root,
+        NON_CORE_MEMBERS, address, before_comment, core_crates, package_name, quoted_values,
+        table_header, workspace_members, workspace_root,
     };
 
     /// The shared address corpus, relative to the workspace root.
@@ -599,10 +630,7 @@ mod tests {
         assert_eq!(table_header("[package]"), Some("package"));
         assert_eq!(table_header("members = [\"crates/a\"]"), None);
         assert_eq!(quoted_values("name = \"a\" # \"b\""), ["a", "b"]);
-        assert_eq!(
-            quoted_values(without_comment("name = \"a\" # \"b\"")),
-            ["a"]
-        );
+        assert_eq!(quoted_values(before_comment("name = \"a\" # \"b\"")), ["a"]);
     }
 
     #[test]

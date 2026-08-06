@@ -77,7 +77,13 @@ it fails, fix the cause rather than narrowing the gate.
   pipeline.
 
 - **Every rule gets a conformance case.** A rule without an entry in `jlreq-conform`
-  addressed to the JLReq section it implements is incomplete.
+  addressed to the JLReq section it implements is incomplete. The rule inventory is
+  generated whole while the suite is written milestone by milestone, so a rule whose case a
+  later milestone writes is declared in
+  [docs/conformance-deferrals.toml](docs/conformance-deferrals.toml) with that milestone and
+  a reason — and a rule that is neither covered nor declared there fails `just conform`,
+  which counts what is deferred, per milestone, on every run. Deferring is not exempting:
+  the entry is a violation the moment a case covers the rule, so it ends by itself.
 
 ## Code and comments are in English
 

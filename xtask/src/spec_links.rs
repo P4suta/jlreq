@@ -15,7 +15,8 @@
 //!    grammar,
 //! 3. every address resolves: its section is one the specification publishes, and an
 //!    address naming a note or a matrix cell is a rule the generated inventory names,
-//! 4. every rule an item cites has a conformance case.
+//! 4. every rule an item cites has a conformance case, or is deferred to a named milestone
+//!    by `docs/conformance-deferrals.toml`.
 //!
 //! Links 1 and 2 hold today. Links 3 and 4 read `spec/derived/anchors.tsv`,
 //! `spec/derived/rules.tsv` and `crates/jlreq-conform/cases/`, none of which exists yet:
@@ -78,6 +79,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::deferral::{LEDGER, Ledger};
 use crate::shared::{self, Address, CoreCrate, Detail, Gate, Section, address, number};
 
 /// The `spec-links` gate, as the dispatcher sees it.
@@ -85,8 +87,8 @@ pub(crate) const GATE: Gate = Gate {
     name: "spec-links",
     purpose: concat!(
         "every public item of the layout core cites the specification, and every address ",
-        "it names is well formed, resolved and tested as far as the generated inventory ",
-        "and the conformance cases exist"
+        "it names is well formed, resolved and either tested or deferred to a named ",
+        "milestone, as far as the generated inventory and the conformance cases exist"
     ),
     reference: concat!(
         "docs/adr/0013-rules-are-addressed-by-specification-address.md ",
@@ -155,11 +157,14 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let inventory = read_table(&root.join(INVENTORY), INVENTORY, &mut violations)?;
     let cases = read_cases(&root.join(CASES))?;
 
+    let deferrals = Ledger::read(&root)?;
+
     check_sections(sections.as_ref(), &cited, &mut examined, &mut violations);
     let rules = check_rules(inventory.as_ref(), &cited, &mut examined, &mut violations);
     check_cases(
         cases.as_ref(),
         rules.as_ref(),
+        &deferrals.rules(),
         &cited,
         &mut examined,
         &mut violations,
@@ -935,9 +940,18 @@ fn check_rules(
 }
 
 /// Hold every cited rule against the conformance cases.
+///
+/// A cited rule with no case is a violation unless `docs/conformance-deferrals.toml` defers
+/// it, which is the same debt this gate would otherwise report as a breach: the inventory
+/// and the citations are written whole while the suite is written milestone by milestone,
+/// and a rule the ledger names is scheduled rather than forgotten. The ledger is `conform`'s
+/// subject — that gate holds every entry to the inventory, to `ROADMAP.md` and to the suite
+/// — so this one only subtracts it and says how many entries it passed over
+/// (`crate::deferral`).
 fn check_cases(
     cases: Option<&BTreeSet<String>>,
     rules: Option<&BTreeSet<String>>,
+    deferred: &BTreeSet<&str>,
     cited: &Cited,
     examined: &mut Vec<String>,
     violations: &mut Vec<String>,
@@ -951,20 +965,25 @@ fn check_cases(
         return;
     };
     let mut tested = 0usize;
+    let mut waiting = 0usize;
     for rule in rules {
         if cases.contains(rule) {
             tested = tested.saturating_add(1);
+        } else if deferred.contains(rule.as_str()) {
+            waiting = waiting.saturating_add(1);
         } else {
             let place = cited
                 .get(rule)
                 .map_or("the layout core", |mention| mention.place.as_str());
             violations.push(format!(
-                "{place}: `{SIGN}{rule}` is cited and no conformance case names it (ADR 0013)"
+                "{place}: `{SIGN}{rule}` is cited and no conformance case names it, and \
+                 `{LEDGER}` does not defer it to a milestone (ADR 0013)"
             ));
         }
     }
     examined.push(format!(
-        "case closure: {tested} of {total} cited rules have a conformance case",
+        "case closure: {tested} of {total} cited rules have a conformance case, and \
+         {waiting} are deferred to a later milestone by `{LEDGER}`",
         total = rules.len(),
     ));
 }
@@ -1470,12 +1489,33 @@ pub enum Standing {
         check_cases(
             Some(&table(&["3.1.9"])),
             Some(&table(&["3.1.9", "B.2#3"])),
+            &BTreeSet::new(),
             &cited(&["3.1.9", "B.2#3"]),
             &mut examined,
             &mut violations,
         );
         assert_eq!(violations.len(), 1, "found {violations:?}");
         assert!(violations[0].contains("B.2#3"), "found {violations:?}");
+    }
+
+    #[test]
+    fn a_cited_rule_a_later_milestone_covers_is_deferred_rather_than_broken() {
+        let mut examined = Vec::new();
+        let mut violations = Vec::new();
+        check_cases(
+            Some(&table(&["3.1.9"])),
+            Some(&table(&["3.1.9", "B.2#3"])),
+            &BTreeSet::from(["B.2#3"]),
+            &cited(&["3.1.9", "B.2#3"]),
+            &mut examined,
+            &mut violations,
+        );
+        assert!(violations.is_empty(), "found {violations:?}");
+        assert!(
+            examined.iter().any(|line| line
+                .contains("1 of 2 cited rules have a conformance case, and 1 are deferred")),
+            "the debt is counted rather than passed over in silence: {examined:?}"
+        );
     }
 
     #[test]
@@ -1487,6 +1527,7 @@ pub enum Standing {
         check_cases(
             Some(&table(&[])),
             rules.as_ref(),
+            &BTreeSet::new(),
             &cited(&["3.1.9"]),
             &mut examined,
             &mut violations,

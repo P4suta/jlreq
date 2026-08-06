@@ -44,8 +44,10 @@ use std::io;
 use std::path::Path;
 
 use crate::classes;
+use crate::defects;
 use crate::generate::sha256;
 use crate::inventory;
+use crate::policy;
 use crate::shared::{self, Gate};
 
 /// The name this gate is invoked by.
@@ -124,16 +126,14 @@ pub(crate) struct Derivation {
 }
 
 /// Every derived file, in the order `docs/design/generation.md` lists them.
-///
-/// `spec/derived/questions.tsv` and `defects.tsv` are read from the same snapshot by the
-/// derivations that accompany the policy space and the recorded defects, and join this list
-/// when they are written.
 pub(crate) const DERIVATIONS: &[Derivation] = &[
     classes::CLASSES,
     classes::APPENDIX_A,
     inventory::ANCHORS,
     inventory::NOTES,
     inventory::RULES,
+    policy::QUESTIONS,
+    defects::DEFECTS,
     classes::IDEOGRAPHS,
     classes::FOLDING,
     classes::SCRIPTS,

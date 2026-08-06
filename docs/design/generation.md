@@ -55,8 +55,9 @@ spec/
     anchors.tsv              rendered section number → anchor id → heading
     notes.tsv                every note of §B.2, §C.2, §D.2, §E.2, both locales
     rules.tsv                the rule inventory: address, standing, statement
-    questions.tsv            the policy space: question, choices, permitting section
-    defects.tsv              the recorded defects of the published document
+    questions.tsv            the policy space: question, constant, permitting address,
+                             where the permission comes from, the answers, and JLReq's own
+    defects.tsv              the recorded defects: id, where, evidence, treatment
   captured/
     table1.en.tsv            transcribed from tables/table_en2.pdf
     table1.ja.tsv            transcribed from tables/table_ja2.pdf
@@ -184,6 +185,51 @@ would fold `U+2160` Ⅰ, a genuine cl-19 member, onto `I`.
 byte-identity check can sit in `ci-required` as a hard `git diff --exit-code` rather than a
 job that can fail for connectivity.
 
+**Where a derived file carries a reading, it says so.** `rules.tsv`'s
+`direction_conditional` column and the whole membership of `questions.tsv` are judgments
+about the document rather than properties a scanner computes, and the arrangement is the
+same in both places: the reading is a `const` table in the `xtask` module that writes the
+file, the document supplies the evidence, and the derivation refuses to emit unless the two
+agree. §3.1.3, §3.2.5 and §3.3.5 are marked direction-conditional only if each one's own
+text still names a writing mode; a policy question is emitted only if the sentence its row
+quotes is verbatim in the section or note it addresses, in the rendering it names. So a
+revision that resolves a question, or stops conditioning a rule on the writing mode, fails
+the build with the row named rather than leaving a claim nothing supports.
+
+That is why the policy space is derived rather than captured, and the distinction is worth
+stating because it looks like a close call and is not. `spec/captured/` is for content a
+machine cannot read — matrices published only as PDF, with the priority ordinals in cell
+color — and double entry is the control that content needs. Every sentence `questions.tsv`
+rests on is in the HTML snapshot and is extracted from it by `xtask/src/inventory.rs`; what
+is not machine-readable is only *which* sentences constitute a question. Keying the
+sentences in by hand and checking them against each other would be a weaker control than
+extracting them and checking the reading against the document, and it would put prose that
+is machine-readable into the directory reserved for prose that is not.
+
+`questions.tsv` records where each permission comes from, in a column, because that is the
+one thing about a policy question a reader most needs and the one thing prose most easily
+loses: `stated` where the section states the alternatives in so many words, `divergent`
+where the two renderings of one sentence do not state the same rule, `contradictory` where
+the document states one rule twice in ways that are not equivalent, and `silent` where the
+document decides nothing and the answers are this project's, published in `docs/decisions/`.
+Only the first is a permission JLReq grants. Those map onto `Standing` — `Alternative`,
+`Adjudicated`, `Adjudicated`, `Unstated` — so the column is what stops a silence being
+laundered into a requirement on the way to the generated table.
+
+Three further controls hold that file. `docs/design/api-spine.md` publishes one `Question`
+constant per row and the `api` gate subtracts the two lists in both directions, so a
+constant nobody read the specification for and a row no caller can name each fail the build.
+`docs/api-frozen.toml`'s `[[closed_choices]]` states, for every one of the twenty-one
+questions, how many answers its set may hold and what closes it there, and the same gate
+holds the derived counts to them. And a `divergent` row is checked for still diverging: the
+derivation compares the character classes the two renderings of its address cite and refuses
+to publish the permission if they ever agree. No row carries that value today. §B.2 note 7
+was read as one and is not: its English half states all four answers in so many words, which
+makes the row `stated` — a permission JLReq grants — and makes the locale difference beside
+it a defect of the document rather than the reason the alternatives exist. It is recorded
+once, as `b2-note-7-locale-class-divergence` in `defects.tsv`, and this check is what a
+future row recorded as a divergence would have to survive.
+
 ## What the captured stage must get right
 
 ### Double entry
@@ -258,10 +304,19 @@ redundancy is published rather than private.
 14. §3.8.3's six-step prose order equals Table 3's stage ordinals, and §3.8.4's four-step
     order equals Table 6's. (§3.8.3, §3.8.4)
 15. The priority ordinals read from cell color agree with the ordinals the §D.2 notes state
-    in words. This is where the specification contradicts itself: §D.2 note 5 says the
-    middle-dot conditional space is third in Table 3 while notes 1, 2 and 3 all say fourth.
-    The invariant does not silence it — the rule is recorded with
-    [`Standing::Adjudicated`] and both readings appear in a conformance case.
+    in words, and each ordinal is matched against the §3.8.3 step it belongs to. §D.2 note 5
+    gives the middle-dot conditional space the third priority in Table 3 where notes 1, 2
+    and 3 give it the fourth, and those are two steps rather than two answers: §3.8.3 step 3
+    is 行末に配置する中点類 — the middle dot *placed at the line end*, whose two quarter ems
+    are set solid together — and step 4 is 行中の中点類, the one in the middle of a line.
+    Note 5 is the first and notes 1 to 3 are the second. What is defective is one locale of
+    one sentence: note 5's English half drops the position its Japanese half states, as
+    §3.8.3 step 3's English half does, which is recorded as
+    `d2-note-5-line-end-qualifier-omitted-in-english` and read from the half that states it.
+    This invariant is therefore an agreement to check and not a contradiction to adjudicate;
+    an earlier revision of this document asserted the contradiction and pre-committed the
+    rule to [`Standing::Adjudicated`], which would have published an alternative JLReq does
+    not permit.
 16. Every cell any conformance case exercises agrees with that case.
 17. Every amount in every table, note and ladder is an exact multiple of 1/720 em. 720 was
     chosen for exactly that property ([ADR 0007](../adr/0007-two-scalars-and-the-fixed-point-unit.md)),
@@ -279,31 +334,67 @@ separately, so checking it is close to a proof of correct capture for those cell
 
 ## Recorded defects
 
-These are data in `defects.tsv`, each with a conformance case. That file is written by the
-derivation that accompanies the captured stage, because most of its rows are defects of the
-matrices and the appendix notes, which no stage reads yet; `attest` says so in its census
-rather than reporting a pass over a file that is not there. What holds the derived stage
-today is the closed Remarks vocabulary in `xtask/src/classes.rs`: every distinct cell of
-Appendix A is enumerated there with the frame, direction and role it states, with the count
-of cells holding it, and with the defect it is an instance of where it is one. A cell nobody
-has read fails the derivation, and a recorded cell whose count has moved fails it too — so
-the rule that the extractor fails on an unrecorded divergence is enforced against that
-vocabulary, and the identifiers below are the ones `defects.tsv` must record when it arrives.
+These are data in `spec/derived/defects.tsv`, written by `xtask/src/defects.rs` in stage 1.
+An earlier revision of this document put the file on the captured side, on the reasoning that
+most of its rows are defects of the matrices and the appendix notes. Measured, none of them
+is: every one of the twelve is a property of `spec/snapshot/index.html`, which is the
+machine-readable half of the split [ADR 0009](../adr/0009-generated-data-and-attested-transcription.md)
+draws, and not one is a property of a PDF matrix. So the file is derived, `derive`'s scan for
+stray files requires a derivation to claim it, and it is regenerated from the snapshot like
+every other table under `spec/derived/`.
+
+Being derived is a claim with teeth. Twelve sentences in a constant, printed into a file,
+would be an attestation wearing a derivation's header: `derive --check` would prove only that
+the constant had not changed. So **every defect carries a detector** — a measurement over the
+rendering — and the row's `evidence` is composed from what that detector measured, down to the
+line numbers. A detector that no longer finds its defect fails the derivation and prints the
+review procedure. That is this document's "a defect fixed upstream fails the gate and forces a
+review", enforced rather than asserted, and `attest` additionally holds the file's identifiers
+against `RECORDED_DEFECTS` in `xtask/src/attest.rs` — two lists rather than one shared
+constant, because the gate that checks the file is not the program that writes it.
+
+Every one of the twelve is detected; none is attested. Three of the readings look like human
+judgment and turn out to have exact predicates, each firing on exactly the passage recorded:
+"vertical" against 横組 is the only paragraph pair in the rendering where one half names a
+writing mode, the other names the other, and neither names both; "simple-ruby" is the only
+English half naming that complex where its Japanese half never names 熟語ルビ以外; and the
+uniform-against-proportional reduction is one of exactly two pairs whose Japanese half says
+文字サイズ比 and whose English half never says "character size" — the other twenty-five agree,
+and both exceptions are step 1 of a §3.8.3 priority list, so the record covers both.
+
+The file's fourth column, `treatment`, is this repository's sentence about what it does with
+the defect rather than a property of the text — the same split `rules.tsv` makes between the
+statement it quotes and the `direction_conditional` reading beside it. It states what the
+pipeline does today, so a defect nothing has met yet says that rather than promising a
+milestone.
+
+The closed Remarks vocabulary in `xtask/src/classes.rs` still holds the derived stage
+independently: every distinct cell of Appendix A is enumerated there with the frame,
+direction and role it states, with the count of cells holding it, and with the defect it is an
+instance of where it is one. A cell nobody has read fails the derivation, and a recorded cell
+whose count has moved fails it too. Three of the twelve are therefore measured twice, by two
+readers that share no code.
 
 | Defect | Where |
 | --- | --- |
 | `U+216B` appears twice in the cl-19 body (465 rows, 464 members) | §A.19 |
 | Three cl-25 Remarks cells hold bare Japanese with no locale span | §A.25 |
 | Three Remarks cells state the digit-grouping role in Japanese alone — 位取りの空白, 位取りのコンマ — where the English half gives the width only. §A.24's `U+002E` does *not* diverge: both halves carry the decimal-point line | §A.24, §A.25 |
-| §D.2 note 5 contradicts notes 1–3 on a priority ordinal | §D.2 |
-| §3.8.3 step 1 says "the same width reduction is applied to all spaces" in English against 文字サイズ比で均等に, in proportion to character size, in Japanese | §3.8.3 |
+| §D.2 note 5's English half drops the 行末に配置する — placed at the line end — that its Japanese half states, so an English-only reader meets a second priority ordinal for what looks like one reduction. §3.8.3 lists the line-end reduction and the mid-line one as separate steps, and its step 3's English half makes the same omission | §D.2#5 |
+| §3.8.3 step 1 of each of its two priority lists says "the same width reduction is applied to all spaces" and "reduced by equal amounts" in English against 文字サイズ比で均等に, in proportion to character size, in Japanese | §3.8.3 |
 | §B.2 note 11 says "simple-ruby" where jukugo-ruby is meant | §B.2#11 |
 | §B.2 note 7's English names only katakana; the Japanese names cl-16, cl-10 and cl-11 | §B.2#7 |
 | §3.1.3's closing Note reads "vertical" in English against 横組 in Japanese | §3.1.3 |
-| §3.1.6's second Note leaves a cross-reference unresolved in English, as the literal `[[[#spacing_between_characters"]]]`, where the Japanese resolves it to §B | §3.1.6 |
+| §3.1.6's fourth Note leaves a cross-reference unresolved in English, as the literal `[[[#spacing_between_characters"]]]`, where the Japanese resolves it to §B | §3.1.6 |
 | §3.8.3 numbers Appendix D's tables one higher than Appendix D does | §3.8.3, §D |
 | The legend anchor ids and the PDF filenames are off by one from the table numbers | §B–§E |
 | §3.9.2 lists cl-28 and cl-29 as "（〔［ etc." while §A.28 and §A.29 enumerate exactly three | §3.9.2 |
+
+Two of those rows correct an earlier revision of this table against the document. §3.1.6
+publishes four Notes and the unresolved reference is in the fourth, not the second. And the
+divergence at §3.8.3 step 1 is not one paragraph but two: the section states two priority
+lists, its own and JIS X 4051's, and step 1 of each says in English what its Japanese half
+does not.
 
 Where a defect changes an answer, it is a `Question` as well as a defect, so the reading is
 the caller's rather than ours.
@@ -360,10 +451,12 @@ recorded date to equal it, and to equal the `published` field of the snapshot's 
 `[[document]]` block.
 
 `data/manifest.toml` accordingly records every file the pipeline reads or writes: the six
-generated modules, all eight derived tables — including the two no generation unit consumes
-yet, which `spec-links` and `attest` nonetheless read — the four vendored documents, and the
-four `xtask` modules that produce them. A ledger that records part of a chain records nothing
-about the rest of it.
+generated modules, every derived table — including those no generation unit consumes yet,
+which `spec-links`, `attest`, `api` and `conform` nonetheless read — the four vendored
+documents, and every `xtask` module that produces one. The list is not written out here
+because it is not maintained here: `generate` builds it from `DERIVATIONS` and `UNITS`, so a
+derivation added without a manifest entry is a failure rather than a documentation lapse. A
+ledger that records part of a chain records nothing about the rest of it.
 
 `attest` needs no network and no PDF: double entry and the invariants run over the committed
 transcriptions. `--digests` additionally verifies any PDFs a developer placed in the

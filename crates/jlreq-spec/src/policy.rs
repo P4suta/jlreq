@@ -254,12 +254,14 @@ impl Policy {
     // `remainder` — the one function that derives `jlreq_unit::RemainderRule` from a
     // policy, so that `distribute`'s parameter is a transport and not a second carrier
     // (ADR-0019) — arrives with the policy space, beside the named `Question` constants.
-    // It reads `Question::REMAINDER`, and until `spec/derived/questions.tsv` is emitted
-    // there is no such question, no answer in force at it, and therefore no rule to
-    // return; a function returning one anyway would be publishing a typographic decision
-    // nobody made. `crates/jlreq-spec/Cargo.toml` gains its `jlreq-unit` dependency in the
-    // same commit, which is why the crate graph permits an edge the manifest does not yet
-    // declare (ADR-0020).
+    // It reads `Question::REMAINDER`, which `spec/derived/questions.tsv` now records as
+    // `adjustment.remainder` — §3.8.3 says a reduction is applied "to all spaces on the
+    // target line at the same time" and says nothing about the units that do not divide —
+    // but until stage 2 emits that file there is no such constant, no answer in force at
+    // it, and therefore no rule to return; a function returning one anyway would be
+    // publishing a typographic decision nobody made. `crates/jlreq-spec/Cargo.toml` gains
+    // its `jlreq-unit` dependency in the same commit, which is why the crate graph permits
+    // an edge the manifest does not yet declare (ADR-0020).
 
     /// One named practice, read out of the generated table's preset columns.
     const fn preset(which: Preset) -> Self {
@@ -332,24 +334,28 @@ impl Preset {
 ///
 /// # Empty, and why
 ///
-/// The policy space is empty because `spec/derived/questions.tsv` does not exist yet. It
-/// is produced by stage 1 of the pipeline, from the same snapshot the rule inventory comes
-/// from: a question is an appendix note or a section that states two readings, and its
-/// answers are those readings with the sentence stating each (see
-/// `docs/design/generation.md`).
+/// The policy space is empty because stage 2 does not emit it yet, and not because nobody
+/// has read the specification for it. Stage 1 has: `spec/derived/questions.tsv` records the
+/// twenty-one places JLReq permits more than one answer, each with the section or note that
+/// permits it, where the permission comes from — stated, an English/Japanese divergence, a
+/// contradiction, or a silence — the answers, and the one this preset table's first column
+/// selects (see `docs/design/generation.md`).
 ///
-/// Everything reading this table therefore answers over an empty policy space:
+/// Everything reading this table therefore still answers over an empty policy space:
 /// [`Question::ALL`] is empty, [`Question::COUNT`] is zero, and the five presets are the
-/// same empty answer. That is the honest state of a table nobody has read the
-/// specification for, and not a placeholder — a question invented here would publish a
-/// permitted alternative the specification does not permit, and a preset filled in here
-/// would publish a factual claim about §C.3 that nobody checked (ADR-0009).
+/// same empty answer. That is the honest state of a table no generator has written, and not
+/// a placeholder — a question transcribed here by hand would be a second carrier of a fact
+/// the derived file already holds (ADR-0019), and a preset filled in here would publish a
+/// factual claim about §C.3 that no gate checks (ADR-0009).
 ///
-/// Three things arrive with the policy space. The rows below, each carrying its answers
-/// and its preset columns in the order [`Preset::column`] fixes. The exclusions each
-/// answer states — §C.3's strictest level excluding every §C.2 alternate rule is the one
-/// this design was written around — which is what [`Policy::with`] reads. And one named
-/// constant per row, `KINSOKU_LEVEL` for §C.3 and so on.
+/// Three things arrive when it is emitted. The rows below, each carrying its answers and
+/// its preset columns in the order [`Preset::column`] fixes; the four columns beside
+/// `jlreq` and the sentence each answer rests on join the derived file in the same change.
+/// The exclusions each answer states — §C.3's strictest level excluding every §C.2 alternate
+/// rule is the one this design was written around — which is what [`Policy::with`] reads.
+/// And one named constant per row, `KINSOKU_LEVEL` for §C.3 and so on, which
+/// `docs/design/api-spine.md` already publishes and which the `api` gate holds equal to the
+/// derived file in both directions.
 pub(crate) const QUESTIONS: &[QuestionRecord] = &[];
 
 /// One row of the policy space.
@@ -932,7 +938,8 @@ mod tests {
     fn the_policy_space_is_empty_until_it_is_generated() {
         assert!(
             Question::ALL.is_empty(),
-            "spec/derived/questions.tsv has not been emitted yet"
+            "spec/derived/questions.tsv is derived; stage 2 does not emit it into this table \
+             yet"
         );
         assert_eq!(Question::COUNT, 0);
         assert_eq!(Policy::JLREQ.explain().count(), 0);

@@ -26,10 +26,12 @@ a plausible wrong number presented as machine-derived. That is worse than an hon
 transcription, because it suppresses the scrutiny a transcription invites.
 
 The published document also carries defects a generator must surface rather than absorb. A
-code point is listed twice in cl-19, §D.2 note 5 contradicts notes 1 through 3 on a
-priority ordinal, §3.1.3's closing note reads "vertical" in English against 横組 in
-Japanese, and the legend anchors are off by one from the table numbers they render. There
-are nine such, each recorded with its evidence.
+code point is listed twice in cl-19, §D.2 note 5's English half drops the line-end
+qualification its Japanese half states, §3.1.3's closing note reads "vertical" in English
+against 横組 in Japanese, and the legend anchors are off by one from the table numbers they
+render. There are twelve such, each recorded with its evidence in
+`spec/derived/defects.tsv`. This paragraph said nine before the twelve were written down and
+counted; the figure is the measured one.
 
 ## Decision
 

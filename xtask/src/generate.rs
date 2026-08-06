@@ -27,10 +27,11 @@
 //!   because a binary table pulled in with `include_bytes!` is generated data too;
 //! - `data/manifest.toml` records the SHA-256 of every file the pipeline reads or writes,
 //!   and of nothing else, so a hand edit to an input that was never regenerated from is
-//!   visible too. That is wider than the units' own outputs and inputs: it covers the two
-//!   derived tables no unit consumes yet and that `spec-links` and `attest` nonetheless
-//!   read, the vendored documents behind all of them, and the modules of this program that
-//!   emit them. A ledger that records part of a chain records nothing about the rest of it.
+//!   visible too. That is wider than the units' own outputs and inputs: it covers the
+//!   derived tables no unit consumes yet and that `spec-links`, `attest`, `api` and
+//!   `conform` nonetheless read, the vendored documents behind all of them, and the modules
+//!   of this program that emit them. A ledger that records part of a chain records nothing
+//!   about the rest of it.
 //!
 //! The gate reports how much it examined rather than claiming to have proved something,
 //! because `UNITS` covers the tables written so far and not the ones still to arrive.
@@ -607,10 +608,11 @@ fn compose(
 /// Keyed by repository path and therefore sorted, so the manifest this becomes is
 /// byte-identical wherever it was written.
 ///
-/// Not only the units' own outputs and inputs. Two of the eight derived tables — the
-/// document skeleton and the appendix notes — are consumed by no generation unit yet and are
-/// load-bearing all the same: `spec-links` resolves every cited address against the first
-/// and `attest` names the second in six of its invariants. The vendored documents and this
+/// Not only the units' own outputs and inputs. Several derived tables — the document
+/// skeleton, the appendix notes and the policy space among them — are consumed by no
+/// generation unit yet and are load-bearing all the same: `spec-links` resolves every cited
+/// address against the first, `attest` names the second in six of its invariants, and `api`
+/// and `conform` both read the third. The vendored documents and this
 /// program's own reading and emitting modules are recorded for the same reason. The manifest
 /// is this repository's one ledger of what produced what, and a ledger that records part of
 /// a chain records nothing about the rest of it.

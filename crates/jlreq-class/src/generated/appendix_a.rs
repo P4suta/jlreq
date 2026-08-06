@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/appendix-a.tsv`
-//! - Source SHA-256: `d0fadb3edb51035b6bf86a5b3c5b44ac4fb087189554f225ea597947d4c520ca`
+//! - Source SHA-256: `10a8ff598886707b2bff6a0480a30d5dd7996f8fbed69c296b13aa9091d0392f`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `253fb902a944a84bf0686d8b6b0848c17e763ec52c842f01dc203032978c6023`
+//! - Generator SHA-256: `d956a3e7a92bc9dc3250848ed8a86db702f88b172a36826b7c9ff89d8eb6930f`
 //! - Entries: 1686
 
 /// The longest key Appendix A enumerates, in code points.

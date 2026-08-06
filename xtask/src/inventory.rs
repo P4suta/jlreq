@@ -484,6 +484,54 @@ fn read_notes(sources: &[String]) -> Result<String, String> {
     Ok(out)
 }
 
+/// Every in-scope section's own prose and every appendix note, in both locales.
+///
+/// Read by `crate::policy`, whose derivation is a reading of which sections state two
+/// answers rather than one, and which holds every one of those readings against the
+/// sentence it names (ADR 0009). The value is `[English, Japanese]`, in the order
+/// [`Locale::BOTH`] declares.
+///
+/// The text is the *whole* of a section rather than the lead paragraph `rules.tsv` quotes,
+/// because the sentence that permits an alternative is as often in a list item or a note as
+/// in the opening paragraph: §C.3 states its four levels as list items, §3.3.5 states the
+/// two ruby alignments three paragraphs in, and §3.9.2 concedes the ambiguous case in a note
+/// nested four containers deep. A check against the lead alone would refuse most of the
+/// policy space and would tempt the reading to be trimmed to fit the scan.
+///
+/// Keyed by the canonical address, so a question naming a section or a note the published
+/// document does not have has nothing to be held against and fails the derivation that
+/// names it.
+pub(crate) fn prose(html: &str) -> Result<BTreeMap<String, [String; 2]>, String> {
+    let headings = headings(html)?;
+    let mut found = BTreeMap::new();
+    for heading in &headings {
+        let Some(address) = heading.address.as_deref().filter(|it| in_scope(it)) else {
+            continue;
+        };
+        let (start, end) = heading.body;
+        let read = paragraphs(html.get(start..end).unwrap_or(""))?;
+        let joined = |locale: Locale| -> String {
+            read.iter()
+                .filter(|paragraph| paragraph.locale == Some(locale))
+                .map(|paragraph| paragraph.text.as_str())
+                .collect::<Vec<&str>>()
+                .join(" ")
+        };
+        found.insert(
+            address.to_owned(),
+            [joined(Locale::English), joined(Locale::Japanese)],
+        );
+    }
+    let mut violations = Vec::new();
+    for note in read_notes_of(html, &headings, &mut violations) {
+        found.insert(note.address, [note.text_en, note.text_ja]);
+    }
+    if !violations.is_empty() {
+        return Err(violations.join("\n  "));
+    }
+    Ok(found)
+}
+
 /// The one source these derivations read.
 fn only(sources: &[String]) -> Result<&str, String> {
     match sources {

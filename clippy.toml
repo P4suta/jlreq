@@ -17,6 +17,7 @@ pass-by-value-size-limit = 256
 doc-valid-idents = [
   "JLReq",
   "CLReq",
+  "ReSpec",
   "InDesign",
   "HarfRust",
   "ICU4X",

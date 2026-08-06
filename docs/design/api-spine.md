@@ -1118,9 +1118,13 @@ pub enum Standing {
     /// (圏点) having no class or table row (§3.3.9), warichu line adjustment (§3.8.3).
     Unstated,
     /// The specification says two incompatible things. Both are recorded; the case
-    /// carries both readings. Examples: §D.2 note 5 against notes 1–3 on a priority
-    /// ordinal; §3.1.3's Note reading "vertical" in English against 横組 in Japanese;
-    /// §3.8.3 numbering Appendix D's tables one higher than Appendix D does.
+    /// carries both readings. Examples: §3.1.3's Note reading "vertical" in English
+    /// against 横組 in Japanese; §3.8.3 numbering Appendix D's tables one higher than
+    /// Appendix D does. §D.2 note 5 against notes 1–3 on a priority ordinal was the
+    /// third until M0-b read it against §3.8.3, which lists the line-end reduction and
+    /// the mid-line one as two steps with two ordinals; that row is a locale omission
+    /// and not a contradiction, so it is `Unstated` in neither and adjudicated in
+    /// nothing.
     Adjudicated,
 }
 ```
@@ -1259,6 +1263,15 @@ impl Question {
     /// This is the sibling [`Classified::Irreducible`] and [`resolve`] apply.
     /// JLReq: §3.9.2
     pub const AMBIGUOUS_CONTEXT: Self;
+    /// What reaches the grouped numeral (連数字) class for the three keys §A.24 qualifies
+    /// by a job rather than only by a width. §A.24's Remarks cell for `U+002C` states
+    /// "quarter em width or half-width" and names the job 位取りのコンマ, while §3.9.2
+    /// scopes the class to "the decimal point or the comma and space used as a decimal
+    /// place indicator in numbers". An occurrence that has the width and does not do the
+    /// job — a quarter-em comma between two hiragana — is described by neither reading and
+    /// excluded by neither, so the two are answers rather than one rule.
+    /// JLReq: §3.9.2 (silence), §A.24
+    pub const GROUPED_NUMERAL_QUALIFICATION: Self;
     /// Which of §C.3's matrix-relaxation reading and §C.2's reclassification reading
     /// applies. The specification states the same three relaxations both ways and they
     /// are not equivalent. JLReq: §C.3, §C.2#1–#3
@@ -3397,6 +3410,78 @@ why = "D publishes Tables 3, 4 and 5"
 question = "adjustment.remainder"
 count = 2
 why = "jlreq_unit::RemainderRule enumerates the two readings of JLReq's silence as Rust variants, Leading and Trailing, and Policy::remainder is the one mapping from this question onto them; a third generated choice would have no variant to map to and no conformance case"
+[[closed_choices]]
+question = "spacing.line_end_punctuation"
+count = 2
+why = "B.2 note 2 states the preferred half em and the solid alternative, and no third"
+[[closed_choices]]
+question = "spacing.line_head_opening_bracket"
+count = 3
+why = "3.1.5 shows Figure 71's patterns as three list items; a fourth would be a pattern the figure does not draw"
+[[closed_choices]]
+question = "ruby.overhang_kana"
+count = 4
+why = "B.2 note 7 states the preferred overhang, the JIS X 4051 prohibition and two alternatives"
+[[closed_choices]]
+question = "ruby.overhang_indent"
+count = 2
+why = "B.2 note 8 states the permission and its one alternative"
+[[closed_choices]]
+question = "ruby.alignment"
+count = 2
+why = "3.3.5 states two ways of positioning a single ruby character"
+[[closed_choices]]
+question = "ruby.group_distribution"
+count = 2
+why = "3.3.6 states the JIS distribution and the flush alternative"
+[[closed_choices]]
+question = "ruby.jukugo_layout"
+count = 2
+why = "3.3.7 names the JIS X 4051 layout and the phonetic one; the sentence opens `the available methods include`, so this count is the one the row reads and not a closure the document states"
+[[closed_choices]]
+question = "kinsoku.iteration_mark_at_line_head"
+count = 3
+why = "B.2 note 14 says there are three ways to deal with this situation"
+[[closed_choices]]
+question = "adjustment.hanging_punctuation"
+count = 2
+why = "3.8.2 either hangs the mark or does not"
+[[closed_choices]]
+question = "kinsoku.grouped_numeral_before_western"
+count = 2
+why = "C.2 note 10 states two approaches, one to allow the break and one not to"
+[[closed_choices]]
+question = "spacing.sentence_medial_dividing_mark"
+count = 2
+why = "3.1.6 states no spacing or a quarter em"
+[[closed_choices]]
+question = "adjustment.japanese_latin_expansion_ceiling"
+count = 3
+why = "3.8.4 states the half em ceiling, the one third em alternative in its own parenthesis, and the rigid reading of a fixed space its Note records"
+[[closed_choices]]
+question = "adjustment.expansion_order"
+count = 2
+why = "the order is JIS X 4051's or the implementation's; JLReq states no third"
+[[closed_choices]]
+question = "adjustment.preference"
+count = 2
+why = "C.3 contrasts the best appearance at the line head with avoiding adjustment, and states no third preference"
+[[closed_choices]]
+question = "classification.unlisted_code_point"
+count = 2
+why = "docs/decisions/unlisted-code-point.md reads the silence by the frame; the alternative is the ideographic answer, and a third would be a class no sentence of 3.9.2 reaches"
+[[closed_choices]]
+question = "classification.ambiguous_context"
+count = 2
+why = "docs/decisions/ambiguous-context.md takes the lowest-numbered survivor the facts reach; the alternative is the highest, and an ordering has two ends"
+[[closed_choices]]
+question = "classification.grouped_numeral_qualification"
+count = 2
+why = "A.24's qualified cells state a width and a job, and docs/decisions/grouped-numeral-qualification.md reads one of the two as the membership test; there is no third thing the cell states"
+[[closed_choices]]
+question = "kinsoku.relaxation_mechanism"
+count = 2
+why = "C.2's notes reclassify and C.3 overrides the matrix; the two readings of one relaxation are all the document offers"
 
 # Traits no listed type may ever implement or derive, matched on the trait's name so an
 # import cannot evade the check.

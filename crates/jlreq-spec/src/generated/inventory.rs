@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/rules.tsv`
-//! - Source SHA-256: `e6cc202eba14b2da71043f4968011e5f5152fdb4785ab2a84c719c939a62d7cf`
+//! - Source SHA-256: `cc3940670608c2e1df3a68d860b04ac89c393907a3fe789bb719002504227dac`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/inventory.rs`
-//! - Generator SHA-256: `cd0d19a664846f3c4cfd9f627e77114ff724b52bede4bb8403117e60c47d3381`
+//! - Generator SHA-256: `a8c546d4e992cc58053d6dc3f544d4881d7130c93712f91caec9928c88bf7649`
 //! - Entries: 106
 
 use crate::rule::{Address, Appendix, Rule, RuleId, Standing};

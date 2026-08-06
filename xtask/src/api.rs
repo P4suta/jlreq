@@ -139,6 +139,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     check_construction(&surface, &mut violations);
     check_forbidden_names(&control, &surface, &mut violations);
     check_forbidden_signatures(&control, &surface, &mut violations);
+    check_policy_space(&root, &control, &mut violations)?;
     Ok(violations)
 }
 
@@ -148,15 +149,19 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 
 /// One `[[table]]` entry of `docs/api-frozen.toml`.
 ///
-/// A value is kept as the string literals it contains, in order, which is all four tables
-/// this gate reads are made of. A key whose value has no string literal — the `count` of a
-/// `[[closed_choices]]` entry — records an empty list, because no check here reads one.
+/// A value is kept as the string literals it contains, in order, which is what four of the
+/// five tables this gate reads are made of. The fifth, `[[closed_choices]]`, states a
+/// `count` that holds no string literal, so a bare integer is kept beside the strings —
+/// without it the one table whose whole content is a number would read as empty and the
+/// check over it would pass over nothing.
 #[derive(Debug, Default)]
 struct Entry {
     /// The table name, without its brackets.
     table: String,
     /// The keys of this entry, each with the strings its value holds.
     values: BTreeMap<String, Vec<String>>,
+    /// The keys of this entry whose value is a bare integer.
+    counts: BTreeMap<String, usize>,
 }
 
 impl Entry {
@@ -168,6 +173,11 @@ impl Entry {
     /// The single string a key holds.
     fn single(&self, key: &str) -> Option<&str> {
         self.list(key).first().map(String::as_str)
+    }
+
+    /// The integer a key holds, when its value is a bare number.
+    fn count(&self, key: &str) -> Option<usize> {
+        self.counts.get(key).copied()
     }
 }
 
@@ -198,7 +208,7 @@ impl std::fmt::Display for TypePath {
     }
 }
 
-/// `docs/api-frozen.toml`, in the three tables this gate reads.
+/// `docs/api-frozen.toml`, in the four tables this gate reads.
 #[derive(Debug)]
 struct Control {
     /// Each open output type and the total accessors that project it.
@@ -207,6 +217,17 @@ struct Control {
     exempt: Vec<(TypePath, String)>,
     /// Each shape that may never appear, over the crates it is forbidden in.
     forbidden: Vec<Forbidden>,
+    /// Each policy question whose answer set may never grow, with the size it is fixed at.
+    closed_choices: Vec<ClosedChoices>,
+}
+
+/// One `[[closed_choices]]` entry: a question path and the number of answers it may permit.
+#[derive(Debug)]
+struct ClosedChoices {
+    /// The stable dotted path, as `spec/derived/questions.tsv` writes it.
+    question: String,
+    /// How many answers the specification closes the set at.
+    count: usize,
 }
 
 /// One `[[forbidden]]` entry: a name guard or a signature guard, over named crates.
@@ -234,11 +255,13 @@ impl Control {
             frozen: frozen_entries(&entries)?,
             exempt: exempt_entries(&entries)?,
             forbidden: forbidden_entries(&entries)?,
+            closed_choices: closed_choice_entries(&entries)?,
         };
         for (table, count) in [
             ("frozen", control.frozen.len()),
             ("exempt", control.exempt.len()),
             ("forbidden", control.forbidden.len()),
+            ("closed_choices", control.closed_choices.len()),
         ] {
             if count == 0 {
                 return Err(malformed(format!(
@@ -363,6 +386,44 @@ fn forbidden_entries(entries: &[Entry]) -> io::Result<Vec<Forbidden>> {
     Ok(forbidden)
 }
 
+/// The `[[closed_choices]]` entries: a question path and the size its answer set is fixed at.
+///
+/// The comment in the control file calls a count that may never grow a control only if it is
+/// written down before the data that could grow it, which is exactly the position this table
+/// was in until the policy space was derived. It is read now, so the sentence is true.
+fn closed_choice_entries(entries: &[Entry]) -> io::Result<Vec<ClosedChoices>> {
+    let mut closed = Vec::new();
+    for entry in entries
+        .iter()
+        .filter(|entry| entry.table == "closed_choices")
+    {
+        let question = entry.single("question").ok_or_else(|| {
+            malformed(
+                "a `[[closed_choices]]` entry names no `question`; a closed set belongs to \
+                 one place JLReq permits more than one answer"
+                    .to_owned(),
+            )
+        })?;
+        let count = entry.count("count").ok_or_else(|| {
+            malformed(format!(
+                "the `[[closed_choices]]` entry for `{question}` states no `count`; the \
+                 whole content of the entry is the number the set may never exceed"
+            ))
+        })?;
+        if entry.single("why").is_none() {
+            return Err(malformed(format!(
+                "the `[[closed_choices]]` entry for `{question}` states no reason; a closed \
+                 set without the sentence that closes it is an opinion"
+            )));
+        }
+        closed.push(ClosedChoices {
+            question: question.to_owned(),
+            count,
+        });
+    }
+    Ok(closed)
+}
+
 /// The `type` key of an entry, as a crate and a name.
 fn named_type(entry: &Entry, table: &str) -> io::Result<TypePath> {
     let text = entry
@@ -394,6 +455,7 @@ fn entries_of(text: &str) -> Vec<Entry> {
             entries.push(Entry {
                 table: name.to_owned(),
                 values: BTreeMap::new(),
+                counts: BTreeMap::new(),
             });
             open = None;
             continue;
@@ -420,6 +482,9 @@ fn entries_of(text: &str) -> Vec<Entry> {
                 .or_default()
                 .extend(quoted(value).into_iter().map(str::to_owned));
             let bare = outside_strings(value);
+            if let Ok(number) = bare.trim().parse::<usize>() {
+                entry.counts.insert(key.clone(), number);
+            }
             if bare.contains('[') && !bare.contains(']') {
                 open = Some(key);
             }
@@ -2327,6 +2392,277 @@ fn report(control: &Control, surface: &Surface) {
     );
 }
 
+// -------------------------------------------------------------------------------------
+// The policy space
+// -------------------------------------------------------------------------------------
+
+/// The design document that publishes one `Question` constant per policy question.
+const SPINE: &str = "docs/design/api-spine.md";
+
+/// The derived policy space those constants are generated from.
+const POLICY_SPACE: &str = "spec/derived/questions.tsv";
+
+/// The `impl` block of the API spine that publishes the constants.
+const QUESTION_IMPL: &str = "impl Question {";
+
+/// How one of them is written there.
+const QUESTION_CONSTANT: (&str, &str) = ("pub const ", ": Self;");
+
+/// Hold the derived policy space equal to the `Question` constants the spine publishes.
+///
+/// This is the one place the two halves of a policy question meet. `docs/design/api-spine.md`
+/// publishes the constant a caller writes — `Question::KINSOKU_LEVEL` — with the section it
+/// cites; `spec/derived/questions.tsv` records the same question's path, its permitted
+/// answers, and the sentence that permits them. Neither is derived from the other, so the
+/// subtraction runs in both directions: a constant nobody read the specification for, and a
+/// row no caller can name, are each a failure here. `crates/jlreq-spec/src/generated/policy.rs`
+/// is emitted from the file, so when it arrives all three agree by construction rather than
+/// by review.
+///
+/// The `[[closed_choices]]` table is checked here too, because it is a claim about the same
+/// data: a question whose answer set the specification closes may not be derived with more
+/// answers than the specification closes it at. `docs/api-frozen.toml` says a count that may
+/// never grow is only a control if it is written down before the data that could grow it,
+/// which is what makes reading it now — rather than when the emitter lands — the point.
+///
+/// Neither file being absent is treated as a pass: the census says which side was missing and
+/// what could therefore not be subtracted.
+fn check_policy_space(
+    root: &Path,
+    control: &Control,
+    violations: &mut Vec<String>,
+) -> io::Result<()> {
+    let published = published_questions(root)?;
+    let derived = derived_questions(root)?;
+    check_policy_space_over(published, derived, control, violations);
+    Ok(())
+}
+
+/// The same over operands already read, so both states are exercised by a fixture rather
+/// than only by the committed documents.
+fn check_policy_space_over(
+    published: Published,
+    derived: Option<Vec<DerivedQuestion>>,
+    control: &Control,
+    violations: &mut Vec<String>,
+) {
+    if let Published::Unreadable = published {
+        violations.push(format!(
+            "{SPINE} exists and states no `{QUESTION_IMPL}` block that closes, so the derived \
+             policy space would have been checked against nothing and the closed answer sets \
+             of docs/api-frozen.toml with it. An unreadable left operand is a violation and \
+             not a census line: one extra space in that header used to take all three of \
+             these checks down and leave this gate at exit 0"
+        ));
+        return;
+    }
+    let read = (matches!(published, Published::Named(_)), derived.is_some());
+    let (Published::Named(published), Some(derived)) = (published, derived) else {
+        println!(
+            "api: {census}",
+            census = missing_side(read.0, read.1, control)
+        );
+        return;
+    };
+
+    let named: BTreeSet<&String> = published.iter().collect();
+    let recorded: BTreeSet<&String> = derived.iter().map(|question| &question.constant).collect();
+    for missing in named.iter().filter(|name| !recorded.contains(**name)) {
+        violations.push(format!(
+            "{SPINE} publishes `Question::{missing}` and {POLICY_SPACE} records no question \
+             for it, so the constant names a place nobody read the specification for"
+        ));
+    }
+    for extra in recorded.iter().filter(|name| !named.contains(**name)) {
+        violations.push(format!(
+            "{POLICY_SPACE} records `{extra}` and {SPINE} publishes no `Question::{extra}`, so \
+             the derived policy space holds a question no caller can name"
+        ));
+    }
+    violations.extend(check_closed_choices(control, &derived));
+
+    println!(
+        "api: {SPINE} publishes {count} `Question` constant(s) and {POLICY_SPACE} records \
+         {rows}; {closed} closed answer set(s) were checked against the derived counts.",
+        count = named.len(),
+        rows = recorded.len(),
+        closed = control.closed_choices.len()
+    );
+}
+
+/// One row of the derived policy space, in the two columns this gate reads.
+#[derive(Debug)]
+struct DerivedQuestion {
+    /// The stable dotted path a conformance case file names it by.
+    path: String,
+    /// The `Question` constant the spine publishes for it.
+    constant: String,
+    /// How many answers it permits.
+    answers: usize,
+}
+
+/// Every `[[closed_choices]]` claim, held against the answer set that was derived.
+fn check_closed_choices(control: &Control, derived: &[DerivedQuestion]) -> Vec<String> {
+    let mut found = Vec::new();
+    for closed in &control.closed_choices {
+        let Some(question) = derived
+            .iter()
+            .find(|question| question.path == closed.question)
+        else {
+            found.push(format!(
+                "docs/api-frozen.toml closes the answer set of `{question}`, which \
+                 {POLICY_SPACE} does not record; a control over a question that does not \
+                 exist guards nothing",
+                question = closed.question
+            ));
+            continue;
+        };
+        if question.answers != closed.count {
+            found.push(format!(
+                "docs/api-frozen.toml closes `{path}` at {count} answer(s) and {POLICY_SPACE} \
+                 permits {answers}; the count was written down before the data so that this \
+                 could not happen quietly",
+                path = closed.question,
+                count = closed.count,
+                answers = question.answers
+            ));
+        }
+    }
+    found
+}
+
+/// Say which side of the subtraction was absent, and what went unchecked with it.
+fn missing_side(published: bool, derived: bool, control: &Control) -> String {
+    match (published, derived) {
+        (true, false) => format!(
+            "{POLICY_SPACE} has not been derived, so the `Question` constants {SPINE} \
+             publishes and the {count} closed answer set(s) of docs/api-frozen.toml were \
+             checked against nothing",
+            count = control.closed_choices.len()
+        ),
+        (false, true) => format!(
+            "{SPINE} states no `{QUESTION_IMPL}` block, so the derived policy space was \
+             checked against nothing"
+        ),
+        _ => format!(
+            "neither {SPINE}'s `{QUESTION_IMPL}` block nor {POLICY_SPACE} could be read, so \
+             the policy space was checked against nothing"
+        ),
+    }
+}
+
+/// The `Question` constants the API spine publishes, in the order it publishes them.
+///
+/// The spine writes them inside one `impl Question` block, one to a line, as
+/// `pub const NAME: Self;`. `ALL` and `COUNT` are not among them and need no exclusion list:
+/// their types are `&'static [Self]` and `usize`, and a question is the only member of that
+/// block whose type is `Self`.
+fn published_questions(root: &Path) -> io::Result<Published> {
+    let path = root.join(SPINE);
+    if !path.is_file() {
+        return Ok(Published::Absent);
+    }
+    Ok(question_constants(&fs::read_to_string(&path)?)
+        .map_or(Published::Unreadable, Published::Named))
+}
+
+/// What the API spine says about its `Question` block.
+///
+/// Three states and not two, because the difference between them is the difference between a
+/// check that has not started and a check that has stopped working. A document that is not
+/// there yet leaves the subtraction one operand short, which is honest and is reported as a
+/// census line; a document that is there and whose block this reader cannot find is a
+/// document that has changed under the gate, which is a violation.
+#[derive(Debug)]
+enum Published {
+    /// The spine is not written yet.
+    Absent,
+    /// It is written and states no `impl Question {` block that closes.
+    Unreadable,
+    /// The constants it publishes, in the order it publishes them.
+    Named(Vec<String>),
+}
+
+/// The same, over text that has already been read, so the block rule above is exercised by a
+/// fixture rather than only by the committed document.
+///
+/// `None` when the block is not there or never closes, which is the state in which the
+/// subtraction has no left operand rather than an empty one.
+fn question_constants(text: &str) -> Option<Vec<String>> {
+    let mut inside = false;
+    let mut found = Vec::new();
+    for line in text.lines() {
+        if line.trim() == QUESTION_IMPL {
+            inside = true;
+            continue;
+        }
+        if !inside {
+            continue;
+        }
+        if line == "}" {
+            return Some(found);
+        }
+        let trimmed = line.trim();
+        if trimmed.starts_with("//") {
+            continue;
+        }
+        if let Some(name) = trimmed
+            .strip_prefix(QUESTION_CONSTANT.0)
+            .and_then(|rest| rest.strip_suffix(QUESTION_CONSTANT.1))
+        {
+            found.push(name.to_owned());
+        }
+    }
+    None
+}
+
+/// The policy space `xtask derive` wrote, in the three columns this gate reads.
+///
+/// Read as a table rather than through `jlreq-spec`, because this program declares no
+/// dependencies; `generate --check` is what holds the file and the emitted Rust in step.
+fn derived_questions(root: &Path) -> io::Result<Option<Vec<DerivedQuestion>>> {
+    let path = root.join(POLICY_SPACE);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let text = fs::read_to_string(&path)?;
+    let mut rows = text
+        .lines()
+        .map(str::trim_end)
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'));
+    let Some(header) = rows.next() else {
+        return Ok(Some(Vec::new()));
+    };
+    let column = |name: &str| header.split('\t').position(|each| each.trim() == name);
+    let (Some(path_at), Some(constant_at), Some(permits_at)) =
+        (column("question"), column("constant"), column("permits"))
+    else {
+        return Err(malformed(format!(
+            "{POLICY_SPACE} has no `question`, `constant` or `permits` column; \
+             docs/design/generation.md names all three"
+        )));
+    };
+    let mut found = Vec::new();
+    for row in rows {
+        let fields: Vec<&str> = row.split('\t').collect();
+        let (Some(path), Some(constant), Some(permits)) = (
+            fields.get(path_at),
+            fields.get(constant_at),
+            fields.get(permits_at),
+        ) else {
+            return Err(malformed(format!(
+                "{POLICY_SPACE} states a row short of a column"
+            )));
+        };
+        found.push(DerivedQuestion {
+            path: (*path).to_owned(),
+            constant: (*constant).to_owned(),
+            answers: permits.split_whitespace().count(),
+        });
+    }
+    Ok(Some(found))
+}
+
 /// The listed types that do not exist yet, with what waits on each.
 fn absent_types(control: &Control, surface: &Surface) -> Vec<String> {
     let mut absent = Vec::new();
@@ -2357,12 +2693,13 @@ fn declared(surface: &Surface, path: &TypePath) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        Construction, Control, Kind, Openness, Receiver, Surface, TypePath, Visibility,
-        answers_a_closed_set, check_construction, check_exhaustiveness, check_forbidden_names,
-        check_forbidden_signatures, check_projections, check_readability, code_only,
-        declarations_of, entries_of, obtainable_types, parse_signature_spec, reexported_names,
-        results_in, tokenize,
+        ClosedChoices, Construction, Control, DerivedQuestion, Kind, Openness, Receiver, Surface,
+        TypePath, Visibility, answers_a_closed_set, check_closed_choices, check_construction,
+        check_exhaustiveness, check_forbidden_names, check_forbidden_signatures, check_projections,
+        check_readability, code_only, declarations_of, entries_of, obtainable_types,
+        parse_signature_spec, question_constants, reexported_names, results_in, tokenize,
     };
+    use super::{Published, check_policy_space_over, derived_questions, published_questions};
     use std::collections::BTreeSet;
     use std::path::{Path, PathBuf};
 
@@ -2907,6 +3244,98 @@ mod tests {
         assert_eq!(parameters, ["char"]);
         assert_eq!(result, "Class");
         assert!(parse_signature_spec("nonsense").is_none());
+    }
+
+    /// The shape the API spine writes an `impl Question` block in.
+    const SPINE_FIXTURE: &str = "\
+Prose above the block, mentioning `pub const NOISE: Self;` in passing.
+
+```rust
+impl Question {
+    pub const ALL: &'static [Self];
+    pub const COUNT: usize;
+
+    /// The four strictness levels. JLReq: C.3
+    pub const KINSOKU_LEVEL: Self;
+    // There is deliberately no `RUBY_SIZE`.
+    /// Which of Tables 3, 4 and 5 governs reduction. JLReq: D
+    pub const REDUCTION_TABLE: Self;
+}
+```
+";
+
+    #[test]
+    fn the_question_constants_are_read_out_of_the_spine_block_and_nowhere_else() {
+        let found = question_constants(SPINE_FIXTURE).expect("the block closes");
+        assert_eq!(
+            found,
+            vec!["KINSOKU_LEVEL".to_owned(), "REDUCTION_TABLE".to_owned()],
+            "`ALL` and `COUNT` are not questions, a commented-out name is not one, and prose \
+             outside the block is not the block"
+        );
+        assert!(
+            question_constants("nothing here").is_none(),
+            "a spine with no block leaves the subtraction without its left operand, which is \
+             reported rather than read as the empty set"
+        );
+    }
+
+    #[test]
+    fn a_spine_whose_question_block_this_reader_cannot_find_fails_the_gate() {
+        // The state this assertion locks in used to be a census line at exit 0: one extra
+        // space in `impl Question {` and the equality with the derived policy space, and the
+        // closed answer sets with it, stopped running while `just design` still passed. The
+        // reader's `None` is only honest where the document is absent; where the document is
+        // there, it means the document has changed under the gate.
+        let root = test_root();
+        let control = Control::read(&root).expect("docs/api-frozen.toml is readable");
+        let mut violations = Vec::new();
+        check_policy_space_over(
+            Published::Unreadable,
+            derived_questions(&root).expect("the derived policy space is readable"),
+            &control,
+            &mut violations,
+        );
+        assert!(
+            violations
+                .iter()
+                .any(|message| message.contains("block that closes")),
+            "{violations:#?}"
+        );
+        assert!(
+            matches!(
+                published_questions(&root).expect("the spine is readable"),
+                Published::Named(_)
+            ),
+            "and the committed spine is readable, so this gate is running over it today"
+        );
+    }
+
+    #[test]
+    fn a_closed_answer_set_that_grew_is_refused() {
+        let derived = |answers: usize| {
+            vec![DerivedQuestion {
+                path: "kinsoku.level".to_owned(),
+                constant: "KINSOKU_LEVEL".to_owned(),
+                answers,
+            }]
+        };
+        let control = Control {
+            frozen: Vec::new(),
+            exempt: Vec::new(),
+            forbidden: Vec::new(),
+            closed_choices: vec![ClosedChoices {
+                question: "kinsoku.level".to_owned(),
+                count: 4,
+            }],
+        };
+        assert!(check_closed_choices(&control, &derived(4)).is_empty());
+        let grown = check_closed_choices(&control, &derived(5));
+        assert_eq!(grown.len(), 1, "{grown:?}");
+        assert!(grown[0].contains("closes `kinsoku.level` at 4 answer(s)"));
+        let absent = check_closed_choices(&control, &[]);
+        assert_eq!(absent.len(), 1, "{absent:?}");
+        assert!(absent[0].contains("a control over a question that does not exist"));
     }
 
     #[test]

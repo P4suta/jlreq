@@ -95,8 +95,11 @@
 //! implemented here, so a published invariant that no code enforces fails the build.
 //!
 //! `spec/derived/defects.tsv` records the defects of the published document — `id`, `where`,
-//! `evidence` — and the gate requires its identifiers to be exactly the ones this design
-//! records, so a defect fixed upstream forces a review instead of changing behavior quietly.
+//! `evidence`, `treatment` — and the gate requires its identifiers to be exactly the ones this
+//! design records, so a defect fixed upstream forces a review instead of changing behavior
+//! quietly. The list below and the catalogue in `xtask/src/defects.rs` are two lists rather
+//! than one shared constant on purpose: the gate that checks the file is not the program that
+//! writes it, so a row deleted there is a failure here.
 //!
 //! `spec/PROVENANCE.toml` records one `[[document]]` per upstream file, with `path` relative
 //! to `spec/`, `url`, `retrieved` and `sha256`.
@@ -156,7 +159,13 @@ const MATRIX_COLUMNS: [&str; 6] = ["source", "table", "before", "after", "token"
 const CATALOGUE_COLUMNS: [&str; 3] = ["id", "citation", "sentence"];
 
 /// The columns of the recorded defect list, in order.
-const DEFECT_COLUMNS: [&str; 3] = ["id", "where", "evidence"];
+///
+/// `where` and `evidence` are the published document's, measured by the derivation that
+/// writes the file. `treatment` is this repository's sentence about what it does with the
+/// defect, published beside the measurement it applies to rather than left in a module
+/// nobody reading the table will open — the same split `rules.tsv` makes between the
+/// statement it quotes and the `direction_conditional` reading beside it.
+const DEFECT_COLUMNS: [&str; 4] = ["id", "where", "evidence", "treatment"];
 
 /// How many violations of one kind are printed before the rest are counted instead.
 ///
@@ -176,7 +185,7 @@ const RECORDED_DEFECTS: [&str; 12] = [
     "cl-19-duplicate-u216b",
     "cl-25-remarks-without-locale-span",
     "cl-24-remarks-role-stated-only-in-japanese",
-    "d2-note-5-priority-contradiction",
+    "d2-note-5-line-end-qualifier-omitted-in-english",
     "reduction-step-1-locale-divergence",
     "b2-note-11-simple-ruby-misnomer",
     "b2-note-7-locale-class-divergence",
@@ -2351,6 +2360,8 @@ mod tests {
         table4_line_end_follows_the_jis_reading, table4_no_reduction_at_the_line_end,
         table6_blank_faces_table2_not, unadjusted_amount_is_table1, wants_digests,
     };
+    use crate::shared;
+    use std::fs;
 
     /// The findings of a check, as one string to assert against.
     fn reported(findings: Findings) -> String {
@@ -2939,15 +2950,16 @@ mod tests {
 
     #[test]
     fn a_defect_that_disappears_forces_a_review() {
+        let header = format!("{columns}\n", columns = DEFECT_COLUMNS.join("\t"));
         let mut rows = String::new();
         for id in RECORDED_DEFECTS {
             rows.push_str(id);
-            rows.push_str("\t§A.19\tmeasured\n");
+            rows.push_str("\t§A.19\tmeasured\tcarried\n");
         }
         let mut findings = Findings::default();
         check_id_column(
             "defects.tsv",
-            &format!("id\twhere\tevidence\n{rows}"),
+            &format!("{header}{rows}"),
             &DEFECT_COLUMNS,
             &RECORDED_DEFECTS,
             "defects",
@@ -2955,11 +2967,11 @@ mod tests {
         );
         assert_eq!(reported(findings), "");
 
-        rows = rows.replace("cl-19-duplicate-u216b\t§A.19\tmeasured\n", "");
+        rows = rows.replace("cl-19-duplicate-u216b\t§A.19\tmeasured\tcarried\n", "");
         let mut findings = Findings::default();
         check_id_column(
             "defects.tsv",
-            &format!("id\twhere\tevidence\n{rows}"),
+            &format!("{header}{rows}"),
             &DEFECT_COLUMNS,
             &RECORDED_DEFECTS,
             "defects",
@@ -2970,13 +2982,37 @@ mod tests {
         let mut findings = Findings::default();
         check_id_column(
             "defects.tsv",
-            "id\twhere\tevidence\ncl-19-duplicate-u216b\t\tmeasured\n",
+            &format!("{header}cl-19-duplicate-u216b\t\tmeasured\tcarried\n"),
             &DEFECT_COLUMNS,
             &RECORDED_DEFECTS,
             "defects",
             &mut findings,
         );
         assert!(reported(findings).contains("non-empty column(s)"));
+    }
+
+    #[test]
+    fn the_recorded_defects_are_the_ones_the_repository_publishes() {
+        // The two lists are two on purpose — the gate that checks the file is not the
+        // program that writes it — so this holds the gate's list against the file the
+        // repository ships rather than against the other constant.
+        let root = shared::workspace_root().expect("the workspace root");
+        let published = fs::read_to_string(root.join("spec/derived/defects.tsv"))
+            .expect("spec/derived/defects.tsv is written by `derive`");
+        let mut findings = Findings::default();
+        check_id_column(
+            "defects.tsv",
+            &published,
+            &DEFECT_COLUMNS,
+            &RECORDED_DEFECTS,
+            "defects",
+            &mut findings,
+        );
+        assert_eq!(
+            reported(findings),
+            "",
+            "the published defect list and the one this gate records must be the same list"
+        );
     }
 
     #[test]

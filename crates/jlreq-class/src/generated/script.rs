@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/scripts.tsv`
-//! - Source SHA-256: `141719caf5007cbdc7ddca6a466433517a166691a653deda78c22569d1bd3dfa`
+//! - Source SHA-256: `5e63660b905857ce437dcb5885b37ea11d26237c61c0c3050dea88d532723059`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `253fb902a944a84bf0686d8b6b0848c17e763ec52c842f01dc203032978c6023`
+//! - Generator SHA-256: `d956a3e7a92bc9dc3250848ed8a86db702f88b172a36826b7c9ff89d8eb6930f`
 //! - Entries: 22
 
 /// The `Script=Hiragana` tag.

@@ -46,14 +46,17 @@
 //! `Address` can address are transcribed rather than derived and join the inventory with
 //! the captured matrices, so a cell address parses today and names no rule.
 //!
-//! The policy space is not emitted. [`Question::ALL`] is empty, [`Question::COUNT`] is
-//! zero, and the five [`Policy`] presets are the same empty answer, until
-//! `spec/derived/questions.tsv` exists and `generate` fills the space from it. A question
-//! is a section that states two readings, which is a reading of prose rather than a
-//! property a scanner computes, so that file is written with the choices, the presets and
-//! the exclusions read by a person. Nothing here answers a question the specification has
-//! not been read for: an invented one would publish a permitted alternative the
-//! specification does not permit, which is the overclaim `docs/adr/0009` exists to prevent.
+//! The policy space is derived and not yet emitted. `spec/derived/questions.tsv` records
+//! every place JLReq permits more than one answer — the question, its address, where the
+//! permission comes from, the answers, and the one `Policy::JLREQ` selects — because a
+//! question is a section that states two readings, which is a reading of prose rather than
+//! a property a scanner computes, and that reading is written down where it can be reviewed
+//! and held against the document. What has not happened is stage 2: [`Question::ALL`] is
+//! empty, [`Question::COUNT`] is zero, and the five [`Policy`] presets are the same empty
+//! answer until `generate` fills the space from that file. Nothing here answers a question
+//! the specification has not been read for: an invented one would publish a permitted
+//! alternative the specification does not permit, which is the overclaim `docs/adr/0009`
+//! exists to prevent.
 //!
 //! Two published items wait on the policy space and are absent for the same reason, rather
 //! than present and answering wrongly: the named [`Question`] constants and
