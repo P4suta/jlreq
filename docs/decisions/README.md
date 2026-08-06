@@ -26,6 +26,7 @@ the one this project takes ([conformance.md](../design/conformance.md)).
 | [ambiguous-context](ambiguous-context.md) | Which class, when Appendix A names several and nothing separates them | `jlreq_class::resolve` |
 | [unlisted-code-point](unlisted-code-point.md) | Which class, when Appendix A lists the key nowhere | `jlreq_class::resolve` |
 | [compatibility-ideographs](compatibility-ideographs.md) | Whether a CJK Compatibility Ideograph is cl-19, and whether it is normalized first | `jlreq_class::classify`, `jlreq_class::resolve` |
+| [grouped-numeral-qualification](grouped-numeral-qualification.md) | Whether the width or the job §A.24's Remarks cell names is what reaches cl-24 | `jlreq_class::classify`, `jlreq_class::resolve` |
 
 These are Markdown and not TOML. An earlier revision of `docs/design/api-spine.md` named
 them `*.toml`, on the model of the other machine-read files in this repository; they are

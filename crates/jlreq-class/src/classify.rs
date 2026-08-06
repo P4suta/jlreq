@@ -13,7 +13,7 @@
 //! # How an answer is reached
 //!
 //! Appendix A names the candidates, and the caller's facts remove the ones their document
-//! rules out. Five steps, in this order:
+//! rules out. Six steps, in this order:
 //!
 //! 1. the key's listings, reached literally and then through the compatibility folding,
 //!    together with the ideograph predicate §A.19 defers to the character database for;
@@ -21,10 +21,15 @@
 //!    treated as a member of" another class and which therefore apply before the table is
 //!    read for anything else;
 //! 3. the frame as the Remarks column states it, for the 834 rows that state one;
-//! 4. the frame as the prose states it, for the rows that state none: §3.1.2 gives five
+//! 4. the Remarks column read as the axis that separates two listings of one key: where a
+//!    listing states the frame the caller declared, one that states no frame is describing a
+//!    different occurrence. Appendix A prints the two apart in its Character column too, for
+//!    92 of the keys where exactly one of the listings is qualified — （ against ( for
+//!    `U+0028`, ％ against % for `U+0025`;
+//! 5. the frame as the prose states it, for the rows that state none: §3.1.2 gives five
 //!    classes a half-width advance, so a third-em, quarter-em or proportional one is not
 //!    theirs, and §3.2.4 and §3.2.6 separate cl-19 from cl-27;
-//! 5. the role, which six code points need and no others.
+//! 6. the role, which six code points need and no others.
 //!
 //! A step that would leave no candidate leaves the set alone. A declared frame no listing
 //! permits is a caller declaring something about their own document that Appendix A does
@@ -70,8 +75,10 @@ const GROUPING: RuleId = RuleId::GROUPING_OF_CHARACTERS_AND_SYMBOLS_DEPENDING_ON
 const FULL_WIDTH_WESTERN: RuleId =
     RuleId::METHOD_FOR_SETTING_FULL_WIDTH_LATIN_LETTERS_AND_EUROPEAN_NUMERALS;
 
-/// §3.2.6, which puts proportional Western characters in cl-27.
-const PROPORTIONAL_WESTERN: RuleId =
+/// §3.2.6, whose Note states two of the three answers the frame gives a Western key: a
+/// proportional occurrence is cl-27, and a half-width European numeral mixed with Japanese
+/// text is cl-24.
+const WESTERN_IN_JAPANESE: RuleId =
     RuleId::HANDLING_OF_WESTERN_TEXT_IN_JAPANESE_TEXT_USING_PROPORTIONAL_WESTERN_FONTS;
 
 /// §3.1.2, which states the character advance of five classes as half-width.
@@ -316,10 +323,11 @@ impl Reclassification {
 ///
 /// The three §C.2 notes that state one — note 1 moving `々` into cl-19, and the two
 /// alternatives beside it — are appendix notes, and an appendix note becomes data when the
-/// policy space and the note table are generated (`docs/design/generation.md`). Neither
-/// exists yet: a question is a section that states two readings, which is a reading of
-/// prose rather than a property a scanner computes, so `spec/derived/questions.tsv` is
-/// written with its choices read by a person.
+/// policy space and the note table are generated (`docs/design/generation.md`). Both are
+/// derived and neither is emitted yet: `spec/derived/questions.tsv` records
+/// `kinsoku.iteration_mark_at_line_head` and `kinsoku.relaxation_mechanism`, whose answers
+/// decide what a row here would say, and stage 2 is what turns them into a `Choice` this
+/// table could name.
 ///
 /// A reclassification invented here would publish a permitted alternative the specification
 /// does not permit, which is what ADR 0009 exists to prevent, so the table is empty and the
@@ -380,11 +388,13 @@ pub fn classify_annotation(
 ///
 /// # The two questions, and where they are today
 ///
-/// The policy space is generated from `spec/derived/questions.tsv`, which is not written:
-/// a question is a section stating two readings, which is a reading of prose rather than a
-/// property a scanner computes. So `Question::UNLISTED_CODE_POINT` and
-/// `Question::AMBIGUOUS_CONTEXT` do not exist yet, `policy` cannot change either outcome,
-/// and what applies is this project's published reading, recorded in
+/// The policy space is generated from `spec/derived/questions.tsv`, which records both of
+/// them — `classification.unlisted_code_point` and `classification.ambiguous_context`, each
+/// marked `silent`, because §3.9.2 reports that JIS leaves the first implementation-defined
+/// and concedes the second with a preference rather than a rule. Stage 2 does not emit that
+/// file yet, so `Question::UNLISTED_CODE_POINT` and `Question::AMBIGUOUS_CONTEXT` do not
+/// exist as constants, `policy` cannot change either outcome, and what applies is the answer
+/// the derived row names as this project's: the readings recorded in
 /// `docs/decisions/unlisted-code-point.md` and `docs/decisions/ambiguous-context.md`. Both
 /// files state what a caller who disagrees would answer instead, and both readings gain a
 /// conformance case, so the disagreement is publishable before the mechanism exists.
@@ -537,9 +547,86 @@ fn narrow(member: Member, frame: Frame, role: Role) -> ClassSet {
         .filter(|row| permits_frame(row.frames, frame) && permits_role(row.role, role))
         .fold(ClassSet::EMPTY, |set, row| set.with(row.class));
     let kept = keep(all, by_remarks);
-    let by_advance = keep(kept, advance_rule(kept, frame));
+    let by_qualification = keep(kept, stated_frame_rule(member, frame, kept));
+    let by_advance = keep(
+        by_qualification,
+        advance_rule(member, by_qualification, frame),
+    );
     let by_rule = keep(by_advance, western_rule(by_advance, frame));
     keep(by_rule, intersect(by_rule, selected_by(role)))
+}
+
+/// Appendix A's Remarks column, read as the axis that separates two listings of one key.
+///
+/// Where a key is named under several classes and the caller has declared the frame, a
+/// Remarks cell that states that frame is describing this occurrence and a cell that states
+/// none is describing a different one. A cell that named a frame every listing of the key
+/// already had would distinguish nothing, and the column is the only thing Appendix A gives
+/// a reader to tell two listings of one key apart, so the qualified listing is the one that
+/// speaks and the unqualified one is what remains where none does.
+///
+/// The document states the answer itself for one key family and this rule reproduces all
+/// three of them without being told: §3.1.3's Note puts a full-width monospaced European
+/// numeral in cl-19, §3.2.6's Note puts a half-width one in cl-24 and a proportional one in
+/// cl-27, and §A.19, §A.24 and §A.27 state exactly those three frames for `U+0030` —
+/// nothing, `half-width`, and `proportionally-spaced`. Applied to the 469 keys §A.27 shares
+/// with another class it is what makes `proportionally-spaced` mean anything at all: without
+/// it the only cell that column ever fills is unreadable, because the class §A.27 shares the
+/// key with is numbered below it in every case but one.
+///
+/// A listing whose class is membership in a construct neither displaces nor is displaced,
+/// because neither its silence about the frame nor its statement of one is a claim about
+/// which occurrences are that class's. cl-25's cell for `U+0028` is empty and cl-28's is
+/// empty because what decides them is the unit symbol and the warichu (割注), an axis this
+/// function is not given (`docs/adr/0015`); and where such a cell does state a frame it
+/// states the width the character has *inside* the construct — §A.25 gives `U+002F` "one
+/// third em width, half-width or proportional", which is the width of a solidus in an SI
+/// unit symbol and not a test that admits every solidus of that width, since §3.9.2 scopes
+/// cl-25 to "combinations of Latin script and Greek script characters used for
+/// international units (SI)". Reading either way round would answer the construct question
+/// by default, which is what [`AxisSet::CONSTRUCT`] exists to refuse: it would take §A.19's
+/// unqualified listing of `U+002F` off the table on the strength of an advance.
+///
+/// The empty set means "this rule narrows nothing here", which [`keep`] reads: a caller who
+/// declared no frame has stated nothing for a qualified cell to answer, and a frame no
+/// qualified cell names leaves the unqualified listings exactly as they were.
+///
+/// JLReq: §3.9.1, §3.9.2, §A Remarks
+fn stated_frame_rule(member: Member, frame: Frame, candidates: ClassSet) -> ClassSet {
+    if frame_bit(frame) == FRAMES_UNSTATED {
+        return ClassSet::EMPTY;
+    }
+    let stated = rows(member)
+        .filter(|row| {
+            candidates.contains(row.class)
+                && !row.class.is_construct_membership()
+                && states_frame(*row, frame)
+        })
+        .fold(ClassSet::EMPTY, |set, row| set.with(row.class));
+    if stated.is_empty() {
+        return ClassSet::EMPTY;
+    }
+    candidates
+        .classes()
+        .filter(|class| stated.contains(*class) || class.is_construct_membership())
+        .fold(ClassSet::EMPTY, ClassSet::with)
+}
+
+/// Whether one listing states the frame the caller declared.
+///
+/// The Remarks column states it for 834 rows. For the five classes whose rows state none,
+/// §3.1.2 states it instead — the character advance of cl-01, cl-02, cl-05, cl-06 and cl-07
+/// is half-width, which ADR 0017 reads as the two declarations `Frame::FullEm` and
+/// `Frame::HalfEm`, the same geometry reached from opposite directions. So a middle dot
+/// (cl-05) beside §A.25's `half-width` unit-symbol listing of the same key is not the
+/// unqualified listing of the pair: both state the half em, and both stand.
+///
+/// JLReq: §3.1.2, §A Remarks
+fn states_frame(row: Row, frame: Frame) -> bool {
+    if row.frames != FRAMES_UNSTATED {
+        return permits_frame(row.frames, frame);
+    }
+    row.class.advance_is_stated_half_width() && matches!(frame, Frame::FullEm | Frame::HalfEm)
 }
 
 /// `narrowed` when it removed something without removing everything, and `set` otherwise.
@@ -596,8 +683,18 @@ const fn permits_role(named: u8, role: Role) -> bool {
 /// whose only candidates are those five keeps them, because a declared frame Appendix A does
 /// not record is a diagnostic and never a reason to answer with no class at all.
 ///
-/// JLReq: §3.1.2
-fn advance_rule(candidates: ClassSet, frame: Frame) -> ClassSet {
+/// The same sentence bounds what the removal may leave behind. §3.1.2 states an advance for
+/// five classes and states nothing that could make an occurrence a member of a construct, so
+/// a removal whose survivors are all construct membership and none of which any Remarks cell
+/// states this frame for has not reached an answer — it has answered the construct question
+/// by elimination. `U+3014` is the case: §A.1 and §A.28 name it, both cells are empty, and
+/// removing cl-01 on a proportional advance left cl-28 alone and told the caller that JLReq
+/// itself had decided the bracket surrounds an inline cutting note (割注). Such a removal is
+/// refused here for the same reason a removal of everything is, and [`AxisSet::CONSTRUCT`]
+/// then reports the axis nobody supplied.
+///
+/// JLReq: §3.1.2, §3.9.2
+fn advance_rule(member: Member, candidates: ClassSet, frame: Frame) -> ClassSet {
     let stated = candidates
         .classes()
         .filter(|class| class.advance_is_stated_half_width())
@@ -607,7 +704,12 @@ fn advance_rule(candidates: ClassSet, frame: Frame) -> ClassSet {
     }
     match frame {
         Frame::ThirdEm | Frame::QuarterEm | Frame::Proportional => {
-            stated.classes().fold(candidates, ClassSet::without)
+            let narrowed = stated.classes().fold(candidates, ClassSet::without);
+            if reaches(member, narrowed, frame) {
+                narrowed
+            } else {
+                ClassSet::EMPTY
+            }
         },
         // `Frame::FullEm` and `Frame::HalfEm` are the two readings ADR 0017 makes one
         // geometry; `Frame::Unstated` has no representation here at all, because
@@ -619,7 +721,29 @@ fn advance_rule(candidates: ClassSet, frame: Frame) -> ClassSet {
     }
 }
 
-/// §3.2.4 and §3.2.6, which are the rule that separates cl-19 from cl-27.
+/// Whether the caller's facts reach any class of a set.
+///
+/// A class that is not membership in a construct is reached by the table and the frame,
+/// which is what [`narrow`] is given. One that is reaches this far only where a Remarks cell
+/// states the declared frame for it, because that cell is Appendix A saying an occurrence of
+/// that width is listed there — §A.24 gives `U+002E` "decimal point / quarter em width or
+/// half-width", and `docs/decisions/grouped-numeral-qualification.md` reads the width as the
+/// membership test *where the document has already ruled out every listing of the key
+/// outside a construct* — which is what a narrowing that reaches this function has done, and
+/// which is why that reading answers cl-24 for a quarter-em `U+002E` and cl-26 for a
+/// quarter-em `U+0020`, whose §A.26 listing nothing rules out. Where no cell states the
+/// frame, the class was reached by removing everything else, and the construct axis is one
+/// [`classify`] is never given (`docs/adr/0015`).
+///
+/// JLReq: §3.9.2, §A.24, §A Remarks
+fn reaches(member: Member, set: ClassSet, frame: Frame) -> bool {
+    set.classes().any(|class| {
+        !class.is_construct_membership()
+            || rows(member).any(|row| row.class == class && states_frame(row, frame))
+    })
+}
+
+/// §3.2.4 and §3.2.6, which are the rule that separates cl-19 from cl-27 and from cl-24.
 ///
 /// The Remarks column marks every one of §A.27's 778 rows proportional and none of §A.19's
 /// 465 rows anything at all, so the column alone rules out cl-27 on the ideographic frame
@@ -627,16 +751,30 @@ fn advance_rule(candidates: ClassSet, frame: Frame) -> ClassSet {
 /// Western characters set with a proportional font are cl-27, so cl-19 does not survive a
 /// declared proportional frame where cl-27 is also a candidate.
 ///
+/// §3.2.6's Note states the third answer in so many words — "half- and fixed-width European
+/// numerals, when mixed with Japanese text, are treated as members of the grouped numerals
+/// (cl-24) class" — and that is the one sentence outside Appendix A which gives an
+/// occurrence to a class that is membership in a construct. Its subject is exactly the keys
+/// §A.19 and §A.24 both name, which are the ten European numerals and nothing else, so the
+/// pair of candidates is the Note's own scope rather than a category read into it. Without
+/// this arm the half em narrowed nothing over a numeral and §A.19's unqualified listing
+/// outlived the sentence that answers it.
+///
 /// The empty set means "this rule narrows nothing here", which [`keep`] reads.
 ///
 /// JLReq: §3.2.4, §3.2.6
 fn western_rule(candidates: ClassSet, frame: Frame) -> ClassSet {
-    if !(candidates.contains(Class::Ideographic) && candidates.contains(Class::Western)) {
+    if !candidates.contains(Class::Ideographic) {
         return ClassSet::EMPTY;
     }
     match frame {
-        Frame::Proportional => candidates.without(Class::Ideographic),
-        Frame::FullEm => candidates.without(Class::Western),
+        Frame::Proportional if candidates.contains(Class::Western) => {
+            candidates.without(Class::Ideographic)
+        },
+        Frame::FullEm if candidates.contains(Class::Western) => candidates.without(Class::Western),
+        Frame::HalfEm if candidates.contains(Class::InGroupedNumeral) => {
+            candidates.without(Class::Ideographic)
+        },
         _ => ClassSet::EMPTY,
     }
 }
@@ -685,7 +823,7 @@ fn examine(cluster: &str, item: Option<&Item>, policy: Policy) -> Classified {
         let why = Provenance::of(GROUPING, Standing::Normative);
         return Classified::One(Answer::new(
             Class::Western,
-            why.then(PROPORTIONAL_WESTERN, Standing::Normative)
+            why.then(WESTERN_IN_JAPANESE, Standing::Normative)
                 .unwrap_or(why),
         ));
     }
@@ -709,7 +847,7 @@ fn examine(cluster: &str, item: Option<&Item>, policy: Policy) -> Classified {
         return Classified::Unlisted;
     }
     if let Some(class) = survivors.only() {
-        return Classified::One(Answer::new(class, decided(member, frame, class)));
+        return Classified::One(Answer::new(class, decided(member, frame, role, class)));
     }
     let needs = needed_axes(member, frame, role, survivors);
     if needs.is_empty() {
@@ -753,16 +891,57 @@ fn effective_frame(declared: Frame, member: Member) -> Frame {
 /// Which Appendix A section listed the key is not a step of the chain: it is a property of
 /// the answered class, published as [`Class::enumeration`], and the rule inventory's scope
 /// deliberately holds Appendix A as data rather than as rules (`xtask/src/inventory.rs`).
-fn decided(member: Member, frame: Frame, class: Class) -> Provenance {
+fn decided(member: Member, frame: Frame, role: Role, class: Class) -> Provenance {
     let listed = listed_classes(member);
-    let mut why = Provenance::of(GROUPING, Standing::Normative);
-    for rule in separating_rules(listed, frame, class).into_iter().flatten() {
+    let separating = separating_rules(listed, frame, class);
+    let opening = if rests_on_the_width_reading(member, frame, role, class) {
+        Standing::Unstated
+    } else {
+        Standing::Normative
+    };
+    let mut why = Provenance::of(GROUPING, opening);
+    for rule in separating.into_iter().flatten() {
         why = why.then(rule, Standing::Normative).unwrap_or(why);
     }
     why
 }
 
+/// Whether a decided class rests on this project's reading of a silence rather than on an
+/// answer the specification gives.
+///
+/// `classification.grouped_numeral_qualification` is recorded `silent` in
+/// `spec/derived/questions.tsv`: where a Remarks cell states a width **and** a job — §A.24's
+/// `U+002E` reads "decimal point / quarter em width or half-width" — §3.9.2 never says which
+/// of the two admits an occurrence to the class, and
+/// `docs/decisions/grouped-numeral-qualification.md` records this project's answer that the
+/// width does. So a construct-membership class the frame reached, over a key Appendix A also
+/// lists under a class the frame removed, is that reading's answer and not JLReq's, and
+/// [`Standing::Unstated`] is what tells a caller which it is holding.
+///
+/// A role the caller declared is not that reading and is not marked as one. `Role::UnitSymbol`
+/// on `U+0031` is the caller stating that the occurrence is inside a unit symbol, which is
+/// the construct axis supplied rather than assumed, so §A.25's listing decides it and the
+/// answer is the specification's own.
+///
+/// Neither is §3.2.6's Note, which states outright that a half-width European numeral mixed
+/// with Japanese text is cl-24. Where [`western_rule`] fired, a sentence of the document
+/// named the class and the Remarks column was not what reached it.
+///
+/// JLReq: §3.2.6, §3.9.2, §A.24, §A.25
+fn rests_on_the_width_reading(member: Member, frame: Frame, role: Role, class: Class) -> bool {
+    class.is_construct_membership()
+        && !(role != Role::Unstated && selected_by(role).contains(class))
+        && western_note(listed_classes(member), frame, class).is_none()
+        && listed_classes(member)
+            .classes()
+            .any(|listed| !listed.is_construct_membership())
+}
+
 /// The rules the declared frame fired over one key, in the order [`narrow`] applies them.
+///
+/// The three arms of the second are the three answers §3.1.3's Note and §3.2.6's Note give
+/// a key both §A.19 and §A.27 name: full-width monospaced is cl-19, half-width mixed with
+/// Japanese text is cl-24, and proportional is cl-27.
 fn separating_rules(listed: ClassSet, frame: Frame, class: Class) -> [Option<RuleId>; 2] {
     let advance = (!class.advance_is_stated_half_width()
         && listed.classes().any(Class::advance_is_stated_half_width)
@@ -771,16 +950,30 @@ fn separating_rules(listed: ClassSet, frame: Frame, class: Class) -> [Option<Rul
             Frame::ThirdEm | Frame::QuarterEm | Frame::Proportional
         ))
     .then_some(HALF_WIDTH_ADVANCE);
-    let western = if listed.contains(Class::Ideographic) && listed.contains(Class::Western) {
-        match (frame, class) {
-            (Frame::FullEm, Class::Ideographic) => Some(FULL_WIDTH_WESTERN),
-            (Frame::Proportional, Class::Western) => Some(PROPORTIONAL_WESTERN),
-            _ => None,
-        }
-    } else {
-        None
-    };
-    [advance, western]
+    [advance, western_note(listed, frame, class)]
+}
+
+/// The sentence outside Appendix A that names one class for one declared frame, where the
+/// key is one both §A.19 and §A.27 name.
+///
+/// §3.2.4's Note gives the full-width and fixed-width occurrence to cl-19, §3.2.6's Note
+/// gives the half-width one mixed with Japanese text to cl-24 and the proportional one to
+/// cl-27. Read as an answer rather than as provenance, this is also what says that a class
+/// which is membership in a construct was reached by a sentence of the document rather than
+/// by a Remarks cell, which is the distinction [`rests_on_the_width_reading`] turns on.
+///
+/// JLReq: §3.1.3, §3.2.4, §3.2.6
+fn western_note(listed: ClassSet, frame: Frame, class: Class) -> Option<RuleId> {
+    if !(listed.contains(Class::Ideographic) && listed.contains(Class::Western)) {
+        return None;
+    }
+    match (frame, class) {
+        (Frame::FullEm, Class::Ideographic) => Some(FULL_WIDTH_WESTERN),
+        (Frame::HalfEm, Class::InGroupedNumeral) | (Frame::Proportional, Class::Western) => {
+            Some(WESTERN_IN_JAPANESE)
+        },
+        _ => None,
+    }
 }
 
 /// The reclassification in force at one occurrence, if the policy puts one there.
@@ -870,7 +1063,7 @@ mod tests {
         AxisSet, Classified, FRAMES, RECLASSIFICATIONS, ROLES, classify, frame_bit, resolve,
     };
     use crate::class::{Class, ClassSet};
-    use crate::generated::appendix_a::FRAMES_UNSTATED;
+    use crate::generated::appendix_a::{FRAMES_UNSTATED, LISTINGS, Listing};
     use crate::member::Member;
     use crate::text::Text;
 
@@ -1074,7 +1267,9 @@ mod tests {
             resolved("(", Frame::Proportional, Role::Unstated),
             (Class::Western, Standing::Unstated),
             "§3.2.6 puts Western text set with a proportional font in cl-27, and the caller \
-             declared the frame that says so"
+             declared the frame that says so. cl-25 and cl-28 name the same key and state no \
+             frame, but their silence is about the unit symbol and the warichu rather than \
+             about the frame, so they stand and the answer is `resolve`'s tie-break"
         );
         assert_eq!(
             resolved("（", Frame::FullEm, Role::Unstated),
@@ -1100,20 +1295,186 @@ mod tests {
     }
 
     #[test]
-    fn the_advance_rule_leaves_a_class_section_3_1_2_does_not_name_alone() {
+    fn a_remarks_cell_that_states_a_frame_speaks_where_one_that_states_none_does_not() {
+        // §A.13 lists U+0025 with an empty Remarks cell and prints ％ (U+FF05) in its
+        // Character column; §A.27 lists the same key marked `proportionally-spaced` and
+        // prints %. The document separates the two occurrences twice over, and it does so
+        // for 92 of the keys where exactly one of the two listings states a frame.
         assert_eq!(
             resolved("%", Frame::Proportional, Role::Unstated),
-            (Class::PostfixedAbbreviation, Standing::Unstated),
-            "§A.13's rows are marked proportionally-spaced, so a proportional percent sign \
-             is a postfixed abbreviation and cl-27 is the wrong answer; §3.1.2 states the \
-             advance of five classes and cl-13 is not one of them"
+            (Class::Western, Standing::Normative),
+            "a percent sign the caller measured proportionally is the occurrence §A.27's \
+             Remarks cell describes, and §A.13's empty cell describes the other one"
+        );
+        assert_eq!(
+            resolved("%", Frame::FullEm, Role::Unstated),
+            (Class::PostfixedAbbreviation, Standing::Normative),
+            "and on the frame §A.27's cell refuses, §A.13's listing is the one left standing"
         );
         assert_eq!(
             resolved("\u{0020}", Frame::QuarterEm, Role::Unstated),
             (Class::WesternWordSpace, Standing::Unstated),
-            "§A names U+0020 under cl-24, cl-25 and cl-26; the first two are membership in a \
-             construct, so the Western word space is what a caller who declared none has"
+            "§A.26's cell for U+0020 is empty, so Appendix A states no width for the Western \
+             word space and §D gives one a quarter em of its own — `to leave a minimum of a \
+             quarter em spacing`. §A.24 and §A.25 state the quarter em for the space inside a \
+             grouped numeral (連数字) and inside a unit symbol, which is the width those \
+             constructs give a space rather than a test admitting every quarter-em space to \
+             them, so all three listings stand and the tie-break passes over the two whose \
+             construct the caller declared nothing about"
         );
+    }
+
+    #[test]
+    fn a_japanese_bracket_on_a_narrow_frame_is_not_thereby_a_warichu_bracket() {
+        // §3.9.2's Note defines cl-28 by what the bracket does: warichu opening brackets
+        // "are used for surrounding inline cutting notes and the space". §A.1 and §A.28 both
+        // name U+3014 and both Remarks cells are empty, so removing cl-01 on an advance
+        // §3.1.2 does not state for it left cl-28 alone and answered, normatively, that JLReq
+        // had decided this bracket surrounds a warichu (割注) — a statement about the caller's
+        // document that nothing in the caller's document supports.
+        for frame in [Frame::ThirdEm, Frame::QuarterEm, Frame::Proportional] {
+            assert_eq!(
+                answer("\u{3014}", frame, Role::Unstated),
+                Classified::Several {
+                    candidates: ClassSet::of(Class::OpeningBracket)
+                        .with(Class::WarichuOpeningBracket),
+                    needs: AxisSet::CONSTRUCT,
+                },
+                "on {frame:?} both listings stand and the construct is the axis nobody supplied"
+            );
+            assert_eq!(
+                resolved("\u{3014}", frame, Role::Unstated),
+                (Class::OpeningBracket, Standing::Unstated),
+                "and the tie-break reaches the class Appendix A names outside a construct, \
+                 marked as this project's reading rather than as the specification's answer"
+            );
+        }
+    }
+
+    #[test]
+    fn a_solidus_of_a_unit_symbols_width_is_not_thereby_inside_a_unit_symbol() {
+        // §A.25 lists U+002F with "one third em width, half-width or proportional" and §A.19
+        // lists it with an empty cell. §3.9.2 scopes cl-25 to "combinations of Latin script
+        // and Greek script characters used for international units (SI)", so the cell states
+        // the width a solidus has inside such a symbol; reading it as the membership test
+        // took §A.19's listing off the table on the strength of an advance.
+        for frame in [Frame::HalfEm, Frame::ThirdEm] {
+            assert_eq!(
+                answer("/", frame, Role::Unstated),
+                Classified::Several {
+                    candidates: ClassSet::of(Class::Ideographic).with(Class::InUnitSymbol),
+                    needs: AxisSet::ROLE.with(AxisSet::CONSTRUCT),
+                },
+                "on {frame:?} §A.19's listing stands beside §A.25's, and the role is the axis \
+                 a caller states a unit symbol with"
+            );
+            assert_eq!(
+                resolved("/", frame, Role::Unstated),
+                (Class::Ideographic, Standing::Unstated),
+                "and the tie-break passes over the construct class"
+            );
+        }
+        assert_eq!(
+            decided("/", Frame::ThirdEm, Role::UnitSymbol),
+            Some(Class::InUnitSymbol),
+            "the caller who states the construct gets it, which is the axis being asked for"
+        );
+    }
+
+    #[test]
+    fn the_width_reading_of_the_grouped_numeral_says_that_it_is_a_reading() {
+        // `classification.grouped_numeral_qualification` is recorded `silent`: §A.24's cell
+        // for U+002E states a width and a job — "decimal point / quarter em width or
+        // half-width" — and §3.9.2 never says which admits an occurrence.
+        // docs/decisions/grouped-numeral-qualification.md takes the width, and says the
+        // answer carries `Standing::Unstated` wherever that reading is what produced it.
+        assert_eq!(
+            resolved(".", Frame::QuarterEm, Role::Unstated),
+            (Class::InGroupedNumeral, Standing::Unstated),
+            "§3.1.2 states the advance of a full stop (cl-06) as half-width, so a quarter em \
+             is not it; what remains is §A.24's listing, reached by this project's reading"
+        );
+        assert_eq!(
+            resolved(",", Frame::QuarterEm, Role::Unstated),
+            (Class::InGroupedNumeral, Standing::Unstated),
+            "and the same for the comma (cl-07), whose three listings §A.24, §A.7 and §A.27 \
+             separate by the width and by nothing else"
+        );
+        assert_eq!(
+            resolved("1", Frame::HalfEm, Role::UnitSymbol),
+            (Class::InUnitSymbol, Standing::Normative),
+            "a role the caller declared is the construct axis supplied rather than assumed, \
+             so §A.25's listing decides it and the answer is the specification's own"
+        );
+    }
+
+    #[test]
+    fn no_frame_alone_ever_decides_a_class_that_is_membership_in_a_construct() {
+        // The sweep the two findings above are instances of. Nine of the thirty classes are
+        // membership *in* a construct and `classify` is given no construct axis (ADR 0015),
+        // so the frame may leave one standing alone only where a Remarks cell states that
+        // frame for it — which is Appendix A recording that an occurrence of that width is
+        // listed there. Anywhere else the class was reached by removing everything else,
+        // which is the construct question answered by elimination.
+        for member in every_key() {
+            for frame in FRAMES {
+                let survivors = super::narrow(member, frame, Role::Unstated);
+                let Some(class) = survivors.only() else {
+                    continue;
+                };
+                if !class.is_construct_membership() {
+                    continue;
+                }
+                assert!(
+                    super::rows(member)
+                        .any(|row| row.class == class && super::states_frame(row, frame)),
+                    "{member:?} on {frame:?} decided {class:?}, and no Remarks cell of the \
+                     key states that frame for it"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_answer_that_rests_on_a_reading_of_a_silence_says_so() {
+        // The standing is the only thing that tells a caller whether they are holding the
+        // specification's answer or this project's, so a decided construct class over a key
+        // Appendix A also lists outside a construct must never claim to be JLReq's.
+        for member in every_key() {
+            for frame in FRAMES {
+                let Some(class) = super::narrow(member, frame, Role::Unstated).only() else {
+                    continue;
+                };
+                if !super::rests_on_the_width_reading(member, frame, Role::Unstated, class) {
+                    continue;
+                }
+                assert_eq!(
+                    super::decided(member, frame, Role::Unstated, class).standing(),
+                    Standing::Unstated,
+                    "{member:?} on {frame:?} answered {class:?} by the reading recorded in \
+                     docs/decisions/grouped-numeral-qualification.md"
+                );
+            }
+        }
+    }
+
+    /// Every key Appendix A enumerates, once per listing.
+    ///
+    /// A key several classes name is yielded once per class, which costs a repeated
+    /// assertion and saves the sweep the allocation this crate does not have.
+    fn every_key() -> impl Iterator<Item = Member> {
+        LISTINGS.iter().filter_map(key_of)
+    }
+
+    /// One listing's key, or `None` for a stored code point that is not one — which the
+    /// compile-time assertions over the generated table already rule out.
+    fn key_of(listing: &Listing) -> Option<Member> {
+        let first = char::from_u32(listing.key[0])?;
+        if listing.key_len == 2 {
+            Some(Member::pair(first, char::from_u32(listing.key[1])?))
+        } else {
+            Some(Member::single(first))
+        }
     }
 
     #[test]
@@ -1171,7 +1532,7 @@ mod tests {
         assert!(
             one.why()
                 .rules()
-                .eq([super::GROUPING, super::PROPORTIONAL_WESTERN]),
+                .eq([super::GROUPING, super::WESTERN_IN_JAPANESE]),
             "the chain opens at §3.9.2 like every other answer's, so a case keyed on \
              provenance does not pass or fail on whether the caller's shaper made a ligature"
         );
