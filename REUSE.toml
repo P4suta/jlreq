@@ -9,6 +9,7 @@ version = 1
 [[annotations]]
 path = [
   "**/*.md",
+  "docs/design/address-corpus.tsv",
   "Cargo.lock",
   ".gitignore",
   "fuzz/.gitignore",

@@ -1,0 +1,79 @@
+address	accepted	why
+3	yes	a body section at depth one
+3.1	yes	depth two
+3.1.9	yes	the published document's deepest section shape
+3.1.12	yes	a two-digit component
+4.5.1	yes	the section behind the block-axis demand
+1.2.3.4	yes	the deepest path the representation holds
+3.255	yes	the widest component the representation holds
+A	yes	an appendix cited whole
+G	yes	the seventh appendix, so [A-G] is complete
+A.19	yes	a numbered appendix section
+B.1	yes	the legend of Table 1
+B.2	yes	the notes of Appendix B
+C.2	yes	the line-breaking notes
+D.1	yes	the reduction legend
+E.1	yes	the expansion legend
+F.3.4	yes	the jukugo-ruby appendix at depth two
+B.2#3	yes	a note ordinal
+C.2#5	yes	the inseparable pairs
+C.2#12	yes	western hyphenation
+B.2#17	yes	a two-digit note ordinal
+3.1.9#1	yes	a note of a body section
+B.2#255	yes	the widest note ordinal the representation holds
+B.1@cl-05,cl-05	yes	a cell over two classes
+B.1@cl-01,cl-30	yes	the two ends of the class range
+B.1@line-head,cl-02	yes	the line head is a row
+B.1@cl-02,line-end	yes	the line end is a column
+D.1@line-head,line-end	yes	both line edges, each on its own axis
+C.1@cl-19,cl-19	yes	a cell of the line-breaking matrix
+B@cl-05,cl-05	yes	a cell of an appendix cited whole; the grammar permits it and the inventory decides
+.	no	punctuation with no path
+#3	no	a note with no section
+@cl-05,cl-05	no	a cell with no section
+3.	no	a trailing dot
+.3	no	a leading dot
+3..1	no	an empty component
+B.	no	an appendix with a trailing dot
+B..2	no	an appendix with an empty component
+B2	no	the dot after an appendix letter is not optional
+3 .1	no	an interior space
+ 3.1	no	a leading space
+3.1 	no	a trailing space
+3.01	no	a leading zero in a component
+03.1	no	a leading zero in the first component
+3.256	no	past the representation
+1.2.3.4.5	no	deeper than the grammar holds
+0	no	the specification numbers its sections from one
+0.1	no	a zero first component
+3.0	no	a zero component
++3	no	a sign
+H.1	no	there are seven appendices, A through G
+b.2	no	the appendix letter is upper case
+BB.2	no	one letter, not two
+B.2#	no	a note marker with no ordinal
+B.2#0	no	JLReq numbers its notes from one
+B.2#03	no	a leading zero in a note ordinal
+B.2#x	no	a note ordinal is digits
+B.2#3#4	no	one note marker
+B.2#256	no	past the representation
+B.1@	no	a cell marker with no coordinates
+B.1@cl-05	no	a cell has two coordinates
+B.1@cl-05,	no	an empty column coordinate
+B.1@,cl-05	no	an empty row coordinate
+B.1@cl-5,cl-05	no	JLReq pads a class to two digits
+B.1@cl-005,cl-05	no	and to exactly two
+B.1@cl-00,cl-05	no	there is no class zero
+B.1@cl-31,cl-05	no	§3.9.2 closes the set at thirty
+B.1@cl-05,cl-05,cl-05	no	a cell has two coordinates and not three
+B.1@cl-05;cl-05	no	the separator is a comma
+B.1@line-head	no	half a cell
+B.1@linehead,cl-05	no	the line edge carries a hyphen
+B.1@Line-Head,cl-05	no	and is lower case
+B.1@ cl-05,cl-05	no	no space after the cell marker
+B.1@banana,cl-05	no	not a coordinate at all
+B.1@cl-02,line-head	no	the line head is a row, so it is not a column
+B.1@line-end,cl-05	no	the line end is a column, so it is not a row
+B.1@line-end,line-head	no	both transposed at once
+3.1.9#3@cl-05,cl-05	no	a note and a cell are two details
+B.1@cl-05,cl-05#3	no	the same, in the other order
