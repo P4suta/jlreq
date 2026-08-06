@@ -5,8 +5,21 @@ file, or a network: every milestone is verifiable by `cargo test` alone.
 
 ## M0 — Character classes
 
-`jlreq-class`: determine the JLReq class (cl-1 … cl-30) for a code point, generated from
-the published tables rather than transcribed, plus the conformance cases for it.
+`jlreq-class`: determine the JLReq class (cl-01 … cl-30) of an occurrence — a cluster of
+the caller's text, together with the character frame (字幅) its supplied advance covers
+and the role the document gives it — generated from the published tables rather than
+transcribed, plus the conformance cases for it.
+
+Of an occurrence and not of a code point: 473 of Appendix A's 1133 keys are named by more
+than one class, and five classes enumerate no character at all, so the total function from
+a code point to a class does not exist to be written
+([ADR 0008](docs/adr/0008-classification-is-a-function-of-an-occurrence.md)). Where the
+supplied facts do not separate the surviving candidates, the answer names the candidates
+and the axis that would separate them, rather than guessing.
+
+Under it sit the two vocabulary crates every later milestone speaks through: `jlreq-unit`
+for quantities, axes, and items, and `jlreq-spec` for the specification addresses every
+answer cites.
 
 No other implementation exposes this as a callable library, so M0 stands on its own.
 
@@ -25,12 +38,27 @@ result is visible in a screenshot without explanation.
 ## M3 — Paragraph optimization
 
 Whole-paragraph line breaking rather than greedy, in the Knuth–Plass sense, with hanging
-punctuation (ぶら下げ) as an adjustment option.
+punctuation (ぶら下げ) as an adjustment option: a stage of the adjustment ladder, between
+the reduction stages and the expansion stages, which is where JLReq puts it. A line that
+fits without hanging does not hang (§2.5.1), and a line that would otherwise be expanded
+hangs first (§3.8.2) — so hanging is not a repair applied after a break has been chosen,
+and the greedy search and the optimal one cannot disagree about when a character hangs.
 
 ## M4 — Inline constructs
 
-`jlreq-inline`: ruby (mono, group, and jukugo), tate-chu-yoko (縦中横), emphasis dots, and
-warichu, including their effect on line spacing.
+`jlreq-inline`: ruby (mono, group, and jukugo), tate-chu-yoko (縦中横), emphasis dots
+(圏点), warichu (割注), furiwake (振分け, §3.7.2), jidori (字取り, §3.7.3), reference
+marks (合印, §4.2.3), the ornamented character complex (cl-21, §3.7.1), and math and
+chemical formulae (§3.7.4), including their effect on line spacing.
+
+Nine constructs rather than four, because
+[ADR 0013](docs/adr/0013-rules-are-addressed-by-specification-address.md)'s coverage gate
+is set subtraction over the rule inventory in both directions, and it cannot close on a
+milestone that leaves five normative processes unimplemented. The growth is cheap
+precisely because the nine share one mechanism: each is declared by the caller, lowered
+across the single seam between `jlreq-inline` and `jlreq-line`, and placed against the
+space that survived line adjustment. The ninth construct costs a declaration and its
+conformance cases rather than a code path.
 
 ## M5 — Vertical writing
 

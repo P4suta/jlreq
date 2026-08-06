@@ -3,8 +3,12 @@
 Japanese line composition (組版) as a library, following the W3C
 [Requirements for Japanese Text Layout (JLReq)][jlreq] and JIS X 4051.
 
-> **Status: bootstrap.** The workspace, quality gates, and architectural decisions are in
-> place. No layout logic is implemented yet. See [ROADMAP.md](ROADMAP.md).
+> **Status: foundation.** The design is frozen — twenty decision records and a published
+> API spine ([docs/design/api-spine.md](docs/design/api-spine.md)) — and the two crates
+> the rest of the workspace speaks through, `jlreq-unit` and `jlreq-spec`, are
+> implemented, alongside the quality gates that keep the design mechanical rather than
+> aspirational. No layout logic is implemented yet, and the generated specification tables
+> are not emitted yet. See [ROADMAP.md](ROADMAP.md).
 
 ## Why this exists
 
@@ -20,14 +24,18 @@ currently no crate to fix it.
 
 ## What it does
 
-Given text and a per-character advance, produce placement instructions:
+Given text, a per-character advance, and the character frame (字幅) that advance covers,
+produce placement instructions:
 
-- **Character classes** — the 30 JLReq classes (cl-1 … cl-30) that drive every other rule
+- **Character classes** — the 30 JLReq classes (cl-01 … cl-30) that drive every other
+  rule, determined for an occurrence rather than for a code point
 - **Kinsoku (禁則)** — characters prohibited from starting or ending a line
 - **Mojikumi (文字組み)** — spacing between punctuation, brackets, and ideographs
   (equivalent to the CSS `text-spacing-trim` property, which JLReq specifies)
-- **Line adjustment** — oikomi (追い込み) and oidashi (追い出し), hanging punctuation
-- **Inline constructs** — ruby, tate-chu-yoko (縦中横), emphasis dots, warichu
+- **Line adjustment** — oikomi (追い込み) and oidashi (追い出し), with hanging punctuation
+  (ぶら下げ) as a stage of the same ladder
+- **Inline constructs** — ruby, tate-chu-yoko (縦中横), emphasis dots, warichu (割注), and
+  five more that lower the same way
 - **Vertical writing** — as a writing direction, not a separate code path
 
 ## What it deliberately does not do
@@ -52,10 +60,12 @@ entirely in CI without a single font file. See [ARCHITECTURE.md](ARCHITECTURE.md
 
 | Crate | Responsibility |
 | --- | --- |
-| `jlreq-class` | JLReq character class determination (cl-1 … cl-30) |
+| `jlreq-unit` | Quantities, axes, and the item vocabulary |
+| `jlreq-spec` | Specification addresses, provenance, and the policy space |
+| `jlreq-class` | JLReq character class of an occurrence (cl-01 … cl-30) |
 | `jlreq-spacing` | Inter-class spacing amounts (mojikumi) |
-| `jlreq-line` | Line composition: kinsoku, line adjustment, hanging punctuation |
-| `jlreq-inline` | Ruby, tate-chu-yoko, emphasis dots, warichu |
+| `jlreq-line` | Line composition: kinsoku, the adjustment ladder, hanging punctuation |
+| `jlreq-inline` | Ruby, tate-chu-yoko, emphasis dots, warichu, and the other constructs |
 | `jlreq` | Facade over the above |
 | `jlreq-conform` | Conformance suite, mapped one-to-one onto JLReq sections |
 

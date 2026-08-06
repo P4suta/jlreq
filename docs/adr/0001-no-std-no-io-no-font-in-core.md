@@ -1,6 +1,9 @@
 # ADR-0001: the layout core has no std, no I/O, and no font access
 
 - Status: accepted
+- Superseded in part by [ADR 0015](0015-the-crate-graph-and-the-inline-line-seam.md): the
+  core is seven crates rather than five, so both enumerations below grow by `jlreq-unit`
+  and `jlreq-spec`. The rule itself is unchanged and now binds two more crates.
 - Date: 2026-08-05
 
 ## Context
@@ -18,11 +21,12 @@ that already has its fonts, or a test that wants a fixed answer.
 
 ## Decision
 
-`jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`, and `jlreq` are `no_std`.
-They do not depend on `std`, on any I/O crate, on any font crate, or on any allocator
-beyond `alloc` where composition genuinely needs to build a result.
+`jlreq-unit`, `jlreq-spec`, `jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`,
+and `jlreq` are `no_std`. They do not depend on `std`, on any I/O crate, on any font
+crate, or on any allocator beyond `alloc` where composition genuinely needs to build a
+result.
 
-`jlreq-class` and `jlreq-spacing` do not allocate at all.
+`jlreq-unit`, `jlreq-spec`, `jlreq-class`, and `jlreq-spacing` do not allocate at all.
 
 The gate is mechanical, not cultural. `just purity` reads every core manifest and source
 file and fails on a `std` dependency, an I/O or font dependency, or a `std::` path.

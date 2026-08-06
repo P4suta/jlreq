@@ -1,6 +1,10 @@
 # ADR-0005: layout arithmetic is integer
 
 - Status: accepted
+- Superseded in part by [ADR 0007](0007-two-scalars-and-the-fixed-point-unit.md): the
+  single length type in fractions of the ideographic em becomes two scalars that never
+  mix, and the denominator this ADR defers is settled at 1/720 em. The integer decision
+  itself stands unchanged.
 - Date: 2026-08-05
 
 ## Context
@@ -31,9 +35,10 @@ decades of platforms as a direct result.
 
 ## Decision
 
-All layout arithmetic in the core is integer. No `f32` or `f64` appears in
-`jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`, or `jlreq` — enforced by
-`just purity`, which scans the core sources and fails on a float type or a float cast.
+All layout arithmetic in the core is integer. No `f32` or `f64` appears in `jlreq-unit`,
+`jlreq-spec`, `jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`, or `jlreq` —
+enforced by `just purity`, which scans the core sources and fails on a float type or a
+float cast.
 
 Lengths are a fixed-point type in fractions of the ideographic em. Callers converting from
 a floating-point font pipeline convert once, at the boundary, where the rounding is
