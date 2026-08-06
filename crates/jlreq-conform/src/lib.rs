@@ -20,8 +20,47 @@
 //! choosing one. Where this project's reading differs from LaTeX's `jlreq` class or from
 //! a browser, the case records the disagreement and the reasoning.
 //!
-//! See `docs/adr/0006-conformance-suite-as-artifact.md`.
+//! See `docs/adr/0006-conformance-suite-as-artifact.md` and
+//! `docs/design/conformance.md`, which is the format, the trait and the gates.
+//!
+//! # Running it
+//!
+//! ```no_run
+//! use std::path::Path;
+//!
+//! use jlreq_conform::{Kumihan, load, run};
+//!
+//! let suite = load(Path::new("crates/jlreq-conform/cases"))?;
+//! let report = run(&suite, &Kumihan::default());
+//! println!("{census}", census = report.census());
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! [`Compose`] returns `Option` throughout, and `None` means *not attempted* rather than
+//! *failed*: an engine that exposes only line composition scores honestly on line
+//! composition, and the count of cases it never reached is a fact about that engine rather
+//! than a verdict on it.
 //!
 //! # Status
 //!
-//! Bootstrap. No cases are written yet; see `ROADMAP.md` (M0).
+//! M0. The suite holds the character-class cases of Appendix A, and this workspace answers
+//! the classification question and reports the other two as not attempted. Reading, running
+//! and scoring are written; the `judge` path that scores an answers file produced by an
+//! implementation in another language arrives with the layers whose answers it would carry.
+
+mod case;
+mod json;
+mod kumihan;
+mod run;
+
+pub use crate::case::{
+    Case, CaseAmount, CaseConstruct, CaseFile, CaseInput, CaseItem, CasePolicy, CaseScale,
+    CaseStream, Expect, ExpectBoundary, ExpectClass, ExpectLine, ExpectPart, ExpectSpace,
+    ExpectTrim, Forbidden, LoadError, Permitted, Suite, load,
+};
+pub use crate::json::{Json, JsonError};
+pub use crate::kumihan::{Kumihan, Stream, refusals};
+pub use crate::run::{
+    CaseBoundary, CaseClass, CaseLine, CaseOutput, CasePart, CaseSpace, CaseTrim, Compose,
+    Disagreement, Report, run, run_file,
+};

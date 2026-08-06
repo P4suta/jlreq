@@ -1,0 +1,402 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.5",
+  "heading_en": "Middle dots (cl-05)",
+  "heading_ja": "中点類（cl-05）",
+  "cases": [
+    {
+      "id": "A.5/katakana-middle-dot/between-katakana",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "The following are lists of (non-ideographic) characters from a subset of ISO/IEC 10646 (collection number 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\") grouped by character class according to the classification explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning.",
+      "rationale": "§A.5 is three rows and no prose, and the first of them is 「・ | 30FB | KATAKANA MIDDLE DOT | 中点 | (Remarks empty)」. The preamble quoted above is the sentence that makes that table the class list, so the enumerated key U+30FB is cl-05. Two further facts make this case worth publishing rather than obvious. §A.5 states no character advance for any member — the half-width frame of cl-05 comes from §3.1.2 and from nowhere in Appendix A — so the caller declares it, and here it is declared half-width, which is what §3.1.2 states cl-05's own advance to be. And U+30FB is named by a second class: §A.25 lists it under characters in unit symbols (cl-25) with the Remarks 'half-width / 字幅は半角', the same frame, so the frame cannot separate the two readings and the construct must. This input declares no construct at all, so the occurrence is not inside a unit symbol (単位記号) and cl-25's condition is not met; cl-05 is the only class left. The companion case A.5/katakana-middle-dot/inside-a-unit-symbol is the same code point on the other side of that line.",
+      "input": {
+        "kind": "classify",
+        "text": "ア・イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 1, read under the §A preamble",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 25 } },
+          "why": "§A.25's heading is 'characters in unit symbols (単位記号中の文字)', so membership is a property of the construct the occurrence sits in. This input declares no unit symbol, and §B.2 note 12 — 'Note that KATAKANA MIDDLE DOT \"・\" can be used either as a unit symbol (cl-25) or as a middle dot' — makes the two readings alternatives rather than a default."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/katakana-middle-dot/inside-a-unit-symbol",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "Character spacing between a preceding unit symbol (cl-25) and a trailing middle dot (cl-05) shall be a quarter em of the trailing character. Note that KATAKANA MIDDLE DOT \"・\" can be used either as a unit symbol (cl-25) or as a middle dot. When it is used as a unit symbol (cl-25), both preceding and trailing spacing of KATAKANA MIDDLE DOT \"・\" shall be zero.",
+      "rationale": "The boundary of cl-05 on the construct axis, and the one place the specification draws it in a sentence rather than only in two tables. The text is the unit symbol N・m: §A.25 lists U+004E and U+006D as proportionally-spaced characters in unit symbols and U+30FB as a half-width one, so all three occurrences are inside one unit symbol (単位記号) and the middle dot is cl-25, not cl-05. Note what does not do the separating: §A.25 gives U+30FB the same half-width frame §3.1.2 gives cl-05, so an implementation that separates these two readings by the declared frame gets this case right by accident and A.5/katakana-middle-dot/between-katakana wrong. The spacing consequence of the quoted note — both sides solid — is §B.2 note 12's and is claimed by no case here; this case claims the class only.",
+      "input": {
+        "kind": "classify",
+        "text": "N・m",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 722, "frame": "proportional", "role": "unit-symbol", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "role": "unit-symbol", "scale": 0 },
+          { "start": 4, "advance": 833, "frame": "proportional", "role": "unit-symbol", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 12 with §A.25 (U+30FB, Remarks 'half-width / 字幅は半角')",
+          "expect": { "class": { "item": 1, "class": 25 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 5 } },
+          "why": "§B.2 note 12 states the two readings of U+30FB and gives the unit-symbol one different spacing on both sides, so answering cl-05 for an occurrence inside a unit symbol contradicts the sentence that names the alternative."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/katakana-middle-dot/decimal-point-role",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "In vertical writing mode, ideographic digits and KATAKANA MIDDLE DOT \"・\" representing a decimal point are set solid.",
+      "rationale": "The role axis moves the spacing and not the class, and this case says so. §3.1.3 gives a KATAKANA MIDDLE DOT acting as a decimal point between ideographic numerals an exception that removes both of its quarter ems; it never says the occurrence stops being a middle dot, and no Appendix A table other than §A.5 and §A.25 names U+30FB at all, so with no unit symbol declared cl-05 is the only class available. The case declares no writing direction on purpose: §3.1.3's exception is stated for vertical writing, and the class is the same in either, so the direction-parity gate composes this input both ways and an implementation that answered a different class in vertical writing would be caught by the parity failure rather than by review. The spacing exception itself belongs to §3.1.3 and is covered by a later milestone's case.",
+      "input": {
+        "kind": "classify",
+        "text": "三・五",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "role": "decimal-point", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 1, with §3.1.3 (the role changes the spacing, not the class)",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/colon/half-em-frame",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "Western characters (cl-27) include punctuation marks, such as commas, used in Western context. Among these punctuation marks, several marks are used both in a Japanese context and Western context. However, these marks have different character shapes depending on whether they are used in a Japanese context or Western context. For example, LEFT PARENTHESIS \"(\" and RIGHT PARENTHESIS \")\" has not only different width (Japanese, half em, Western, proportional) but are also different in line position (Japanese, center of the character frame in the inline direction, Western, base line and descender line dependent) and design (Japanese, slightly bent and constant line thickness, Western, strongly curved and dynamic line thickness).",
+      "rationale": "U+003A is listed twice: by §A.5 with an empty Remarks cell, and by §A.27 with the Remarks 'proportionally-spaced / プロポーショナル'. The quoted paragraph is what separates them — the same punctuation code point has a Japanese reading and a Western reading, and the width is one of the three things that differ. §A.5 states no frame for its colon at all, and §3.1.2 supplies the missing half: 'The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em).' So a colon the caller measured on the half-em frame is the Japanese colon, which is cl-05. This is one half of a pair: the companion declares the same colon on the ideographic frame — the advance a modern OpenType font reports for the same glyph — and expects the same class, because §A.27's row is reached by the proportional frame and by nothing else.",
+      "input": {
+        "kind": "classify",
+        "text": "ア:イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 2, against §A.27's proportionally-spaced row for the same key",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 gives U+003A the Remarks 'proportionally-spaced / プロポーショナル', so the Western reading is the one the proportional frame selects. A colon declared half-width is §A.5's."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/colon/full-em-frame",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "Western characters (cl-27) include punctuation marks, such as commas, used in Western context. Among these punctuation marks, several marks are used both in a Japanese context and Western context. However, these marks have different character shapes depending on whether they are used in a Japanese context or Western context. For example, LEFT PARENTHESIS \"(\" and RIGHT PARENTHESIS \")\" has not only different width (Japanese, half em, Western, proportional) but are also different in line position (Japanese, center of the character frame in the inline direction, Western, base line and descender line dependent) and design (Japanese, slightly bent and constant line thickness, Western, strongly curved and dynamic line thickness).",
+      "rationale": "The same text with the colon declared on the ideographic frame, which is what a modern Japanese OpenType font reports for U+003A when the Japanese glyph is selected. §3.1.2 states that cl-05's own character advance is half-width and that the conditional spaces are what make it appear full-width, so the full em the caller measured already contains them; that is a fact about the geometry and not about the class, and this case asserts exactly that by expecting the same answer as its half-em twin, byte for byte. Only §A.27's frame — proportional — moves U+003A out of cl-05, which is why the frame pair here differs in nothing at all: for classification, half-width and full-width are the same side of the one line the Remarks column draws.",
+      "input": {
+        "kind": "classify",
+        "text": "ア:イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 2, against §A.27's proportionally-spaced row for the same key",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 gives U+003A the Remarks 'proportionally-spaced / プロポーショナル', so the Western reading is the one the proportional frame selects. A colon declared full-width is §A.5's."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/colon/proportional-frame",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "Western characters (cl-27) include punctuation marks, such as commas, used in Western context. Among these punctuation marks, several marks are used both in a Japanese context and Western context. However, these marks have different character shapes depending on whether they are used in a Japanese context or Western context. For example, LEFT PARENTHESIS \"(\" and RIGHT PARENTHESIS \")\" has not only different width (Japanese, half em, Western, proportional) but are also different in line position (Japanese, center of the character frame in the inline direction, Western, base line and descender line dependent) and design (Japanese, slightly bent and constant line thickness, Western, strongly curved and dynamic line thickness).",
+      "rationale": "The third frame is the one that changes the answer. §A.27 lists U+003A with the Remarks 'proportionally-spaced / プロポーショナル' where §A.5 lists it with an empty cell, so a colon the caller measured on the proportional frame is the Western colon and is cl-27. Nothing else in this input changed: the same code point, the same neighbors, the same reading order as the two cases above. Publishing all three together is the point — an implementation keyed on the code point alone must answer these three the same way and can therefore be right at most twice.",
+      "input": {
+        "kind": "classify",
+        "text": "ア:イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 278, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27 (U+003A, Remarks 'proportionally-spaced / プロポーショナル')",
+          "expect": { "class": { "item": 1, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 5 } },
+          "why": "§A.5 states no frame for U+003A and §3.1.2 gives cl-05 the half-width advance, so the proportional frame is §A.27's row and not §A.5's."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/semicolon/horizontal-composition",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "used in horizontal composition / 横組で使用",
+      "rationale": "The last row of §A.5 and the only one carrying a Remark. U+003B is cl-05 on the half-em frame exactly as U+003A is, and the quoted Remarks cell — the section's only qualification of any member — restricts the writing mode in which the writing system uses the character. This case is the horizontal occurrence the Remark describes, and it exists so that its vertical twin below is a comparison rather than an assertion standing alone.",
+      "input": {
+        "kind": "classify",
+        "text": "ア;イ",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 3 (Remarks: used in horizontal composition / 横組で使用)",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/semicolon/vertical-composition",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "used in horizontal composition / 横組で使用",
+      "rationale": "The Remark quoted above is a fact about the writing system's use of the character, not a selector for a class, and this case is where that distinction is testable. The same occurrence, the same declared frame, vertical composition: the answer is still cl-05, because nothing in the document assigns U+003B any other class on a non-proportional frame. The evidence is unusually clean. U+003B appears in exactly two places in the whole published document — §A.5 and §A.27 — and in no sentence of prose anywhere; in particular §3.1.1, the section that enumerates the punctuation marks used uniquely in one writing mode, does not mention it, and so the softening sentence it supplies for LEFT and RIGHT SINGLE and DOUBLE QUOTATION MARK ('in vertical writing mode, when Western characters (cl-27) are composed rotated 90 degrees clockwise, these quotation marks are sometimes used') has no counterpart here. A caller who sets a semicolon in vertical composition is doing something the writing system does not do; the answer to 'which class' is still the one §A.5 gives, and the writing-mode restriction is reported as a diagnostic rather than as a different class.",
+      "input": {
+        "kind": "classify",
+        "text": "ア;イ",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5, row 3, read as a validity fact rather than a class selector",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "Reading §A.5's Remark as a membership condition and falling back to §A.27's row in vertical composition. §A.27 gives U+003B the Remarks 'proportionally-spaced / プロポーショナル' and this item declares the half-em frame, so that row is not reachable here in either writing mode."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/middle-dot/u00b7-is-not-a-member",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "Middle dots (cl-05) 中点類（cl-05） ・：；",
+      "rationale": "The boundary §3.9.2 itself draws around this class. Its list of all thirty classes writes cl-05 as the three characters quoted above and appends no 'etc.' and no 'など', where cl-01 reads '‘“（〔［｛〈《「『【 etc. / など'; cl-05, cl-06 and cl-07 are the only three classes it closes that way, and §A.5, §A.6 and §A.7 hold exactly three, two and two rows. U+00B7 MIDDLE DOT is therefore not a middle dot in JLReq's sense however it is named in ISO/IEC 10646: the document lists it once, under §A.27 with the Remarks 'proportionally-spaced / プロポーショナル', and nowhere else. An implementation that reaches cl-05 through the Unicode name, through a General_Category, or through a 'middle dot' set of its own answers 5 here and is wrong by the document's own enumeration.",
+      "input": {
+        "kind": "classify",
+        "text": "ア·イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 250, "frame": "proportional", "scale": 0 },
+          { "start": 5, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27 (U+00B7, Remarks 'proportionally-spaced / プロポーショナル'), against §A.5's three rows",
+          "expect": { "class": { "item": 1, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 5 } },
+          "why": "§A.5 enumerates U+30FB, U+003A and U+003B and nothing else, and §3.9.2 writes the same three with no 'etc.' / 'など'. U+00B7 is named by neither."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/fullwidth-colon/compatibility-counterpart",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "General punctuation marks are script neutral in ISO/IEC 10646 and there is no \"Opening Ideographic Parenthesis\" specifically encoded for CJK scripts in the standard. However, because of the typographic difference among scripts with respect to base line position as well as width and glyph design, the same set of punctuation marks usually do not fit to both Latin and Japanese text. To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "§A.5's Character column shows ： and ； while its UCS column names U+003A and U+003B, and the Note quoted above is the sentence that makes that an editorial convention rather than a defect: the enumerated key is the code point in the UCS column, and the compatibility counterpart is what real Japanese text contains. This case is that sentence made executable for cl-05. U+FF1A FULLWIDTH COLON appears in no Appendix A table under any class, so an implementation that looks it up and stops finds nothing; folded onto its Wide decomposition it is §A.5's second row and is cl-05. The frame is declared full-width because the caller who typed the compatibility code point has said so — that is what the code point encodes — and the half-width alternative would be U+003A itself, which is the case A.5/colon/half-em-frame above.",
+      "input": {
+        "kind": "classify",
+        "text": "ア：イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, applied to §A.5's row 2",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/halfwidth-katakana-middle-dot/compatibility-counterpart",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards.",
+      "rationale": "The same sentence read in the other direction. §A's Note names a Wide compatibility counterpart as its example, and U+FF65 HALFWIDTH KATAKANA MIDDLE DOT is a Narrow one — the same mechanism, the same legacy round-trip, a code point Appendix A does not list under any class. Folded onto U+30FB it is §A.5's first row. The fold is worth publishing because the code point also carries a frame: a caller who typed U+FF65 has stated half-width in the code point itself, which is the frame §3.1.2 gives cl-05 anyway, so the two agree and this case asserts the class alone. Only the Wide and Narrow decompositions may be folded this way: full compatibility folding would fold U+2160 ROMAN NUMERAL ONE, a genuine member of ideographic characters (cl-19), onto 'I'.",
+      "input": {
+        "kind": "classify",
+        "text": "ア･イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, applied to §A.5's row 1",
+          "expect": { "class": { "item": 1, "class": 5 } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/line-break-before-middle-dot/kinsoku-levels",
+      "rules": ["C.3"],
+      "standing": "alternative",
+      "quote": "Very loose (Newspapers) / レベル1（新聞など）: Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it. — Middle dots (cl-05) / 中点類（cl-05）. Loose (Magazines) / レベル2（雑誌など）: Breaking a line is allowed before or after the following character classes (or characters) even though Table 2 prohibits it. — KATAKANA MIDDLE DOT \"・\" / 中点類（cl-05）の中点[・] (KATAKANA MIDDLE DOT).",
+      "rationale": "§C.3 states four levels of line-breaking convention, and cl-05 is relaxed by the first two and by neither of the others. This case is the boundary before the KATAKANA MIDDLE DOT, which both of the relaxing levels reach: Level 1 by naming the whole class, Level 2 by naming this member of it. Its companion, the same boundary before a semicolon, is reached by Level 1 alone — which is the assertion the pair exists to make, because §C.3's own heading says 'the following character classes (or characters)' and the two levels differ precisely on that. At the default level and at the strictest one no relaxation applies and Table 2's prohibition stands, which §C.3 states in the negative each time it says 'even though Table 2 prohibits it'.",
+      "input": {
+        "kind": "boundary",
+        "text": "ア・イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.3 levels 3 and 4 (Strict and Very strict), which relax nothing here",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq §C.3 level 1, Very loose (Newspapers): 'Middle dots (cl-05)'",
+          "expect": { "boundary": { "before": 0, "breakable": true } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "JLReq §C.3 level 2, Loose (Magazines): 'KATAKANA MIDDLE DOT \"・\"'",
+          "expect": { "boundary": { "before": 0, "breakable": true } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.5/line-break-before-semicolon/kinsoku-levels",
+      "rules": ["C.3"],
+      "standing": "alternative",
+      "quote": "Very loose (Newspapers) / レベル1（新聞など）: Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it. — Middle dots (cl-05) / 中点類（cl-05）. Loose (Magazines) / レベル2（雑誌など）: Breaking a line is allowed before or after the following character classes (or characters) even though Table 2 prohibits it. — KATAKANA MIDDLE DOT \"・\" / 中点類（cl-05）の中点[・] (KATAKANA MIDDLE DOT).",
+      "rationale": "The same boundary question asked of the other end of §A.5's table, and the answer differs at exactly one level. Level 1 relaxes cl-05 as a class, so the break before this semicolon is allowed; Level 2 relaxes one member of that class by name, U+30FB, so the break before this semicolon is not. An implementation whose relaxation subject is a class cannot tell the two levels apart and will answer these two cases identically at Level 2, which is the whole reason both are published. The direction is horizontal because §A.5 says U+003B is used in horizontal composition; the level distinction is not a direction distinction.",
+      "input": {
+        "kind": "boundary",
+        "text": "ア;イ",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.3 levels 3 and 4 (Strict and Very strict), which relax nothing here",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq §C.3 level 1, Very loose (Newspapers): 'Middle dots (cl-05)'",
+          "expect": { "boundary": { "before": 0, "breakable": true } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "JLReq §C.3 level 2, Loose (Magazines), which names KATAKANA MIDDLE DOT alone and not the class",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

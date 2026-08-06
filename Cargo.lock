@@ -5,6 +5,11 @@ version = 4
 [[package]]
 name = "jlreq"
 version = "0.0.0"
+dependencies = [
+ "jlreq-class",
+ "jlreq-spec",
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-class"
@@ -17,6 +22,10 @@ dependencies = [
 [[package]]
 name = "jlreq-conform"
 version = "0.0.0"
+dependencies = [
+ "jlreq",
+ "jlreq-spec",
+]
 
 [[package]]
 name = "jlreq-inline"

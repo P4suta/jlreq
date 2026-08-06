@@ -1,0 +1,946 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.15",
+  "heading_en": "Hiragana (cl-15)",
+  "heading_ja": "平仮名（cl-15）",
+  "cases": [
+    {
+      "id": "A.15/hiragana/full-em-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: Hiragana (cl-15) — あいうえおかがきぎ etc. — JA: 平仮名（cl-15） — あいうえおかがきぎ など",
+      "rationale": "§ A.15's first row is あ | 3042 | HIRAGANA LETTER A | 平仮名あ, with an empty Remarks (備考) cell, and the class is closed at 79 keys: 74 single code points and five two-code-point sequences. § 3.9.2 illustrates the same class with nine characters and an explicit 'etc.' / 「など」, and all nine — U+3042 U+3044 U+3046 U+3048 U+304A U+304B U+304C U+304D U+304E — are among the 79, so the open example and the closed enumeration agree here and the mismatch recorded for cl-28 and cl-29 as `bracket-class-enumeration-mismatch` does not recur. Two facts make this the plainest possible classification. All 79 Remarks cells are empty in both locales, so Appendix A qualifies nothing about a cl-15 occurrence — no character frame (字幅), no writing mode, no syntactic role. And no other Appendix A table lists any of the 79 keys, so every one of them has degree one and there is nothing left for a caller-supplied axis to separate. The ideographic frame is declared because a caller setting Japanese text declares one; § 3.1.2 names five classes whose advance it states and cl-15 is not among them, so nothing here requires it. This is also the full-em half of the frame pair whose two cases are checked as one assertion; its twin, A.15/hiragana/half-em-frame, declares the other frame and expects the same class.",
+      "input": {
+        "kind": "classify",
+        "text": "あ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          },
+          "why": "Deriving the class from a character-database property instead of from Appendix A. U+3042 has East_Asian_Width=W and Line_Break=ID, so a table built from Unicode properties rather than from § A answers ideographic characters (cl-19) for every hiragana. § A.19's own heading names the list of all non-ideographic characters assigned to that class and does not list U+3042; § A.15 does. § 3.9.2's Note on cl-15 states what is lost: 'The reason kanji etc. (Japanese characters except 1. to 12.) and hiragana are regarded different classes in JIS X 4051, is the difference in the case of ruby, and specifically the handling in terms of characters jutting out of the base and overhanging adjacent characters.' Collapsing cl-15 into cl-19 discards the one distinction the class exists to carry."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16
+            }
+          },
+          "why": "Answering katakana (cl-16) for a hiragana. § A.16's table lists no code point below U+30A1, and § 3.9.2 gives cl-15 and cl-16 separate entries with separate Notes. The two are not interchangeable even where they are spaced alike: § B.2 note 7 records that 'if it is required to conform to JIS X 4051, ruby text shall not be extended over the katakana because katakana characters belong to the ideographic character class in JIS X 4051', while the same permission over hiragana is not in question there."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/hiragana/half-em-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em).",
+      "rationale": "The first half of a pair whose whole value is an equality. cl-15 is not one of the five classes the quoted sentence states an advance for, and all 79 of § A.15's Remarks cells are empty, so no table in the published document states a character frame (字幅) for a hiragana. The one place the document states one at all is the Japanese half of § 2.1.2 — 漢字等（cl-19），平仮名（cl-15）及び片仮名（cl-16）の外枠は正方形なので，その字幅は全角となる — whose English half stops at 'Ideographic (cl-19), hiragana (cl-15) and katakana (cl-16) characters are the same size, and have square character frames of equal dimensions' and never draws the conclusion. That sentence is about geometry rather than membership, and it is outside the rule inventory in any case, since that inventory covers § 3 and Appendices B through F. So this case declares a half em advance and expects the same class, byte for byte, as the ideographic-frame case beside it. An implementation that reads 全角 as a membership condition, or that requires a frame before it will classify a hiragana, answers differently here; one that reads Appendix A answers cl-15 both times. The advance is the caller's either way (ADR 0002): 500 units is what a caller composing kana into a half-em slot measured, and JLReq neither supplies that number nor contradicts it.",
+      "input": {
+        "kind": "classify",
+        "text": "あ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/hiragana/unstated-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em).",
+      "rationale": "The second half of that pair, and the case that shows the frame decides nothing here. § 3.1.2 states an advance for five classes and cl-15 is not one of them, so an item whose key § A.15 lists is under no obligation to declare a character frame (字幅) and a case may leave it unstated. Appendix A leaves nothing for a frame to decide either: each of the 79 cl-15 keys is named by cl-15 and by no other class, and every Remarks cell is empty in both locales, so an unstated frame here resolves to a class rather than to a candidate set and the axis that would separate it. The expected answer is byte-identical to the two cases above, which is the whole of the assertion — an implementation that requires a frame before it will answer for a hiragana has imported a rule from the five classes that do require one.",
+      "input": {
+        "kind": "classify",
+        "text": "あ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "unstated",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/hiragana/vertical-writing-mode",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Ideographic (cl-19), hiragana (cl-15) and katakana (cl-16) characters for Japanese composition have basically been designed to have a square character frame from the letterpress printing era on. Thus the same collection of printing types can be used in either vertical writing mode or horizontal writing mode, simply by changing the direction of text, (see Figure 18).",
+      "rationale": "cl-15 carries no direction qualification anywhere in the published document, and this case records that positively rather than by silence. Not one of § A.15's 79 Remarks cells says 'used in horizontal composition' / 「横組で使用」 or 'used in vertical composition' / 「縦組で使用」, where § A.1 and § A.2 say the first of those for U+2018, U+201C, U+2019 and U+201D. The quoted § 2.3.1 sentence gives the reason: the square frame is what lets one collection of types serve both writing modes with no change but the direction of setting. So no cl-15 key is direction-conditional and no writing-mode restriction applies to any of them. This case declares vertical explicitly; every other case in this file declares no direction and is therefore composed both ways by the direction-parity gate, and the pair of statements is what makes the claim checkable rather than assumed. The stream is ひらがな, whose four occurrences are all cl-15 keys, and the assertion is about the first.",
+      "input": {
+        "kind": "classify",
+        "text": "ひらがな",
+        "direction": "vertical",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 9,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15, 2.3.1)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/voiced-kana/precomposed-key",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "が 304C HIRAGANA LETTER GA 濁点付き平仮名か",
+      "rationale": "Twenty of § A.15's 74 single-code-point keys are voiced (濁点付き) kana, and every one of them is keyed precomposed, because a precomposed code point exists for it. The five semi-voiced (半濁点付き) kana are keyed as two-code-point sequences instead, because none exists. The document never says this and never needs to; the consequence is what a case has to fix. U+304C has the canonical decomposition <304B, 3099>, and Appendix A holds no key of that shape: U+3099 COMBINING KATAKANA-HIRAGANA VOICED SOUND MARK is listed under no class in any of the twenty-five tables, unlike U+309A, which is the second element of fourteen of them. So text in NFD carries no cl-15 key for any voiced hiragana, and normalization is the caller's (ADR 0003) — the only folding Appendix A's preamble warrants is the Wide and Narrow compatibility mapping. This case declares the precomposed spelling, which is what the appendix indexes. Note that the class answer alone does not expose a decomposing implementation, because か and が are both cl-15; what it exposes is the number of occurrences, which this case fixes by declaring two items over two code points. The semi-voiced side is where the same mistake changes the class, and A.15/combining-semi-voiced-mark/unlisted-alone publishes that.",
+      "input": {
+        "kind": "classify",
+        "text": "かが",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/semi-voiced-kana/last-row",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "こ゚ <3053, 309A> <HIRAGANA LETTER KO, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き平仮名こ",
+      "rationale": "The last row of § A.15's table, and the entry a naive implementation drops. cl-15 holds five two-code-point keys — <304B, 309A> <304D, 309A> <304F, 309A> <3051, 309A> <3053, 309A> — so an Appendix A key is an ordered sequence and a `char`-keyed lookup cannot express this class. The occurrence is one item covering both code points, because a key that begins inside one item and ends in the next is not an occurrence at all (ADR 0018) and no cell of any of the six matrices is ever indexed inside one. The declared advance is the caller's measurement of that one cluster. Nothing in the row qualifies the answer: the Remarks cell is empty here as in the other 78, and the Common name (通用名称) column is informative — a fact stated only in the Japanese half of Appendix A's preamble Note, なお，“通用名称”は，JIS X 0213の“日本語通用名称（参考）”である，with no counterpart sentence in English.",
+      "input": {
+        "kind": "classify",
+        "text": "こ゚",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 11
+            }
+          },
+          "why": "Keying the occurrence on its trailing mark. U+309A is the second element of fourteen Appendix A keys spread over three classes — one under small kana (cl-11), namely <31F7, 309A>, five under hiragana (cl-15) and eight under katakana (cl-16) — and it is a key of none of them on its own. An implementation that looks up the mark instead of the ordered pair has three tables to choose between and nothing to choose with; the first code point is the whole of the distinction."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/semi-voiced-kana/longest-match",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "か゚ <304B, 309A> <HIRAGANA LETTER KA, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き平仮名か",
+      "rationale": "The first of § A.15's five sequence keys, placed after the bare code point it begins with, which is the arrangement that separates a longest-first scan from a shortest one. § A.15 lists both か at U+304B and か゚ at <304B, 309A>, so a scanner that stops at the first match consumes the second occurrence as U+304B alone and is left holding a code point Appendix A lists nowhere. The class answer here is what makes the assertion: an implementation whose key table holds the pair reports cl-15 for the second occurrence, and one whose table does not cannot describe this stream at all, since its second item would cover a listed key followed by an unlisted code point. That is the same shape as the refusal ADR 0018 states for a key split across two items, seen from the side the format can express.",
+      "input": {
+        "kind": "classify",
+        "text": "かか゚",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 19
+            }
+          },
+          "why": "Keying the occurrence on its last code point. U+309A appears in Appendix A only as the second element of a two-code-point key and never alone, so an implementation that looks the mark up by itself reaches no row and falls through to § 3.9.2's record that JIS X 4051 leaves an unmentioned character implementation-defined — which for a full-em occurrence is answered ideographic. The occurrence is a hiragana and § A.15 says so in one row."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/semi-voiced-kana/no-fold-reaches-this-class",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The folding cannot reach a cl-15 key, and this case is the proof rather than the assertion. UCD 17.0.0 gives U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK the decomposition `<narrow> 309A` and U+FF9E the decomposition `<narrow> 3099`; those two are the only Wide or Narrow mappings whose source or target lies anywhere in U+3040 through U+309F, so no hiragana is itself folded and nothing else in the block moves. Every halfwidth kana that does fold folds onto a *katakana* — U+FF76 onto U+30AB — so the one pair that folds whole, カﾟ, lands on <30AB, 309A>, which §A.16 lists and §A.15 does not. The five cl-15 pair keys <304B 309A> through <3053 309A> are reachable only as themselves, which A.15/semi-voiced-kana/longest-match publishes. The mixed spelling — a full-width か followed by the halfwidth mark — is not a third route: a pair folds only when both halves do, because a key half of which the caller wrote and half of which the folding supplied is a sequence nobody typed, so `jlreq_class::Text::new` refuses it as an item covering several keys (ADR 0018). This case therefore states the katakana answer and the forbidden entry states the hiragana one that no folding produces.",
+      "input": {
+        "kind": "classify",
+        "text": "ｶﾟ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "unstated",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "UCD 17.0.0 UnicodeData.txt (`FF76;…;<narrow> 30AB` and `FF9F;…;<narrow> 309A`) folded under §A's preamble Note, then JLReq §A.16's table",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15
+            }
+          },
+          "why": "The folded key is <30AB, 309A>, which §A.16 lists among the katakana; §A.15's five semi-voiced pair keys are hiragana bases and no Wide or Narrow decomposition targets one. An implementation answering cl-15 here has folded onto the wrong base."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          },
+          "why": "Not folding, or folding after the longest-first match. Without the Narrow mappings the occurrence's key is <FF76, FF9F>, which no Appendix A row holds, and an implementation that stops there answers with §3.9.2's implementation-defined silence instead of with the class the appendix states for the folded key. Appendix A's preamble states the substitution for U+FF08, and the mechanism it describes is what carries the halfwidth pair here."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/class-boundary/last-listed-code-point",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "ゔ 3094 HIRAGANA LETTER VU 濁点付き平仮名う",
+      "rationale": "Where the class stops, asked at the code point an implementation is likeliest to stop one short of. U+3094 is the highest single code point § A.15 lists, and the stream continues past it into three further classes: U+309D and U+309E are iteration marks (cl-09) by § A.9, U+309F is an ideographic character (cl-19) by § A.19, and U+3099 through U+309C are listed by no class at all. So above U+3094 the hiragana block holds nothing that is cl-15, and U+3093 — the character an intuitive range check ends at — is not the last member. The assertion here is about ゔ itself; the two cases after this one, over the same stream, assert the far side of each boundary.",
+      "input": {
+        "kind": "classify",
+        "text": "んゔゝゟ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 9,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.15)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 15,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 19
+            }
+          },
+          "why": "A range check written U+3042 through U+3093. § A.15's table runs one code point further and ends its single-code-point rows at U+3094, so an implementation that stops at ん leaves ゔ to whatever it does with an unlisted character — ideographic, for a full-em occurrence, under § 3.9.2's record that JIS X 4051 leaves the case implementation-defined. U+3094 also has the canonical decomposition <3046, 3099>, so an implementation that decomposes first loses it the same way and for a second reason."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/class-boundary/hiragana-iteration-mark",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In JIS X 4051, small katakana letters, such as KATAKANA LETTER SMALL TU \"ッ\", are regarded as members of \"Japanese characters with no line break allowed before\" character class. In this document, small katakana letters are classified in small kana (cl-11). Accordingly, the \"Japanese characters with no line break allowed before\" character class in JIS X 4051 is divided to three separate classes; iteration marks (cl-09), prolonged sound mark (cl-10) and small kana (cl-11).",
+      "rationale": "A character the writing system calls a hiragana and Appendix A does not put in cl-15. U+309D is named HIRAGANA ITERATION MARK and UCD 17.0.0 Scripts.txt gives it Script=Hiragana, together with U+309E and U+309F; § A.15 does not list it and § A.9 does. The two classes are not interchangeable in either direction. § 3.1.7 puts iteration marks (cl-09) in the line-start prohibition (行頭禁則) set and cl-15 is not in that set, so the answer decides whether a line may begin with this occurrence; and the quoted Note is explicit that this document created cl-09 by splitting a JIS X 4051 class apart, so an implementation that follows JIS here has no cl-09 at all. § C.3's Strict default lifts the prohibition for IDEOGRAPHIC ITERATION MARK 々 alone among cl-09's members, and 々 is U+3005, a different code point from this one.",
+      "input": {
+        "kind": "classify",
+        "text": "んゔゝゟ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 9,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.9)",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 9,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 15
+            }
+          },
+          "why": "Deriving the class from the Script property or from the UCS name. Both say hiragana for U+309D and Appendix A does not: the key is in § A.9's table and in no other. ADR 0008 keeps kumihan's dependence on the character database to the two places JLReq asks for it, and Script is not one of them — a class derived from Script would move with every Unicode revision and would put this occurrence in a class § 3.1.7 treats differently at a line head."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/class-boundary/hiragana-digraph-yori",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The following are lists of (non-ideographic) characters from a subset of ISO/IEC 10646 (collection number 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\") grouped by character class according to the classification explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning.",
+      "rationale": "The sharpest boundary this class has. U+309F is named HIRAGANA DIGRAPH YORI, it is Script=Hiragana, it sits inside the hiragana block, and Appendix A lists it under ideographic characters (cl-19) rather than under cl-15. The quoted preamble is what makes that placement a decision rather than an oversight: every Appendix A table draws on the same two ISO/IEC 10646 collections and groups them by § 3.9.2, so a key's absence from § A.15 is Appendix A having classified it elsewhere. § 3.9.2's Note on cl-15 says the two classes are separated for one reason, the handling of ruby (ルビ) that juts out of its base and overhangs a neighbor, which is exactly the question a case answers differently for a cl-19 occurrence than for a cl-15 one. The neighboring absences have the same explanation: U+309D and U+309E are cl-09 and U+3099 through U+309C are listed nowhere.",
+      "input": {
+        "kind": "classify",
+        "text": "んゔゝゟ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 9,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.19)",
+          "expect": {
+            "class": {
+              "item": 3,
+              "class": 19,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 3,
+              "class": 15
+            }
+          },
+          "why": "Full compatibility folding, or reading the UCS name. UCD 17.0.0 gives U+309F the compatibility decomposition `<vertical> 3088 308A` — よ and り, both of them cl-15 keys — so an implementation that folds every compatibility decomposition rather than the Wide and Narrow mapping alone dissolves this occurrence into two hiragana and answers cl-15 for a code point § A.19 lists. That is the hazard ADR 0008 names for U+2160, met here from the cl-15 side. The decomposition is also a `<vertical>` one, so an implementation that folds it has made the class depend on a presentation form of a character JLReq classifies in one place regardless of writing mode."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/small-kana/relaxed-small-tu",
+      "rules": [
+        "3.9.2",
+        "C.3",
+        "B.2#16",
+        "C.2#3",
+        "E.2#3"
+      ],
+      "standing": "adjudicated",
+      "quote": "EN: When it is permitted to break a line before small hiragana (ぁぃぅ etc.) are regarded as members of the hiragana (cl-15) class, and small katakana (ァィゥ etc.) are regarded as members of the katakana (cl-16) class. — JA: 小書きの仮名を行頭禁則の対象としない場合は，そこに含まれる小書きの平仮名は平仮名（cl-15）の文字クラス，小書きの片仮名は片仮名（cl-16）の文字クラスとする．",
+      "rationale": "The one derivation rule that changes what cl-15 contains, and it is not hypothetical under this document's own default. Twelve code points are involved — U+3041 U+3043 U+3045 U+3047 U+3049 U+3063 U+3083 U+3085 U+3087 U+308E U+3095 U+3096 — each listed by § A.11 with an empty Remarks cell, and each becoming a cl-15 member when small kana (cl-11) are permitted at the head of a line or of an inline cutting note (割注, warichu). The rule is stated four times. Its § 3.9.2 statement, quoted above, is malformed in English: the subordinate clause has no object and 'small hiragana' serves as both the object of 'before' and the subject of 'are regarded'. The Japanese half of the same Note is well formed, and § B.2 note 16, § C.2 note 3 and § E.2 note 3 restate the rule in well-formed English for the spacing, line-breaking and expansion tables respectively; § C.2 note 3 adds the dereference instruction to read cl-15's or cl-16's cells for every combination, which is what makes this a change of class rather than of one break opportunity. What is contested is whether it fires. § C.3's level 3 — which the document itself labels 'Strict (Default, general publications)' — names Small kana (cl-11) among the classes Table 2's prohibition is lifted for, so under the preset the twelve are cl-15 members; § B.2 note 16 meanwhile says the line-head placement is prohibited 'in principle' and offers the permission as an alternative, and § C.3's level 4 is defined as the level where no § C.2 Note alternative applies. This case does not resolve that, it records it: the three entries below are a chain over the two questions that carry the disagreement, and the fallback entry is § A.11's own answer, which is what an implementation reading § C.3 as an override of Table 2's cells rather than as a reclassification also produces.",
+      "input": {
+        "kind": "classify",
+        "text": "あっ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq § A.11's table, which lists U+3063 under small kana (cl-11).",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 11,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify"
+          },
+          "source": "JLReq § C.2 note 3, § B.2 note 16 and § E.2 note 3, put in force by § C.3, whose Very loose, Loose and Strict (Default) levels all name Small kana (cl-11) among the classes Table 2's prohibition is lifted for.",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 15,
+              "rules": [
+                "C.3",
+                "C.2#3",
+                "B.2#16",
+                "E.2#3"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq § C.3 level 4, Very strict: \"Breaking a line is not allowed for any place where Table 2 prohibits it (no alternate rule explained in § C.2 Notes is applied.)\" — the one level under which U+3063 is unambiguously cl-11 even when relaxation reclassifies.",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 11,
+              "rules": [
+                "C.3",
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 16
+            }
+          },
+          "why": "Sending a small hiragana to katakana (cl-16). § C.2 note 3 and § E.2 note 3 make the target depend on the script of the character — 'the character shall be treated as a member of the hiragana (cl-15) or katakana (cl-16) classes accordingly, depending on the script type of the character' — and § B.2 note 16 spells the same split out by name, HIRAGANA LETTER SMALL * to cl-15 and KATAKANA LETTER SMALL * to cl-16. UCD 17.0.0 Scripts.txt gives U+3063 Script=Hiragana, so cl-16 is the answer for its katakana twin U+30C3 and never for this occurrence. This is the one reclassification of the three in § C.2 whose target is not a constant: note 1 sends 々 to cl-19 and note 2 sends the prolonged sound mark to cl-16, and only note 3 has to ask."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "UAX #14 line breaking classes, as tailored by CSS Text 3 `line-break`",
+          "version": "Unicode 17.0.0",
+          "behavior": "Small kana carry Line_Break=CJ (Conditional Japanese Starter). The `strict` tailoring resolves CJ to NS and forbids a break before them; the `normal` and `loose` tailorings — the ones a browser selects by default — resolve CJ to ID and allow one. An implementation built on that reaches § C.3's default permission and stops there: the break opportunity changes and the character's class does not, so nothing that reads the class afterwards sees a hiragana.",
+          "our_reading": "§ C.2 note 3, § B.2 note 16 and § E.2 note 3 do not merely permit the break. Each says the character 'shall be treated as a member of' the hiragana (cl-15) or katakana (cl-16) class, and § C.2 note 3 adds the instruction to read those classes' cells for every combination with another class. So under § C.3's own default level the twelve small hiragana are cl-15 members everywhere and not only at a line head, and the two readings agree about where a line may break while disagreeing about everything decided by the class — including the ruby overhang that § 3.9.2's Note gives as the sole reason cl-15 exists apart from cl-19.",
+          "evidence": "spec/derived/questions.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.15/small-kana/relaxed-small-ke",
+      "rules": [
+        "3.9.2",
+        "C.3",
+        "B.2#16",
+        "C.2#3",
+        "E.2#3"
+      ],
+      "standing": "adjudicated",
+      "quote": "If small kana (cl-11) are allowed to appear at the head of a line or that of inline cutting note, the character shall be treated as a member of the hiragana (cl-15) or katakana (cl-16) classes accordingly, depending on the script type of the character. (For how it behaves in combination with other character classes, see the cells for hiragana (cl-15) or katakana (cl-16).)",
+      "rationale": "The same rule at the exact edge of the property it delegates to, over a pair the reader is meant to compare. U+3096 HIRAGANA LETTER SMALL KE and U+30F6 KATAKANA LETTER SMALL KE are both listed under small kana (cl-11) by § A.11, are drawn alike, and are used alike; the quoted sentence sends them to different classes, and the only thing that separates them is the script. UCD 17.0.0 Scripts.txt gives Hiragana as 3041..3096, so U+3096 is the last code point of that range and is the place an off-by-one in the fallback shows up; U+30F6 falls in Katakana 30A1..30FA. This is also the reason the script table is derived at all: § C.2 note 3 is the only rule in JLReq that reads a Unicode property JLReq does not itself enumerate, and the range endpoints are consequently data rather than a constant in code. The permitted entries are the same chain as the small-tu case, because the reclassification is a property of the key and of the policy, not of which of the twelve is asked about.",
+      "input": {
+        "kind": "classify",
+        "text": "ゖヶ",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq § A.11's table, which lists U+3096 and U+30F6 under small kana (cl-11).",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 11,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify"
+          },
+          "source": "JLReq § C.2 note 3, § B.2 note 16 and § E.2 note 3, put in force by § C.3, whose Very loose, Loose and Strict (Default) levels all name Small kana (cl-11) among the classes Table 2's prohibition is lifted for.",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": [
+                "C.3",
+                "C.2#3",
+                "B.2#16",
+                "E.2#3"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq § C.3 level 4, Very strict: \"Breaking a line is not allowed for any place where Table 2 prohibits it (no alternate rule explained in § C.2 Notes is applied.)\" — the one level under which U+3096 is unambiguously cl-11 even when relaxation reclassifies.",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 11,
+              "rules": [
+                "C.3",
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16
+            }
+          },
+          "why": "Reading the pair by shape rather than by script. U+3096 and U+30F6 are the same letter in two scripts and the quoted sentence sends them to two classes; answering cl-16 for the hiragana one is what an implementation that keys the fallback on the katakana range, or that hard-codes a single target for all twelve, produces. § A.15's own enumeration is the check: the twelve small hiragana that this rule adds are precisely the small kana whose script is Hiragana, and no small katakana ever enters cl-15 by any route JLReq states."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.15/combining-semi-voiced-mark/unlisted-alone",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "JIS X 4051 also provides similar character classes but that are slightly different from this document. Furthermore JIS X 4051 states that it is implementation-defined how to handle characters that are not explicitly mentioned, e.g. whether they should belong to either class or not.",
+      "rationale": "U+309A on its own, which is the cl-15 side of the split-key refusal. The mark is the second element of fourteen Appendix A keys — five of them cl-15's — and it is a key of none of them alone; neither is U+3099, and U+309B and U+309C do not appear anywhere in the published document. So JLReq states no class for this occurrence, and the case's standing says so rather than laundering the silence into a requirement. The quoted § 3.9.2 sentence is the whole of what the document says about the situation: it records that JIS X 4051 leaves the case implementation-defined and does not replace it. Both entries below are readings of that silence rather than table lookups, and they coincide here: this project's published reading answers by the declared character frame (字幅), cl-27 for a proportional occurrence and cl-19 otherwise, and the frame is unstated because a non-spacing mark has none; the alternative reading answers cl-19 without asking. The advance is zero because that is what a caller measures for a combining mark. What the case actually publishes is the forbidden entry: this is not a hiragana, and an implementation that reaches cl-15 from it has matched half of a key.",
+      "input": {
+        "kind": "classify",
+        "text": "゚",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 0,
+            "frame": "unstated",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "This project's published reading of § 3.9.2's silence, in docs/decisions/unlisted-code-point.md: an unlisted occurrence is cl-27 on the proportional frame and cl-19 on every other, and this one declares no frame.",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.unlisted_code_point": "ideographic"
+          },
+          "source": "The alternative reading of the same silence, which answers ideographic characters (cl-19) for every unlisted occurrence regardless of the frame it declares. It coincides with the reading above for this occurrence and differs from it for a proportional one.",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15
+            }
+          },
+          "why": "Answering with the class of a key this occurrence is only half of. § A.15 lists <304B, 309A> <304D, 309A> <304F, 309A> <3051, 309A> and <3053, 309A>, and lists U+309A nowhere by itself; § A.16 lists eight further pairs ending in it and § A.11 one. An implementation that indexes on any code point of a key rather than on the whole ordered sequence answers cl-15 here, and would answer cl-16 or cl-11 for the identical occurrence in a different neighborhood, from the same table."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

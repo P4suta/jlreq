@@ -14,9 +14,16 @@ classification; Typst will implement composition and nothing else. Under a non-o
 trait both would score as catastrophic failures and the suite would be discarded as
 hostile by exactly the people it exists to serve.
 
-There is a `judge` binary. An implementation in any language emits a JSON answers file and
-runs one command; no Rust, no FFI, no build integration. That, and not the trait, is what
-makes this an ecosystem artifact.
+There will be a `judge` binary, and there is not one yet. An implementation in any language
+will emit a JSON answers file and run one command; no Rust, no FFI, no build integration.
+That, and not the trait, is what will make this an ecosystem artifact — which is why the
+state of it is stated here, at the top, rather than four hundred lines down. **At M0 the
+crate has no binary, no `judge` and no answers-file schema**, so the only way to run a case
+is to implement the `Compose` trait in Rust. Every sentence below that describes the binary
+describes what the crate owes and not what it has; `crates/jlreq-conform`'s own crate
+documentation says the same thing to anyone who arrives at the code first. ADR 0006's
+ecosystem claim rests on this and is therefore not yet met, which is a debt worth stating
+plainly rather than a sentence worth writing in the present tense.
 
 A boundary expectation carries the conditional spaces, not their sum
 ([ADR 0014](../adr/0014-the-conditional-space-is-the-unit-of-spacing.md)). An
@@ -67,10 +74,10 @@ crates/jlreq-conform/
     B.2.json
     C.3.json
     ...
-  answers/                  example answers files for the `judge` path
+  answers/                  example answers files for the `judge` path — not written yet
   src/
-    lib.rs                  Compose, Case, Suite, Report, load, run, judge
-    bin/jlreq-conform.rs    the `run` and `judge` commands
+    lib.rs                  Compose, Case, Suite, Report, load, run; judge not written yet
+    bin/jlreq-conform.rs    the `run` and `judge` commands — not written yet
 ```
 
 A case id is `<section>/<subject>/<variant>`, unique across the suite:
@@ -295,7 +302,7 @@ revision: `ItemIndex` and `AnnotationIndex` are different types, so a swapped `b
 file ([ADR 0016](../adr/0016-annotation-text-is-a-second-stream.md)). Before, the runner
 would have been the only place the rule existed.
 
-Two properties of `items` are checked at gate time because
+Two properties of `items` are checked because
 [ADR 0018](../adr/0018-an-item-is-one-occurrence.md) makes them properties of a well-formed
 input rather than of an implementation. Every item must be exactly one Appendix A key —
 except a Western ligature, which is several cl-27 keys on the proportional frame — and every
@@ -304,6 +311,18 @@ item whose key Appendix A names under cl-01, cl-02, cl-05, cl-06 or cl-07 must d
 `Text`, and a case whose input the library rejects tests nothing. This is why `frame` appears
 on every item of the worked case below, including the two ideographs, where it is optional
 and written out anyway so the file reads as one thing.
+
+Both are checked by `jlreq-conform`'s own test rather than by `conform --check`, and the
+difference is not bookkeeping. `Text::new` **is** ADR 0018's reader — it is the constructor
+that refuses a split key, a multi-key item and an unstated frame, and it holds the Appendix
+A table those refusals are stated against — so a second reader inside a gate that does not
+carry the table would be a second answer to a question that already has one, and the two
+would part. This document said "at gate time" before M0-b, and `conform --check` never did
+it: the divergence surfaced when the first case the gate accepted and the constructor
+refused reached the runner. The test is
+`every_published_input_is_one_this_workspace_would_build`, it names the case and the
+refusal, and it is a failure rather than a skip, because the invariant is the contract every
+other case's `input` relies on.
 
 Three further details of the format are load bearing.
 
@@ -376,9 +395,13 @@ naively continuous justifier emits.
 
 A case whose `standing` is `unstated` or `adjudicated` records that JLReq does not decide.
 Both readings appear under `permitted` with `source` naming each, and the `rationale` says
-what this project does and why. §D.2 note 5 against notes 1 through 3, and §3.1.3's Note
-reading "vertical" in English against 横組 in Japanese, are both recorded this way. Nothing
-in the format lets a silence be laundered into a requirement.
+what this project does and why. §3.1.3's Note reading "vertical" in English against 横組 in
+Japanese is recorded this way. §D.2 note 5 against notes 1 through 3 stood beside it until
+M0-b read the two ordinals against §3.8.3, which lists the line-end reduction and the
+mid-line one as separate steps: what the note omits is the position, in one locale, and a
+case carrying "both readings" of it would have published an alternative JLReq does not
+permit. Nothing in the format lets a silence be laundered into a requirement, and nothing in
+this document may launder a translation defect into one either.
 
 ## Disagreements
 
@@ -457,6 +480,13 @@ pub struct CaseStream { pub text: String, pub scales: Vec<CaseScale>,
                         pub items: Vec<CaseItem> }
 
 /// A classification answer, with the reason if the implementation has one.
+///
+/// The runner compares `class` and never `rules`. An implementation is required to answer
+/// the question, not to reproduce our chain of specification addresses: Chrome answers a
+/// boundary and publishes no address for it, and a suite that failed it on provenance
+/// would be the hostile artifact ADR 0006 exists to avoid. The `rules` an implementation
+/// does report are unioned into `Report::rules_exercised`, where they drive the
+/// exercised-coverage gate rather than the pass.
 pub struct CaseClass { pub class: u8, pub rules: Vec<String> }
 
 /// A boundary answer. The conditional spaces, never their sum (ADR-0014).
@@ -524,6 +554,13 @@ pub struct Report {
     pub agreed: usize,
     pub disagreed: Vec<Disagreement>,
     pub skipped: usize,
+    /// How many permitted entries no declared policy of this run could select, because the
+    /// implementation's policy does not have the question the entry names. A published
+    /// reading nothing can select is evaluated by nothing, so a case may carry three
+    /// entries and assert only what its `{}` entry says; the number is what stops that
+    /// being a silence on a green run. Zero for an implementation declaring no policy,
+    /// which is measured against every entry.
+    pub unselectable: usize,
     /// Every rule the run actually exercised. Drives the exercised-coverage gate.
     pub rules_exercised: BTreeSet<String>,
 }
@@ -541,9 +578,26 @@ pub struct Disagreement {
 
 pub fn load(dir: &Path) -> Result<Suite, LoadError>;
 pub fn run<C: Compose>(suite: &Suite, implementation: &C) -> Report;
-/// Score an answers file produced by any implementation in any language.
+/// One file's cases, which is the unit one generated test covers.
+pub fn run_file<C: Compose>(file: &CaseFile, implementation: &C) -> Report;
+/// Score an answers file produced by any implementation in any language. Not written yet.
 pub fn judge(suite: &Suite, answers: &Path) -> Result<Report, LoadError>;
 ```
+
+Every type above is `#[non_exhaustive]`, which [ADR
+0012](../adr/0012-outcome-and-detail-compatibility.md) requires of the whole published
+surface, so the four an implementation *constructs* — `CaseClass`, `CaseBoundary`,
+`CaseSpace`, `CaseOutput`, `CaseLine`, `CaseTrim`, `CasePart` — carry a `new` naming the
+fields that exist. A field added to one of them then leaves an implementation that already
+compiles compiling, which is the whole of that decision applied to an artifact other people
+build against.
+
+`judge` and the binary are what the crate owes the ecosystem and are the part of this
+document the code has not caught up with, as the top of this document says: `run` and
+`run_file` are written, `judge` is not, there is no `src/bin`, no `[[bin]]` and no
+`answers/`, and `crates/jlreq-conform`'s own crate documentation says so rather than
+leaving a reader to find out. The commands below are therefore the design and not the
+interface; nothing in this repository accepts them today.
 
 ```sh
 jlreq-conform run   --cases cases/                    # this workspace's implementation
@@ -551,9 +605,13 @@ jlreq-conform run   --cases cases/ --section 3.1.9
 jlreq-conform judge --cases cases/ --answers mine.json
 ```
 
-The answers file is one object per case id carrying the same shapes, so an implementation
-in any language emits JSON and runs one command. Thirty lines in any language, no build
-integration, and it works for a browser driven by a headless harness.
+The answers file will be one object per case id carrying the same shapes, so an
+implementation in any language emits JSON and runs one command. Thirty lines in any
+language, no build integration, and it works for a browser driven by a headless harness.
+That sentence is the whole of the format's specification today, which is not enough to
+write one against: the answers file arrives with `answers.schema.json` beside
+`cases.schema.json` and with an example under `answers/`, and until all three exist this
+document is describing an artifact rather than publishing one.
 
 ## "Every rule has a case", mechanically
 
@@ -577,11 +635,34 @@ agrees with its unit count, every `trims` rule is §3.1.2 or a Table 1 cell stat
 amount with that referent, every item is one Appendix A key, and every item whose key
 Appendix A names under one of §3.1.2's five classes declares a frame.
 
+The rule inventory is generated whole and the suite is written milestone by milestone, so
+that subtraction has a remainder that is nothing but the schedule. It is not solved by
+weakening the gate and not by writing hollow cases: an inventoried rule is in exactly one of
+three states, and the third is written down in
+[conformance-deferrals.toml](../conformance-deferrals.toml). A rule is **covered** when a
+case names it or a family credits it; **deferred** when a `[[deferred]]` table names it, the
+milestone whose cases close it, and why that is the milestone; and **uncovered** otherwise,
+which fails. `conform --check` holds every entry to the inventory and to `ROADMAP.md`'s own
+milestone headings, fails an entry whose rule a case already covers — the deferral is stale,
+and deleting it is the reviewable act that says the rule now has a case — and prints the
+deferred count per milestone on every run, green or not, so the debt is stated in numbers
+rather than being a silence. `spec-links` subtracts the same file, because a cited rule
+whose case a later milestone writes is the same debt seen from the citation side. Nothing
+mechanical can know that the milestone named is the *right* one; that is what `why` and the
+code-owner guard are for.
+
 **Exercised coverage**, dynamic, as a test in `jlreq-conform`: run every case against this
 workspace while accumulating the rules the evaluator reports as fired, and assert the
 accumulated set equals `RuleId::ALL`. This catches a case that *names* a rule and never
 reaches it — the failure a static gate cannot see, and the reason the declared gate alone
 is satisfiable by adding a string to a list.
+
+The accumulation is written — `Report::rules_exercised` is the union of what the answers
+themselves carry — and the assertion is not, because at M0 it would compare a set two layers
+have not begun to fill against the whole inventory and fail on the schedule rather than on a
+defect. It arrives with the declared set it can honestly be compared against: from M1 the
+subtraction is `RuleId::ALL` minus the deferrals, which is exactly the set the declared gate
+already computes, and the two halves then constrain the same number from opposite sides.
 
 For the dynamic half to be honest, rules must report from every layer that has them, not
 only from the boundary evaluator. Classification reclassifies (§C.2 notes 1 through 3),
@@ -595,11 +676,19 @@ whose answers already carry the rules that produced them.
 
 Table cells are rules, addressed `B.1@cl-05,cl-05`, because most cells implement no note
 and a gate over sections alone would be discharged by one case per appendix. `RuleId::ALL`
-is consequently several thousand, so a case may be a **family**: one case entry may carry a
-`covers` field naming a row, a column, or a class-pair set, and the gate credits every rule
-in it. Without families the coverage requirement would demand several thousand hand-written
-cases and would be abandoned; with them it stays honest, because a family still has to
-*exercise* each cell it claims under the dynamic half.
+will consequently be several thousand, so a case may be a **family**: one case entry may
+carry a `covers` field naming a row, a column, or a class-pair set, and the gate credits
+every rule in it. Without families the coverage requirement would demand several thousand
+hand-written cases and would be abandoned; with them it stays honest, because a family still
+has to *exercise* each cell it claims under the dynamic half.
+
+The tense matters, because the arithmetic in this section is written against a number that
+does not exist yet. `spec/derived/rules.tsv` inventories 106 rules — every section of §3 and
+every appendix note — and no table cell, because the six matrices are transcribed rather
+than derived and `spec/captured/` is empty until the milestone that transcribes them
+([generation.md](generation.md)). So `covers` has no user today and the coverage gate runs
+over sections and notes alone; both facts are visible in the `conform` census, which prints
+the inventory's size on every run.
 
 ## Two further gates the format makes free
 
@@ -659,8 +748,17 @@ epsilon.
 - Both readings of a rule the specification permits, keyed as overlays whose key sets form a
   chain, so the selection rule above has a unique answer for every policy an implementation
   might declare.
-- The three input refusals of [ADR 0018](../adr/0018-an-item-is-one-occurrence.md), as
-  malformed-input cases rather than layout cases: a split `<02E5, 02E9>`, a full-width
-  multi-key item, and an unstated frame on `。`. They belong in the suite because they are
-  the contract every other case's `input` relies on, and because an implementation that
-  accepts them will disagree with every implementation that does not.
+- The three input refusals of [ADR 0018](../adr/0018-an-item-is-one-occurrence.md): a split
+  `<02E5, 02E9>`, a full-width multi-key item, and an unstated frame on `。`. They belong in
+  the suite because they are the contract every other case's `input` relies on, and because
+  an implementation that accepts them will disagree with every implementation that does not.
+  **They cannot be published as cases until the format has a way to say that an input is
+  expected to be refused**, and this document required them as ordinary cases while
+  `tests/suite.rs`'s `every_published_input_is_one_this_workspace_would_build` asserted that
+  every published input is one `Text::new` accepts — two requirements that cannot both be
+  met, since a refusal case is precisely a case that constructor refuses. The requirement is
+  therefore on the format first: an `expect.refused` naming the refusal, a `kind` for it, and
+  an exemption from the two `input` checks that would otherwise reject the case at gate time
+  — after which the three cases are written and this bullet is a case list again. Until then
+  the three refusals are held by `jlreq-class`'s own tests over `Text::new`, which is the
+  same invariant seen from the side that can state it.

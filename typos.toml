@@ -23,6 +23,9 @@ ruby = "ruby"         # ルビ — interlinear annotation
 jlreq = "jlreq"       # the W3C Requirements for Japanese Text Layout
 clreq = "clreq"       # the W3C Requirements for Chinese Text Layout
 
+# Unicode property values a conformance case names, which are the standard's spelling.
+Nd = "Nd" # General_Category=Nd, the decimal digits
+
 [files]
 extend-exclude = [
   "target/**",

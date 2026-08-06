@@ -1,0 +1,176 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.14",
+  "heading_en": "Full-width ideographic space (cl-14)",
+  "heading_ja": "和字間隔（cl-14）",
+  "cases": [
+    {
+      "id": "A.14/ideographic-space/full-em-frame",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "Full-width ideographic space (cl-14) — U+3000 (IDEOGRAPHIC SPACE)",
+      "rationale": "§ A.14's table has exactly one row — U+3000, with its Common name and its Remarks cells both empty — and § 3.9.2 illustrates cl-14 with that same single code point and attaches no Note to it. So the class has one member, Appendix A puts no condition on the naming, and no other Appendix A table names this key: the answer is cl-14 with nothing left to disambiguate. The ideographic frame is the ordinary declaration for an ideographic space and is written out even though § 3.1.2 does not require a frame for cl-14, so the three frame variants in this file differ in their input and in nothing else.",
+      "input": {
+        "kind": "classify",
+        "text": "　",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.14)",
+          "expect": { "class": { "item": 0, "class": 14, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 26 } },
+          "why": "Folding before the literal lookup. UnicodeData.txt gives U+3000 the decomposition '<wide> 0020', and U+0020 is the sole member of Western word space (cl-26) in § A.26, so an implementation that applies Appendix A's compatibility substitution before consulting the table answers cl-26 for every ideographic space and cl-14 becomes an unreachable class with a non-empty table. The preamble Note warrants the substitution for a compatibility character the appendix does not itself list — it lists U+0028 and real Japanese text carries U+FF08 — and § A.14 lists U+3000 literally. U+3000 is the only Appendix A key that is also a source of the Wide/Narrow folding, so this is the one place the ordering can be observed."
+        },
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "Deriving the class from the character database instead of from Appendix A. U+3000 has East_Asian_Width=F and Line_Break=ID, so a table built from Unicode properties rather than from § A answers ideographic characters (cl-19). § A.19 states that its own table is that class's complement — 'The following is the list of all non-ideographic characters assigned to this character class' — and U+3000 is neither in it nor a CJK Ideograph, being Unified_Ideograph=No."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.14/ideographic-space/unstated-frame",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em).",
+      "rationale": "§ 3.1.2 states an advance for five classes and cl-14 is not one of them, so an item whose key is U+3000 is under no obligation to declare a frame and a case may leave it unstated. Appendix A leaves nothing for a frame to decide either: it names U+3000 under one class only and § A.14's Remarks cell is empty in both locales, so an unstated frame here resolves to a class rather than to a candidate set and the axis that would separate it. The expected answer is byte-identical to the ideographic-frame case above, which is the whole of the assertion — an implementation that requires a frame before it will answer for an ideographic space has imported a rule from the five classes that do.",
+      "input": {
+        "kind": "classify",
+        "text": "　",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.14)",
+          "expect": { "class": { "item": 0, "class": 14, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.14/ideographic-space/half-em-frame",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "EN: Before or after one em, etc. space between Japanese characters. — JA: 全角アキなどの和字間隔の前及び後ろ．",
+      "rationale": "The English name of this class asserts a frame (字幅) that neither Appendix A nor the Japanese name states. § A.14's Remarks cell is empty in both locales, so Appendix A states no 字幅 for U+3000, and the Japanese name 和字間隔 (wajikankaku) contains no 全角; the word 'Full-width' in the English heading, and § 3.1.6's Note in Japanese, are the only places the full-width-ness is written down at all. The quoted § 3.1.11 item then names the same class with an explicit 'etc.' / 「など」 around 'one em', which says in both locales that a 和字間隔 occurrence need not be one em. A caller who declares a half em advance has therefore described a narrower ideographic space, not a different class, and the answer is still cl-14. An implementation that reads 'Full-width' as a membership condition refuses this occurrence or answers something else.",
+      "input": {
+        "kind": "classify",
+        "text": "　",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.14)",
+          "expect": { "class": { "item": 0, "class": 14, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.14/ideographic-space/adjacent-occurrences",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "U+3000 (IDEOGRAPHIC SPACE)",
+      "rationale": "Twenty-five Appendix A entries key on an ordered pair of code points, and cl-27 lists two pairs that differ only in order, so an Appendix A key is a sequence and a longest-match scan over the tables is the only correct lookup. cl-14 contributes no such entry: § A.14's table is one row holding one code point. This case is the assertion that the class has no sequence key, and it makes it by being answerable at all — an implementation whose key table wrongly held a pair rooted at U+3000 would match it across these two items and would have to refuse the stream, since the pair would begin in one occurrence and end in the next. The second occurrence is the one asked about, because that is the ordinal a spurious pair key would consume.",
+      "input": {
+        "kind": "classify",
+        "text": "　　",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.14)",
+          "expect": { "class": { "item": 1, "class": 14, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.14/ideographic-space/relaxation-does-not-reclassify",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "When it is permitted to break a line before KATAKANA-HIRAGANA PROLONGED SOUND MARK \"ー\", KATAKANA-HIRAGANA PROLONGED SOUND MARK \"ー\" is regarded as a member of the katakana (cl-16) class.",
+      "rationale": "§ 3.9.2 states a reclassification for three of its thirty classes and for no others — 々 is regarded as cl-19, ー as cl-16, and the small kana as cl-15 or cl-16 — each conditioned on relaxing the line-head prohibition, and § C.2 notes 1 to 3 and § C.3's four levels restate those same three subjects. U+3000 is named in none of them and cl-14 carries no Note in § 3.9.2 at all, so neither the relaxation level nor the choice of relaxation mechanism moves an ideographic space out of its class. The three entries below form a chain over those two questions and state one answer, which is the assertion: the class of this occurrence is invariant across the whole reclassification surface. The occurrence also sits between two hiragana, so an implementation that lets a neighbor decide the class answers differently here than in the bare cases above.",
+      "input": {
+        "kind": "classify",
+        "text": "あ　い",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.14)",
+          "expect": { "class": { "item": 1, "class": 14, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq alternative (C.3, the loosest of the four levels)",
+          "expect": { "class": { "item": 1, "class": 14, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose",
+            "kinsoku.relaxation_mechanism": "reclassify"
+          },
+          "source": "JLReq alternative (C.3 with § C.2 notes 1 to 3 read as a change of class)",
+          "expect": { "class": { "item": 1, "class": 14, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.14/western-word-space/wide-decomposition-target",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The differential twin of the ideographic-space cases above, and the reason they are worth publishing. U+3000's compatibility decomposition is '<wide> 0020' and U+0020 is the sole member of Western word space (cl-26) in § A.26, which makes U+3000 the one Appendix A key that is also a source of the folding the quoted preamble Note warrants. The two ends of that mapping must answer differently, and this case fixes the far end: an ordinary Western word space is cl-26 and never cl-14. Appendix A also names U+0020 under grouped numerals (cl-24) and unit symbols (cl-25), and both of those rows carry the Remark 'quarter em width' (字幅は四分角); the proportional frame declared here is not that frame, and the occurrence sits in no grouped numeral and no unit symbol, so cl-26 is the one candidate left standing on two independent grounds.",
+      "input": {
+        "kind": "classify",
+        "text": "a b",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 556, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 278, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 556, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (3.9.2, A.26)",
+          "expect": { "class": { "item": 1, "class": 26, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 14 } },
+          "why": "Folding in the wrong direction, or reading 'Full-width ideographic space' as a width rather than as the key U+3000. The decomposition runs from U+3000 onto U+0020 and the substitution the § A preamble describes runs the same way — from the compatibility character the text carries to the code point the appendix lists — so nothing ever maps U+0020 onto U+3000. § A.26 lists U+0020 and § A.14 lists U+3000, and no Appendix A table lists both under one class."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

@@ -1,0 +1,738 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.27",
+  "heading_en": "Western characters (cl-27)",
+  "heading_ja": "欧文用文字（cl-27）",
+  "cases": [
+    {
+      "id": "A.27/first-table-row/exclamation-mark-proportional",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "! 0021 EXCLAMATION MARK 感嘆符 proportionally-spaced プロポーショナル",
+      "rationale": "The first row of §A.27, quoted whole above, and it already carries the two facts that govern the entire class. The first is that the Remarks cell says one thing: all 778 rows of this table carry the identical bilingual pair \"proportionally-spaced\" / 「プロポーショナル」 and nothing else, so §A.27 states a character frame (字幅) for its members and never a writing direction, never a role and never a construct — unlike §A.1, §A.2, §A.6 and §A.7, which qualify some of their rows with 「横組で使用」. The second is that the first key of the table is already shared: §A.4 lists 0021 as a dividing punctuation mark (区切り約物) and its Remarks cell is empty. An empty Remarks cell is an unqualified listing, which is what remains where no qualified listing describes the occurrence; this occurrence declares the proportional frame, which is precisely the qualification §A.27 attaches, so §A.27 describes it and §A.4 is left holding the occurrences it does not describe — a full-width exclamation mark, which is what U+FF01 folds onto. cl-27 is therefore the answer for 60 percent of this table's keys only because the caller spoke: 469 of the 778 are listed by at least one other class, and for those the table alone decides nothing.",
+      "input": {
+        "kind": "classify",
+        "text": "Oh!",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 722, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 333, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, its first row (U+0021, Remarks \"proportionally-spaced\"), against §A.4's unqualified listing of the same key (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 4 } },
+          "why": "§A.4 lists 0021 with an empty Remarks cell and §A.27 lists it with \"proportionally-spaced\". This occurrence declares the proportional frame, so the qualified listing describes it and the unqualified one does not. Answering cl-04 for every U+0021 is answering from the code point, which is what §A.27's Remarks column exists to deny."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/last-table-row/circled-number-fifty-proportional",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "㊿ 32BF CIRCLED NUMBER FIFTY 丸50 proportionally-spaced プロポーショナル",
+      "rationale": "The last row of §A.27, and the row that shows the class name is not a description. U+32BF CIRCLED NUMBER FIFTY belongs to no Western script by any ordinary reading of the word, and the document lists it as a Western character (欧文用文字) anyway; the table is what membership is, and an implementation that tested a code point against a notion of \"Latin script\" would place this key in neither of the two classes that name it. The table runs from U+0021 to U+32BF in strictly ascending code-point-sequence order and stops there, so nothing above the Basic Multilingual Plane is in cl-27 at all — which is also §A's own scope statement, since the tables enumerate the non-ideographic characters of ISO/IEC 10646 collections 285 and 286 rather than of Unicode. The key is shared with §A.19, whose Remarks cell for it is empty, and the case below is the same key on the other frame.",
+      "input": {
+        "kind": "classify",
+        "text": "㊿",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, its last row (U+32BF, Remarks \"proportionally-spaced\"), against §A.19's unqualified listing of the same key (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "§A.19 lists 32BF with an empty Remarks cell, which describes an occurrence no qualified listing describes. This one declares the frame §A.27 names in so many words, so §A.27's listing is the one that speaks."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/last-table-row/circled-number-fifty-full-em",
+      "rules": ["3.2.4", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, full-width and fixed-space Western characters and European numerals are treated as members of the ideographic characters (cl-19) class. この文書では，全角のモノスペースの欧字及び全角のモノスペースのアラビア数字の文字クラスは，漢字等（cl-19）として扱う．",
+      "rationale": "The same key, the same text, the same measured advance, and a different class — and the advance is deliberately identical rather than merely different, because a circled fifty is a full-width glyph whichever frame the caller declares it on. That is what makes this pair the sharpest statement of ADR 0002 in this file: there is nothing in the input but the declared frame to tell the two cases apart, so an implementation that infers the frame from the advance answers both identically and one of the two answers is wrong. §A.27 qualifies its listing with \"proportionally-spaced\" and this occurrence is not that; §A.19 lists the key unqualified and §3.2.4's Note assigns full-width and fixed-space Western characters to cl-19 in so many words, so the two agree. The English and Japanese halves of that Note do not use the same category name — 全角のモノスペース against \"full-width and fixed-space\", and \"full-width and fixed-width\" three times in §3.2.4's own body — but for a full-width occurrence, which is what this case declares, every rendering says cl-19.",
+      "input": {
+        "kind": "classify",
+        "text": "㊿",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19's unqualified listing of U+32BF, with §3.2.4's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "The answer of an implementation whose classification is a table from code point to class: it gives the same class here as in the case above, where the only difference in the whole input is the declared frame. §A.27's Remarks cell for this key reads \"proportionally-spaced\", and a full-em occurrence does not satisfy it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/ampersand/proportional-frame",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, proportional Western characters and European numerals are treated as members of the Western characters (cl-27) class. この文書では，プロポーショナルな欧字・アラビア数字の文字クラスは，欧文用文字（cl-27）として扱う．",
+      "rationale": "The sentence quoted above is the rule that puts an occurrence into cl-27, and it is not in §A.27; the table enumerates keys and never says which occurrences of them are members. This case is the cleanest place in the class to exercise it, because U+0026 AMPERSAND is listed by exactly two tables — §A.19 unqualified and §A.27 as proportional — so no construct class and no role is in play and the frame is the only axis. Everything else about the two cases is held equal: the same three items, the same reading order, the same neighbors. §3.2.2 is what makes the declaration a real caller-side fact rather than a knob invented here: in horizontal composition the document's own basic approach is to use proportional Western fonts, so the party that chose the proportional glyph is the party that decided the class.",
+      "input": {
+        "kind": "classify",
+        "text": "R&D",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 667, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 778, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 722, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+0026, with §3.2.6's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 19 } },
+          "why": "§A.19's listing of 0026 carries no Remarks at all, so it describes the occurrences §A.27's qualified listing does not. §3.2.6's Note assigns proportional Western characters to cl-27 and §3.2.4's Note assigns full-width and fixed-space ones to cl-19; the two Notes are one axis stated from both ends, and this occurrence is at the cl-27 end of it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/ampersand/full-width-frame",
+      "rules": ["3.2.4", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "As shown in Figure 91, there are some examples of Western full-width fonts used in horizontal Japanese typesetting, this usage is not recommended, for cosmetic reasons. Figure 91のように，全角のモノスペースの欧字を用いた印刷物も目にするが，体裁がよくないので，このような文字は使用しない．",
+      "rationale": "The other end of the same axis, on the same three code points, with no compatibility character anywhere in the input. This matters because the full-width Western letter is usually reached in a document through U+FF21 and its neighbors, and that route makes the frame look like a property of the code point; here the caller has set the ordinary ASCII code points on a full-width monospace body, which is exactly the setting §3.2.2's Note describes as existing and discourages. The document discouraging a setting is not the document declining to classify it: §3.2.4 is a whole section about how it is composed and its Note names the class. So the answer is cl-19 for all three items, and the case asks about the ampersand because it is the item whose §A.19 listing an implementation is least likely to have looked for.",
+      "input": {
+        "kind": "classify",
+        "text": "R&D",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 2, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19's unqualified listing of U+0026, with §3.2.4's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "The answer of an implementation that reads a Latin-1 code point as Western text and stops. §3.2.4's Note treats full-width and fixed-space Western characters as members of cl-19, and §A.19 lists 0026 to say so; nothing in §A.27 describes a full-em occurrence, because its one Remarks sentence describes a proportional one."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/latin-capital-a/proportional-frame",
+      "rules": ["3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI). ここでいう単位記号は，国際単位系（SI）として使用されているラテン文字又はギリシャ文字を組み合わせて単位を示すものである．",
+      "rationale": "Every one of the fifty-two Latin letters is listed by three tables — §A.19 unqualified, §A.25 as \"proportionally-spaced\", §A.27 as \"proportionally-spaced\" — so for a proportionally set letter the frame separates §A.19 and leaves two listings whose Remarks cells are identical character for character. The axis that separates those two is not in the Remarks column at all: §3.9.2 defines cl-25 by what the characters are used for, a combination of Latin or Greek characters denoting an SI unit, and §A.25's own heading names it 単位記号中の文字, characters inside a unit symbol. That is a property of the construct an occurrence sits in, which its caller declares, and this input declares none, so the cl-25 listing describes nothing here. What remains is §A.27, and §3.2.6's Note independently says the same thing about a proportional Western character. The case deliberately places the letter in Japanese text rather than in a Western word, because that is §3.2.6's own subject and because it is where an implementation is most tempted to answer cl-19 from the surrounding script.",
+      "input": {
+        "kind": "classify",
+        "text": "Aタイプ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 722, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 7, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+0041, with §3.9.2's definition of cl-25 and §3.2.6's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 25 } },
+          "why": "§A.25 lists 0041 with the same Remarks cell as §A.27, so the frame does not separate them and nothing in the tables does. §3.9.2 separates them: cl-25 is the class of characters inside a unit symbol, which is a fact about the construct rather than about the key, and this occurrence declares no construct. Answering cl-25 from the Remarks column alone makes every proportionally set Latin letter in the document a unit symbol."
+        },
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "The answer of an implementation that classifies by the surrounding script: the letter stands in Japanese text, so it is treated as a quasi Japanese character. §3.2.6's Note says the opposite in so many words, and §A.19's listing of 0041 is unqualified while §A.27's is not."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/fullwidth-latin-capital-a/wide-fold-full-em",
+      "rules": ["3.2.4", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The canonical instance of the fold and of what the fold does not decide. U+FF21 FULLWIDTH LATIN CAPITAL LETTER A appears in no Appendix A table under any class, so an implementation that looks it up and stops finds nothing; the §A preamble Note quoted above licenses reading the compatibility counterpart as the key the document lists, and its Wide decomposition is U+0041, which §A.19, §A.25 and §A.27 all name. The fold therefore lands the occurrence on 106 of §A.27's keys — every ASCII key from U+0021 to U+007E among them — and settles nothing by itself, because it arrives asserting a frame. The frame is declared full-width for the reason the compatibility code point exists: that is what it encodes, and it is what the caller said by typing it. §A.27's one qualification is not met, §A.25's is not met, §A.19's unqualified listing remains, and §3.2.4's Note names cl-19 for exactly this occurrence. An implementation that folds and then answers from §A.27 has used the fold to erase the only fact in the input.",
+      "input": {
+        "kind": "classify",
+        "text": "Ａタイプ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A's preamble Note and §A.19's unqualified listing of U+0041, with §3.2.4's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "The answer of an implementation that folds U+FF21 onto U+0041 and then reads §A.27, which lists that key. The fold is a lookup and not a classification: the occurrence arrives on the full-width frame, which is the one frame §A.27's Remarks cell excludes, and §3.2.4's Note assigns it to cl-19."
+        },
+        {
+          "expect": { "class": { "item": 0, "class": 25 } },
+          "why": "§A.25 lists 0041 as \"proportionally-spaced\", and this occurrence is not. §3.9.2's Note on cl-25 also excludes it in words: a unit built on a full-width character frame (全角単位字) is not part of the characters for units described there."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/european-numeral/proportional-frame",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In horizontal writing mode the basic approach is to use proportional Western fonts (Figure 90). For European numerals, both half-width fonts and proportional fonts are used. 横組では，原則としてプロポーショナルな欧字を用いる（Figure 90）．また，アラビア数字は，半角のアラビア数字又はプロポーショナルなアラビア数字を用いる．",
+      "rationale": "U+0031 is one of the six keys in the whole of Appendix A that four classes name — §A.19, §A.24, §A.25 and §A.27 — and all six involve cl-27, so this is where the frame carries the most weight anywhere in the document. The four listings say four different things about the width: §A.19 nothing, §A.24 \"half-width\" / 「字幅は半角」, §A.25 \"half-width or proportional\", §A.27 \"proportionally-spaced\". A proportional occurrence satisfies §A.25 and §A.27; §A.25 is the class of characters inside a unit symbol, which §3.9.2 defines by the construct and which this input does not declare, so §A.27 is what is left. The sentence quoted above is why the caller has a genuine choice to declare rather than a formality: the document itself says both half-width and proportional numerals are used in horizontal composition. The two cases below declare the other two frames over the same text, and the first of them is byte-identical to this one apart from the frame: the numeral's advance is 500 in both, because a tabular figure and a half-width figure really do measure the same, which is the whole reason ADR 0002 refuses to read the frame out of the advance.",
+      "input": {
+        "kind": "classify",
+        "text": "その1つ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "proportional", "scale": 0 },
+          { "start": 7, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+0031, with §3.2.6's Note and §3.2.2 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 24 } },
+          "why": "§A.24 qualifies its listing of 0031 with \"half-width\" / 「字幅は半角」, and §3.2.6's Note says half-width European numerals mixed with Japanese text are cl-24. This occurrence declares the proportional frame, so neither sentence describes it. Answering cl-24 for every European numeral standing in Japanese text reads the neighbors and not the declaration."
+        },
+        {
+          "expect": { "class": { "item": 2, "class": 19 } },
+          "why": "§A.19's listing of 0031 carries no Remarks, and §3.2.4's Note reaches only full-width and fixed-space numerals. A proportional numeral is neither."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/european-numeral/half-width-frame",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Note that half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class. また，和文との混植用に設計された半角のアラビア数字がある．このアラビア数字の文字クラスは，この文書では連数字中の文字（cl-24）として扱う．",
+      "rationale": "Where cl-27 stops on the numeral axis, stated by the second sentence of the same Note that starts it. The input is byte-identical to the case above except for the numeral's declared frame — the same four items, the same four advances, the same neighbors — and the class changes, which is the assertion. §A.24's Remarks cell for 0031 reads \"half-width\" / 「字幅は半角」 and this occurrence declares that frame, so §A.24 describes it and §A.27, whose one qualification is the proportional frame, does not. The two halves of the quoted Note do not name the same set: the English adds \"fixed-width\" to \"half-\" while the Japanese says 半角 alone, and §3.2.4's English assigns \"full-width and fixed-width\" numerals to cl-19, so a fixed-width numeral is given to two classes by the English rendering and to one by the Japanese. That divergence cannot be exercised here and is reported rather than papered over: this occurrence is half-width, which every rendering of every sentence sends to cl-24.",
+      "input": {
+        "kind": "classify",
+        "text": "その1つ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for U+0031 (Remarks \"half-width\" / 「字幅は半角」), with §3.2.6's Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 27 } },
+          "why": "The answer of an implementation whose cl-27 is \"a Latin code point\". §A.27's single Remarks sentence qualifies all 778 of its rows as proportional, and §3.2.6's Note takes the half-width numeral out of cl-27 by name."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/european-numeral/full-width-frame",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "When full-width and fixed-width Western characters or European numerals are set in vertical writing mode as \"quasi\" Japanese characters, inter-character spacing between these characters and hiragana (cl-15), katakana (cl-16) or ideographic characters (cl-19) are set solid, similar to ordinary ideographic characters (cl-19).",
+      "rationale": "The third frame of the same key, which completes the partition and is the reason the frame is an axis rather than a flag. §A.19, §A.24, §A.25 and §A.27 all list U+0031, and the three cases over this one text answer three different classes from three declared frames: proportional is cl-27 by §3.2.6's Note, half-width is cl-24 by the second sentence of that same Note and by §A.24's Remarks cell, and full-width is cl-19 by §3.2.4's Note and by §A.19's unqualified listing. Nothing but the frame differs anywhere in the three inputs, and no two of the three answers are the same, so a classification that is a function of the code point gets at least two of the three wrong and cannot get all three right by any tie-break. The Japanese half of the section heading names this occurrence exactly — 全角のモノスペースのアラビア数字 — while the English body says \"full-width and fixed-width\" and its own Note says \"full-width and fixed-space\" for what the Japanese states once; this case declares the full width, which every one of those renderings covers.",
+      "input": {
+        "kind": "classify",
+        "text": "その1つ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 7, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19's unqualified listing of U+0031, with §3.2.4 and its Note (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 24 } },
+          "why": "§A.24's Remarks cell for 0031 reads \"half-width\" / 「字幅は半角」 and §3.2.6's Note reaches half- and fixed-width numerals. A full-width numeral is neither, and §3.2.4's Note names cl-19 for it in so many words."
+        },
+        {
+          "expect": { "class": { "item": 2, "class": 27 } },
+          "why": "§A.27's one Remarks sentence qualifies all 778 of its rows as proportionally spaced. A full-width monospace numeral is the occurrence §3.2.4 exists to describe, and it is the far end of the axis §3.2.6's Note puts cl-27 at."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/western-comma/proportional-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Western characters (cl-27) include punctuation marks, such as commas, used in Western context. Among these punctuation marks, several marks are used both in a Japanese context and Western context. However, these marks have different character shapes depending on whether they are used in a Japanese context or Western context.",
+      "rationale": "The document naming its own example. U+002C is listed three times — §A.7 with 「横組で使用」, §A.24 with 「位取りのコンマ／字幅は四分角又は半角」, §A.27 with \"proportionally-spaced\" — and this occurrence declares the proportional frame and no role, so of the three only §A.27 describes it. The frame is not a convenience here: §3.1.2 states that the character advance of a comma (cl-07) is half-width, so a proportional occurrence cannot be a cl-07 occurrence, and the same code point set the two ways is two classes with two different advances and two different line positions. Two divergences sit inside the quoted paragraph and neither is recorded anywhere in this repository's derived data: the English says the class includes punctuation \"such as commas\" where the Japanese says 「欧文として使用する括弧類などの欧文の約物」, brackets, and the worked example both halves then give is LEFT PARENTHESIS and RIGHT PARENTHESIS rather than a comma. The case rests on the part both halves state — that these marks exist in a Japanese reading and a Western reading which differ in width — because that part is the one the frame answers.",
+      "input": {
+        "kind": "classify",
+        "text": "x,y",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 250, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+002C, against §A.7 and §A.24 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 7 } },
+          "why": "§3.1.2 states the character advance of commas (cl-07) as half-width, and §3.9.2's cl-27 Note gives the Western design of these marks as proportional. An occurrence declared proportional satisfies §A.27's Remarks cell and not §A.7's reading of the same key."
+        },
+        {
+          "expect": { "class": { "item": 1, "class": 24 } },
+          "why": "§A.24 qualifies its listing of 002C with the digit-grouping role 「位取りのコンマ」 and a quarter em or half-width frame. This occurrence declares neither, and the characters beside it are letters rather than digits."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/full-stop/western-abbreviation-point",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "The usage of these two differently designed commas should be explicit. Usually, in a Japanese context Japanese design is used, and in Western context Western design is used. これらにつき，どの部分に和文用，どの部分に欧文用を使用するかは指定による．和文中は和文用を，欧文中は欧文用を使用するのが原則であるが，判断に迷う例もある．",
+      "rationale": "The companion of the comma case on the other of the two keys §3.1.1 lists as a horizontal full stop, and the one where the role axis is visible. U+002E is listed by §A.6 with 「横組で使用」, by §A.24 with 「小数点／字幅は四分角又は半角」 — a decimal-point role and a frame — and by §A.27 as proportional. This occurrence declares the proportional frame and no role, and it ends an abbreviation rather than separating digits, so §A.24's qualification is unmet on both of its halves and §A.27's is met. The quoted sentence is the document requiring exactly this declaration, and its two renderings do not say the same thing: the English \"should be explicit\" states an obligation on the author, while the Japanese 「指定による」 states that the answer is given by designation — which is the reading this suite's input format takes, since the frame is a datum the caller supplies rather than a quality of the text. That divergence is not recorded in spec/derived/defects.tsv or spec/derived/questions.tsv and is reported rather than resolved here.",
+      "input": {
+        "kind": "classify",
+        "text": "etc.",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 278, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 3, "advance": 250, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+002E, against §A.6 and §A.24 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 3, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 3, "class": 6 } },
+          "why": "§A.6's listing of 002E is the horizontal Japanese full stop, and §3.1.2 gives a cl-06 member a half-width advance. A proportional occurrence is described by §A.27's Remarks cell and by neither of those."
+        },
+        {
+          "expect": { "class": { "item": 3, "class": 24 } },
+          "why": "§A.24 qualifies its listing of 002E with the decimal-point role 「小数点」 and a quarter em or half-width frame. This occurrence declares no role and is not between digits."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/word-space/absent-from-this-table",
+      "rules": ["3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Note that Western word space (cl-26) is a one third em space, in principle, except at line head, line head of warichu, line end and line end of warichu. なお，欧文間隔（cl-26）は，三分アキを原則とする．",
+      "rationale": "The boundary the table draws by omission, and the one place a reader has to check rather than infer. §A.27 publishes 778 keys and U+0020 SPACE is not among them; §A.26 publishes one key and it is U+0020. So the space between two Western words in a Western phrase is not a Western character in this document, however Western the phrase is and however proportionally the letters around it were set. The distinction is load bearing rather than taxonomic, because cl-26 is named as the first priority for both reduction and expansion by §3.2.6 and cl-27 is not: an implementation that widened cl-27 to \"whatever a Western font set\" would lose the one class its justifier is told to drain first. The frame declared here is the third em, which is the geometry §3.2.2 states for this occurrence in so many words, and the stream declares an em of 1200 so that a third of it is an integer and no advance in this case is rounded.",
+      "input": {
+        "kind": "classify",
+        "text": "in situ",
+        "scales": [{ "inline_em": 1200, "block_em": 1200 }],
+        "items": [
+          { "start": 0, "advance": 333, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 600, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 400, "frame": "third-em", "scale": 0 },
+          { "start": 3, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 333, "frame": "proportional", "scale": 0 },
+          { "start": 5, "advance": 400, "frame": "proportional", "scale": 0 },
+          { "start": 6, "advance": 600, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.26, its sole row (U+0020); §A.27's 778 rows do not include it (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 26, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 27 } },
+          "why": "§A.27 enumerates 778 keys and 0020 is not one of them. Answering cl-27 from the Western letters on both sides is classifying by context rather than by the tables, and it empties cl-26 of its only member at the exact place §3.2.6 tells a line adjuster to look first."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/tone-bar-sequence/falling-contour",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "˥˩ <02E5, 02E9> <MODIFIER LETTER EXTRA-HIGH TONE BAR, MODIFIER LETTER EXTRA-LOW TONE BAR> 声調記号下降調 proportionally-spaced プロポーショナル",
+      "rationale": "cl-27 is the only class in Appendix A whose keys are not all single code points and whose sequences are not all a base plus one combining mark: eleven of its 778 rows are written in the ordered-sequence form <xxxx, yyyy>, and two of the eleven are the same two code points in the two orders. The row quoted above is one of them. It is a single member with a single Common name, 声調記号下降調, the falling tone contour, and the item that carries it covers both code points and is one occurrence — which is the fact this case states, because the input is well formed only if no key is cut. A naive reader of the table sees a four-hex-digit UCS column everywhere else in Appendix A and drops these eleven rows, and the loss is silent: every component of every sequence key is also listed by §A.27 alone, so nothing an implementation can ask about a code point reveals the omission.",
+      "input": {
+        "kind": "classify",
+        "text": "˥˩",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for <02E5, 02E9> (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/tone-bar-sequence/rising-contour",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "˩˥ <02E9, 02E5> <MODIFIER LETTER EXTRA-LOW TONE BAR, MODIFIER LETTER EXTRA-HIGH TONE BAR> 声調記号上昇調 proportionally-spaced プロポーショナル",
+      "rationale": "The same two code points in the other order, and the row that makes the key an ordered sequence rather than a set. §A.27 lists <02E5, 02E9> and <02E9, 02E5> as two distinct members with two distinct Common names — 声調記号下降調, the falling contour, against 声調記号上昇調, the rising one — five rows apart, each sitting immediately after its own first code point in the table's ascending order. A lookup structure keyed on an unordered pair of code points holds one entry where the document holds two, and a lookup structure keyed on a sorted sequence answers this case with the falling contour's row. Neither error changes the class, because both rows carry the identical Remarks cell and every other row of §A.27 does too; what it changes is which member the implementation believes it matched, which is the provenance a report is supposed to carry.",
+      "input": {
+        "kind": "classify",
+        "text": "˩˥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for <02E9, 02E5> (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/tone-bar/component-listed-alone",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "˥ 02E5 MODIFIER LETTER EXTRA-HIGH TONE BAR 声調記号極高 proportionally-spaced プロポーショナル",
+      "rationale": "The row that makes longest-first matching load bearing rather than an optimization. U+02E5 is a key of §A.27 standing alone, on the same frame and with the same Remarks cell as the two sequences it begins and ends; so is U+02E9, and so is every other component of every one of the eleven sequence keys — 00E6, 0254, 0259, 025A, 028C, 0300, 0301, 02E5 and 02E9 all appear in the table as single keys in their own right. A single extra-high tone bar in isolation is therefore a perfectly ordinary member of this class and this case says so. Read against the two cases above it says the other thing as well: an implementation that split <02E5, 02E9> into two items would produce two occurrences each of which is a valid key on the same frame with the same answer, so no test that asks \"is this a key?\" can find the split. Only the item boundary can, which is why ADR 0018 makes it a refusal rather than a heuristic.",
+      "input": {
+        "kind": "classify",
+        "text": "˥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 313, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+02E5 (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/tone-bar-sequence/item-after-the-pair",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "˥˩ <02E5, 02E9> <MODIFIER LETTER EXTRA-HIGH TONE BAR, MODIFIER LETTER EXTRA-LOW TONE BAR> 声調記号下降調 proportionally-spaced プロポーショナル",
+      "rationale": "The only construction in this format that makes the split of a sequence key observable, and it works by asking about a later item rather than about the sequence. The stream is two items over three code points: the falling contour, which is one key of §A.27, and then a hiragana. An implementation that matched shortest-first, or that had no sequence keys at all, holds three items rather than two, and its item 1 is U+02E9 and answers cl-27 — a true statement about that code point and a wrong answer to this case, whose item 1 is 「あ」 and is cl-15. Every other way of asking is blind: the class of the sequence and the class of each of its halves are all cl-27 on the same frame, so only an ordinal into the stream can tell the two readings apart. The answer this case asks for is deliberately not a cl-27 answer, because the failure it detects is a cl-27 failure that shows up nowhere in cl-27.",
+      "input": {
+        "kind": "classify",
+        "text": "˥˩あ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.15's listing of U+3042, reached by the ordinal §A.27's sequence key leaves free (§3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 15, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "The answer of an implementation that split <02E5, 02E9> into two occurrences: its item 1 is U+02E9, which §A.27 does list on the proportional frame, so the class it reports is a true statement about the wrong item. §A.27 lists the ordered pair as one member, and ADR 0018 makes an item one occurrence of one key."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/combining-sequence/ae-with-grave-accent",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "æ̀ <00E6, 0300> <LATIN SMALL LETTER AE, COMBINING GRAVE ACCENT> グレーブアクセント付きAE小文字 proportionally-spaced プロポーショナル",
+      "rationale": "The other shape the eleven sequence keys take, and the nine of them that a normalizing implementation is most likely to lose. Nine of §A.27's sequences are a Latin letter followed by U+0300 COMBINING GRAVE ACCENT or U+0301 COMBINING ACUTE ACCENT — over 00E6, 0254, 0259, 025A and 028C — and they exist because the document's cl-27 reaches beyond ordinary Western orthography into IPA and Pinyin and polytonic Greek, which is also why §A.27's Name column annotates 17 of its rows with the usage that put them there: LATIN CAPITAL LETTER AE (ash), COMBINING GRAVE ACCENT (Varia), COMBINING ACUTE ACCENT (Oxia, Tonos), DOT ABOVE (Mandarin Chinese light tone). None of these nine sequences has a precomposed form in ISO/IEC 10646, so no normalization joins them and none splits them; the item boundary is the only thing that says this is one occurrence, and both of its halves are separately listed keys of the same class on the same frame, so the split is again invisible to a key test. The item is one advance because the caller shaped and measured the cluster, which is what ADR 0002 means by the caller having measured it.",
+      "input": {
+        "kind": "classify",
+        "text": "æ̀",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 667, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for <00E6, 0300> (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/left-double-quotation-mark/vertical-rotated-western",
+      "rules": ["3.1.2", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "LEFT DOUBLE QUOTATION MARK \"“\" and RIGHT DOUBLE QUOTATION MARK \"”\" are exclusively for horizontal writing mode and not to be used in vertical writing mode. Also, LEFT SINGLE QUOTATION MARK \"‘\" and RIGHT SINGLE QUOTATION MARK \"’\" are exclusively for horizontal writing mode and not to be used in vertical writing mode. However, in vertical writing mode, when Western characters (cl-27) are composed rotated 90 degrees clockwise, these quotation marks are sometimes used.",
+      "rationale": "The only sentence in the document that says anything about cl-27 and the writing direction, and it is the sentence that reconciles two listings which otherwise contradict each other. §A.1 lists 201C with the Remarks cell \"used in horizontal composition\" / 「横組で使用」 while §A.27 lists the same key with no direction qualification at all, only the proportional frame; read as a pair with no further sentence, a vertical occurrence of 201C is described by §A.27 and excluded by §A.1, which looks like an accident. The quoted Note says it is not: in vertical composition these quotation marks are used exactly when a Western character is set rotated 90 degrees clockwise, which is the setting §3.2.6 governs and which §3.2.3 lists as one of the three ways Western text is set in a vertical line. So the direction removes the cl-01 candidate rather than the cl-27 one, and §A.27's silence about direction is the correct silence. Note what the case does not claim: membership of cl-27 is not direction-conditional here, and no occurrence enters this class because the line runs vertically. The direction only settles which of two listings still describes the occurrence.",
+      "input": {
+        "kind": "classify",
+        "text": "“a”",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 3, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 444, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+201C, with §3.1.1's Note; §A.1's listing of the same key is qualified 「横組で使用」 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 1 } },
+          "why": "§A.1's listing of 201C carries the Remarks cell \"used in horizontal composition\" / 「横組で使用」, which this occurrence does not satisfy, and §3.1.2 gives a cl-01 member a half-width advance, which it does not declare either. Answering cl-01 in vertical composition applies a listing the document scoped to the other direction."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/left-double-quotation-mark/horizontal-japanese-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In horizontal writing mode, pairs of LEFT DOUBLE QUOTATION MARK \"“\" and RIGHT DOUBLE QUOTATION MARK \"”\" or pairs of LEFT SINGLE QUOTATION MARK \"‘\" and RIGHT SINGLE QUOTATION MARK \"’\" may be used in place of LEFT CORNER BRACKET \"「\" and RIGHT CORNER BRACKET \"」\".",
+      "rationale": "The same key in the direction where both listings are available, which is what makes the frame do the work. In horizontal composition §A.1's qualification 「横組で使用」 is satisfied and §A.27's \"proportionally-spaced\" is not, because this occurrence is set on the half em §3.1.2 gives an opening bracket; so the direction admits two candidates and the frame keeps one. The sentence quoted is why the Japanese reading of this key is a real reading and not an edge case: the document offers these marks as the horizontal alternative to the corner brackets, which are Japanese quotation marks set on a Japanese body. Read against the vertical case above, the pair says that direction and frame are two independent axes over one key and that neither is a substitute for the other: an implementation that answered cl-27 from the frame alone would be wrong in vertical only, and one that answered cl-01 from the direction alone would be wrong here.",
+      "input": {
+        "kind": "classify",
+        "text": "“あ”",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.1's row for U+201C (Remarks 「横組で使用」), against §A.27's proportional qualification (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 1, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "§A.27's one Remarks sentence qualifies every one of its 778 rows as proportionally spaced, and this occurrence declares the half em. The direction alone does not put a key in cl-27: §A.27 states no direction anywhere, so a horizontal occurrence is no more a Western character than a vertical one."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/western-word/vertical-rotated-ninety-degrees",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Composition rules for Western characters, Western text and European numerals, set rotated 90 degrees clockwise in vertical writing mode, and horizontal writing mode, are as follows: 縦組で文字を時計回りに90度回転して配置する欧字・欧文・アラビア数字又は横組で混植する欧字・欧文・アラビア数字の配置方法は，次のようにする．",
+      "rationale": "Membership of cl-27 is stated for neither direction, and this case is what keeps that from being confused with the direction facts that do exist around it. §A.27's Remarks column qualifies its rows by the character frame and by nothing else, so no writing mode admits a key to this class and none removes one; the section that states cl-27's composition rules opens with the sentence quoted above, which names vertical composition and horizontal composition in the same breath and gives the same rules to both. Its subject is precisely this input: a Western word set rotated 90 degrees clockwise in a vertical line, which §3.2.3 lists as the way a word rather than a single letter is set vertically and for which it specifies proportional fonts, as in horizontal writing mode. The expected class is the same as it would be for the identical items with the direction unstated, which is the assertion — an implementation that pushed a direction fact down into the class layer would make the class of an occurrence change when the same text is reset, and the document conditions amounts and glyph choices on the direction, never a membership.",
+      "input": {
+        "kind": "classify",
+        "text": "Web",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 944, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 444, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's row for U+0057, whose Remarks cell states no direction; §3.2.6 and §3.2.3 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "The answer of an implementation that reasons \"vertical composition is Japanese composition, so a letter in it is a quasi Japanese character\". §3.2.4 reaches only full-width and fixed-space Western characters, and §3.2.3 names two other ways of setting Western text vertically, of which this is one; §A.19's listing of 0057 is unqualified and §A.27's is met."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.27/capital-sharp-s/not-listed-at-all",
+      "rules": ["3.2.4", "3.2.6", "3.9.2"],
+      "standing": "unstated",
+      "quote": "JIS X 4051 also provides similar  character classes but that are slightly different from this document. Furthermore JIS X 4051 states that it is implementation-defined how to handle characters that are not explicitly mentioned, e.g. whether they should belong to either class or not.",
+      "rationale": "Where the table stops, on the axis where a Western implementation will meet the boundary most often. U+00DF LATIN SMALL LETTER SHARP S is one of §A.27's 778 keys; U+1E9E LATIN CAPITAL LETTER SHARP S, its own upper case, is in no Appendix A table under any class. Nothing separates them typographically and no fold joins them — the Wide and Narrow decompositions are the only ones §A's preamble Note licenses, and a case mapping is not one of them — so the boundary here is the appendix's scope and not a judgment: §A enumerates the non-ideographic characters of ISO/IEC 10646 collections 285 and 286, and this code point was encoded after them. The quoted sentence is all the document says about such a key, and it says the handling is implementation-defined and does not replace that, so this project's answer is a published reading rather than a requirement and both readings are recorded with the question that selects each. The reading the empty overlay selects extends the one distinction JLReq draws over text its tables do not enumerate: §3.2.6 gives proportionally set Western text the composition rules of cl-27 and §3.2.4 gives full-width and fixed-space Western text those of cl-19, so the declared frame decides, and this occurrence declares the proportional one. The alternative answers the ideographic class for every unlisted key whatever its frame. Recorded in docs/decisions/unlisted-code-point.md.",
+      "input": {
+        "kind": "classify",
+        "text": "ẞ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 722, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/unlisted-code-point.md), by the frame §3.2.6 makes decisive",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.unlisted_code_point": "ideographic" },
+          "source": "The alternative reading of the same silence: the ideographic class for every unlisted key, whatever its frame",
+          "expect": {
+            "class": { "item": 0, "class": 19, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    }
+  ]
+}

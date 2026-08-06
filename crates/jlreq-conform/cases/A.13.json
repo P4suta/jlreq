@@ -1,0 +1,548 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.13",
+  "heading_en": "Postfixed abbreviations (cl-13)",
+  "heading_ja": "後置省略記号（cl-13）",
+  "cases": [
+    {
+      "id": "A.13/degree-sign/proportional-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "Usually, in a Japanese context Japanese design is used, and in Western context Western design is used. However, there are some ambiguous cases, such as \"エディター（editor）は……\". In this case, English spelling is indicated using parentheses in a Japanese line of text. In this particular case, Japanese design is better.",
+      "rationale": "U+00B0 is the first row of §A.13 and one of exactly three rows of that table carrying a Remark at all; all three carry the same one, `proportionally-spaced`. §A.27 lists the same UCS value, prints the same code point in its Character column, and carries the same Remark. Everywhere else in Appendix A the Remarks column is what separates a Japanese listing from a Western one — §A.13 prints ％ against UCS 0025 with an empty Remark while §A.27 prints % with `proportionally-spaced` — but for U+00B0, U+2032 and U+2033 the two listings agree in every column the document publishes, so no frame (字幅), role or construct a caller can declare separates them. §3.9.2 concedes cases like this and states a preference rather than a rule, so both survivors are recorded here rather than one being chosen silently. This project answers with the lowest-numbered surviving class, which is §A.13's; the reading and the reasons the other orderings were rejected are written down in docs/decisions/ambiguous-context.md.",
+      "input": {
+        "kind": "classify",
+        "text": "°",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 400,
+            "scale": 0,
+            "frame": "proportional"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md): the lowest-numbered surviving class",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.ambiguous_context": "highest-class"
+          },
+          "source": "The other reading of the same silence: the highest-numbered surviving class, which is §A.27's Western listing",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/square-cc/last-table-row",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "§A.13, row 32 of 32 (Character | UCS | Name | Common name | Remarks): ㏄ | 33C4 | SQUARE CC | 全角CC | (empty)",
+      "rationale": "The thirty-second and last row of §A.13. Its Remarks cell is empty, so §A.13 states no frame (字幅) for it, and no other Appendix A table lists U+33C4 at all — the answer is cl-13 whatever the caller declares, which is why this case fixes a frame and asserts nothing about it. Twenty-six of §A.13's thirty-two keys have exactly this shape, and this one is their representative: an implementation that transcribed the head of the table, or that took the seven characters §3.9.2 prints as its illustration of the class, has no answer here.",
+      "input": {
+        "kind": "classify",
+        "text": "㏄",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.13, the only Appendix A table that lists U+33C4",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/per-mille-sign/full-width-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "§A.13, row 7 of 32 (Character | UCS | Name | Common name | Remarks): ‰ | 2030 | PER MILLE SIGN | パーミル | (empty) — against §A.27 (Character | UCS | Name | Common name | Remarks): ‰ | 2030 | PER MILLE SIGN | パーミル | proportionally-spaced",
+      "rationale": "U+2030 is listed by cl-13 and by cl-27, and unlike the percent sign and the cent sign it has no full-width compatibility counterpart in ISO/IEC 10646: both tables print the identical code point in the Character column. The Remarks column is therefore the sole discriminator for this key — §A.27's cell names the proportional frame (字幅) and §A.13's is empty, and an empty Remarks cell is what claims the frames another listing's Remark does not name. The same structure decides UCS 0035, where §A.19's empty cell prints the full-width ５, §A.24's `half-width` cell prints 5 and §A.27's `proportionally-spaced` cell prints 5: one UCS value, three classes, one column telling them apart. A caller who set the per-mille sign on the Japanese em has to say so here, because no code point says it for them.",
+      "input": {
+        "kind": "classify",
+        "text": "‰",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.13 against §A.27, separated by the Remarks column",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for U+2030 reads `proportionally-spaced`, which names a frame this occurrence does not declare. Answering cl-27 for a full-width per-mille sign reads the Character column, which is identical in both tables, and ignores the only column that separates the two listings."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/per-mille-sign/proportional-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "§A.13, row 7 of 32 (Character | UCS | Name | Common name | Remarks): ‰ | 2030 | PER MILLE SIGN | パーミル | (empty) — against §A.27 (Character | UCS | Name | Common name | Remarks): ‰ | 2030 | PER MILLE SIGN | パーミル | proportionally-spaced",
+      "rationale": "The same code point and the same text as the case above, with one declaration changed. §A.27's Remarks cell names the proportional frame (字幅), so a per-mille sign the caller set proportionally is §A.27's listing and not §A.13's. The pair is the frame distinction §A.13's Remarks column draws, published as a differential: an implementation keyed on the code point alone answers the same class for both cases and is therefore wrong in one of them, whichever class it picked.",
+      "input": {
+        "kind": "classify",
+        "text": "‰",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 700,
+            "scale": 0,
+            "frame": "proportional"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.27, whose Remarks cell for U+2030 names the proportional frame",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          },
+          "why": "§A.13's Remarks cell for U+2030 is empty and therefore states no frame, while §A.27's names the proportional one. A listing that names a frame claims the occurrences set on it; an empty cell claims the rest."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/percent-sign/compatibility-form",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "§A.13's sixth row prints ％ (U+FF05) in the Character column against 0025 in the UCS column — one of exactly two rows of this table where the two columns disagree, the other being the cent sign. The Appendix A preamble Note quoted above is the rule that produces the disagreement, and honoring it is what makes ordinary Japanese text classifiable at all: the caller typed the character §A.13 prints, and folding its Wide decomposition onto U+0025 is what reaches the row. Passing U+FF05 is itself a statement that the occurrence is full-width, which is also what separates it from §A.27's listing of the same UCS value, whose Remarks cell reads `proportionally-spaced` and whose Character cell prints %.",
+      "input": {
+        "kind": "classify",
+        "text": "％",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.13 row 6, reached through the folding the §A preamble Note states",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27 lists UCS 0025 with the Remark `proportionally-spaced` and prints % in its Character column; §A.13 lists it with an empty Remark and prints ％. A full-width occurrence is the second listing, not the first."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/cent-sign/compatibility-form",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The other of the two §A.13 rows whose Character and UCS columns disagree: ￠ (U+FFE0) against UCS 00A2. It is the sharper of the two, because U+FFE0 is what a Japanese input method produces and U+00A2 is not, so an implementation that keys Appendix A on the UCS column and never folds reports the character its callers actually send as belonging to no class at all. §A.27 lists the same UCS value with a `proportionally-spaced` Remark and prints ¢ in its Character column, so the frame (字幅) separates the two listings here exactly as it does for the percent sign.",
+      "input": {
+        "kind": "classify",
+        "text": "￠",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.13 row 5, reached through the folding the §A preamble Note states",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/percent-sign/kinsoku-loose-reclassification",
+      "rules": [
+        "C.2#9",
+        "C.3"
+      ],
+      "standing": "alternative",
+      "quote": "There is no line break opportunity between preceding grouped numerals (cl-24) and trailing postfixed abbreviations (cl-13). The alternative approach is to allow a line to break before trailing PERCENT SIGN \"%\", in which case PERCENT SIGN \"%\" shall be treated as a member of the ideographic character (cl-19) class.",
+      "rationale": "§C.2 note 9's alternative does not merely permit a break: it says the percent sign \"shall be treated as a member of\" cl-19, so it is a change of class and it answers every matrix rather than one boundary. §C.3 is what puts it in force, and it does so at member granularity — its Loose level relaxes, of all of cl-13, the percent sign alone. The two readings §C.3 can be given are not equivalent and both are recorded: under a reclassification the occurrence answers cl-19, under an override of Table 2 alone it stays cl-13 and only the cell changes. The fallback entry is what a strict, very strict or very loose policy selects, and that is deliberate rather than an omission: this note is the only sentence in the document that moves any cl-13 member into another class, it names the percent sign alone, and §C.3's Very loose level — which relaxes cl-13 as a whole class — names no class to relax it into. Two locale divergences sit on the path from the level to the class, and both are recorded here rather than resolved silently: this note prints different subjects in its two halves, U+0025 in English and U+FF05 in Japanese, which coincide only after the Appendix A preamble's folding and are why this case declares the full-width form; and only the Japanese half of §C.3's Loose list says which class the relaxed sign belongs to — 「後置省略記号（cl-13）のパーセント」 against a bare PERCENT SIGN \"%\" in English — so a reader of the English rendering alone cannot connect the level to this note at all.",
+      "input": {
+        "kind": "classify",
+        "text": "％",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred (§C.2 note 9's main sentence; §C.3 Strict, the default level)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "loose"
+          },
+          "source": "§C.2 note 9's stated alternative, put in force by §C.3's Loose (Magazines) level",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "loose",
+            "kinsoku.relaxation_mechanism": "matrix"
+          },
+          "source": "§C.3 read as an override of Table 2 alone, under which a relaxation changes a cell and not a class",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/square-km/proportional-spelling-is-not-a-member",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "§A.13, row 30 of 32 (Character | UCS | Name | Common name | Remarks): ㎞ | 339E | SQUARE KM | 全角KM | (empty)",
+      "rationale": "This is the boundary §A.13 draws that a reader of the table alone cannot see. U+339E SQUARE KM is a member of cl-13 — listed with an empty Remark, and by no other Appendix A table — while the same unit spelled with proportional Western letters is not a member of cl-13 at all, and §3.1.10's Note says so in the document's own words: \"In this document, description of units with proportional Western characters, such as km and kg, are treated as unit symbols (cl-25).\" So ㎞ is one occurrence in cl-13 and km is two occurrences in cl-25, and what decides the class is which of the two the caller encoded rather than what the unit is. Eight of §A.13's thirty-two keys are squared Latin units of this kind and sixteen more are squared katakana units, so more than two thirds of this class is the compatibility block that a Western spelling would take out of it.",
+      "input": {
+        "kind": "classify",
+        "text": "㎞",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§A.13, the only Appendix A table that lists U+339E",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "§3.1.10's Note puts units written with proportional Western characters in cl-25, and §A.25 enumerates the Latin letters and digits that appear inside one. It does not list U+339E and §A.13 does, so the squared compatibility character is a postfixed abbreviation and not a unit symbol."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/grouped-numeral-percent/line-break",
+      "rules": [
+        "3.1.10",
+        "C.2#9",
+        "C.3"
+      ],
+      "standing": "alternative",
+      "quote": "There is no line break opportunity between preceding grouped numerals (cl-24) and trailing postfixed abbreviations (cl-13). The alternative approach is to allow a line to break before trailing PERCENT SIGN \"%\", in which case PERCENT SIGN \"%\" shall be treated as a member of the ideographic character (cl-19) class.",
+      "rationale": "The preceding occurrence is a half-width European numeral: §A.24 lists U+0035 with the Remark `half-width`, §A.19 lists it with an empty Remark and prints the full-width ５, and §A.27 lists it as `proportionally-spaced`, so the declared half-em frame (字幅) is what makes this occurrence cl-24 and nothing else has to be declared to say it. §3.1.10 and §C.2 note 9 both deny the break, §3.1.10 because \"such character sequences are to be handled as one unit\", and §C.3 is the only thing in the document that opens it. Both levels that open it are recorded, and they open it for different reasons: Very loose relaxes cl-13 as a whole class, Loose relaxes the percent sign alone. This expectation states breakability and nothing else on purpose — the spacing at this boundary is a Table 1 cell and the breakability a Table 2 cell, and both tables are published only as PDFs that the vendored snapshot deliberately does not carry, so an amount stated here would be invented.",
+      "input": {
+        "kind": "boundary",
+        "text": "5％",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "scale": 0,
+            "frame": "half-em"
+          },
+          {
+            "start": 1,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred (§C.2 note 9's main sentence, §3.1.10); what Strict and Very strict select",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "loose"
+          },
+          "source": "§C.3 Loose (Magazines), whose list names the percent sign of cl-13",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose"
+          },
+          "source": "§C.3 Very loose (Newspapers), whose list names cl-13 as a whole class",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.13/grouped-numeral-degree-celsius/line-break",
+      "rules": [
+        "3.1.10",
+        "C.2#9",
+        "C.3"
+      ],
+      "standing": "alternative",
+      "quote": "Very loose (Newspapers) — Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it. — … Prefixed abbreviations (cl-12), Postfixed abbreviations (cl-13)",
+      "rationale": "The same boundary with a different member of the same class, and the pair is what makes §C.3's two granularities mechanical. Very loose names cl-13 as a whole class, so U+2103 is relaxed there exactly as the percent sign is. Loose names the percent sign alone, so U+2103 is still unbreakable at that level, and the fallback entry — which is also what Strict and Very strict select — is what a `loose` policy selects here. An implementation that models §C.3 as one set of classes per level passes the percent case and fails this one at Loose, which is the whole reason the two are published together. §A.13 states no Remark for U+2103, so its frame decides no class and is declared here only because the boundary needs an advance.",
+      "input": {
+        "kind": "boundary",
+        "text": "5℃",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "scale": 0,
+            "frame": "half-em"
+          },
+          {
+            "start": 1,
+            "advance": 1000,
+            "scale": 0,
+            "frame": "full-em"
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred (§C.2 note 9's main sentence, §3.1.10); unchanged by §C.3's Loose level, which names the percent sign and not the class",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose"
+          },
+          "source": "§C.3 Very loose (Newspapers), whose list names cl-13 as a whole class",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    }
+  ]
+}

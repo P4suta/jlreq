@@ -20,5 +20,9 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[dependencies]
+jlreq = { path = "../jlreq", version = "0.0.0" }
+jlreq-spec = { path = "../jlreq-spec", version = "0.0.0" }
+
 [lints]
 workspace = true

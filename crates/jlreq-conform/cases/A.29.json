@@ -1,0 +1,699 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.29",
+  "heading_en": "Warichu closing brackets (cl-29)",
+  "heading_ja": "割注終わり括弧類（cl-29）",
+  "cases": [
+    {
+      "id": "A.29/right-parenthesis/half-em-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "warichu opening brackets (cl-28) and warichu closing brackets (cl-29) are used for surrounding inline cutting notes and the space. They are in a separate class since they differ from normal brackets with regard to their processing. / 割注始め括弧類（cl-28）又は割注終わり括弧類（cl-29）は，割注を囲むために用いる括弧類及び空き量のことである．一般に使用する括弧類と組版処理が異なるので，別の文字クラスにしている．",
+      "rationale": "The first row of §A.29, whose table holds exactly three: 0029, 3015 and 005D, in that order, keyed by the UCS column. Every one of the three is also a row of §A.2, and the Remarks 備考 cell of all six rows is empty in both locales, so nothing in either table separates the two listings and no input that supplies only a code point and a frame can be cl-29 rather than cl-02. What separates them is the quoted Note: the members of cl-29 are the brackets used for surrounding an inline cutting note (割注, warichu), which is a fact about the construct the occurrence sits in and not about the character. This input declares that construct. The item asked about is the bracket at the tail of the note, which is where §3.4.2 puts it — 割注全体の先頭及び末尾に, at the head and the tail of the whole note — and the two note characters are declared at half the running size while the bracket is declared at the running size, which is the same paragraph's relation stated from the other end: 割注を囲む括弧類のサイズは，割注の文字サイズの2倍にする, the surrounding brackets are twice the character size of the note. That Japanese paragraph is also the only place the document coins the name cl-29; the English paragraph at the same place never mentions cl-28 or cl-29 at all, so an English-only reader has no definition site for this class outside §3.9.2's list and §A.29's heading. The frame is declared because the key is also a cl-02 key and §3.1.2 makes the frame of a cl-02 occurrence a geometry the caller owns; the half em is the advance that sentence states for cl-02. §A.29 states no 字幅 of its own — its Remarks column is empty — and cl-29 is not one of the five classes §3.1.2 names, which is what the full-em twin below asserts by answering the same class, byte for byte, from the ideographic frame.",
+      "input": {
+        "kind": "classify",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, first row, read under §3.9.2's Note on cl-28 and cl-29",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 2 } },
+          "why": "The answer of an implementation whose classification is a function of the code point and the frame. §A.2 and §A.29 both list 0029 with an empty Remarks cell, so nothing but the declared construct separates them; an implementation that answers cl-02 here answers it for every warichu closing bracket, and cl-29 becomes an unreachable class with a non-empty table. §3.9.2 says the two classes exist apart because warichu brackets \"differ from normal brackets with regard to their processing\", and §3.4.2 says how the processing differs: the bracket's size is twice the note's character size, the space on its outer side is solid, and §3.4.2's own Note sends the rest of its spacing to Appendix B's separate cl-29 row. An occurrence nothing classifies as cl-29 is measured and spaced against cl-02's row instead."
+        },
+        {
+          "expect": { "class": { "item": 5, "class": 25 } },
+          "why": "§A.25 lists 0029 as well — characters in a unit symbol (単位記号中の文字) — with an empty Remarks cell, which makes 0029 the appendix's degree-four key: §A.2, §A.25, §A.27 and §A.29 all name it. cl-25 is membership of a different construct, and this input declares no unit symbol. An implementation that answers whichever construct class it finds first has not read which construct the occurrence sits in."
+        },
+        {
+          "expect": { "class": { "item": 5, "class": 28 } },
+          "why": "Answering the warichu opening bracket class for the bracket that closes the note. §A.28 enumerates the three opening forms 0028, 3014 and 005B, §A.29 the three closing forms 0029, 3015 and 005D, and §3.4.2 puts this occurrence at the 末尾 — the tail — of the whole note. The two classes are not interchangeable in any of the three sections that name them: §3.1.7 prohibits cl-29 at the line head and says nothing about cl-28, §3.1.8 prohibits cl-28 at the line end and says nothing about cl-29, and §3.1.10 forbids a break after cl-28 and before cl-29, which are opposite sides of the note."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-parenthesis/full-em-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em). But when those punctuation marks are placed side-by-side with ideographic (cl-19), hiragana (cl-15), or katakana (cl-16) characters, in principle, a given amount of spacing will be inserted before or after the symbols, which makes them appear as if they were intrinsically full-width (one em).",
+      "rationale": "The other half of the frame pair: the same warichu with the closing bracket declared on the ideographic frame — the advance a modern font reports for the Japanese design of this parenthesis — and the same answer, byte for byte, which is the whole of the assertion. The quoted sentence is the one the case format leans on when it demands a frame, and it names five classes: cl-07, cl-06, cl-01, cl-02 and cl-05. cl-29 is not among them, and §A.29's Remarks column is empty in both locales, so no sentence of the document makes a 字幅 a condition of cl-29 membership; the frame is required on this item only because the key is also a cl-02 key. The frame is not idle here, though: it is what excludes the §A.27 listing of 0029, whose Remarks cell reads \"proportionally-spaced\" / 「プロポーショナル」. So on this frame and on the half em frame two different axes are exhausted and the same construct decides, and an implementation that has made the frame a membership condition for cl-29 answers this case and its twin differently.",
+      "input": {
+        "kind": "classify",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, first row, read under §3.9.2's Note on cl-28 and cl-29",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 27 } },
+          "why": "§A.27 lists 0029 with the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」, and §3.9.2's cl-27 Note states the width difference in so many words — Japanese, half em; Western, proportional. This occurrence declares the ideographic frame, which is neither, so the sentence that would put it in cl-27 does not describe it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-parenthesis/proportional-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "unstated",
+      "quote": "For example, LEFT PARENTHESIS \"(\" and RIGHT PARENTHESIS \")\" has not only different width (Japanese, half em, Western, proportional) but are also different in line position (Japanese, center of the character frame in the inline direction, Western, base line and descender line dependent) and design",
+      "rationale": "The third frame, and the one the document leaves undecided. §A.27 lists 0029 with the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」, so a proportionally set occurrence satisfies that listing and the quoted Note — which names this very code point — says why the width is the axis. §A.29's three rows carry no Remarks at all, so nothing in §A.29 excludes a proportional bracket, and §3.1.2, the sentence that excludes a proportional occurrence from the half-width classes, names cl-01, cl-02, cl-05, cl-06 and cl-07 and not cl-29. Two listings therefore survive with both of the axes that could separate them already declared: the frame satisfies cl-27's qualification and the construct satisfies cl-29's definition. The document states no priority between the Remarks column and the construct, so both readings are recorded here rather than one being chosen. The knob they are keyed to is the residual-ambiguity tie-break §3.9.2 concedes over \"エディター（editor）は……\", where it states a preference and not a rule; that is an ordinal over the surviving candidates and not a rule about which axis outranks which, and its being the nearest key the policy space offers is recorded rather than glossed. Both entries agree that cl-02 and cl-25 are gone: the frame is not the half em §3.1.2 states for cl-02, and the input declares no unit symbol.",
+      "input": {
+        "kind": "classify",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 333, "frame": "proportional", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan published reading (docs/decisions/ambiguous-context.md): the lowest-numbered surviving class, here §A.27's listing",
+          "expect": { "class": { "item": 5, "class": 27, "rules": ["A.27"] } }
+        },
+        {
+          "policy": { "classification.ambiguous_context": "highest-class" },
+          "source": "The reading that lets §A.29's construct outweigh §A.27's Remarks column, reached in this policy space as the highest-numbered surviving class",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 2 } },
+          "why": "§3.1.2 states the advance of a closing bracket (cl-02) as half-width and §3.9.2's cl-27 Note states the Western design as proportional, so a proportional occurrence does not satisfy §A.2's listing. Answering cl-02 here also contradicts this file's other cases, where the declared warichu is what takes the occurrence out of cl-02 in the first place."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-tortoise-shell-bracket/in-warichu",
+      "rules": ["3.1.2", "3.9.2"],
+      "standing": "normative",
+      "quote": "〕 3015 RIGHT TORTOISE SHELL BRACKET 終わりきっこう（亀甲）括弧",
+      "rationale": "The second row of §A.29, quoted in the document's own column order — Character 字形, UCS, Name UCS名称, Common name 通用名称, Remarks 備考 — with the Remarks cell empty, as all three of this table's are. It is the only one of the three rows whose Character column prints the code point its UCS column names: rows one and three print U+FF09 and U+FF3D against the UCS values 0029 and 005D, which is the Japanese design of those two keys and not the key. It is also the only cl-29 key of degree two. §A.2 and §A.29 name 3015 and no other Appendix A table does, so no Remarks cell anywhere qualifies this key, the frame separates nothing, and the construct is the only axis in play — which makes this row the cleanest statement in the class that membership is a property of the occurrence's construct. The frame is declared all the same, because §3.1.2 requires one wherever Appendix A names the key under cl-02.",
+      "input": {
+        "kind": "classify",
+        "text": "本文〔注記〕本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 9, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 12, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 15, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 18, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 21, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, second row",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 2 } },
+          "why": "The answer for this same occurrence when no warichu is declared, which is the case below. The two inputs are identical except for the `constructs` object, so an implementation that answers cl-02 here is one that never reads the construct at all."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-tortoise-shell-bracket/no-warichu",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "warichu opening brackets (cl-28) and warichu closing brackets (cl-29) are used for surrounding inline cutting notes and the space. They are in a separate class since they differ from normal brackets with regard to their processing. / 割注始め括弧類（cl-28）又は割注終わり括弧類（cl-29）は，割注を囲むために用いる括弧類及び空き量のことである．一般に使用する括弧類と組版処理が異なるので，別の文字クラスにしている．",
+      "rationale": "The boundary of the class, and the differential twin of the case above: the same text, the same items, the same declared sizes, the same frames, and no warichu. §A.29 puts no condition on its three rows, so an implementation keyed on the table alone cannot tell these two inputs apart — but the quoted Note defines the members as the brackets used for surrounding an inline cutting note, and this stream surrounds none. What the input still carries is the smaller size: the parenthesized run is declared at half the running size, exactly as in the warichu case. That is deliberate. A size is not a construct, and nothing in §3.4.2's size statement makes a small parenthetical into an inline cutting note; the caller declares the construct or there is none. So the answer is §A.2's listing, which is what `A.2/right-square-bracket/outside-a-warichu` states from the closing-bracket file's own side, and the one thing that changed between the two cases is the one thing the specification says decides.",
+      "input": {
+        "kind": "classify",
+        "text": "本文〔注記〕本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 9, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 12, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 15, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 18, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 21, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.2, against §A.29 read under §3.9.2's Note",
+          "expect": { "class": { "item": 5, "class": 2, "rules": ["A.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 29 } },
+          "why": "cl-29 is membership of a construct, and this input declares none. An implementation that answers cl-29 for every occurrence of one of §A.29's three keys answers it in ordinary running text, where there is no inline cutting note to close — and then §3.1.10's no-break rule fires before brackets the document never aimed it at, and §3.4.2's doubled size and solid outer setting are applied to a bracket that surrounds nothing."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-square-bracket/in-warichu",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "］ 005D RIGHT SQUARE BRACKET 終わり大括弧，終わり角括弧",
+      "rationale": "The third and last row of §A.29, with its Remarks cell empty like the other two. Its Character 字形 column prints U+FF3D FULLWIDTH RIGHT SQUARE BRACKET against a UCS cell reading 005D, so the item's text is the ASCII code point the UCS column names; an extractor keyed on the Character column would give this class three members, agree on the cardinality, and have two of them wrong. 005D is of degree three — §A.2, §A.27 and §A.29 — and the two axes that reduce it are both declared: the half em frame excludes §A.27, whose Remarks cell reads \"proportionally-spaced\" / 「プロポーショナル」, and the declared warichu separates §A.29 from §A.2, which nothing in either table does. No writing mode is declared, because §A.29 states none for any member and §3.4.1's remark that the inline cutting note is used mostly in vertical composition is a frequency observation about the construct rather than a condition on the class.",
+      "input": {
+        "kind": "classify",
+        "text": "本文[注記]本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, third row, against §A.27's Remarks column and §A.2 (§3.9.1, §3.9.2)",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 27 } },
+          "why": "§A.27 lists 005D with the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」, and this occurrence declares the half em frame §3.1.2 states for the class §A.2 also names it under. The frame is what separates two listings of one code point, and it has been declared."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/fullwidth-right-parenthesis/compatibility-fold",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software. / 例えば，この文書では“U+0028（LEFT PARENTHESIS，始め小括弧）”を始め括弧類（cl-01）の一つに分類しているが，多くの和文組版ソフトウェアでは，和文に適用する場合は対応する互換用の文字コードである“U+FF08（FULLWIDTH LEFT PARENTHESIS）”を使用している．",
+      "rationale": "§A.29's own Character 字形 column prints U+FF09 for the row whose UCS cell reads 0029, and U+FF3D for the row whose UCS cell reads 005D, while §A.25 and §A.27 print the ASCII glyphs for the same two keys. Since §A.29's Remarks column is empty, that column is the only place §A.29 says its brackets are the Japanese forms — and it is a glyph, not a key. This case supplies the compatibility code point the column itself shows, which is what Japanese text carries, and the quoted preamble Note names the opening counterpart of this exact pair, so the case rests on the document rather than on an inference about compatibility characters in general. Only the Wide and Narrow decomposition mapping may reach the table: full compatibility folding would fold U+2160 ROMAN NUMERAL ONE, a genuine cl-19 member, onto I. Passing U+FF09 is itself a statement that the frame is full-width, and the item declares it; the brackets surrounding this warichu are at the running text's size, which is §3.4.2's doubling of the note's size seen from the outside.",
+      "input": {
+        "kind": "classify",
+        "text": "本文（注記）本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 12, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 15, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 18, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 21, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, against §A.29's first row",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 19 } },
+          "why": "The answer of an implementation that keys Appendix A by code point without folding: U+FF09 is in no Appendix A table, and an unlisted occurrence declared on the ideographic frame resolves to cl-19 under §3.9.2's recorded silence. The quoted Note says in so many words that the compatibility counterpart is what most Japanese layout software uses, so an unfolded lookup answers nothing for the commonest spelling of this member in real text — and, in this class, for the very glyph §A.29 prints in its own Character column."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/nested-brackets/surrounding-bracket",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "As shown in Figure 146, an inline cutting note usually has two lines, and is surrounded by LEFT PARENTHESIS \"(\" and RIGHT PARENTHESIS \")\" characters that are double the size of the characters in the inline cutting note itself. / 割注は，Figure 146のように，通常，2行に割り書きし，割注全体の先頭及び末尾に，行送り方向の割注の幅と同じ文字サイズの始め小括弧[(] (LEFT PARENTHESIS)及び終わり小括弧[)] (RIGHT PARENTHESIS)でくくる形式が多い．",
+      "rationale": "A warichu whose note text is itself parenthesized, so that two occurrences of 0029 stand side by side and only the outer one closes the note. Two things are asserted at once. First, cl-29 holds no sequence key: all three of §A.29's UCS cells are bare four-hex-digit values, and none is written in the ordered-sequence form the appendix uses elsewhere — §A.27 lists <02E5, 02E9> and <02E9, 02E5> as two distinct members — so two adjacent brackets are two occurrences, a longest match never crosses them, and this ten-item stream is well formed rather than refused. Second, the member is the bracket at the tail of the whole note, which the quoted sentence is what fixes: the outer one is what the note is surrounded by, and it is the one the caller set at twice the note's size. The interior bracket is asked about in the case below. The two occurrences are also where an implementation that scans for the first closing bracket after the note text goes wrong, since that is the inner one.",
+      "input": {
+        "kind": "classify",
+        "text": "本文((注記))本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 250, "frame": "half-em", "scale": 1 },
+          { "start": 8, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 11, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 14, "advance": 250, "frame": "half-em", "scale": 1 },
+          { "start": 15, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 16, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 19, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 8] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, first row, with §3.4.2 fixing which bracket closes the note",
+          "expect": { "class": { "item": 7, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 7, "class": 2 } },
+          "why": "The answer of an implementation that reads the two adjacent parentheses as one unit and classifies it by the table's key structure alone. §A.29's three keys are single code points, so there is nothing to merge; and the occurrence that closes the warichu is the one §3.4.2 puts at the 末尾 of the whole note, which is this one."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/nested-brackets/interior-bracket",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "warichu opening brackets (cl-28) and warichu closing brackets (cl-29) are used for surrounding inline cutting notes and the space. They are in a separate class since they differ from normal brackets with regard to their processing. / 割注始め括弧類（cl-28）又は割注終わり括弧類（cl-29）は，割注を囲むために用いる括弧類及び空き量のことである．一般に使用する括弧類と組版処理が異なるので，別の文字クラスにしている．",
+      "rationale": "The same input, and the bracket one item further in. cl-29 is what surrounds an inline cutting note, not what may appear inside one, and the quoted Note is the whole of the difference. That distinction is worth a case because it is the opposite of the four classes cl-29 is easily grouped with: cl-20 合印中の文字, cl-24 連数字中の文字, cl-25 単位記号中の文字 and cl-30 縦中横中の文字 all name, in their own names, the characters that appear inside a construct, while §A.29's name 割注終わり括弧類 and its Note name the brackets that enclose one. So an occurrence inside a declared warichu is classified by its own key like any other running text — this one by §A.2, whose row for 0029 is what remains once the frame excludes §A.27 and the construct excludes cl-25 and cl-29. The interior bracket is set at the note's own size, half the surrounding bracket's, which is the other half of §3.4.2's doubling.",
+      "input": {
+        "kind": "classify",
+        "text": "本文((注記))本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 250, "frame": "half-em", "scale": 1 },
+          { "start": 8, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 11, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 14, "advance": 250, "frame": "half-em", "scale": 1 },
+          { "start": 15, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 16, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 19, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 8] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.2, against §A.29 read under §3.9.2's Note",
+          "expect": { "class": { "item": 6, "class": 2, "rules": ["A.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 6, "class": 29 } },
+          "why": "The answer of an implementation that gives every occurrence inside a declared warichu the warichu bracket class, by analogy with cl-24 and cl-25, whose members are exactly what appears inside their construct. §A.29's members are the brackets that surround the note; a bracket in the note's own text is one of the characters being surrounded."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/bracketless-warichu/no-bracket-to-classify",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "There is a style of inline cutting note, which has no opening brackets (cl-01) or closing brackets (cl-02), but is surrounded by spacing that has been added explicitly to act as delimiters. / 割注を始め括弧類（cl-01）及び終わり括弧類（cl-02）でくくらずに，指定された一定の空き量をとる方法もある．",
+      "rationale": "§3.4.2's Note states a style of inline cutting note with no brackets at all, delimited by an explicitly specified amount of spacing (空き量). A warichu is declared here in that style, so no occurrence of this stream is a member of cl-29 and the last character of the note — the occurrence a closing bracket would have followed — is classified by its own key: 記 is a CJK ideograph, and §A.19's own heading sentence says its table is \"the list of all non-ideographic characters assigned to this character class\", so an ideograph is cl-19 without appearing in it. Two things are recorded rather than asserted. The quoted Note reaches for cl-01 and cl-02 in a sentence about warichu delimitation, where cl-28 and cl-29 would be the classes in play; both locales agree, so it is the document being inconsistent with its own class assignment rather than a divergence. And the Japanese half of §3.9.2's Note makes cl-29 「割注を囲むために用いる括弧類及び空き量」 — the brackets and an amount of space — where the English makes the space a thing surrounded rather than a member; under the Japanese reading a member of cl-29 need not be a character at all, which §A.29's three-row enumeration cannot list and which no item of any stream can carry, since an item is one Appendix A key. That divergence is therefore not observable at this layer, and this case asserts only what both readings agree on.",
+      "input": {
+        "kind": "classify",
+        "text": "本文注記本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 9, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 12, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 15, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 4] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19, with §3.4.2's Note on the bracket-less inline cutting note",
+          "expect": { "class": { "item": 3, "class": 19, "rules": ["A.19"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 3, "class": 29 } },
+          "why": "Reading the Japanese half of §3.9.2's Note as putting the delimiting 空き量 into cl-29 and then attaching that membership to the character beside it. 記 is a character with an advance, not an amount of space; whatever the Japanese sentence adds to the class, it is not this occurrence. §A.29 enumerates three keys and none of them is an ideograph."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-parenthesis/vertical-composition",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "Inline cutting note is usually used in vertical writing mode. It is very infrequently used in horizontal writing mode. / 縦組での利用が多く，横組での例は非常に少ない．",
+      "rationale": "The writing mode §3.4.1 says the inline cutting note is mostly used in, declared explicitly so that the horizontal twin below has something to be measured against. §A.29 carries no writing-mode Remark on any of its three rows — its Remarks column is empty throughout — which is not the case for §A.2, whose first two rows carry one, so the contrast is inside the appendix rather than assumed. Membership is therefore unconditional in this class: §3.4.1's sentence counts occurrences of a construct in real books and states nothing about what class a character is in. Nothing else about cl-29 is direction-conditional either — §3.1.7's line-start prohibition, §3.1.8's silence about the line end, §3.1.10's no-break rule and §3.4.2's solid outer setting are all stated once, for both directions.",
+      "input": {
+        "kind": "classify",
+        "text": "本文(注記)本文",
+        "direction": "vertical",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, first row; §3.4.1 states a frequency and not a restriction",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-parenthesis/horizontal-composition",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "Inline cutting note is usually used in vertical writing mode. It is very infrequently used in horizontal writing mode. / 縦組での利用が多く，横組での例は非常に少ない．",
+      "rationale": "The same warichu in the writing mode the quoted sentence calls very infrequent, and the same answer, which is the assertion. A frequency observation about a construct is not a condition on a class: nothing in §A.29, §3.9.2 or §3.4.2 conditions the membership of these three keys on a writing mode, and the pair of cases says so in a form a runner can check rather than leaving it to a reviewer to notice. This is also the shape a fourth direction-conditional rule would show up as: ADR 0011 names exactly three, none of them in §3.4, and if warichu bracket membership were one of them these two cases would differ.",
+      "input": {
+        "kind": "classify",
+        "text": "本文(注記)本文",
+        "direction": "horizontal",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29, first row; §3.4.1 states a frequency and not a restriction",
+          "expect": { "class": { "item": 5, "class": 29, "rules": ["A.29"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 2 } },
+          "why": "The answer of an implementation that reads §3.4.1's \"very infrequently used in horizontal writing mode\" as a restriction and falls back to the ordinary bracket class outside vertical composition. §A.29's rows carry no Remarks cell at all, and the twelve Appendix A keys that do carry a writing-mode Remark are none of them in this table."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/right-corner-bracket/beyond-the-enumeration",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "） 0029 RIGHT PARENTHESIS 終わり小括弧，終わり丸括弧 ／ 〕 3015 RIGHT TORTOISE SHELL BRACKET 終わりきっこう（亀甲）括弧 ／ ］ 005D RIGHT SQUARE BRACKET 終わり大括弧，終わり角括弧",
+      "rationale": "A warichu closed by a bracket §A.29 does not list. U+300D 」 is a member of cl-02, listed there and nowhere else, with an empty Remarks cell; a caller may perfectly well close an inline cutting note with it, and the question is whether doing so makes it a cl-29 member. §A.29's table is quoted above in full: three rows, closed. §3.9.2 illustrates the class with 「）〕］ など」 / \"）〕］ etc.\", an example whose own \"etc.\" is the document's mark of an open list, and of the twenty classes §3.9.2 illustrates, cl-28 and cl-29 are the only two whose example says \"etc.\" over an enumeration Appendix A closes at the same count. Nothing in the document says which of the two is the class; the mismatch is recorded in spec/derived/defects.tsv as `bracket-class-enumeration-mismatch`, and the treatment recorded there is to publish the three members §A.29 enumerates, which is the only closed statement the document makes. This case states that reading: 300D is not one of the three, so the occurrence is what §A.2 lists it as, and the warichu changes nothing because §A.29 does not name the key. The other reading — that the example opens the enumeration and any closing bracket that closes a warichu is cl-29 — is not recorded below as a second permitted entry, because a permitted entry must name the policy that selects it and the generated policy space has no question for the openness of this enumeration. That absence is a finding of this milestone rather than a license to guess: recording the alternative under the residual-ambiguity tie-break would state that a bracket §A.29 never lists is a candidate for cl-29, which is the very thing in dispute.",
+      "input": {
+        "kind": "classify",
+        "text": "本文「注記」本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 9, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 12, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 15, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 18, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 21, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.29's enumeration, against §3.9.2's open example (spec/derived/defects.tsv `bracket-class-enumeration-mismatch`)",
+          "expect": { "class": { "item": 5, "class": 2, "rules": ["A.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/before-the-closing-bracket/no-line-break",
+      "rules": ["3.1.7", "3.1.10", "C.3"],
+      "standing": "normative",
+      "quote": "After warichu opening brackets (cl-28), which open warichu, or before warichu closing brackets (cl-29), which close warichu. / 割注行を囲む割注始め括弧類（cl-28）の後ろ，割注行を囲む割注終わり括弧類（cl-29）の前．",
+      "rationale": "The boundary §3.1.10 names for this class, under that section's lead-in: \"If the following characters and symbols appear in sequence there will be no line break between them. The reason is that these characters and symbols are to be handled as one unit.\" The caller's own line breaker is made to offer the opportunity — the candidate at byte 13 is declared — so that the prohibition is observable rather than accidental. §3.1.7 states the same fact from the other end and is the only sentence outside §3.9.2, §3.4.2 and §A.29 that names cl-29 in a rule: it is one of the ten classes no line may begin with, so a break at this boundary puts a warichu closing bracket at the line head and violates the line-start prohibition (行頭禁則) as well. The five entries below record that the answer does not move under §C.3's level selector. §C.3 relaxes prohibitions rather than adding them — each level lists what may break \"even though Table 2 prohibits it\" — and none of the four names cl-28, cl-29 or the warichu at all, while §C.3's own lead-in says that \"those rules common to all levels are not listed below\". So the prohibition is common to every level, and an implementation that reaches this boundary through a level selector must answer the same thing at each of the four. Table 2 itself is published only as tables/table_en3.pdf and tables/table_ja3.pdf, which spec/PROVENANCE.toml records and which are absent from the vendored tree, so no cell is quoted here and the expectation rests on the two sections that state the rule in prose.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "candidates": [{ "at": 0 }, { "at": 13 }, { "at": 14 }, { "at": 20 }],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.10, the warichu item of its list, with §3.1.7 from the line-head side",
+          "expect": { "boundary": { "before": 4, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq §C.3 level 1 (very loose), whose list of relaxations names neither cl-29 nor the warichu",
+          "expect": { "boundary": { "before": 4, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "JLReq §C.3 level 2 (loose), whose list of relaxations names neither cl-29 nor the warichu",
+          "expect": { "boundary": { "before": 4, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "strict" },
+          "source": "JLReq §C.3 level 3 (strict), whose list of relaxations names neither cl-29 nor the warichu",
+          "expect": { "boundary": { "before": 4, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-strict" },
+          "source": "JLReq §C.3 level 4 (very strict), which relaxes nothing at all",
+          "expect": { "boundary": { "before": 4, "breakable": false } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "before": 4, "breakable": true } },
+          "why": "§3.1.10 lists this boundary among the sequences that have \"no line break between them\", and §3.1.7 forbids a line to begin with warichu closing brackets (cl-29). An implementation that offers the break because its line breaker found one there has answered the caller's UAX #14 question rather than JLReq's, and §C.3's four levels give it no reading under which the break is permitted."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/after-the-closing-bracket/line-end-permitted",
+      "rules": ["3.1.8"],
+      "standing": "normative",
+      "quote": "No line should end with opening brackets (cl-01) or warichu opening brackets (cl-28) (line-end prohibition rules). Otherwise the line would have an odd appearance. / 始め括弧類（cl-01）及び割注始め括弧類（cl-28）を行末に配置してはならない（行末禁則）．これは体裁がよくないからである．",
+      "rationale": "The asymmetry the document states by omission, and the reason this file carries a case for a rule that never names its class. §3.1.8's enumeration is closed and carries two members: cl-01 and cl-28. cl-29 is not one of them, so a warichu closing bracket may stand at the line end — where its mirror class may not, and where the very next sentence-level rule, §3.1.7, forbids cl-29 to stand at the line head. Two further closures make the answer positive rather than merely unprohibited. §3.1.10's list of unbreakable sequences names the boundary before a cl-29 and the boundary after a cl-28, and no item of it names either outer boundary of the note; §3.4.3 has the inline cutting note straddle two and three kihon-hanmen lines, so nothing treats the note and its brackets as one unbreakable object. And §C.3's levels only relax, never add, and its lead-in says the rules common to all levels are not listed. The following occurrence is an ideographic character (cl-19), which §3.1.7 does not name, so nothing prohibits it at a line head either. Table 2 is published only as tables/table_en3.pdf and tables/table_ja3.pdf and is absent from the vendored tree, so this expectation rests on the closure of §3.1.8's and §3.1.10's enumerations rather than on a cell. That closure is worth more here than in §3.9.2: §3.1.8 states its two members with no \"etc.\", which is exactly what §3.9.2's membership example does say and why the enumeration mismatch is a recorded defect and this reading is not.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "candidates": [{ "at": 0 }, { "at": 13 }, { "at": 14 }, { "at": 20 }],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.8, whose line-end prohibition names cl-01 and cl-28 and not cl-29",
+          "expect": { "boundary": { "before": 5, "breakable": true } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "before": 5, "breakable": false } },
+          "why": "The answer of an implementation that mirrors cl-28's line-end prohibition onto cl-29, on the reasonable-looking ground that the two classes are the two halves of one construct. §3.1.8 names cl-01 and cl-28 and stops, and §3.1.10 names the boundary before cl-29 and the boundary after cl-28 and stops; the asymmetry is what both sentences say. Answering `false` here also makes the whole note plus its brackets an unbreakable object, which §3.4.3 contradicts by setting an inline cutting note across two and three lines."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.29/after-the-closing-bracket/solid-against-an-ideograph",
+      "rules": ["3.4.2"],
+      "standing": "normative",
+      "quote": "There is no space between the surrounding text and parentheses for the inline cutting note. / なお，割注始め括弧類の前，及び割注終わり括弧類の後ろの漢字等，平仮名，片仮名との字間はベタ組とする．",
+      "rationale": "The one spacing amount for cl-29 that the rendered document states in prose. Table 1 carries the class's whole row and column, and §3.4.2's own Note points at it — \"Handling of inter-character spacing between warichu opening brackets (cl-28) or warichu closing brackets (cl-29) and adjacent characters is described in § B. Spacing between Characters as a complete table\" — but Table 1 is published only as tables/table_en2.pdf and tables/table_ja2.pdf, which spec/PROVENANCE.toml records and which are absent from the vendored tree by design, so no cell of it can be quoted and this case is written from the prose sentence alone. The two halves of that sentence are not the same statement, and this case is deliberately placed where they agree. The Japanese half qualifies the solid setting (ベタ組) by neighbor class and by side — after a cl-29 and before a cl-28, against 漢字等 (cl-19), 平仮名 (cl-15) and 片仮名 (cl-16) — while the English half states it flatly for \"the surrounding text\" with no class and no side, and is therefore strictly broader. Here the boundary is the outer side of the closing bracket and the neighbor is 本, an ideographic character, so both readings give the same answer and no policy question has to exist for the case to be written. Where they differ — the same outer boundary against a neighbor of any other class — they cannot both be recorded, because the generated policy space has no question for this divergence and spec/derived/defects.tsv has no row for §3.4.2; that gap is a finding of this milestone and not something a case may split the difference on. Solid means no conditional space at all rather than a space of zero, which is why the expectation is an empty list: an amount that is present and zero would still be an owner and a reduction behavior that line adjustment could reach.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文(注記)本文",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 10, "advance": 500, "frame": "full-em", "scale": 1 },
+          { "start": 13, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 14, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 17, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "warichu": [{ "base": [2, 6] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.4.2, the sentence both locales state about the outer side of a warichu closing bracket",
+          "expect": { "boundary": { "before": 5, "spaces": [] } }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

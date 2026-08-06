@@ -1,0 +1,343 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.3",
+  "heading_en": "Hyphens (cl-03)",
+  "heading_ja": "ハイフン類（cl-03）",
+  "cases": [
+    {
+      "id": "A.3/hyphen/on-the-quarter-em-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.3 Hyphens (cl-03) — ‐ | 2010 | HYPHEN | ハイフン（四分） | quarter em width  ||  A.3 ハイフン類（cl-03） — ‐ | 2010 | HYPHEN | ハイフン（四分） | 字幅は四分角",
+      "rationale": "U+2010 is the first key A.3 writes, and §3.9.2 makes Appendix A the enumeration of the thirty classes it closes the set at. A.3's Remarks cell for this key states one frame (字幅) — a quarter em — and the Common name repeats it as ハイフン（四分）, so an occurrence the caller declares on the quarter em frame is the cl-03 listing and nothing else. The key is named a second time by A.27 under `proportionally-spaced`, which is the case beside this one; here the declared frame excludes that listing rather than being ignored by it. Nothing in this case is direction-conditional: A.3's Remarks column carries no writing-mode qualification on any cl-03 key, so the answer is the same in both writing modes and the case declares no direction.",
+      "input": {
+        "kind": "classify",
+        "text": "‐",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 250, "frame": "quarter-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, the first row of the cl-03 table",
+          "expect": { "class": { "item": 0, "class": 3 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "A.27 lists U+2010 with the Remarks cell `proportionally-spaced` / プロポーショナル. The caller declared the quarter em frame, which is A.3's Remarks cell for the same key, so the cl-27 listing is the one the declared frame excludes."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/hyphen/on-the-proportional-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.3: ‐ | 2010 | HYPHEN | ハイフン（四分） | quarter em width / 字幅は四分角  ||  A.27: ‐ | 2010 | HYPHEN | ハイフン | proportionally-spaced / プロポーショナル",
+      "rationale": "The same key, declared on the other frame. U+2010 is one of exactly two cl-03 keys Appendix A names twice — the other is U+2013 — and the frame (字幅) is the axis that separates the two listings, because the two Remarks cells state nothing else and state different frames. The document corroborates the split in a third place: A.27 drops the width from the Common name, writing ハイフン where A.3 writes ハイフン（四分）, so the quarter em listing is A.3's and the measured one is A.27's. An implementation that keys cl-03 on the code point alone answers 3 here and is wrong on ordinary Western text set in a proportional font.",
+      "input": {
+        "kind": "classify",
+        "text": "‐",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 336, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, which lists U+2010 as `proportionally-spaced`",
+          "expect": { "class": { "item": 0, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 3 } },
+          "why": "A.3's listing of U+2010 carries the Remarks cell `quarter em width` / 字幅は四分角. A proportional advance is not that frame, so answering cl-03 here is reading the key and discarding the column that separates its two listings."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/en-dash/on-the-half-em-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.3 Hyphens (cl-03) — – | 2013 | EN DASH | 二分ダーシ，ダッシュ（二分） | half-width  ||  A.3 ハイフン類（cl-03） — – | 2013 | EN DASH | 二分ダーシ，ダッシュ（二分） | 字幅は半角",
+      "rationale": "U+2013 is the last key A.3 writes, and it is the second of the class's two multi-class keys. A.3's Remarks cell states the half em frame (半角), and the Common name states it twice over — 二分ダーシ and ダッシュ（二分）. The first and last rows of the table are both exercised on purpose: an implementation that transcribed Appendix A by hand is likeliest to lose an edge row, and the two of them differ in frame, so the pair also shows that cl-03 is not one frame.",
+      "input": {
+        "kind": "classify",
+        "text": "–",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, the last row of the cl-03 table",
+          "expect": { "class": { "item": 0, "class": 3 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "A.27 lists U+2013 as `proportionally-spaced` / プロポーショナル. The caller declared the half em frame, which is A.3's Remarks cell for the same key."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/en-dash/on-the-proportional-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.3: – | 2013 | EN DASH | 二分ダーシ，ダッシュ（二分） | half-width / 字幅は半角  ||  A.27: – | 2013 | EN DASH | 二分ダーシ，ダッシュ（二分） | proportionally-spaced / プロポーショナル",
+      "rationale": "The second half of the cl-03 frame axis, stated for the second of the two keys that carries it. Here the two listings share a Common name as well as a glyph, so the Remarks column is the sole signal: A.3 says 字幅は半角 and A.27 says プロポーショナル, and nothing else in either row differs. A classifier that resolves a multi-class key by taking the lowest class number answers 3 for this occurrence and would do so for every proportional en dash in a Western sentence set inside Japanese text.",
+      "input": {
+        "kind": "classify",
+        "text": "–",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 486, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, which lists U+2013 as `proportionally-spaced`",
+          "expect": { "class": { "item": 0, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 3 } },
+          "why": "A.3's listing of U+2013 carries the Remarks cell `half-width` / 字幅は半角, and a proportional advance is not that frame."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/wave-dash/remarks-cell-empty-in-both-locales",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "A.3 Hyphens (cl-03) — 〜 | 301C | WAVE DASH | 波ダッシュ | (empty)  ||  A.3 ハイフン類（cl-03） — 〜 | 301C | WAVE DASH | 波ダッシュ | （空欄）",
+      "rationale": "U+301C is the one cl-03 key whose Remarks cell is empty in both locales, and it is listed by cl-03 alone: no other Appendix A table names it. So no axis has anything to separate, and the class follows from the key by itself whatever frame (字幅) the caller declares — which is why this case is the one an implementation with no frame plumbing can still answer. The declared full em advance is §3.1.6's width for this member and is stated here as caller input only; §3.1.6 is the sole place in the document that gives U+301C a width, A.3's own Remarks column gives none, and no expectation in this case depends on it.",
+      "input": {
+        "kind": "classify",
+        "text": "〜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, the only Appendix A table that lists U+301C",
+          "expect": { "class": { "item": 0, "class": 3 } }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/double-hyphen/sole-listing-at-half-width",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "A.3 Hyphens (cl-03) — ゠ | 30A0 | KATAKANA-HIRAGANA DOUBLE HYPHEN | 二重ハイフン，二分二重ダッシュ | half-width  ||  A.3 ハイフン類（cl-03） — ゠ | 30A0 | KATAKANA-HIRAGANA DOUBLE HYPHEN | 二重ハイフン，二分二重ダッシュ | 字幅は半角",
+      "rationale": "U+30A0 completes the four keys A.3 enumerates and is, with U+301C, one of the two listed by cl-03 alone. Its Remarks cell states the half em frame (半角) even though nothing depends on it for the class, which is worth exercising: A.3 draws three of its four Remarks cells as frames, and an implementation that reads the Remarks column as a class disambiguator everywhere will try to disambiguate a key that has nothing to disambiguate. The Unicode name puts this key in the katakana block and the Common name calls it 二重ハイフン, so it is also the cl-03 member likeliest to be mistaken for a kana.",
+      "input": {
+        "kind": "classify",
+        "text": "゠",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, the only Appendix A table that lists U+30A0",
+          "expect": { "class": { "item": 0, "class": 3 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 16 } },
+          "why": "A.16 (katakana, cl-16) does not list U+30A0. The key sits in the Katakana block and its UCS name begins KATAKANA-HIRAGANA, and neither is a statement of Appendix A."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/two-wave-dashes/no-key-spans-two-code-points",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "A.3 Hyphens (cl-03) — UCS column: 2010 | 301C | 30A0 | 2013  ||  A.3 ハイフン類（cl-03） — UCS欄：2010 | 301C | 30A0 | 2013",
+      "rationale": "Every UCS cell A.3 writes is a bare hexadecimal value, so cl-03 holds no key written as a code-point sequence, and a longest-first scan over Appendix A's keys must find two members here and not one. Appendix A does key twenty-five entries on an ordered pair of code points, and cl-27 lists <02E5, 02E9> and <02E9, 02E5> as two distinct members — this case is the statement that cl-03 holds none of them, which is what an implementation that hard-codes a pair table for the whole appendix has to get right at cl-03 as well as at cl-27. The expectation names the second occurrence, because an implementation that swallowed the pair as one key has no second occurrence to answer for.",
+      "input": {
+        "kind": "classify",
+        "text": "〜〜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, whose four UCS cells are all single code points",
+          "expect": { "class": { "item": 1, "class": 3 } }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/hyphen-minus/listed-only-as-a-western-character",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.27 Western characters (cl-27) — - | 002D | HYPHEN-MINUS | ハイフンマイナス | proportionally-spaced  ||  A.27 欧文用文字（cl-27） — - | 002D | HYPHEN-MINUS | ハイフンマイナス | プロポーショナル",
+      "rationale": "This is the boundary Appendix A draws around cl-03 on the hyphen side, and the document draws it by listing. A.3 keys the class on U+2010 HYPHEN; U+002D HYPHEN-MINUS, the character an ASCII keyboard produces and the one most text actually contains, is listed by A.27 and by no other table, so it is a Western character and never a hyphen in JLReq's sense. The same holds for its full-width compatibility form U+FF0D, whose Wide decomposition is U+002D and not U+2010, so no full-width hyphen-minus reaches cl-03 either. An implementation that classifies by Unicode general category — U+002D and U+2010 are both Pd — collapses this boundary and puts every ASCII hyphen into a class whose members may not begin a line.",
+      "input": {
+        "kind": "classify",
+        "text": "-",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 333, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, the only Appendix A table that lists U+002D",
+          "expect": { "class": { "item": 0, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 3 } },
+          "why": "A.3 enumerates exactly four keys — 2010, 301C, 30A0, 2013 — and U+002D is not one of them. Appendix A is the member list §3.9.2 refers the classification to, so a key it does not name under cl-03 is not a cl-03 member."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/em-dash/listed-as-an-inseparable-character",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "A.8 Inseparable characters (cl-08) — — | 2014 | EM DASH | ダッシュ（全角） | Some systems implement U+2015 HORIZONTAL BAR very similar behavior to U+2014 EM DASH  ||  A.8 分離禁止文字（cl-08） — — | 2014 | EM DASH | ダッシュ（全角） | 処理系によっては，U+2015 (HORIZONTAL BAR)にも，同様の振る舞いを実装しているものもある",
+      "rationale": "The sharpest boundary around cl-03, because the two characters share a name in Japanese. A.3 lists U+2013 EN DASH as 二分ダーシ，ダッシュ（二分） — the half-em dash — and cl-03 is where it goes. A.8 lists U+2014 EM DASH as ダッシュ（全角） — the full-em dash — and cl-08, inseparable characters (分離禁止文字), is where that one goes. Two members of one typographic family, two classes, and the document says which by listing each once. The declared full em frame is what excludes A.27's second listing of U+2014, whose Remarks cell reads `proportionally-spaced`.",
+      "input": {
+        "kind": "classify",
+        "text": "—",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.8, which lists U+2014 under inseparable characters (cl-08)",
+          "expect": { "class": { "item": 0, "class": 8 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 3 } },
+          "why": "A.3's four keys are 2010, 301C, 30A0 and 2013. U+2014 is not among them, and the class that does list it, cl-08, has its own row and column in every matrix; answering cl-03 here would take the line-start prohibition of §3.1.7 and apply it to a character the document does not put under it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.3/fullwidth-tilde/is-not-the-wave-dash",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.  ||  この文書では“U+0028（LEFT PARENTHESIS，始め小括弧）”を始め括弧類（cl-01）の一つに分類しているが，多くの和文組版ソフトウェアでは，和文に適用する場合は対応する互換用の文字コードである“U+FF08（FULLWIDTH LEFT PARENTHESIS）”を使用している．",
+      "rationale": "Appendix A's preamble states the compatibility mechanism: the appendix keys a class on the script-neutral code point and real Japanese text carries the compatibility counterpart, so an occurrence is resolved onto the key its Wide or Narrow decomposition names. Follow that mechanism for U+FF5E FULLWIDTH TILDE and it lands on U+007E TILDE, which A.27 lists as `proportionally-spaced` and which no other Appendix A table lists — it does not land on U+301C WAVE DASH, which is a different code point with no decomposition at all. The negative half of this case is what Appendix A settles outright: A.3's four keys are 2010, 301C, 30A0 and 2013, U+FF5E is none of them, and no compatibility folding reaches a cl-03 key from anywhere. The positive half applies the preamble's own mechanism through the Wide decomposition, which is the route the appendix's example takes for U+FF08. This is the cl-03 case the ecosystem most needs, because the fullwidth tilde is what a very large body of Japanese text actually contains where a wave dash is meant.",
+      "input": {
+        "kind": "classify",
+        "text": "～",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, with §A.27's listing of U+007E",
+          "expect": { "class": { "item": 0, "class": 27 } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 3 } },
+          "why": "A.3 keys the wave dash on U+301C. U+FF5E is a different code point, its Wide decomposition is U+007E rather than U+301C, and no Appendix A table lists U+FF5E under any class, so nothing in the document puts it in cl-03."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Japanese text originating from Microsoft's Shift_JIS / codepage 932 conversion tables, and the layout software that consumes it",
+          "version": "Windows codepage 932, all versions",
+          "behavior": "Maps the Shift_JIS 波ダッシュ byte pair 0x8160 to U+FF5E FULLWIDTH TILDE, where the JIS and Unicode Consortium mappings give U+301C WAVE DASH. Software downstream of that conversion therefore treats U+FF5E as the wave dash, and a classifier that agrees answers cl-03 for this occurrence.",
+          "our_reading": "Appendix A keys cl-03 on U+301C and the preamble's compatibility mechanism resolves a compatibility form onto the code point its Wide or Narrow decomposition names. U+FF5E decomposes to U+007E, which A.27 lists and A.3 does not, so U+FF5E is a Western character in JLReq's classification whatever it was meant to be. The conversion is where the text lost the distinction; the classification cannot restore it, and a library that guessed here would be inventing a member of a line-start-prohibited class.",
+          "evidence": "spec/derived/folding.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.3/break-before-a-hyphen/relaxed-at-the-two-loosest-levels",
+      "rules": ["C.3"],
+      "standing": "alternative",
+      "quote": "The following lists four levels of convention. ... Very loose (Newspapers) — Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it. — Hyphens (cl-03)  ||  そこで，これらをレベルに分けて示すと，以下のようになる．... レベル1（新聞など）——次の文字クラスの前又は後ろに配置する文字などとの字間で2行に分割することが表2で禁止とされていても，その字間で2行に分割することを許容する．——ハイフン類（cl-03）",
+      "rationale": "cl-03 is the first entry in the relaxation list at both of §C.3's two loosest levels, Very loose (レベル1，新聞など) and Loose (レベル2，雑誌など), and appears in neither of the two strictest: Strict (レベル3) relaxes only 々, cl-10 and cl-11, and Very strict (レベル4) states that breaking is not allowed anywhere Table 2 prohibits it. So whether a line may begin with a hyphen is a convention the caller chooses and not one answer, and every level is recorded here rather than the one this project prefers. The boundary asked about is the one before the hyphen, because that is the side the prohibition is on: §3.1.7 forbids a line beginning with cl-03, while §3.1.8's line-end prohibition names only cl-01 and cl-28, so the boundary after a hyphen is not prohibited at any level and relaxing it changes nothing. This case states breakability only. What the space at this boundary is, and whether it may be reduced or expanded, is Appendix B's and Appendix D's answer and is not asserted here.",
+      "input": {
+        "kind": "boundary",
+        "text": "あ〜い",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred: §C.3 level 3, Strict (Default, general publications), which does not list cl-03",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq §C.3 level 1, Very loose (Newspapers), first entry",
+          "expect": { "boundary": { "before": 0, "breakable": true } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "JLReq §C.3 level 2, Loose (Magazines), first entry",
+          "expect": { "boundary": { "before": 0, "breakable": true } }
+        },
+        {
+          "policy": { "kinsoku.level": "strict" },
+          "source": "JLReq §C.3 level 3, Strict (Default, general publications), whose list is 々, cl-10 and cl-11",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-strict" },
+          "source": "JLReq §C.3 level 4, Very strict, which applies no alternate rule at all",
+          "expect": { "boundary": { "before": 0, "breakable": false } }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    }
+  ]
+}

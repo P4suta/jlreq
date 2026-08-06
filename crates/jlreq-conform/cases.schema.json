@@ -136,7 +136,7 @@
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "description": "Which of the three questions this case asks. A `compose` case additionally requires `candidates` and `measure`, because a line cannot be composed without them.",
+          "description": "Which of the three questions this case asks. A `compose` case additionally requires `candidates` and `measure`, because a line cannot be composed without them. A value outside this enum is refused by the reader rather than defaulted: a runner that treated an unrecognized kind as a composition question would ask a case a question it did not ask, and this contract could not express that.",
           "enum": ["classify", "boundary", "compose"]
         },
         "text": {
@@ -229,7 +229,7 @@
           "maximum": 31
         },
         "frame": {
-          "description": "What the supplied advance covers: the character frame (字幅). Required whenever Appendix A names the item's key under cl-01, cl-02, cl-05, cl-06 or cl-07, and `conform --check` enforces it — there the frame decides a geometry and an unstated one has no answer to report (ADR 0018).",
+          "description": "What the supplied advance covers: the character frame (字幅). Required whenever Appendix A names the item's key under cl-01, cl-02, cl-05, cl-06 or cl-07, and `conform --check` enforces it — there the frame decides a geometry and an unstated one has no answer to report (ADR 0018). It is also the axis that separates two Appendix A listings of one code point, which is the single fact a foreign implementation needs to answer any §A.1 or §A.27 case: §A.27 marks its 778 rows `proportionally-spaced` and §3.1.2 states the advance of §A.1's brackets as half-width, so `U+0028` declared on the half em is cl-01 and the same key declared proportional is cl-27. A frame is not only a geometry here; it is evidence about the occurrence, and an implementation that classifies from the code point alone cannot answer either case.",
           "enum": [
             "unstated",
             "full-em",
@@ -240,7 +240,7 @@
           ]
         },
         "role": {
-          "description": "The syntactic job the document gives this occurrence. Needed by six code points and no others.",
+          "description": "The syntactic job the document gives this occurrence, which selects the class whose Appendix A section is about that job: `decimal-point` and `digit-group-separator` reach §A.24, the characters of a grouped numeral (連数字); `unit-symbol` reaches §A.25; `quantity-symbol` reaches cl-27 through §C.2 note 11; `sentence-terminator` reaches §A.6 and §A.7; and `sentence-medial` reaches §A.4, which §3.1.6 is about. Appendix A names a job in a Remarks cell for four rows only — §A.24's `U+0020`, `U+002C` and `U+002E` and §A.25's `U+0020`, and three of the four state it in the Japanese half alone — so for every other key the role is the caller stating what their document means rather than a lookup.",
           "enum": [
             "unstated",
             "decimal-point",
@@ -333,7 +333,7 @@
       "additionalProperties": false,
       "properties": {
         "policy": {
-          "description": "An overlay on `Policy::JLREQ`: a partial map from a question's stable dotted path to a choice's stable name. `{}` names none, so it applies to every policy and is the case's fallback entry. Renaming a question therefore breaks the case files at gate time rather than silently.",
+          "description": "An overlay on `Policy::JLREQ`: a partial map from a question's stable dotted path to a choice's stable name. `{}` names none, so it applies to every policy and is the case's fallback entry. Renaming a question therefore breaks the case files at gate time rather than silently. Both halves of the pair are published data rather than Rust: `spec/derived/questions.tsv` records every question path with the answers the specification permits it, quoted from the sentence that permits them, and `conform --check` refuses a path that file does not carry and a choice name it does not list.",
           "type": "object",
           "additionalProperties": { "type": "string", "minLength": 1 }
         },

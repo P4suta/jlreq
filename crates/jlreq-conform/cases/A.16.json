@@ -1,0 +1,874 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.16",
+  "heading_en": "Katakana (cl-16)",
+  "heading_ja": "片仮名（cl-16）",
+  "cases": [
+    {
+      "id": "A.16/katakana-a/first-table-row",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ア 30A2 KATAKANA LETTER A 片仮名ア",
+      "rationale": "§A.16's first row, quoted in the document's own column order — Character 字形, UCS, Name UCS名称, Common name 通用名称, Remarks 備考 — with the Remarks cell empty, as it is in all 86 rows of this table in both locales. §A.16 has no prose at all: the section is the heading and the table and nothing else, so every derivation rule, exception and cross-reference for katakana (片仮名, katakana) lives outside it. Two consequences are asserted here. Appendix A states no character frame (字幅), no writing-direction restriction and no role for any katakana, and every one of the 86 keys is listed by exactly one class, so nothing a caller supplies can narrow or widen this answer; and the table's key set is not the Katakana Unicode block — U+30A2, U+30A4, U+30A6 and U+30A8 are here while U+30A1, U+30A3, U+30A5, U+30A7 and U+30A9 are not, because the small forms are small kana (cl-11). The stream is three cl-16 keys and the answer is given for the first, which is §A.16's own first row.",
+      "input": {
+        "kind": "classify",
+        "text": "アニメ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, first row, read under §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "§3.9.2's Note on cl-16 states that JIS X 4051 puts katakana in the same class as kanji and that this document does not: 「片仮名は，JIS X 4051では，漢字などと同じ文字クラス（1.～12.以外の和字）に含まれている．しかし，この文書では，ルビのはみ出しがあった場合，平仮名と同様に掛かってよいとしたことから独立した文字クラスとした．」 Answering cl-19 is answering with the class JLReq split cl-16 out of, and the difference is observable at the one place the Note names — §3.3.8 forbids ruby overhang over cl-19 and permits it over cl-16."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-vo/last-table-row",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ヺ 30FA KATAKANA LETTER VO 濁点付きヲ",
+      "rationale": "§A.16's 86th and last row, and the boundary at the top of the class. The table's row order is not code-point order: rows 74 through 81 are the eight ordered two-code-point sequences, which the document places between U+30F4 and U+30F7, so the last four single code points — U+30F7, U+30F8, U+30F9 and U+30FA — come after them. An implementation that reads §A.16 as a range therefore either stops at U+30F4 and loses these four, or runs past U+30FA into U+30FB, U+30FC, U+30FD, U+30FE and U+30FF, none of which is a katakana in this document. The stream is those four rows in the document's order and the answer is given for the last of them.",
+      "input": {
+        "kind": "classify",
+        "text": "ヷヸヹヺ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, last row, read under §3.9.2",
+          "expect": { "class": { "item": 3, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/voiced-katakana-ka/precomposed-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ガ 30AC KATAKANA LETTER GA 濁点付き片仮名カ",
+      "rationale": "Every voiced (濁点付き, dakuten-tsuki) katakana of §A.16 is spelled as one precomposed code point, and every semi-voiced (半濁点付き, handakuten-tsuki) Ainu katakana of §A.16 is spelled as an ordered pair. The asymmetry is the document's and it is exact: U+3099 COMBINING KATAKANA-HIRAGANA VOICED SOUND MARK is a key of no class anywhere in Appendix A, while U+309A COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK appears in thirteen rows and never alone — five in §A.15, eight here, and one in §A.11 as <31F7, 309A>. So there is no key <30AB, 3099> to match and U+30AC is the only spelling of ガ that Appendix A knows, which is what this case asserts and what the case beside it tests from the other direction.",
+      "input": {
+        "kind": "classify",
+        "text": "ガラス",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, seventh row, read under §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-a/half-em-frame",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "漢字等（cl-19），平仮名（cl-15）及び片仮名（cl-16）の外枠は正方形なので，その字幅は全角となる．",
+      "rationale": "The first half of a pair whose whole value is an equality. The quoted sentence is the only statement in the whole document of what a katakana's character advance (字幅) is, it says a full em (全角), and it exists in the Japanese half of §2.1.2 alone — the English half of the same paragraph ends at \"...whereas it is the height of a character in vertical writing mode (see Figure 3)\" and never states an advance for cl-19, cl-15 or cl-16. That divergence is recorded here rather than in `rules`, because §2.1.2 is outside the addressable rule inventory: spec/derived/rules.tsv covers §3 and Appendices B through F, and no row has an address beginning \"2.\". What the pair asserts is that the declared frame does not reach the classifier for this class. All 86 Remarks cells of §A.16 are empty and every one of its keys is listed by exactly one class, so there is nothing for the frame axis of §3.9.1 to separate; this case declares the half em frame, which is not hypothetical — it is the frame the Narrow decomposition of U+FF71 asserts and what a caller setting halfwidth katakana passes — and its expectation is byte-identical to the full em case beside it. No `trims` entry appears in either, because a classification answer carries no geometry to normalize.",
+      "input": {
+        "kind": "classify",
+        "text": "ア",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, whose Remarks column is empty in all 86 rows, read under §3.9.1 and §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-a/full-em-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "漢字等（cl-19），平仮名（cl-15）及び片仮名（cl-16）の外枠は正方形なので，その字幅は全角となる．",
+      "rationale": "The same occurrence declared on the frame §2.1.2's Japanese half states for it, and on the advance a modern OpenType font reports. Nothing in the expectation moves, and that is the assertion: for the five classes of §3.1.2 the frame decides a geometry and the two declarations reach the same normalized line by different routes, while for cl-16 the frame decides nothing at all, because every Remarks cell of §A.16 is empty and every cl-16 key has degree one. Read with the half em case beside it, the pair says that an implementation which lets the declared frame reach the classifier for a katakana has invented an axis the document does not draw here. The case declares a full em because §2.1.2 states one — but it states it in one locale only, which is why the sentence is carried in `quote` and no rule address claims it.",
+      "input": {
+        "kind": "classify",
+        "text": "ア",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, whose Remarks column is empty in all 86 rows, read under §3.9.1 and §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-a/unstated-frame",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em).",
+      "rationale": "cl-16 is not one of the five classes the quoted sentence names, so an item whose key §A.16 lists may leave the frame unstated and still have an answer. That is the whole of the claim: §3.1.2's five classes are the ones where an unstated frame has no geometry to report and the input is refused, and katakana is not among them — it is the adjacency that makes the padding of those five appear, never the class carrying the half-width advance. This case is the third leg of the frame trio and its expectation is the same as the other two, which is what makes the trio a statement rather than three repetitions: for this class the answer is invariant in the one axis §3.9.1 asks about first.",
+      "input": {
+        "kind": "classify",
+        "text": "ア",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "unstated", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.2's list of five classes, which does not name cl-16, read under §3.9.1 and §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-a/vertical-writing-mode",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "なお，字幅は，文字を配列する方向（字詰め方向）の文字の外枠の大きさをいい，横組では文字の幅となるが，縦組では文字の高さとなる（Figure 3）．",
+      "rationale": "Whether membership of cl-16 is conditional on the writing direction, asked directly. It is not, and the evidence is an absence that has to be stated rather than assumed: all 86 Remarks cells of §A.16 are empty in both locales, so unlike §A.1's 「横組で使用」 or §A.8's kunojiten (くの字点) rows, no katakana carries a writing-mode qualification, and nothing in §3.1.1 makes a katakana's class depend on the mode. The quoted sentence is the one place §2.1.2 does condition on direction, and what it conditions is which physical dimension the character advance (字幅) names — the width in horizontal writing mode and the height in vertical — not the class. This case declares vertical explicitly; every other classification case in this file declares no direction and is therefore held to both by the direction-parity gate, and the pair of statements is what makes the claim checkable rather than reviewed.",
+      "input": {
+        "kind": "classify",
+        "text": "アニメ",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, whose Remarks column states no writing mode for any of its 86 keys, read under §3.9.2",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-ka/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "カ゚ <30AB, 309A> <KATAKANA LETTER KA, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名カ",
+      "rationale": "The first of §A.16's eight ordered two-code-point keys, and the one that shows why the class alone cannot test them. U+30AB is a cl-16 key on its own and <30AB, 309A> is a cl-16 key too, so an implementation that never performed the longest match answers cl-16 for the first code point and passes any expectation stated as a class. What separates the two readings is the item boundary, and that is what this input asserts: item 0 covers both code points and item 1 covers the bare base, so a stream that is well formed under ADR 0018 — every item exactly one Appendix A key — is a stream in which the pair was matched as one key and the bare base as another. An implementation that stops at U+30AB sees item 0 covering one listed key plus U+309A, which is a key of no class anywhere in Appendix A, and has to refuse the input rather than answer it. The same pair is a key of cl-15 as <304B, 309A>, so the shape is shared with hiragana and only the script differs.",
+      "input": {
+        "kind": "classify",
+        "text": "カ゚カ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 74, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Unicode Normalization Form C (UAX #15), applied before classification",
+          "version": "Unicode 17.0.0",
+          "behavior": "No precomposed code point exists for カ゚, so NFC leaves <30AB, 309A> as two code points and a normalizing implementation reaches this key unchanged. It does not reach ガ unchanged: NFD decomposes U+30AC to <30AB, 3099>, which Appendix A lists nowhere, so normalizing to NFD before classification removes every voiced katakana from the tables while leaving every semi-voiced one in place.",
+          "our_reading": "Appendix A's key set is the specification's, not a normalization form. §A.16 spells the voiced katakana precomposed and the semi-voiced Ainu katakana as pairs, and a lookup that is longest-match over exactly those keys — after the Wide and Narrow folding §A's preamble licenses and nothing else — reproduces the table. Any further normalization is a change to the key set.",
+          "evidence": "spec/derived/appendix-a.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-ki/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "キ゚ <30AD, 309A> <KATAKANA LETTER KI, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名キ",
+      "rationale": "The second of the eight, with the same shape and the same trap as the first: U+30AD alone is a cl-16 key, so only the item boundary distinguishes a longest match from a short one. §A.15 lists the hiragana twin <304D, 309A>, so this pair is one of the five that both kana classes carry, and an implementation that generated the sequence set from the hiragana table would get this one right by accident and three of the eight wrong.",
+      "input": {
+        "kind": "classify",
+        "text": "キ゚キ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 75, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-ku/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ク゚ <30AF, 309A> <KATAKANA LETTER KU, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名ク",
+      "rationale": "The third of the eight. The base U+30AF is itself row 9 of §A.16, so the class is the same either way and the item boundary is the assertion. §A.15 lists <304F, 309A> for hiragana; the eight rows here and the five there are two enumerations and neither is derivable from the other.",
+      "input": {
+        "kind": "classify",
+        "text": "ク゚ク",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 76, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-ke/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ケ゚ <30B1, 309A> <KATAKANA LETTER KE, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名ケ",
+      "rationale": "The fourth of the eight. Note that the base U+30B1 is a cl-16 key while the visually similar small form U+30F5 KATAKANA LETTER SMALL KE is not — it is small kana (cl-11) — so the two spellings of ケ that a caller may have in hand answer with different classes, and only this one carries a sequence key.",
+      "input": {
+        "kind": "classify",
+        "text": "ケ゚ケ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 77, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-ko/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "コ゚ <30B3, 309A> <KATAKANA LETTER KO, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名コ",
+      "rationale": "The fifth of the eight, and the last one whose hiragana twin §A.15 also lists. The three rows that follow it — SE, TU and TO — have no counterpart in §A.15 at all, so an implementation that read the sequences as a general rule \"any kana followed by U+309A\" would over-generate five hiragana keys and under-generate nothing, while one that copied §A.15's five would under-generate three. This case and the three after it are what separate those two mistakes.",
+      "input": {
+        "kind": "classify",
+        "text": "コ゚コ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 78, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-se/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "セ゚ <30BB, 309A> <KATAKANA LETTER SE, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名セ",
+      "rationale": "The sixth of the eight and the first with no hiragana counterpart: §A.15 lists five sequences and <3057, 309A> is not among them. So this key exists in cl-16 and in no other class of the document, and an implementation that derived its sequence set from the hiragana table, from the five sequences the two classes share, or from any rule about kana in general, does not have it. The base U+30BB is row 21 of §A.16 and is a cl-16 key on its own, so as with every sequence here the class does not distinguish the readings and the item boundary does.",
+      "input": {
+        "kind": "classify",
+        "text": "セ゚セ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 79, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-tu/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ツ゚ <30C4, 309A> <KATAKANA LETTER TU, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名ツ",
+      "rationale": "The seventh of the eight, the second with no hiragana counterpart, and the one whose base sits next to a gap. U+30C4 is a cl-16 key and the code point before it, U+30C3 KATAKANA LETTER SMALL TU, is not — it is small kana (cl-11) — so the base of this sequence is the first key of §A.16's second contiguous run. There is no key <30C3, 309A> in any table; the ninth sequence Appendix A carries is <31F7, 309A> in §A.11, and it uses a different base.",
+      "input": {
+        "kind": "classify",
+        "text": "ツ゚ツ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 80, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/semi-voiced-katakana-to/sequence-key",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ト゚ <30C8, 309A> <KATAKANA LETTER TO, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 半濁点付き片仮名ト",
+      "rationale": "The eighth and last of §A.16's sequence keys, and the third with no hiragana counterpart. With the seven above it this closes the enumeration: cl-16 holds exactly eight ordered two-code-point keys, all of them a base plus U+309A, with bases U+30AB, U+30AD, U+30AF, U+30B1, U+30B3, U+30BB, U+30C4 and U+30C8. The document places all eight between U+30F4 and U+30F7 in row order, and every one of the eight bases is separately a cl-16 key, which is why each of these cases asserts a well-formed two-item stream rather than a class an implementation would answer either way.",
+      "input": {
+        "kind": "classify",
+        "text": "ト゚ト",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16, row 81, whose UCS cell is written in the ordered-sequence form",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/decomposed-voiced-katakana-ka/two-occurrences",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ガ 30AC KATAKANA LETTER GA 濁点付き片仮名カ",
+      "rationale": "The mirror of the eight sequence cases, and the one place where the item count is decided by the difference between U+3099 and U+309A. Written as <30AB, 3099>, ガ is not an Appendix A key: U+3099 COMBINING KATAKANA-HIRAGANA VOICED SOUND MARK occurs in no table of any class, whereas U+309A occurs as the second element of thirteen keys. So this stream is two occurrences — a cl-16 katakana followed by a code point Appendix A does not list — while the visually parallel カ゚ is one, and an implementation that folds a base and any following combining kana mark into one cluster produces one item where the document has two and indexes every later answer against a stream this case does not describe. The answer is given for the base, which is the occurrence that survives either reading; what the case pins is that there is a second one.",
+      "input": {
+        "kind": "classify",
+        "text": "ガ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 0, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.16 read under §3.9.2, with U+3099 absent from every Appendix A table",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Unicode Normalization Form D (UAX #15), applied before classification",
+          "version": "Unicode 17.0.0",
+          "behavior": "NFD rewrites every precomposed voiced katakana as base plus U+3099, so U+30AC, U+30AE, U+30B0 and the other twenty voiced rows of §A.16 stop matching any Appendix A key and become a listed base followed by an unlisted combining mark.",
+          "our_reading": "Folding is over the Wide and Narrow compatibility decompositions and nothing else, because Appendix A's own preamble licenses exactly that much and no more. §A.16 spells ガ as U+30AC and states no decomposed spelling, so an implementation that normalizes further has changed the key set it is looking the occurrence up in.",
+          "evidence": "spec/derived/folding.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.16/halfwidth-katakana-a/narrow-fold",
+      "rules": ["3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The spelling of katakana that JLReq never mentions and that legacy Japanese text is full of. U+FF66 through U+FF9D appear in no Appendix A table of any class: §A scopes its lists to the non-ideographic characters of ISO/IEC 10646 collections 285 and 286, which do not contain the halfwidth forms. They reach cl-16 only through the Wide and Narrow compatibility folding the quoted note describes — the note is stated for U+FF08 and the mechanism it describes is general, which is a reading a case must declare rather than assume — and 46 of them land on cl-16 keys: U+FF66 onto U+30F2 and U+FF71 through U+FF9D onto their full-width counterparts. Two facts about that fold are asserted together here. Each of these code points carries a `<narrow>` decomposition, so the frame it asserts is a half em, and that contradicts the only sentence in the document that states a katakana's advance — §2.1.2's Japanese 「その字幅は全角となる」. The document does not resolve the contradiction, so the case declares the frame the code point asserts, records the class the fold reaches, and asserts nothing about the advance, which under ADR 0002 is the caller's in any case.",
+      "input": {
+        "kind": "classify",
+        "text": "ｱﾆﾒ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "UCD 17.0.0 UnicodeData.txt (`FF71;…;<narrow> 30A2`) folded under §A's preamble note, then JLReq §A.16",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "The Narrow decomposition makes U+FF71 a halfwidth rendering of a Japanese key, not a Western character (cl-27). Answering cl-27 for a halfwidth katakana run would put the whole of §3.2.6's proportional-frame machinery on text that has none."
+        },
+        {
+          "expect": { "class": { "item": 0, "class": 11 } },
+          "why": "The halfwidth block partitions the same way the full-width one does. U+FF67 through U+FF6F are the halfwidth small kana and fold onto cl-11 keys; U+FF71 is not one of them and folds onto U+30A2. An implementation that treats the whole of U+FF66–U+FF9D as one class has merged cl-16, cl-11, cl-10 and cl-05."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/halfwidth-voiced-katakana-ka/fold-yields-no-key",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "Where the halfwidth fold stops short of Appendix A. ｶﾞ is spelled <FF76, FF9E> in legacy Japanese text, and the Narrow decompositions send U+FF76 to U+30AB and U+FF9E to U+3099. U+30AB is a cl-16 key; <30AB, 3099> is not a key of any class, because U+3099 is listed nowhere in Appendix A, and §A.16 spells the voiced form precomposed as U+30AC. So folding does not turn this two-code-point spelling into the one key §A.16 has for it, and the stream is two occurrences of which the first is a katakana. This is the asymmetry that makes the halfwidth block worth a case of its own: U+FF9F folds to U+309A, which does form keys — <30AB, 309A> among them — so the semi-voiced halfwidth spelling reaches a sequence key and the voiced one does not.",
+      "input": {
+        "kind": "classify",
+        "text": "ｶﾞ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 0, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "UCD 17.0.0 UnicodeData.txt (`FF76;…;<narrow> 30AB`) folded under §A's preamble note, then JLReq §A.16",
+          "expect": { "class": { "item": 0, "class": 16, "rules": ["3.9.2"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-hiragana-double-hyphen/is-a-hyphen",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "゠ 30A0 KATAKANA-HIRAGANA DOUBLE HYPHEN 二重ハイフン，二分二重ダッシュ half-width 字幅は半角",
+      "rationale": "The code point immediately before §A.16's first row, and a member of hyphens (cl-03) rather than of katakana. It is the boundary a block-based implementation crosses first: the Katakana Unicode block begins at U+30A0 and §A.16 begins at U+30A2, and the two code points in between — U+30A0 and U+30A1 — belong to two other classes. Unlike every cl-16 row this one has a Remarks cell, and it states a half-width character frame (字幅), which is also the frame this occurrence declares. The mark itself is the one that separates the parts of a transliterated Western name written in katakana, so the adjacency in this stream is the ordinary one and the answer is given for the middle item.",
+      "input": {
+        "kind": "classify",
+        "text": "ア゠イ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.3, which lists U+30A0 with the Remarks cell \"half-width / 字幅は半角\", read under §3.9.2",
+          "expect": { "class": { "item": 1, "class": 3, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 16 } },
+          "why": "§A.16 lists 86 keys and U+30A0 is not one of them; §A.3 lists it, with a Remarks cell no cl-16 row has. The character's Unicode name contains KATAKANA and its block is Katakana, and neither is a JLReq class."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/katakana-digraph-koto/is-an-ideographic-character",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "ヿ 30FF KATAKANA DIGRAPH KOTO コト",
+      "rationale": "The code point at the far end of the Katakana block, and a member of ideographic characters (cl-19). With U+30A0 at the near end this closes the boundary around §A.16 from both sides: every code point of U+30A0 through U+30FF is listed by exactly one class except U+30FB, which §A.5 and §A.25 both list, so the block is fully partitioned and a sweep over it has a defined answer at every position — U+30A0 is cl-03, U+30A1 and the other small forms are cl-11, U+30FB is cl-05 and cl-25, U+30FC is cl-10, U+30FD and U+30FE are cl-09, U+30FF is cl-19, and the remaining 78 single code points are cl-16. There is no gap to fall through and no code point of the block for which \"unlisted\" is the answer.",
+      "input": {
+        "kind": "classify",
+        "text": "ヿ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19, which lists U+30FF, read under §3.9.2",
+          "expect": { "class": { "item": 0, "class": 19, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 16 } },
+          "why": "§A.16's last row is U+30FA and §A.19 lists U+30FF. The difference is not decorative: §3.3.8 forbids ruby text from overhanging a cl-19 character and permits it up to a full ruby em over a cl-16 one, and §3.9.2's Note names that permission as the whole reason cl-16 is a separate class from cl-19."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Unicode Standard Annex #24 `Script=Katakana`, read as a definition of cl-16",
+          "version": "Unicode 17.0.0",
+          "behavior": "Script=Katakana covers U+30A1–U+30FA, U+30FD–U+30FF, U+31F0–U+31FF, U+32D0–U+32FE, U+3300–U+3357, U+FF66–U+FF6F and U+FF71–U+FF9D. An implementation that reads it as cl-16 therefore admits the small kana (cl-11), both katakana iteration marks (cl-09), KATAKANA DIGRAPH KOTO (cl-19) and the circled katakana (cl-19), and excludes U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK, which is Script=Common and which JLReq's own default level moves into cl-16.",
+          "our_reading": "Appendix A's tables are the enumeration and the Unicode Script property is not a JLReq character class. The two answers differ on at least 22 code points of the Katakana block alone, and every one of them changes a ruby-overhang permission, a line-start prohibition, or both.",
+          "evidence": "spec/derived/scripts.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.16/circled-katakana-a/is-an-ideographic-character",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "㋐ 32D0 CIRCLED KATAKANA A 丸ア",
+      "rationale": "The same letter as §A.16's first row, enclosed, and a member of ideographic characters (cl-19). The whole run U+32D0 through U+32FA is listed by §A.19, so the enclosed forms follow the enclosure and not the letter inside it — which is the opposite of the halfwidth forms, where the Narrow fold does follow the letter. A case is needed because the two behaviors cannot both be inferred from a naming rule: U+FF71 HALFWIDTH KATAKANA LETTER A answers cl-16 and U+32D0 CIRCLED KATAKANA A answers cl-19, and the difference is that Unicode gives the first a compatibility decomposition Appendix A's preamble licenses folding and gives the second one it does not.",
+      "input": {
+        "kind": "classify",
+        "text": "㋐",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19, which lists U+32D0 through U+32FA, read under §3.9.2",
+          "expect": { "class": { "item": 0, "class": 19, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 16 } },
+          "why": "U+32D0's `<circle>` decomposition is a compatibility mapping that is neither Wide nor Narrow, and the folding §A's preamble licenses is those two and nothing else — full compatibility folding would also fold U+2160, a genuine cl-19 member, onto `I`. §A.19 lists U+32D0 outright, so there is nothing to infer."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/prolonged-sound-mark/reclassified-into-katakana",
+      "rules": ["3.9.2", "C.3", "B.2#15", "C.2#2", "E.2#2"],
+      "standing": "adjudicated",
+      "quote": "If a prolonged sound mark (cl-10) is allowed to appear at the head of a line or that of inline cutting note, the character shall be treated as a member of the katakana (cl-16) class. (For how it behaves in combination with other character classes, see the cells for katakana (cl-16).)",
+      "rationale": "cl-16 seen from the side of the class that joins it. §A.16's 86 rows are the unconditional core of katakana and not the whole of it: §3.9.2, §B.2 note 15, §C.2 note 2 and §E.2 note 2 all state that where a break before U+30FC is permitted, the mark \"shall be treated as a member of the katakana (cl-16) class\", and the §C.2 and §E.2 halves add the dereference instruction to read cl-16's cells for every combination, which makes the change apply to every matrix cell and not only at a line head. §C.3 then names Prolonged sound mark (cl-10) in the relaxed set at three of its four levels, including level 3, which the document labels \"Strict (Default, general publications)\". So under the document's own default this key is a katakana, and §A.16's table does not list it — the membership is stated in five places, none of them Appendix A. The standing is `adjudicated` because §C.3 can be read as a reclassification or as an override of Table 2's cells alone, and those readings are not equivalent; the overlay `kinsoku.relaxation_mechanism` carries the two, its permission is recorded as `contradictory`, and the fallback entry is the answer an implementation reading §C.3 as a matrix override also produces. Note that no finer overlay exists: §B.2 note 14 gave IDEOGRAPHIC ITERATION MARK 々 its own question, while notes 15 and 16 produced none, so the level machinery is the only switch.",
+      "input": {
+        "kind": "classify",
+        "text": "カード",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.10's table, which lists U+30FC as the sole member of cl-10.",
+          "expect": { "class": { "item": 1, "class": 10, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 2, §B.2 note 15 and §E.2 note 2, put in force by §C.3, whose Very loose, Loose and Strict (Default) levels all name Prolonged sound mark (cl-10) among the classes Table 2's prohibition is lifted for.",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 16,
+              "rules": ["C.3", "C.2#2", "B.2#15", "E.2#2"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, Very strict: \"Breaking a line is not allowed for any place where Table 2 prohibits it (no alternate rule explained in § C.2 Notes is applied.)\" — the one level under which U+30FC is unambiguously cl-10 even when relaxation reclassifies.",
+          "expect": { "class": { "item": 1, "class": 10, "rules": ["C.3", "3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 1, "class": 10, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 15 } },
+          "why": "§C.2 note 2 names katakana (cl-16) and nothing else. The script-dependent choice between cl-15 and cl-16 belongs to note 3 and to small kana alone, and it could not decide this key in any case: U+30FC is Script=Common, not Script=Katakana, which is exactly why note 2 has to name the target class outright."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/small-katakana-a/reclassified-into-katakana",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "adjudicated",
+      "quote": "In principle, small kana (cl-11) should be placed neither at the head of a line nor that of an inline cutting note in principle. If it were to be allowed, HIRAGANA LETTER SMALL * shall be treated as part of the hiragana (cl-15) class, and KATAKANA LETTER SMALL * as part of the katakana (cl-16) class.",
+      "rationale": "The second and much larger of the two derivations that add members to cl-16. U+30A1 KATAKANA LETTER SMALL A is listed by §A.11 and by no other table, and the quoted note together with §C.2 note 3, §E.2 note 3 and §3.9.2's own Note says that where a break before it is permitted it is a katakana. §C.3 relaxes Small kana (cl-11) at levels 1, 2 and 3, and level 3 is the document's stated default, so the class this occurrence answers under JLReq's own preferred convention is cl-16 and not cl-11. The size of the addition is worth stating because it changes what \"cl-16\" means: cl-11 holds 41 keys, 29 of which are katakana — U+30A1, U+30A3, U+30A5, U+30A7, U+30A9, U+30C3, U+30E3, U+30E5, U+30E7, U+30EE, U+30F5, U+30F6, the sixteen code points U+31F0 through U+31FF, and the sequence <31F7, 309A> — so cl-16 holds 86 keys at level 4 and 116 at levels 1 through 3, once U+30FC is counted too. The three permitted entries and the `adjudicated` standing are the same machinery the prolonged-sound-mark case uses and for the same reason: §C.3 states the relaxation as an override of Table 2 while §C.2, §B.2 and §E.2 state it as a change of class, and the two are not equivalent.",
+      "input": {
+        "kind": "classify",
+        "text": "ファン",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11's table, which lists U+30A1 as small kana.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3, §B.2 note 16 and §E.2 note 3, put in force by §C.3, whose Very loose, Loose and Strict (Default) levels all name Small kana (cl-11) among the classes Table 2's prohibition is lifted for.",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, Very strict: \"Breaking a line is not allowed for any place where Table 2 prohibits it (no alternate rule explained in § C.2 Notes is applied.)\" — the one level at which cl-16 is exactly §A.16's 86 rows.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["C.3", "3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/small-kana-pair/script-decides-the-target-class",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "adjudicated",
+      "quote": "If small kana (cl-11) are allowed to appear at the head of a line or that of inline cutting note, the character shall be treated as a member of the hiragana (cl-15) or katakana (cl-16) classes accordingly, depending on the script type of the character. (For how it behaves in combination with other character classes, see the cells for hiragana (cl-15) or katakana (cl-16).)",
+      "rationale": "The split, asserted on the one pair that makes it visible. U+3063 HIRAGANA LETTER SMALL TU and U+30C3 KATAKANA LETTER SMALL TU are two rows of the same §A.11 table, they are the same sound and the same size, and under the quoted note they leave that table for two different classes. The stream holds both in that order and the answer is given for the katakana, so a policy in which cl-11 is relaxed but the script is not consulted answers cl-15 here and fails on the one item that distinguishes the readings. §A.11's own UCS names are what decide it — the note's \"HIRAGANA LETTER SMALL *\" and \"KATAKANA LETTER SMALL *\" in §B.2 note 16 are name patterns over exactly this table — and Script=Katakana covers U+30A1 through U+30FA and U+31F0 through U+31FF, which is the same partition read from the character database.",
+      "input": {
+        "kind": "classify",
+        "text": "っッ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11's table, which lists both keys as small kana.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3, §B.2 note 16 and §E.2 note 3, put in force by §C.3's Strict (Default) level, with the script of the character deciding between cl-15 and cl-16.",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, Very strict, under which no §C.2 alternative applies and both keys stay in cl-11.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["C.3", "3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 1, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 15 } },
+          "why": "cl-15 is where §C.2 note 3 sends the small hiragana, which is item 0 of this stream. Sending both items to one class discards the only distinction the note draws, and the two answers are observably different: §3.3.8 permits ruby overhang over cl-15 and over cl-16 by the same amount, but §B.2 note 7's JIS X 4051 reading forbids it over katakana and permits it over hiragana."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/ainu-small-hu/sequence-reclassified",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "adjudicated",
+      "quote": "ㇷ゚ <31F7, 309A> <KATAKANA LETTER SMALL HU, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 小書き半濁点付き片仮名フ",
+      "rationale": "The ninth ordered sequence of Appendix A, the only one outside §A.15 and §A.16, and the one key that is both a sequence and a reclassification. §A.11 lists it, so unreclassified it is small kana; its UCS name begins KATAKANA LETTER SMALL and U+31F7 is Script=Katakana, so under §C.2 note 3 and §B.2 note 16 it joins cl-16 rather than cl-15 when small kana are relaxed. Both properties have to hold at once for this case to pass, which is what makes it worth writing: an implementation that has the eight §A.16 sequences but not this one never reaches the reclassification, and one that has the key but applies the note by code point rather than by script sends it to cl-15. The item covers both code points, so as with §A.16's own sequences the well-formedness of the stream is the statement that the longest match was performed.",
+      "input": {
+        "kind": "classify",
+        "text": "ㇷ゚",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11's last row, whose UCS cell is written in the ordered-sequence form.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3, §B.2 note 16 and §E.2 note 3, put in force by §C.3's Strict (Default) level; the script of U+31F7 is Katakana, so the target class is cl-16.",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, Very strict, under which no §C.2 alternative applies and the key stays in cl-11.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] } }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.16/ruby-over-katakana/overhang-allowance",
+      "rules": ["3.3.8", "B.2#7"],
+      "standing": "adjudicated",
+      "quote": "When the adjacent character is a hiragana (cl-15), katakana (cl-16), prolonged sound mark (cl-10) or small kana (cl-11), the ruby text may overhang the character up to the full-width size of the ruby characters.",
+      "rationale": "Why cl-16 exists at all, made executable. §3.9.2's Note says katakana is a separate class from cl-19 for exactly one reason — 「ルビのはみ出しがあった場合，平仮名と同様に掛かってよいとしたことから独立した文字クラスとした」 — so an implementation that classifies katakana correctly and then overhangs it like an ideograph has implemented the class and not the reason for it. The readings are a closed set of four and every one of them is tied to a choice of `ruby.overhang_kana`: JLReq's preferred amount is a full ruby em over cl-15, cl-16, cl-10 and cl-11; JIS X 4051 conformance permits none over katakana, because JIS puts katakana in the ideographic class; and §3.3.8's two further Notes give a half ruby em over cl-19, cl-15 and cl-16 alike (Figure 139) and none at all over the three (Figure 140). Two divergences are recorded rather than resolved here, which is why the standing is `adjudicated`. §B.2 note 7's first sentence names only katakana in English and names 片仮名（cl-16），長音記号（cl-10）又は小書きの仮名（cl-11） in Japanese; the project takes the Japanese, and that is already carried as a recorded defect. Its third sentence diverges on an amount, which no class-linkage measurement can see: the Japanese says 「最大でルビ文字の文字サイズの1/2まで」 and the English says \"up to the size of the ruby character\", which would make the alternative byte-identical to the preferred approach two sentences earlier and therefore not an alternative at all. §3.3.8's own Note settles it in both locales — \"up to the half-width size of a ruby character\" and 「最大でルビ文字サイズの二分まで」 — so the `any` entry below states half a ruby em, and an implementation that overhangs cl-19, cl-15 and cl-16 by a full ruby em under that choice is asserting the defective English. The annotation stream declares the ruby em, which is where it is stated and the only place, so every amount below resolves against 500 rather than against the base's 1000.",
+      "input": {
+        "kind": "boundary",
+        "text": "漢カ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "かん",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "scale": 0 },
+              { "start": 3, "advance": 500, "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [{ "base": [0, 1], "annotation": [0, 2] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred (§3.3.8, §B.2#7 first sentence, Japanese rendering), which `Policy::JLREQ` selects as `ruby.overhang_kana = kana`",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "ruby_overhang": { "em": [1, 1], "units": 720, "resolved": 500 },
+              "rules": ["3.3.8", "B.2#7"]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.overhang_kana": "kana" },
+          "source": "The same reading named explicitly, so the (question, choice) pair is exercised rather than reached only as a fallback",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "ruby_overhang": { "em": [1, 1], "units": 720, "resolved": 500 },
+              "rules": ["3.3.8", "B.2#7"]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.overhang_kana": "jis" },
+          "source": "JIS X 4051 conformance: \"JIS X 4051 classifies katakana characters and kanji characters in same class. Accordingly, in JIS X 4051 it is prohibited for ruby characters to overhang adjacent katakana characters.\" (§3.3.8's Note, restated as §B.2#7's second sentence)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "ruby_overhang": { "em": [0, 1], "units": 0, "resolved": 0 },
+              "rules": ["3.3.8", "B.2#7"]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.overhang_kana": "any" },
+          "source": "JLReq §3.3.8's second Note, Figure 139: \"There is another variation that allows ruby text to overhang any ideographic characters (cl-19), hiragana (cl-15) or katakana (cl-16) up to the half-width size of a ruby character.\" The amount is 二分 in the Japanese of both §3.3.8 and §B.2#7 and is dropped from §B.2#7's English.",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "ruby_overhang": { "em": [1, 2], "units": 360, "resolved": 250 },
+              "rules": ["3.3.8", "B.2#7"]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.overhang_kana": "none" },
+          "source": "JLReq §3.3.8's third Note, Figure 140: \"There is a further variation that does not allow ruby text to overhang any ideographic (cl-19), hiragana (cl-15) or katakana (cl-16) characters.\"",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "ruby_overhang": { "em": [0, 1], "units": 0, "resolved": 0 },
+              "rules": ["3.3.8", "B.2#7"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "ruby_overhang": { "em": [3, 2] } } },
+          "why": "Every reading states a ceiling and none states more than one ruby em: §3.3.8 says \"up to the full-width size of the ruby characters\" and §B.1's `ruby hang` legend says \"Ruby text can be extended up to the size of the ruby character over the other character\". An overhang of one and a half ruby ems lies above all four permitted answers rather than between two of them."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "CSS Ruby Annotation Layout Module Level 1",
+          "version": "W3C Working Draft",
+          "behavior": "The module defines no property by which ruby text may overhang the characters adjacent to its base; the `ruby-overhang` property of the earlier draft was dropped. A CSS engine implementing the module as published therefore always behaves as the `none` entry below, and cannot express the reading JLReq itself prefers.",
+          "our_reading": "§3.3.8 makes a full ruby em over cl-15, cl-16, cl-10 and cl-11 the preferred amount and states no-overhang as one of three alternatives, and §3.9.2's Note makes that permission the stated reason cl-16 is a class at all. Publishing the four readings as four selectable choices is the point of the case: an engine fixed at `none` scores as agreeing with one recorded reading rather than as failing, which is what makes this suite runnable against a browser.",
+          "evidence": "spec/derived/questions.tsv"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1377 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.25",
+  "heading_en": "Unit symbols (cl-25)",
+  "heading_ja": "単位記号中の文字（cl-25）",
+  "cases": [
+    {
+      "id": "A.25/latin-unit-symbol/proportional-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In this document, description of units with proportional Western characters, such as km and kg, are treated as unit symbols (cl-25).",
+      "rationale": "§A.25 is a heading and one table and contains no prose at all, so every sentence that puts an occurrence into this class is somewhere else, and the sentence quoted above — a Note inside §3.1.10 — is the one that does it. The table enumerates 66 keys, all of them single code points, and every one of the 66 is also listed by at least one other class, so no code point identifies cl-25 on its own and no implementation can answer this class from a key. 006B and 006D are the ordinary case: §A.25 gives each the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」 and §A.27 gives the same key the byte-identical cell, so the character frame (字幅) the caller declares is satisfied by both listings and separates neither. What separates them is what the occurrence is doing, which §3.9.2 states for this class in one sentence: the characters here are the ones combined to indicate an international unit. This case declares that, item by item, with the only field the format has for it — `role`, whose `unit-symbol` value exists because §B.2 note 12 and this Note are the document's own way of saying that a key becomes cl-25 by usage — and the answer follows without consulting anything else. The em is declared as 1200 rather than 1000 because §A.25's Remarks column states a quarter em, a third em and a half em for other rows of this same table, and 1200 divides by 2, 3 and 4 exactly, so every advance in this file is an integer the document could have written.",
+      "input": {
+        "kind": "classify",
+        "text": "km",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 607,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.10 third Note, over §A.25's rows for 006B and 006D (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.25 and §A.27 state the identical Remarks cell for this key, so an implementation that decides from the table and the frame alone answers cl-27 here — and then \"km\" and the letters of an English word set in the same face are the same class, which is the distinction §3.1.10's Note exists to draw."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          },
+          "why": "§A.19 lists 006B too, with an empty Remarks cell, and an empty cell is what remains where no qualified listing speaks. Here two speak and both name the proportional frame, which is the frame this occurrence declares."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/latin-unit-symbol/construct-not-declared",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "The same two letters, measured the same way, with the one fact the case above declared taken away — and the class changes. That is the whole assertion of this file, stated as a differential pair: for all 56 proportional keys of §A.25 (0041–005A, 0061–007A, 03A9, 03BC, 2127, 212B) the Remarks cell of §A.25 and the Remarks cell of §A.27 are the same characters, so nothing in Appendix A can separate the two classes for any of them, and the separation is the construct the occurrence sits in. §A.25's own name says so in both locales: the English heading is \"Unit symbols\" and the Japanese is 「単位記号中の文字」, characters *inside* a unit symbol, which is a table of what may appear in the construct rather than a table of what always belongs to the class. An occurrence that declares no such construct has not met the condition §3.9.2 states, while §A.27's listing describes it exactly and with no condition to meet, so the answer is cl-27 and this is not one of §3.9.2's ambiguous cases: the section states the condition instead of being silent about it. The letters are the letters of \"km\" on purpose. Nothing in a stream of code points says whether they are a kilometer or the first two letters of a word, which is why the caller is the party that decides and why an implementation that infers the class from the letters will be wrong in one direction or the other.",
+      "input": {
+        "kind": "classify",
+        "text": "km",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 607,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's definition of cl-25, against §A.27's unconditional listing of 006B (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "§A.25's listing of 006B is qualified by the construct its own heading names — 「単位記号中の文字」, the characters inside a unit symbol — and this occurrence declares none. Answering cl-25 from the table and the proportional frame makes every proportionally-set Latin letter in a Japanese document a unit symbol, which would give the first stage of §D's reduction ladder and §3.1.10's break prohibition to ordinary Western words."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/latin-unit-symbol/full-width-frame",
+      "rules": [
+        "3.2.4",
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "There are units created with combinations of Latin and Greek script characters with a full-width character frame (full-width units). Such units are not part of the characters for units described here. Furthermore, full-width characters for units are mainly used in vertical writing mode. Their usage in horizontal writing mode is regarded as bad style and should be avoided (see Figure 184).",
+      "rationale": "The third leg of the same pair: the caller declares the unit symbol and the class still is not cl-25, because the frame excludes it. This is the one exclusion §3.9.2 states about cl-25 in words, and it has no row in any table — a reader who works only from Appendix A never sees it. The exclusion is a frame exclusion, which is why it belongs beside the two cases above: §A.25's Remarks column states a frame for 63 of its 66 rows and the frame it states for all 52 Latin letters is the proportional one, so a full-width Latin letter fails that qualification and §3.9.2's Note then closes the door the empty cells might have left open. §A.19's listing of 006B carries an empty Remarks cell and is therefore what remains once the two qualified listings, §A.25 and §A.27, have both failed on the frame, which is also the answer §3.2.4 gives in its own words when it sets full-width and fixed-width Western characters as quasi Japanese characters. The Note's second half — that full-width unit characters belong mainly to vertical composition and are bad style in horizontal — is a statement about usage rather than about class, and this case deliberately declares no direction so that nothing in the input can be read as making the class depend on one.",
+      "input": {
+        "kind": "classify",
+        "text": "km",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's Note excluding full-width units (全角単位字), over §A.19's listing of 006B (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "The caller declared the unit symbol, so an implementation that reads `role` and stops answers cl-25. §3.9.2's Note says of exactly this occurrence that such units \"are not part of the characters for units described here\", and §A.25's Remarks cell for 006B states the proportional frame, which this occurrence is not."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 006B is \"proportionally-spaced\", and §3.9.1 asks \"Is the character width full-width, half-width, or something else?\" first among the axes on which positioning differs. A full-width Latin letter meets neither §A.25's qualification nor §A.27's."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/remarks-without-locale-span/proportional-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In this document, description of units with proportional Western characters, such as km and kg, are treated as unit symbols (cl-25).",
+      "rationale": "Three of §A.25's rows are broken in the published rendering. 0044 LATIN CAPITAL LETTER D, 0049 LATIN CAPITAL LETTER I and 004B LATIN CAPITAL LETTER K hold the bare string 「プロポーショナル」 in their Remarks cell with no `its-locale-filter-list` span, where the other 53 proportional rows of this table write two spans, one per locale. They are the only three of Appendix A's 1687 Remarks cells that hold text and no locale span, so an English-locale rendering of the document shows an empty Remarks cell for three rows that mean \"proportionally-spaced\". It is recorded as `cl-25-remarks-without-locale-span` in spec/derived/defects.tsv, and this project reads the three cells as the remark the localized cells state. This case is the ordinary half of the pair: 「K」 is the kelvin, a complete unit symbol written with one proportional Latin capital, and it is a member of cl-25 exactly as the 53 unbroken rows are. An implementation that read the English rendering reaches the same answer here for a different reason — an empty cell restricts no frame, so the proportional one is admitted — which is why this case alone does not detect the defect and the fixed-width case below is the one that does.",
+      "input": {
+        "kind": "classify",
+        "text": "K",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 812,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25's row for 004B, read as the localized Remarks cell states it (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 004B is \"proportionally-spaced\", the same qualification §A.25 states once its broken cell is read, so the frame separates nothing here either and the declared construct decides — as it does for the 53 rows whose cells are not broken."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/remarks-without-locale-span/fixed-width-frame",
+      "rules": [
+        "3.2.4",
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Is the character width full-width, half-width, or something else?",
+      "rationale": "The same key on a frame §A.25 does not state, and this is the one occurrence in the class where the recorded defect changes an answer. Read as the localized cell states it, §A.25's row for 004B qualifies the key with the proportional frame, so a half-width kelvin fails that qualification; §A.27 states the same qualification and fails it too; and what remains is §A.19's listing of 004B with its empty Remarks cell, which is also what §3.2.4 prescribes when it sets fixed-width Western characters as quasi Japanese characters. Read as the English rendering shows it, §A.25's cell is empty, an empty cell restricts no frame, and the occurrence — declared a component of a unit symbol — is admitted to cl-25. The two readings therefore diverge here and nowhere else: on the proportional frame both give cl-25, on the full-width frame §3.9.2's Note excludes the occurrence under either reading, and only a fixed width that is not full-width separates them. The divergence is not recorded as a permitted alternative, and it must not be: it is a defect of the published rendering rather than a rule the document states twice, so the reading it produces belongs in `forbidden` with the defect named. The same case written over 0044 or 0049 would assert the same thing.",
+      "input": {
+        "kind": "classify",
+        "text": "K",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 600,
+            "frame": "half-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19's row for 004B; §A.25's localized Remarks cell states the proportional frame, which this occurrence is not (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "The answer produced by the English-locale rendering of §A.25, where the Remarks cell for 004B is empty because the cell carries no locale span — spec/derived/defects.tsv `cl-25-remarks-without-locale-span`. An empty cell restricts no frame, so that reading admits a fixed-width kelvin to the class; the localized cell states 「プロポーショナル」 and refuses it. A transcription artifact is not a second reading of the rule."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/greek-letter/proportional-frame",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "§A.25 names four Greek or Greek-derived keys — 03A9 GREEK CAPITAL LETTER OMEGA, 03BC GREEK SMALL LETTER MU, 2127 INVERTED OHM SIGN and 212B ANGSTROM SIGN — and this case is the second script of the sentence quoted above. It matters that the sentence names two scripts, because its two halves do not name them the same way: the English writes \"combinations of Latin script and Greek script characters\" and the Japanese writes 「ラテン文字又はギリシャ文字を組み合わせて」, a disjunction where the English has a conjunction. 「μm」 satisfies both readings at once — it is a combination of a Greek letter and a Latin letter — so the divergence cannot reach this case's answer, which is why this is the pairing worth publishing rather than a Greek letter standing alone. The divergence is not recorded in spec/derived/defects.tsv and is not material to membership; it is reported here so that a reader who finds it later knows it was seen. Membership itself is decided as in the Latin case: §A.25 and §A.27 give 03BC the identical Remarks cell 「プロポーショナル」, the frame therefore separates nothing, and the declared construct does.",
+      "input": {
+        "kind": "classify",
+        "text": "μm",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 667,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's definition of cl-25, over §A.25's row for 03BC (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27 lists 03BC with the same Remarks cell §A.25 gives it, so the two listings are indistinguishable by anything a table holds. The answer that reads the frame and stops is cl-27, and it is the same answer this implementation must give for the identical letter used as a variable in running Western text — which is why the construct, and not the key, is what the case declares."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/angstrom-sign/construct-is-the-only-axis",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In this document, description of units with proportional Western characters, such as km and kg, are treated as unit symbols (cl-25).",
+      "rationale": "212B ANGSTROM SIGN is the sharpest form of this class's central problem, because it is named by exactly two tables — §A.25 and §A.27 — and by nothing else in the whole of Appendix A, and those two tables give it the same Remarks cell, \"proportionally-spaced\" / 「プロポーショナル」. 2127 INVERTED OHM SIGN is its twin and behaves identically. So for these two keys the entire disambiguating apparatus of Appendix A reduces to nothing: there is no third listing to displace, no frame that one table admits and the other refuses, no writing direction stated anywhere, and no common name that differs. A key whose only two candidate classes state the same qualification is decided by the construct or it is not decided at all, and §3.9.2 supplies the construct in one sentence. The occurrence stands alone because an angstrom is a complete unit symbol written with one character; nothing in this case depends on a neighbor, which is what makes it the minimal statement of the assertion. It is worth naming what this case would look like if the answer came from the glyph: 212B has the canonical decomposition U+00C5 and a library that normalized its input would be classifying a different key, one that §A.25 does not list at all and §A.27 does.",
+      "input": {
+        "kind": "classify",
+        "text": "Å",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 745,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.10 third Note, over §A.25's row for 212B, which only §A.27 shares (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "The only other table naming 212B, with the same Remarks cell. An implementation that answers cl-27 for this occurrence has no answer left for cl-25 at all on any of its 56 proportional keys, because there is no key for which the tables say more."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/solidus/third-em-frame",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Is the character width full-width, half-width, or something else?",
+      "rationale": "002F SOLIDUS carries the one Remarks cell in §A.25 that states three frames — \"one third em width, half-width or proportional\" / 「字幅は三分角，半角又はプロポーショナル」 — and it is the only cell anywhere in Appendix A that admits a third em for this key: §A.27 states \"proportionally-spaced\" and §A.19's cell is empty. So a solidus the caller set on the third em is described by §A.25 and refused by §A.27, which makes this the one key and frame combination in the class where the Remarks column alone narrows the candidates to a single qualified listing. That is worth a case of its own precisely because it is the exception: for 56 of the 66 keys the Remarks column narrows nothing, and an implementation tuned on this row would conclude that the frame decides cl-25 in general. The occurrence declares the construct as well, so the case does not depend on which of the two reasons an implementation gives; what it asserts is the answer, and what the rationale records is that here they agree. \"km/h\" is the shape §A.25's cell was written for: the solidus between two unit symbols is the divisor of a compound SI unit, and no other position in Japanese text puts a solidus on the third em.",
+      "input": {
+        "kind": "classify",
+        "text": "km/h",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 607,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 400,
+            "frame": "third-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 623,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25's Remarks cell for 002F, the only listing of that key admitting a third em (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 25,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 002F is \"proportionally-spaced\" and this occurrence is not proportional; it is a third em, which is a fixed width. The listing that states the caller's frame is §A.25's and it is the only one."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 19
+            }
+          },
+          "why": "§A.19 lists 002F with an empty Remarks cell, which restricts nothing and is what remains where no qualified listing speaks. Here one speaks and states the third em in so many words."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/solidus/proportional-frame",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "The same solidus in the same compound unit, set on the frame §A.25's cell names third of its three, and the expected class is the same — which is what a three-valued Remarks cell means and is the reason this case is a pair with the one above rather than a repetition of it. On the third em §A.25 was the only listing that described the occurrence; on the proportional frame §A.27 describes it just as well, and the two now say exactly the same thing about it, so the frame that decided the class in the previous case decides nothing in this one. An implementation that reached the right answer above by reading the Remarks column will reach cl-27 here and will have failed the only case of the pair that could tell the two strategies apart. What carries the answer in both is the construct: the occurrence is declared a member of a unit symbol, and §3.9.2 defines the class by exactly that.",
+      "input": {
+        "kind": "classify",
+        "text": "km/h",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 607,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 391,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 623,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's definition of cl-25, over §A.25's row for 002F, whose third stated frame this is (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 25,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          },
+          "why": "The answer of an implementation that read the frame rather than the construct. It is the same answer that implementation gave in the third-em case, where it was wrong for the opposite reason: there §A.27 refused the occurrence and here §A.27 admits it, and the class did not change either time."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/solidus/construct-not-declared",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "The differential twin of the case above, and the one that says what \u00a7A.25's Remarks column is a statement about. The same four occurrences, measured the same way, with the declared unit symbol taken away. \u00a7A.25's cell for 002F states \\\"one third em width, half-width or proportional\\\" and it is the only cell in Appendix A that admits a third em for this key \u2014 but what it states is the width a solidus has *inside* an SI unit symbol, which is the construct \u00a73.9.2 scopes the class by and \u00a7A.25's own Japanese heading names: \u300c\u5358\u4f4d\u8a18\u53f7\u4e2d\u306e\u6587\u5b57\u300d, the characters inside a unit symbol. A width is not that construct. \u00a7A.19 lists 002F with an empty Remarks cell, which states no width and so refuses none, and it puts no condition on the listing at all, so it is what describes an occurrence whose construct nobody declared. Reading the qualified cell as the membership test takes \u00a7A.19's listing off the table on the strength of an advance, and then every solidus a Japanese document sets on the third em \u2014 a date, a fraction, a ratio \u2014 is answered as a character inside a unit symbol. \u00a7A.27's cell is \\\"proportionally-spaced\\\" and this occurrence is a third em, so the Western listing is the one the Remarks column does refuse, which is the column doing what it can do.",
+      "input": {
+        "kind": "classify",
+        "text": "km/h",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 607,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 400,
+            "frame": "third-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 623,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.19's unconditional listing of 002F, against §A.25 read under §3.9.2's definition of cl-25 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 19,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 25
+            }
+          },
+          "why": "§3.9.2 scopes cl-25 to \"combinations of Latin script and Greek script characters used for international units (SI)\", which is a run over the stream, and this input declares none. §A.25's Remarks cell states the width the solidus has inside such a symbol and is not a test admitting every solidus of that width."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 002F is \"proportionally-spaced\" and this occurrence declares a third em, which is a fixed width."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/digit-in-unit-symbol/unit-symbol-role",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "§A.25 lists DIGIT ONE, DIGIT TWO, DIGIT THREE and DIGIT FOUR, and this case is the ordinary use of them: the exponent of a squared unit written with an ASCII digit. Their Remarks cell reads \"half-width or proportional\" / 「半角又はプロポーショナル」, so the half em this occurrence declares is one of the two frames §A.25 admits. §A.24 lists the same key with \"half-width\" / 「字幅は半角」, which this occurrence also satisfies, so after the frame two listings survive and both are construct memberships — cl-24 is the grouped numeral (連数字) and cl-25 the unit symbol. The declared construct is what chooses, and it is the only thing that could: the two Remarks cells are compatible rather than contradictory, and §3.9.2's two definitions differ in the construct and in nothing else. A digit inside a unit symbol and a digit inside a grouped numeral are not a distinction any font, any advance or any neighbor can carry, which is why this case exists in the same file as the one below it, where the caller declares nothing and the document leaves both standing.",
+      "input": {
+        "kind": "classify",
+        "text": "m2",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 600,
+            "frame": "half-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's definition of cl-25, over §A.25's row for 0032 (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 24
+            }
+          },
+          "why": "§A.24 lists 0032 with \"half-width\", which this occurrence is, so the answer of an implementation that reads the frame and takes the lower-numbered listing is cl-24. §3.9.2 defines cl-24 as \"Sequences of European numerals which are not full-width and are handled as Japanese text\" and this digit is declared to be part of a unit symbol, which is the other construct."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/digit-in-unit-symbol/construct-not-declared",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "The same digit with the construct taken away, and here the document genuinely stops. §A.24's Remarks cell for 0032 is \"half-width\" and §A.25's is \"half-width or proportional\"; the half em this occurrence declares satisfies both, §3.2.6's Note is what removes cl-19 — \"half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class\", which is the one sentence outside Appendix A that gives an occurrence to a class that is membership in a construct, and whose subject is exactly the ten keys §A.19 and §A.24 both name. §A.19's empty cell states no width and so refuses none; it is the sentence and not the Remarks column that answers here. §A.27's \"proportionally-spaced\" refuses the half em. Two listings survive, both are construct memberships, and no fact the caller supplied chooses between them — which is exactly the case §3.9.2 concedes rather than decides, since its only word on the ambiguous occurrence is a preference stated about one example. So both survivors are recorded with the question that selects each, rather than one being asserted from the letter standing beside the digit. The reading this project publishes is the lowest-numbered survivor, docs/decisions/ambiguous-context.md, which answers cl-24 here; the alternative prefers the higher-numbered survivor and answers cl-25. The pairing with the case above is the point: the declared construct is not decoration, it is the whole of the difference between an answer and a pair of them.",
+      "input": {
+        "kind": "classify",
+        "text": "m2",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 600,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md), over the survivors §A.24 and §A.25 leave",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 24,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.ambiguous_context": "highest-class"
+          },
+          "source": "The other survivor: §A.25's row for 0032, whose stated frame this occurrence also satisfies",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 0032 is \"proportionally-spaced\" and this occurrence declares the half em. The listing that states the caller's frame is not §A.27's, however Western the digit and the letter beside it look."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/digit-in-unit-symbol/digit-the-table-omits",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "This is where §A.25's enumeration stops, and the boundary is drawn by an omission the document never explains. §A.25 lists DIGIT ONE through DIGIT FOUR and no other digit; §A.24 lists all ten, 0030 through 0039, each with \"half-width\". No sentence in §A.25, §3.9.2, §3.1.10 or anywhere else states a derivation rule, an exception or a cross-reference that would say why 0030 and 0035 through 0039 are absent from a unit symbol, and the omission must be treated as the document's own rather than as an extraction loss. The input is the input of the two cases above with one byte changed, and the change removes a survivor: for 0035 there is nothing in §A.25 to survive, so the pair that made the case above `unstated` collapses to the single listing §A.24 provides and the answer is decided rather than conceded. What an implementation must not do is generalize from the four digits that are listed to the ten that exist, because that is a rule the document does not state and it would silently widen a closed class.",
+      "input": {
+        "kind": "classify",
+        "text": "m5",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 600,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for 0035; §A.25 does not list the key (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 24,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25
+            }
+          },
+          "why": "§A.25 enumerates 0031, 0032, 0033 and 0034 and no other digit, and its table is closed. Answering cl-25 here is reading \"digits may appear in unit symbols\" out of four rows that name four digits, and it gives the same answer for 0035 that the document reserves for the four it lists."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/katakana-middle-dot/unit-symbol-role",
+      "rules": [
+        "3.1.2",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Character spacing between a preceding unit symbol (cl-25) and a trailing middle dot (cl-05) shall be a quarter em of the trailing character. Note that KATAKANA MIDDLE DOT \"・\" can be used either as a unit symbol (cl-25) or as a middle dot. When it is used as a unit symbol (cl-25), both preceding and trailing spacing of KATAKANA MIDDLE DOT \"・\" shall be zero.",
+      "rationale": "30FB KATAKANA MIDDLE DOT is the last row of §A.25's table and the only member of the class the document discusses by name outside Appendix A. The sentence quoted above is the whole of it: the key may be used either way, and which way it is used decides the class. That sentence is also the only place in the document where cl-25 appears as a participant in a spacing rule, so it is what makes membership of this class observable in composed output at all — every other cl-25 fact is a frame or a break prohibition. §A.25's Remarks cell for 30FB reads \"half-width\" / 「字幅は半角」 and §A.5's is empty, but the frame cannot be what separates the two listings here: §A.5's silence is not a silence, because §3.1.2 states in prose that the character advance of middle dots (cl-05) is half-width, and for the five classes §3.1.2 names the declared frame is a geometry the caller has measured rather than a class selector (ADR 0008). Both listings therefore describe a half-width middle dot, and §B.2 note 12 says so directly. The construct is what remains, and this occurrence declares it: 「N・m」 is the newton meter, in which the middle dot is the multiplication of two unit symbols and not a separator between words.",
+      "input": {
+        "kind": "classify",
+        "text": "N・m",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 805,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 600,
+            "frame": "half-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 12, which states that 30FB may be used as cl-25, over §A.25's last row (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 5
+            }
+          },
+          "why": "The answer for a middle dot the caller did not declare as a unit symbol, which is the case below. Taking it here makes §B.2 note 12's second sentence unreachable — the note states the spacing before and after a cl-25 middle dot is zero, and an implementation that never classifies 30FB as cl-25 has nothing that sentence applies to."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/katakana-middle-dot/no-unit-symbol-declared",
+      "rules": [
+        "3.1.2",
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Character spacing between a preceding unit symbol (cl-25) and a trailing middle dot (cl-05) shall be a quarter em of the trailing character. Note that KATAKANA MIDDLE DOT \"・\" can be used either as a unit symbol (cl-25) or as a middle dot. When it is used as a unit symbol (cl-25), both preceding and trailing spacing of KATAKANA MIDDLE DOT \"・\" shall be zero.",
+      "rationale": "The other half of the sentence, and the case that stops §A.25's Remarks cell from swallowing every middle dot in Japanese text. §A.25 states \"half-width\" for 30FB and §A.5 states nothing, so an implementation that lets a qualified Remarks cell displace an unqualified one answers cl-25 for this occurrence — and then a middle dot between two katakana words, the commonest use of the character in the language, is a unit symbol whose two sides are set solid rather than a cl-05 middle dot with a quarter em on each side. It is the same input as the case above in everything but the declared role, which is the whole assertion. The reason §A.5's empty cell is not a weaker listing than §A.25's is stated outside Appendix A: §3.1.2 gives middle dots (cl-05) a half-width character advance in prose, so a half em is the frame §A.5's members already have and declaring it satisfies rather than distinguishes. What separates the two readings is the usage §B.2 note 12 names, and this occurrence declares none.",
+      "input": {
+        "kind": "classify",
+        "text": "ア・イ",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1200,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 600,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1200,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.5's row for 30FB, read with §B.2 note 12's \"either … or\" (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 5,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25
+            }
+          },
+          "why": "§A.25's Remarks cell for 30FB states the half em and §A.5's states nothing, so an implementation that prefers the qualified listing answers cl-25 for every half-width middle dot in the language. §3.1.2 gives cl-05 that same advance in prose, and §B.2 note 12 makes the usage rather than the width the thing that decides."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/katakana-middle-dot/vertical-writing-mode",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In vertical writing mode, when KATAKANA MIDDLE DOT \"・\" is used as a member of unit symbols (cl-25) in unit symbols, grouped numerals (cl-24), and Western characters (cl-27) in mathematical and chemical formulae, before and after KATAKANA MIDDLE DOT \"・\" is set solid.",
+      "rationale": "Not one of §A.25's 66 Remarks cells carries a writing-mode qualification. Appendix A does record such a restriction where it has one — §A.5's own third row gives 003B SEMICOLON the cell \"used in horizontal composition\" / 「横組で使用」 — so the absence across all 66 rows of §A.25 is the table declining to condition this class on a direction rather than the table being terse. Every direction fact about cl-25 comes from §3.1.3, and the sentence quoted above is that fact: it conditions an amount, the solid setting before and after a cl-25 middle dot, and it conditions nothing about membership. This case declares the vertical direction and expects the class the two horizontal cases above expect, which is what an implementation that pushed §3.1.3's direction down into the class layer would get wrong — and it would be the wrong place to fix it, because a direction-conditional class would change the class of an occurrence when the same text is reset. The sentence is also the one place in the published document where the two locales name opposite writing modes: the English half opens \"In vertical writing mode\" and the Japanese half opens 「なお，横組において」, horizontal, and neither half names both. That is recorded as `line-composition-note-locale-divergence` in spec/derived/defects.tsv and neither half has been taken. It cannot change this case's answer — the class is the same under both readings, which is precisely why a classification case is where the divergence can be stated without adjudicating it — and the case that must record both readings is the spacing case a later milestone writes.",
+      "input": {
+        "kind": "classify",
+        "text": "N・m",
+        "direction": "vertical",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 805,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 600,
+            "frame": "half-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25, none of whose 66 Remarks cells states a writing mode (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 5
+            }
+          },
+          "why": "The answer of an implementation that read §3.1.3's English half as scoping cl-25 membership to vertical composition, or its Japanese half as scoping it to horizontal. §3.1.3 states an amount; §A.25 states the membership and states no direction for any of its rows."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/space/quarter-em-frame-outside-a-unit-symbol",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "0020 SPACE is the first row of §A.25 and the strangest one: it is the only key of the 66 whose Remarks cell states a role as well as a frame, and the role it states is a grouped-numeral role. The cell reads \"quarter em width\" in English and 「位取りの空白」 followed by 「字幅は四分角」 in Japanese, so the digit-grouping role is stated in the Japanese half alone — recorded as `cl-24-remarks-role-stated-only-in-japanese` in spec/derived/defects.tsv, where the role is read from the half that states it. §A.24 gives 0020 the byte-identical cell. What those two cells state is the width the space has inside a unit symbol and inside a grouped numeral (連数字); §3.9.2 scopes each class by the construct — cl-25 to \"combinations of Latin script and Greek script characters used for international units (SI)\" and cl-24's space to \"the comma and space used as a decimal place indicator in numbers\" — and this occurrence is inside neither. §A.26 lists 0020 with an empty Remarks cell, which states no width and therefore refuses none, and §D gives a Western word space (cl-26) a quarter em of its own: it is reduced \"to leave a minimum of a quarter em spacing between words\", so a quarter em is a width §D itself produces for cl-26 rather than one that rules it out. The occurrence is therefore the one §A.26 describes. The reading is deliberately the weaker input's: the same key declared at the same width, inside a number and with the digit-grouping role stated, is A.24/space/first-row-of-the-table, and the `role` field is how this format carries §3.9.2's \"used as a decimal place indicator\" for an implementation that classifies one occurrence at a time. An earlier revision of this case asserted the opposite — that the quarter em alone excludes cl-26 — which is a rule no sentence of the document states and which contradicted docs/decisions/ambiguous-context.md's own worked example of this very key.",
+      "input": {
+        "kind": "classify",
+        "text": "ab cd",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 588,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 660,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 300,
+            "frame": "quarter-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 576,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 660,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.26's row for 0020, whose Remarks cell is empty, with §D's quarter em minimum for cl-26 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 26,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 24
+            }
+          },
+          "why": "§3.9.2 gives cl-24 \"the comma and space used as a decimal place indicator in numbers\", and there is no number here. §A.24's cell states the width that space has, which is not a test admitting every space of that width; reading it as one takes §A.26's listing off the table on the strength of an advance."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 25
+            }
+          },
+          "why": "The same answer read out of §A.25's own first row. §3.9.2 scopes cl-25 to the characters of an SI unit symbol, which is a run over the stream and not a width, and this input declares none."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/minus-sign/remarks-cell-states-no-frame",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "There are units created with combinations of Latin and Greek script characters with a full-width character frame (full-width units). Such units are not part of the characters for units described here. Furthermore, full-width characters for units are mainly used in vertical writing mode. Their usage in horizontal writing mode is regarded as bad style and should be avoided (see Figure 184).",
+      "rationale": "Three of §A.25's 66 Remarks cells hold nothing at all — 0028, 0029 and 2212 — and this case is what a cell holding nothing means. It does not mean full-width; it restricts no frame, which is why 2212 could not be excluded from this class by the Remarks column however the caller set it, and why the caller's declared unit-symbol role is what reaches the class. §3.9.2's Note quoted above does exclude something — but it excludes a *unit*, not a character: 'units created with combinations of Latin and Greek script characters with a full-width character frame'. Whether the unit this minus belongs to is one of those is a property of the whole run, and a run over a stream is a construct rather than a property of one item (ADR 0015), so it is not an answer classification can give and not one this case can ask for. The occurrence is therefore cl-25 by §A.25's listing and the caller's declared role, and the Note's exclusion arrives with the layer that can see the unit. Recorded here rather than asserted: an earlier revision of this case read the Note per character and expected cl-18, which A.18/minus-sign/inside-a-unit-symbol contradicts on the same key and the same frame with only the neighbors' frames different — two cases that no item-local rule can satisfy at once, which is itself the evidence that the Note is about the run. The English half of the Note names Latin and Greek and the Japanese half names Latin letters and Arabic numerals — neither states the other's set — and this occurrence is inside both readings, so the divergence, which is not recorded in spec/derived/defects.tsv, cannot reach the answer.",
+      "input": {
+        "kind": "classify",
+        "text": "s−1",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25's row for 2212, whose Remarks cell states no frame, with the unit-symbol role the caller declared",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for 2212 is \"proportionally-spaced\" and this occurrence is full-width. The qualification is stated and it is not met."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 19
+            }
+          },
+          "why": "§A.19 does not list 2212 at all, and the key is no ideograph the character database names. An implementation reaching cl-19 here has answered from the full-width frame rather than from the table."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/full-width-unit-character/square-km",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "There are units created with combinations of Latin and Greek script characters with a full-width character frame (full-width units). Such units are not part of the characters for units described here. Furthermore, full-width characters for units are mainly used in vertical writing mode. Their usage in horizontal writing mode is regarded as bad style and should be avoided (see Figure 184).",
+      "rationale": "339E SQUARE KM is a kilometer — the same unit as the 「km」 of §3.1.10's Note — encoded as one character on the full-width frame, and it is the exclusion of §3.9.2's Note in its purest form. Appendix A honors the exclusion, but by accident rather than by record: 339E is enumerated once, under §A.13 postfixed abbreviations (後置省略記号, cl-13), and the other full-width unit characters a Japanese font carries, 3396 SQUARE ML among them, are in no table at all. Nothing in Appendix A cross-references the Note, so an implementation that derived cl-25 from the meaning of the character rather than from its key would put this occurrence in the class the Note removes it from, and the two kilometers — one written 「km」 with two proportional Latin letters and one written 「㎞」 with one full-width character — would classify alike while the document says in so many words that they must not. The case declares the unit symbol role, so the answer does not depend on the caller having been silent: the caller asserts a unit and the frame still decides, which is the Note read exactly.",
+      "input": {
+        "kind": "classify",
+        "text": "㎞",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1200,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.13's row for 339E, the only table naming the key; §3.9.2's Note removes it from cl-25 (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 13,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "§3.9.2's Note states that units built on the full-width frame \"are not part of the characters for units described here\", and §A.25 does not list 339E. Answering cl-25 is classifying by what the character means rather than by the key Appendix A holds."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.25/no-code-point-sequence/second-letter-of-a-unit",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Inter-letter spacing among Western characters (cl-27) in a word (or, sequence of letters, which it is not possible to hyphenate), or unit indicators (km, kg, mm etc.) in Latin letters (see Figure 84).",
+      "rationale": "cl-25 enumerates 66 keys and every one of them is a single code point: this class holds no code-point sequence at all. That is worth a case because cl-27, the class §A.25's proportional keys share their Remarks cell with, keys twenty-five of its entries on an ordered pair and lists <02E5, 02E9> and <02E9, 02E5> as two distinct members, so a longest-first scan over Appendix A's key structure is a real mechanism and this table gives it nothing to join. 「mm」 is the shape that tempts an implementation to join anyway — two identical letters that are one unit symbol, which the sentence quoted above names among the sequences no line break may fall inside. The case asks about the second of them, which is the occurrence an implementation that glued the pair into one item would no longer have to answer for. The break prohibition is not a key: §3.1.10 forbids the break because the letters are handled as one unit, and one unit is not one Appendix A member. The class of the second letter is therefore the class of the first, reached the same way, from the same row of §A.25 read twice.",
+      "input": {
+        "kind": "classify",
+        "text": "mm",
+        "scales": [
+          {
+            "inline_em": 1200,
+            "block_em": 1200
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 937,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25's row for 006D, read twice; the table enumerates no sequence (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    }
+  ]
+}

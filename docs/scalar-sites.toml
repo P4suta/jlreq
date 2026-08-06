@@ -62,3 +62,13 @@ why = "a cursor accumulates a bare count of the caller's units across a line, be
 crate = "jlreq-unit"
 item = "Distribution::next"
 why = "a distributed part is computed in `i64`, because the proportional share of a total by a weight leaves `i32` before it comes back; `next` narrows it and returns the one typed value, so the widening and the narrowing are one item apart rather than spread across the module."
+
+[[site]]
+crate = "jlreq-conform"
+item = "item_of"
+why = "the bridge to the conformance case format, which is JSON and therefore a plain integer by construction: a published case states an advance in the caller's own unit and every implementation that runs the suite reads it as a number, so the one place the number becomes an `InlineExtent` is where a case's item is turned into `jlreq_unit::Item`."
+
+[[site]]
+crate = "jlreq-conform"
+item = "advance"
+why = "the same bridge for a declared character size, which a case states as two integers because §3.3.3 scales the two axes differently; this is the only item that turns one into an `Advance`, and `Stream::of` builds every `Scale` through it."

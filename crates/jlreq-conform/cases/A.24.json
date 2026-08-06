@@ -1,0 +1,506 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.24",
+  "heading_en": "Grouped numerals (cl-24)",
+  "heading_ja": "連数字中の文字（cl-24）",
+  "cases": [
+    {
+      "id": "A.24/space/first-row-of-the-table",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "unstated",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "§A.24's table opens with U+0020 SPACE, and that row is the first of exactly thirteen: three punctuation keys and the ten digits, no code-point sequence, and no prose paragraph anywhere in the section. Its Remarks cell states a quarter em character frame (字幅) in both renderings and, in the Japanese half alone, the job the space does — 「位取りの空白」, the space that groups digits. That asymmetry is recorded as `cl-24-remarks-role-stated-only-in-japanese` in spec/derived/defects.tsv, with §A.24's own U+002E row named as the control that does not diverge, and the role is read from the half that states it. This occurrence declares both facts and sits inside a six-digit grouped numeral (連数字). It does not follow that the class is decided. §A.25 states the same cell for the same key character for character — a quarter em and 「位取りの空白」 — so for this one key neither the frame nor the role separates cl-24 from cl-25, and §A.26's row, whose Character, Common name and Remarks cells are all empty, is the unqualified listing that remains only where no qualified one speaks. What would separate the two survivors is the construct the occurrence sits in: §3.9.2 defines cl-24 over a run of numerals and cl-25 over \"combinations of Latin script and Greek script characters used for international units (SI)\". This format declares neither construct — `constructs` carries ruby, emphasis, tate-chu-yoko, warichu, furiwake, jidori, reference marks, ornaments and formulae, and no grouped numeral and no unit symbol — so both survivors are recorded with the question that chooses between them rather than one being asserted from the digits standing beside the space. The ground that would drop cl-25 here — that the stream declares no unit symbol — drops cl-24 exactly as evenly, since both are classes an occurrence joins by its construct, and A.24/digit-two/also-listed-under-unit-symbols states that reconciliation in full. The five digits are not what this case asks about; they are what makes the declared role true. §A.26 publishes the same pair of survivors for the same key from the other side, and the two files agree.",
+      "input": {
+        "kind": "classify",
+        "text": "12 345",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 2, "advance": 250, "frame": "quarter-em", "role": "digit-group-separator", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 5, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md), over the survivors §A.24 and §A.25 leave",
+          "expect": {
+            "class": { "item": 2, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.ambiguous_context": "highest-class" },
+          "source": "The other survivor: §A.25 states the identical Remarks cell for 0020, and §3.9.2 separates the two classes by the construct alone",
+          "expect": {
+            "class": { "item": 2, "class": 25, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 26 } },
+          "why": "§A.26's sole row states no frame, no role and no direction for 0020, so it is the listing that remains where no qualified one describes the occurrence. Here two do: this space declares the quarter em and the digit-grouping role that §A.24 and §A.25 both attach to this key in so many words. Answering cl-26 for every U+0020 is answering from the code point."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/digit-nine/last-row-of-the-table",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, proportional Western characters and European numerals are treated as members of the Western characters (cl-27) class. Note that half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class.",
+      "rationale": "§A.24's table closes with U+0039 DIGIT NINE, the last of its ten digit rows, and all ten carry the same Remarks cell in both renderings — \"half-width\" / 「字幅は半角」 — with no role and no writing mode. The digit rows are therefore the rows that say least: nothing in one of them says when a nine is a grouped numeral. The sentence that does is §3.2.6's Note, quoted above, together with its complement in §3.2.4's Note, which reserves cl-19 for the full-width and fixed-space frame. This occurrence is a half-width nine inside a run of European numerals mixed with Japanese text, which is the antecedent §3.2.6 names, and §3.9.2's own definition of the class — numerals \"which are not full-width and are handled as Japanese text\" — describes it a second time. The other two tables that list 0039 fall away for reasons the document states rather than reasons a reader supplies: §A.27's cell reads \"proportionally-spaced\" / 「プロポーショナル」 and this occurrence is not, and §A.19's row is unqualified, which is the listing that remains where no qualified one describes the occurrence — and §3.2.4's Note qualifies cl-19 from outside the table, because §A.19 carries no Remarks cell on any of its 465 rows. Unlike U+0031 through U+0034, the nine is named by no fourth table, so cl-24 is the single answer here where those four leave two; that contrast is the point of the pair with A.24/digit-two/also-listed-under-unit-symbols.",
+      "input": {
+        "kind": "classify",
+        "text": "1999年",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.2.6 Note with §A.24's last row (0039, Remarks \"half-width\" / 「字幅は半角」) (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 3, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 3, "class": 19 } },
+          "why": "§3.2.4's Note gives cl-19 the full-width and fixed-space Western characters and European numerals, and this occurrence declares a half em. §A.19's row for 0039 is unqualified and so excludes nothing by itself, which is exactly why the frame has to be read from §3.2.4 and §3.2.6 rather than from that table."
+        },
+        {
+          "expect": { "class": { "item": 3, "class": 27 } },
+          "why": "§A.27 qualifies its listing of 0039 \"proportionally-spaced\" / 「プロポーショナル」, and §3.2.6's Note gives cl-27 the proportional Western characters and numerals. A half-width digit is neither."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Unicode General_Category=Nd, read as the membership test for grouped numerals (cl-24)",
+          "version": "Unicode 17.0.0",
+          "behavior": "Nd holds the decimal digits of every script Unicode encodes — U+0660 ARABIC-INDIC DIGIT ZERO, U+09E6 BENGALI DIGIT ZERO and U+FF10 FULLWIDTH DIGIT ZERO among them — so an implementation that decides cl-24 from the general category admits code points no Appendix A table names at all, and admits the full-width digit that §3.2.4's Note assigns to cl-19.",
+          "our_reading": "§A.24 enumerates thirteen keys, ten of them the digits U+0030 through U+0039, each qualified \"half-width\" / 「字幅は半角」. Membership is that enumeration together with the frame §3.2.6's Note makes decisive, and not a Unicode property; the two answers differ on every non-Latin digit and on the one code point this document is most careful about.",
+          "evidence": "spec/derived/appendix-a.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.24/digit-zero/half-width-numeral",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, proportional Western characters and European numerals are treated as members of the Western characters (cl-27) class. Note that half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class.",
+      "rationale": "The first of three cases whose text is the same five bytes and whose only difference anywhere is the frame the caller declares and the advance that frame describes. Appendix A gives U+0030 no key of its own for a full-width spelling — U+FF10 appears in none of the twenty-five tables, and neither do U+FF0C and U+FF0E — so §3.2.4's full-width numeral and §3.2.6's half-width numeral are the same code point told apart by nothing but the declared frame. Here the caller declares the half em, the frame §A.24 states for all ten of its digit rows, and §3.2.6's Note is the sentence that turns that declaration into a class: half-width European numerals mixed with Japanese text are members of cl-24. §3.9.1 puts the character width first among the six ways a character's positioning differs, which is why the class may not be answered without reading it. Read together with the two cases below, this triple is the single most case-worthy fact about cl-24: one code point, three frames, three classes, and no other input field moved.",
+      "input": {
+        "kind": "classify",
+        "text": "10時",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 2, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.2.6 Note with §A.24's row for 0030 (Remarks \"half-width\") (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 19 } },
+          "why": "The answer of the case below, on this case's input. §3.2.4's Note names the full-width and fixed-space frame and this occurrence declares the half em, so the sentence that would make it ideographic does not describe it."
+        },
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 qualifies 0030 \"proportionally-spaced\", and §3.2.6's Note gives cl-27 the proportional numerals. Answering cl-27 for every ASCII digit reads the script and not the frame."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/digit-zero/full-width-numeral",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, full-width and fixed-space Western characters and European numerals are treated as members of the ideographic characters (cl-19) class.",
+      "rationale": "The same five bytes with the numerals declared on the ideographic frame, and the class changes: this is where cl-24 stops on the frame axis. §3.2.4's Note states the rule flatly, in both renderings and under no condition, and §3.9.2's own definition of cl-24 states the same exclusion from the other side by scoping the class to numerals \"which are not full-width\". §A.24's ten digit rows agree, since \"half-width\" / 「字幅は半角」 is a qualification a full em does not meet. Note what the Note is not: §3.2.4's section body opens on vertical writing mode, and an implementation that reads the membership rule off the body rather than off the Note makes a full-width digit ideographic in one direction only. This case declares no direction for that reason. The English rendering carries a second trap the Japanese does not: §3.2.4 writes \"full-width and fixed-space\" and §3.2.6 writes \"half- and fixed-width\", so an English reader finds a fixed-width numeral claimed by both classes, while the Japanese reads 「全角のモノスペース」 — monospaced within a stated full width — and claims it once. The frame vocabulary of this format has no value for a monospaced Latin numeral that is neither a full em nor a half em, so that occurrence cannot be stated as an input here and the contradiction is recorded rather than answered.",
+      "input": {
+        "kind": "classify",
+        "text": "10時",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 2, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.2.4 Note, with §A.19's unqualified row for 0030 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 24 } },
+          "why": "§A.24 qualifies 0030 \"half-width\" / 「字幅は半角」 and this occurrence declares a full em, and §3.9.2 defines cl-24 over numerals \"which are not full-width\". An implementation that reads §A.24 as a list of ten digits, dropping the Remarks column, answers cl-24 for every numeral in a Japanese paragraph and puts a quarter em where §3.2.4 requires solid."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/digit-zero/proportional-numeral",
+      "rules": ["3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "In this document, proportional Western characters and European numerals are treated as members of the Western characters (cl-27) class. Note that half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class.",
+      "rationale": "The third frame, and the second boundary of cl-24. The same sentence that puts the half-width numeral into cl-24 puts the proportional one into cl-27, in its first clause, so the two answers are not two rules but one rule read at two frames. §A.27's own row for 0030 is qualified \"proportionally-spaced\" / 「プロポーショナル」, which this occurrence declares and which §A.24's \"half-width\" excludes. The three cases of this triple are a differential test of exactly one claim: that the caller and not the code point decides. An implementation that classifies U+0030 from its script, or from its Unicode general category, or from the digits standing beside it, gives one answer to all three inputs and fails two of them.",
+      "input": {
+        "kind": "classify",
+        "text": "10時",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 556, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 556, "frame": "proportional", "scale": 0 },
+          { "start": 2, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.2.6 Note, first sentence, with §A.27's row for 0030 (Remarks \"proportionally-spaced\") (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 24 } },
+          "why": "§A.24 qualifies 0030 \"half-width\", and the same Note that names cl-24 for the half-width numeral names cl-27 for the proportional one. A proportionally-set numeral is not a grouped numeral however Japanese its neighbors are."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/fullwidth-digit-zero/wide-compatibility-fold",
+      "rules": ["3.2.4", "3.2.6", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The boundary an implementation reaches by doing the right thing carelessly. §A's preamble Note asks a reader to treat a compatibility counterpart as the key the document lists, and without that folding a library gives wrong classes on ordinary Japanese text; U+FF10 FULLWIDTH DIGIT ZERO carries the Unicode decomposition `<wide> 0030`, so the fold lands it squarely on §A.24's fourth row. It is still not a grouped numeral, and the reason is the other half of the same fold: a caller who wrote U+FF10 has thereby stated that the numeral is set full-width, and §3.2.4's Note gives the full-width numeral to cl-19 while §3.9.2 defines cl-24 over numerals \"which are not full-width\". So the fold must carry the frame it asserts and not only the code point it maps to. Nothing in Appendix A supplies the answer directly: U+FF10 through U+FF19, U+FF0C and U+FF0E appear in none of the twenty-five tables, which is what makes §3.2.4's Note and §3.2.6's Note the whole of the membership rule for these ten code points. An implementation that normalizes to NFKC before classifying reaches this case with the frame gone and answers cl-24, and it then answers cl-24 for every full-width numeral in a vertical Japanese paragraph, which is the composition §3.2.4 was written about.",
+      "input": {
+        "kind": "classify",
+        "text": "１０時",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note (the compatibility counterpart) with §3.2.4 Note (the frame that counterpart asserts) (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 19, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 24 } },
+          "why": "The answer produced by folding the code point and discarding the frame the fold asserts. §A.24 lists 0030 qualified \"half-width\"; U+FF10's Wide decomposition reaches that key and states a full width in the same step, and §3.9.2 excludes a full-width numeral from cl-24 in so many words."
+        },
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 qualifies its listing of 0030 \"proportionally-spaced\". A full-width monospaced numeral is the one thing it is not, and §3.2.6's Note says so."
+        }
+      ],
+      "disagreements": [
+        {
+          "implementation": "Unicode Normalization Form KC (UAX #15), applied before classification",
+          "version": "Unicode 17.0.0",
+          "behavior": "NFKC maps U+FF10 onto U+0030 and keeps no record of the compatibility tag it applied, so after normalization nothing in the text tells a full-width numeral from a half-width one. An implementation that normalizes first answers one class for ０ and for 0 alike, and in Japanese running text that class is cl-24.",
+          "our_reading": "§A's preamble Note licenses reading a compatibility counterpart as the key this document lists, and §3.2.4's Note then makes the frame decide the class. The Wide decomposition is not only a spelling: it is the caller stating the full-width frame, and folding it away destroys the one fact §3.2.4 and §3.2.6 both turn on. Folding is over the Wide and Narrow decompositions together with the frame each asserts, and nothing else.",
+          "evidence": "spec/derived/folding.tsv"
+        }
+      ]
+    },
+    {
+      "id": "A.24/full-stop/decimal-point-on-the-quarter-em",
+      "rules": ["3.1.2", "3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "§A.24's third row is the one row of the class whose two renderings agree completely: \"decimal point / quarter em width or half-width\" against 「小数点／字幅は四分角又は半角」. Both halves carry the role line, which is why spec/derived/defects.tsv names it as the control against which the U+0020 and U+002C divergences are measured; a defect recorded over three cells and not over the fourth that shares their shape is a measurement rather than a guess. The cell also states two frames rather than one, and the \"or\" is what this case exercises: A.6/full-stop-as-decimal-point/half-em-advance declares the half em and this case declares the quarter em, and the same cell describes both and gives both the same class. §A.6's own row for U+002E states no frame at all, so the frame cannot separate cl-06 from cl-24 in either direction; what separates them is the job the document gives the occurrence, which is the decimal point declared here. §A.27's row is qualified \"proportionally-spaced\" and falls away on the frame. Because §A.6 names this key, the item declares a frame under §3.1.2 even though the class turns on the role.",
+      "input": {
+        "kind": "classify",
+        "text": "3.14",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 250, "frame": "quarter-em", "role": "decimal-point", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for 002E, Remarks \"decimal point / quarter em width or half-width\", with §3.9.2's definition of cl-24 (§3.9.1)",
+          "expect": {
+            "class": { "item": 1, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 6 } },
+          "why": "§A.6 states no frame for 002E, so the quarter em excludes nothing there; §3.9.2 gives the decimal point to grouped numerals and this occurrence declares that role. Answering cl-06 puts §3.1.9's line-end half em and §C.1's line-head prohibition in the middle of a number."
+        },
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 qualifies 002E \"proportionally-spaced\" and this occurrence declares a quarter em, which is one of the two frames §A.24 states for this key and is stated for it nowhere else."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/comma/digit-grouping-on-the-quarter-em",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "§A.24's second row, on the second of the two frames its Remarks cell states, and inside a number carrying two grouping commas so that the case asks about the one an implementation reaches after it has already answered once. The cell reads \"quarter em width or half-width\" in English and 「位取りのコンマ／字幅は四分角又は半角」 in Japanese: the role line exists in the Japanese half alone, which is the recorded defect `cl-24-remarks-role-stated-only-in-japanese`, and this project reads the role from the half that states it. The divergence changes which sentence justifies the answer and not the answer itself, and that is worth publishing rather than smoothing over. Read from the Japanese cell, this occurrence satisfies §A.24's own qualification directly. Read from the English cell, §A.24 states only a width, and the sentence that reaches the occurrence is §3.9.2's definition of the class, which names \"the comma and space used as a decimal place indicator in numbers\" in both renderings — a description that is itself wrong on the facts, since a thousands comma indicates no decimal place, and which the Japanese half separates correctly into 「小数点のピリオド」 and 「位取りのコンマ及び空白」. Two routes, one class. §A.7's row for 002C states no frame, so the quarter em excludes nothing there and the role is again what separates the two listings, exactly as it is for U+002E; §A.27's \"proportionally-spaced\" is excluded by the declared frame. A.7/comma-as-digit-group-separator/half-em-advance is the same assertion at the other frame the cell names.",
+      "input": {
+        "kind": "classify",
+        "text": "1,234,567",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 250, "frame": "quarter-em", "role": "digit-group-separator", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 5, "advance": 250, "frame": "quarter-em", "role": "digit-group-separator", "scale": 0 },
+          { "start": 6, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 7, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 8, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for 002C, Remarks 「位取りのコンマ／字幅は四分角又は半角」, with §3.9.2's definition of cl-24 (§3.9.1)",
+          "expect": {
+            "class": { "item": 5, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 5, "class": 7 } },
+          "why": "§A.7 states no frame for 002C, so nothing there is excluded by the quarter em; §3.9.2 gives the grouping comma to cl-24 and this occurrence declares that role. Answering cl-07 attaches §3.1.9's line-end half em and §C.1's line-head prohibition to the inside of a number."
+        },
+        {
+          "expect": { "class": { "item": 5, "class": 27 } },
+          "why": "§A.27 qualifies 002C \"proportionally-spaced\", which a quarter em is not. The quarter em is stated for this key by §A.24 and by no other table."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/full-stop/decimal-point-horizontal-composition",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "In horizontal writing mode, there are three conventions in choice of symbols for full stops (cl-06) and commas (cl-07): 1. Using COMMA \"，\" and FULL STOP \"．\" (see Figure 57). 2. Using COMMA \"，\" and IDEOGRAPHIC FULL STOP \"。\" (see Figure 58). 3. Using IDEOGRAPHIC COMMA \"、\" and IDEOGRAPHIC FULL STOP \"。\" (see Figure 59).",
+      "rationale": "The first half of a pair asserting that cl-24 has no direction-conditional membership, and the pair is worth writing for this class because two of its three punctuation keys are direction-qualified where their other class lists them. Not one of §A.24's thirteen Remarks cells names a writing mode: they state frames and, in the Japanese rendering, two roles, and nothing else. §A.6's row for this same key U+002E states \"used in horizontal composition\" / 「横組で使用」, and §A.7's row for U+002C states it too, so an implementation that lets a writing-mode Remark decide a class has one available for the sibling listing and none for this one. The expectation below is byte-identical to the vertical case that follows, and the two inputs differ in `direction` and in nothing else; that identity is the assertion. A writing-mode Remark is a fact about how the writing system uses a member — §3.1.1 unpacks this one into the three conventions quoted above — and a class that changed when the same text was reset from horizontal to vertical would be a class the caller could not hold.",
+      "input": {
+        "kind": "classify",
+        "text": "3.14",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "role": "decimal-point", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for 002E, which states a frame and a role and no writing mode (§3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 24, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/full-stop/decimal-point-vertical-composition",
+      "rules": ["3.2.4", "3.9.2"],
+      "standing": "normative",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "The second half of the pair, in the direction §A.6's Remarks cell excludes for its own listing of this key. Two wrong answers are available here and they pull in opposite directions. One reads 「横組で使用」 on §A.6's row as a class selector, drops cl-06 in vertical composition, and arrives at cl-24 for the wrong reason — it would then answer cl-24 for a sentence-ending period in a vertical line, which is a full stop the writing system does not use rather than a decimal point. The other reasons that a vertical Japanese line is Japanese composition, so a numeral in it must be set as §3.2.4 describes, and answers cl-19. Neither is what the document says: §A.24 states no direction on any of its rows, the role declared here selects the class in either mode, and §3.2.4's Note assigns cl-19 by the frame rather than by the direction, which A.24/digit-zero/full-width-numeral states from the other side. The answer is the horizontal case's answer, unchanged.",
+      "input": {
+        "kind": "classify",
+        "text": "3.14",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "role": "decimal-point", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's row for 002E, against §A.6's \"used in horizontal composition\" / 「横組で使用」 for the same key (§3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 24, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 19 } },
+          "why": "The answer of an implementation that reads a vertical line as Japanese composition and a numeral in it as §3.2.4's quasi-Japanese character. §3.2.4's Note assigns cl-19 by the frame — full-width and fixed-space — and this occurrence declares a half em, in both writing modes."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/adjacent-digits/no-code-point-sequence",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Is it allowed to have a line break within a sequence of characters? For example, there must not be a line break in a sequence of grouped numerals (cl-24).",
+      "rationale": "cl-24 enumerates thirteen keys and every one of them is a single code point. Twenty-five entries of Appendix A key on an ordered pair — §A.27 lists `<02E5, 02E9>` and `<02E9, 02E5>` as two distinct members, and §A.16 spells the semi-voiced Ainu katakana as pairs — and §A.24 has none of them, so a longest-first scan over the appendix's key structure has nothing here to join. Three zeroes written side by side are consequently three occurrences of one key and not one occurrence of a three-code-point key, and this case asks about the middle one, which is the occurrence an implementation that glued the run together would no longer have to answer for. It matters more for cl-24 than for a class whose members stand alone, because the run really is one thing to the layout: §3.9.1's fifth bullet, quoted above, names this class by name as its example of a sequence that must not be divided, and §3.7.3 repeats it. That is a statement about the boundaries between the occurrences and not about the occurrences being one. The class is a property of each digit, and the unbreakability is a property of each interior boundary between them; an implementation that conflated the two would have one item where the document has three, and no boundary where the document forbids a break.",
+      "input": {
+        "kind": "classify",
+        "text": "1000年",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 2, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24, its row for 0030 read three times; the table enumerates no code-point sequence (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 2, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/digit-two/also-listed-under-unit-symbols",
+      "rules": ["3.2.4", "3.9.1", "3.9.2"],
+      "standing": "unstated",
+      "quote": "Units described here include combinations of Latin script and Greek script characters used for international units (SI).",
+      "rationale": "Four of §A.24's ten digits are named by a fourth table and six are not, and no reading of the Remarks column separates the four. §A.25 lists U+0031, U+0032, U+0033 and U+0034 — and not U+0030 and not U+0035 through U+0039 — each qualified \"half-width or proportional\" / 「半角又はプロポーショナル」, which is the exponent of a squared or cubed unit written on the line. This occurrence declares the half em, which §A.24's \"half-width\" and §A.25's \"half-width or proportional\" both describe. The role axis, which decides U+002C and U+002E elsewhere in this file, is not merely undeclared here but unavailable: exactly four of Appendix A's Remarks cells state a role for a key at all — §A.24's 0020, 002C and 002E and §A.25's 0020 — and no table states one for any digit, so there is no role a caller could declare that either listing would test. What is left is the construct: §3.9.2 defines cl-24 over a run of numerals and cl-25 over the SI unit symbol quoted above, and both are classes an occurrence joins by the construct it sits in rather than by anything about the key. This format declares neither construct, so both survivors are recorded with the question that chooses between them. That is where this case parts company with A.19/latin-capital-a/full-width-monospaced-western-letter and A.5/katakana-middle-dot/decimal-point-role, which both drop cl-25 on the ground that the stream declares no unit symbol. Both are right and neither reaches a digit on the half em, because in both of them the surviving alternative is a class an occurrence joins by its key — cl-19 and cl-05 — so dropping the construct class leaves an answer standing. Here both survivors are construct classes, and the same ground applied evenly drops both, leaving §A.24's own table with no occurrence it could ever describe. A ground that empties two classes at once is not a discriminator, which is why §A.26 records the same pair of survivors for U+0020 rather than one. The contrast with A.24/digit-nine/last-row-of-the-table is the point: the nine is named by no fourth table and has one answer, the two is named by four and has two, and the difference is a property of Appendix A rather than of the digit.",
+      "input": {
+        "kind": "classify",
+        "text": "12月",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 2, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md), over the survivors §A.24 and §A.25 leave",
+          "expect": {
+            "class": { "item": 1, "class": 24, "rules": ["3.9.1", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.ambiguous_context": "highest-class" },
+          "source": "The other survivor: §A.25's row for 0032, Remarks \"half-width or proportional\" / 「半角又はプロポーショナル」",
+          "expect": {
+            "class": { "item": 1, "class": 25, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 19 } },
+          "why": "§3.2.4's Note gives cl-19 the full-width and fixed-space numerals, and this occurrence declares a half em. §A.19's row for 0032 is unqualified and therefore excludes nothing by itself, which is why the sentence outside the table has to be read."
+        },
+        {
+          "expect": { "class": { "item": 1, "class": 27 } },
+          "why": "§A.27 qualifies 0032 \"proportionally-spaced\", which a half em is not."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.24/katakana-middle-dot/inside-a-grouped-numeral",
+      "rules": ["3.9.2"],
+      "standing": "unstated",
+      "quote": "In vertical writing mode, when KATAKANA MIDDLE DOT \"・\" is used as a member of unit symbols (cl-25) in unit symbols, grouped numerals (cl-24), and Western characters (cl-27) in mathematical and chemical formulae, before and after KATAKANA MIDDLE DOT \"・\" is set solid.",
+      "rationale": "§3.1.3's closing Note is the only sentence in §3 that names cl-24 by name, and what it describes is an occurrence inside a grouped numeral whose key §A.24 does not enumerate: U+30FB KATAKANA MIDDLE DOT is listed by §A.5 and by §A.25 and by nothing else, so a middle dot standing between two half-width numerals is in a cl-24 run without being a cl-24 member. That much is decided, and it is what the forbidden entry below records. What is not decided is which of the two listings describes this occurrence. §A.5's row is unqualified and §A.25's reads \"half-width\" / 「字幅は半角」, so the declared half em leaves both standing, and this stream declares no role: A.5/katakana-middle-dot/inside-a-unit-symbol selects cl-25 by declaring `unit-symbol` and A.5/katakana-middle-dot/decimal-point-role selects cl-05 by declaring `decimal-point`, and a caller who declares neither has supplied nothing that satisfies a qualification and nothing that fails one. The two survivors and the question that selects between them are what the entries below record. §3.1.3's Note is worth reading beside them and is not what they are keyed on, because its two halves do not state the same rule: the English reads the dot as \"used as a member of unit symbols (cl-25)\" across all three of the constructs it lists, which would make an occurrence inside a grouped numeral a cl-25 member, while the Japanese states three independent cases — ・ used as cl-25 inside a unit symbol, ・ used inside cl-24, and ・ used inside a formula set with cl-27 — under which it is a middle dot that happens to sit in a numeral. That is a divergence between two renderings and not a residual ambiguity, no question in spec/derived/questions.tsv keys it, and this suite has no way to express it as a case; it is reported rather than laundered into the tie-break above, which the two readings merely happen to line up with. A third divergence in the same sentence is recorded: the English opens \"In vertical writing mode\" where the Japanese opens 「横組において」, which is `line-composition-note-locale-divergence` in spec/derived/defects.tsv and is carried unresolved. This case declares no direction for that reason, and claims a class and not the solid setting the Note states, which belongs to a later milestone.",
+      "input": {
+        "kind": "classify",
+        "text": "0・5",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 4, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md), over the survivors §A.5's unqualified row for 30FB and §A.25's leave",
+          "expect": {
+            "class": { "item": 1, "class": 5, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.ambiguous_context": "highest-class" },
+          "source": "The other survivor: §A.25's row for 30FB, Remarks \"half-width\" / 「字幅は半角」, which the declared half em satisfies",
+          "expect": {
+            "class": { "item": 1, "class": 25, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 24 } },
+          "why": "§A.24 enumerates thirteen keys and 30FB is not one of them. §3.1.3's Note describes a middle dot used inside a grouped numeral, which is a statement about where the occurrence sits and not about which class lists it; an implementation that classified by the surrounding run would put a member into a class whose own table excludes it."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

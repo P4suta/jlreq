@@ -1,0 +1,528 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.20",
+  "heading_en": "Characters as reference marks (cl-20)",
+  "heading_ja": "合印中の文字（cl-20）",
+  "cases": [
+    {
+      "id": "A.20/inline-note-number/proportional-frame",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: In this document, characters in reference marks are treated as characters as reference marks (cl-20). — JA: この文書では，合印の文字列の文字クラスは，合印中の文字（cl-20）として扱う．",
+      "rationale": "§ A.20 has no table. Its whole body is one sentence in each locale — 'Any character may participate in reference marks.' / 「どの文字も合印中の文字として使うことができる．」 — so there is no code point to look up and none to exclude, and the only thing that can decide this occurrence is the construct it sits in. The quoted Note of § 3.1.10 is where the document assigns the class, and it assigns it to the characters of the reference mark (合印, aijirushi) itself. The key alone answers something else, and answers it without ambiguity: § A.27 lists U+0031 with the Remark 'proportionally-spaced' (プロポーショナル), so the declared proportional frame (字幅) picks cl-27 out of the four Appendix A tables that name U+0031. This occurrence satisfies all four of the document's membership statements at once, which is why the case is normative rather than adjudicated: it is a note number (§ 4.2.2), set in the line just after the applicable item (§ 3.9.2's own entry for the class), inside a reference mark (§ 3.1.10's Note), and § A.20 restricts nothing. A single answer is available here only because all four agree; the cases below record where they do not. The mark's size is a declared scale rather than a derived one, because § 4.2.3 states it as 'one or two levels smaller than the character size defined for the kihon-hanmen' (基本版面) and a level of a size series is not a ratio this document publishes.",
+      "input": {
+        "kind": "classify",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "proportional", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.9.2's entry for cl-20, § A.20, § 3.1.10 Note, § 4.2.2)",
+          "expect": {
+            "class": { "item": 2, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 27 } },
+          "why": "Reading the key instead of the construct. § A.27 names U+0031 on the proportional frame, so an implementation whose classification is a total function from a folded code point and a frame to a class can answer nothing else here. § A.20 enumerates nothing at all, so under such an implementation cl-20 is unreachable and five of JLReq's thirty classes are dead code."
+        },
+        {
+          "expect": { "class": { "item": 2, "class": 25 } },
+          "why": "§ A.25 lists U+0031 with the Remark 'half-width or proportional' (半角又はプロポーショナル), so the proportional frame does not exclude cl-25 on its own. cl-25 is a construct membership exactly as cl-20 is — it names what may appear inside a unit symbol (単位記号) — so the axis that separates the two here is the construct and not the frame, and this occurrence is declared inside a reference mark and inside no unit symbol."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-note-number/half-em-frame",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: Any character may participate in reference marks. — JA: どの文字も合印中の文字として使うことができる．",
+      "rationale": "The differential twin of the case above, and the reason both are worth publishing. The same code point in the same construct is declared on the half em frame instead of the proportional one, and the key's answer changes underneath: § A.24 lists U+0031 with the Remark 'half-width' (字幅は半角) and § 3.2.6's Note states that 'half- and fixed-width European numerals, when mixed with Japanese text, are treated as members of the grouped numerals (cl-24) class', so an implementation reading the key answers cl-24 here and cl-27 above. The expected answer below is byte-identical to the one above, and that identity is the whole assertion. § A.20's single sentence has no Remarks column to draw a frame distinction in, so the axis that separates 42 percent of Appendix A's enumerated keys is inert for this class: a caller who declares a different 字幅 has described a differently set reference mark, not a different class.",
+      "input": {
+        "kind": "classify",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 350, "frame": "half-em", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ A.20, § 3.9.2's entry for cl-20, § 3.1.10 Note)",
+          "expect": {
+            "class": { "item": 2, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 24 } },
+          "why": "The key's answer on this frame, and the answer an implementation gives when the construct is not consulted. § A.24's Remark and § 3.2.6's Note both name the half-width European numeral mixed into Japanese text as cl-24, and cl-24 is itself a construct membership — it names what may appear inside a grouped numeral (連数字) — so an implementation that honors the construct axis for cl-24 and not for cl-20 has implemented half of § A."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-note-number/full-em-frame",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: Any character may participate in reference marks. — JA: どの文字も合印中の文字として使うことができる．",
+      "rationale": "The other half of the frame pair, and the one that closes the sweep. Everything about this case is the half em case above except the frame the caller declares and the advance that frame describes, which is the whole of the assertion. On the ideographic frame the key answers cl-19: § A.19's table lists U+0031 with an empty Remarks cell in both locales, which is the full-width form it prints, and the two Remarks that would name another class — § A.24's 'half-width' (字幅は半角) and § A.27's 'proportionally-spaced' (プロポーショナル) — do not describe this occurrence. So the three frames declared in this file give the key three different classes, cl-19 here, cl-24 on the half em frame and cl-27 on the proportional one, and the construct gives one answer to all three. That is the strongest form this class's assertion takes. § A.20's section has no table and therefore no Remarks column, so the frame axis has nothing to select with, and an implementation that reaches cl-20 by way of a frame has invented a table.",
+      "input": {
+        "kind": "classify",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 700, "frame": "full-em", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ A.20, § 3.9.2's entry for cl-20, § 3.1.10 Note)",
+          "expect": {
+            "class": { "item": 2, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 19 } },
+          "why": "The key's answer on this frame. § A.19's table lists U+0031 with an empty Remarks cell, so the ideographic frame leaves cl-19 as the one surviving key candidate and an implementation that never consults the construct answers it with full confidence. It is also the answer an implementation gives when it folds U+FF11 FULLWIDTH DIGIT ONE — what Japanese text actually carries here — in the wrong direction and reads it as an ideographic character in its own right."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-note-number/unstated-frame",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em). — JA: 読点類（cl-07），句点類（cl-06），始め括弧類（cl-01），終わり括弧類（cl-02）及び中点類（cl-05）の字幅は，半角であるが，",
+      "rationale": "§ 3.1.2 names the five classes whose occurrences must declare a frame, and cl-20 is not among them, so an occurrence inside a reference mark is under no obligation to declare one and a case may leave it unstated. An unstated frame on U+0031 leaves cl-19, cl-24, cl-25 and cl-27 all standing as key candidates — the four Appendix A tables that name it — and an implementation that resolves by the frame axis has nothing to resolve with. The construct settles the answer without that axis, so the expectation is the one both frame cases above give. This is the assertion no enumerating class can make: cl-20 is the one class whose answer an unstated frame never blocks, because § A.20 states no condition for a frame to satisfy.",
+      "input": {
+        "kind": "classify",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "unstated", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ A.20, § 3.1.2's list, which does not name cl-20)",
+          "expect": {
+            "class": { "item": 2, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 2, "class": 19 } },
+          "why": "Resolving the unstated frame by a tie-break instead of by the construct. § A.19 lists U+0031 with an empty Remarks cell, so it is the candidate that survives every frame and the one a lowest-class tie-break selects. The occurrence is not ambiguous at all: the construct decides it, and an implementation that reaches for a tie-break here would reach for one on every reference mark."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-note-number/two-item-mark",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: A symbol or short run of text attached to a specific part of text, to which notes are provided followed by the corresponding marks. — JA: 注と本文文字列などの該当項目とを対応させるために該当項目に付ける文字列．",
+      "rationale": "The glossary entry the class's own sentences link to defines 合印 as a 文字列 — a string, not a character — so a reference mark spans a range of occurrences and every occurrence in the range is cl-20, not only the first. § 3.1.10's tenth item names 「合印の文字列の字間」, the spaces between the letters of the mark, which exist only if the mark has more than one letter, and § 4.2.3 twice calls the mark 'one object' / 「一体として扱い」 including any opening brackets (cl-01) and closing brackets (cl-02) around it. The occurrence asked about is the second digit, because that is the one an implementation that maps a construct to its first item silently drops. Nothing in § A.20's sentence distinguishes it from the first: the sentence is a permission over characters, and it is unqualified.",
+      "input": {
+        "kind": "classify",
+        "text": "本文12",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "proportional", "scale": 1 },
+          { "start": 7, "advance": 389, "frame": "proportional", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 4] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ A.20, § 3.1.10 Note, the glossary entry for 合印)",
+          "expect": {
+            "class": { "item": 3, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 3, "class": 27 } },
+          "why": "Classifying the head of the construct and reading the key for the rest. The two digits are one mark: § 3.1.10 forbids a line break between them precisely because they are, and a mark whose second character were cl-27 would take § 3.2.6's quarter em inside itself."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-symbol-mark/reference-mark-sign",
+      "rules": ["3.9.2", "3.1.10"],
+      "standing": "normative",
+      "quote": "EN: Note numbers in corresponding positions in the base text are called reference marks. The character class of reference mark is characters as reference marks (cl-20). — JA: 本文中の該当項目に付けた注の番号を合印（あいじるし）という．文字クラスとしては，合印中の文字（cl-20）となる．",
+      "rationale": "The document states cl-20's membership four times with three different scopes, and this is the case where they part. § A.20 states it without restriction; § 3.1.10's Note states it without restriction; the quoted § 4.2.2 states it of note *numbers*; and § 3.9.2's own entry for the class states it of a mark 'that appear[s] in the line just after the item applicable for reference marks of notes' / 「注の参照のために該当する項目の直後の行中に配置した合印中の文字である」. U+203B is not a number, so § 4.2.2 read as a membership condition answers cl-19 here and § A.20 answers cl-20. This project takes the wide reading, and takes it as normative rather than as an adjudication, for three reasons. § A.20 is the section Appendix A devotes to this class and the sentence in it is the class's own membership statement, quantified over every character. The glossary entry that both § A.20 and § 3.1.10's Note link to defines 合印 as 'A symbol or short run of text', naming a symbol before a number. And the quoted § 4.2.2 sentence says what a note number is rather than what cl-20 excludes: it assigns a class to note numbers and does not say that nothing else has it, so reading it as a restriction is an inference and not the sentence. The same holds of § 3.9.2's entry, which describes where a mark is set and not what may be in one. A reader who takes those two as restrictions answers cl-19 here, and that reading is not recorded below because it cannot be: an entry recording it would carry the empty overlay, as the entry recording the wide reading does, and two entries with the same overlay leave no policy able to select one over the other. What is missing is a question in spec/derived/questions.tsv whose choices are the wide and the narrow scope; until it exists this file states the reading and its grounds, and the narrow one is reported rather than fudged into an expectation that is any of several answers. U+203B is the occurrence to ask this of because § A.19 is the only Appendix A table that names it and its Remarks cells are empty in both locales, so the key answers cl-19 with nothing whatever to disambiguate and the construct is the entire difference between the two readings.",
+      "input": {
+        "kind": "classify",
+        "text": "本文※",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 700, "frame": "full-em", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ A.20's sentence, quantified over every character; § 3.1.10 Note; the glossary entry for 合印)",
+          "expect": {
+            "class": { "item": 2, "class": 20, "rules": ["3.9.2", "3.1.10"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-mark/target-word-is-not-a-member",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "EN: In this document, characters in reference marks are treated as characters as reference marks (cl-20). — JA: この文書では，合印の文字列の文字クラスは，合印中の文字（cl-20）として扱う．",
+      "rationale": "This is the boundary the document draws around cl-20, and it draws it by naming what the class covers rather than by excluding anything, because § A.20 excludes nothing. The quoted Note assigns the class to 合印の文字列の文字 — the characters of the mark string — and the glossary defines that string as 「該当項目に付ける文字列」, a string attached to the applicable item, so the item and the mark are two different things and only one of them is named. The contrast with cl-21, cl-22 and cl-23 is the evidence: those three classes exist precisely so that the *base* characters of an ornamented complex or a ruby complex have a class of their own, and JLReq creates no analogue for the item a reference mark is attached to. So 文 keeps the class its key gives it, and it gets that class without appearing in any Appendix A table: § A.19 states that its table lists 'all non-ideographic characters assigned to this character class', and U+6587 is a Unified_Ideograph. The occurrence is inside the declared `base` range of the construct, which is what makes the case worth asking — an implementation that classifies a declared range wholesale answers cl-20 here.",
+      "input": {
+        "kind": "classify",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "proportional", "scale": 1 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.9.2, § A.19)",
+          "expect": { "class": { "item": 1, "class": 19, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 20 } },
+          "why": "Extending a construct's class to the item the construct is attached to. § 3.9.2 gives the base characters of an ornamented character complex, a simple-ruby character complex and a jukugo-ruby character complex three classes of their own — cl-21, cl-22 and cl-23 — and gives the target word of a reference mark none. An implementation that classifies the whole declared range as cl-20 makes cl-19 unreachable wherever a note is attached, and takes § 3.2.6's quarter em out of the boundary before the mark for the wrong reason."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/interlinear-mark/target-word-is-unchanged",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "EN: There are two styles for setting reference marks (characters as reference marks (cl-20)). One is to set the reference mark adjacent to the target word and on the interlinear right side (in vertical writing mode) or interlinear upper side (in horizontal writing mode). The other is to set the reference mark in the line just after the target word. — JA: 縦組又は横組の合印（合印中の文字（cl-20））は，該当項目に接して，その右側（縦組）又は上側（横組）の行間に配置する方法と，該当項目の後ろの行中に配置する方法がある．",
+      "rationale": "§ 4.2.3 defines two mutually exclusive placement styles and every later statement in the section belongs to one or the other. The interlinear style puts the mark in the inter-line space beside the target word, which makes it a second stream; the inline style, which the other cases in this file declare, puts it in the line after the target word, which makes it running text in the base stream. This case declares the interlinear style, and declares the mark as an annotation stream for that reason. The mark's size is a caller-supplied scale because § 4.2.3 states it as an absolute — 'Character size of reference marks is around 6 points.' / 「文字サイズは，6ポイントくらいとする．」 — the only absolute size stated anywhere for this class, and an absolute cannot be derived from an em; six points against a ten-point kihon-hanmen is the 600 declared below. What the case asserts is that the interlinear style leaves the target word alone: 本 and 文 are running text in the base stream and the mark is not in that stream at all. What it cannot assert is the class of the mark's own occurrence, because a classification expectation carries an ordinal and no stream selector, so an annotation item has no address in this format. That is a gap in the format and not a silence in the document, and it falls exactly where the document's two scopes would be decided: § A.20 and § 3.1.10's Note answer cl-20 for that occurrence, while § 3.9.2's own entry restricts cl-20 to a mark set 'in the line just after the item', which this one is not. § 3.9.2's English calls the construct a 'verification seal' in the same list item whose title is 'Characters as reference marks', where the Japanese and the glossary both say 合印; the two renderings are not the same statement and the project records neither as normative.",
+      "input": {
+        "kind": "classify",
+        "text": "本文",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "1",
+            "scales": [{ "inline_em": 600, "block_em": 600 }],
+            "items": [
+              { "start": 0, "advance": 333, "frame": "proportional", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "annotation": 0 }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.9.2, § A.19, § 4.2.3's interlinear style)",
+          "expect": { "class": { "item": 1, "class": 19, "rules": ["3.9.2"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 1, "class": 22 } },
+          "why": "Mistaking an interlinear reference mark for ruby. Both are annotations, both are set on the interlinear right side in vertical writing and above in horizontal writing, and both attach to a range of the base stream, so an implementation with one annotation construct answers cl-22 — the class § 3.9.2 gives the base characters of a simple-ruby character complex. § 4.2.3 and § 3.3 are different sections stating different constructs, and the difference shows here: JLReq gives a ruby complex's base characters a class and gives a reference mark's target word none."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-mark/no-break-before-the-mark",
+      "rules": ["3.1.10", "3.1.11", "C.3"],
+      "standing": "normative",
+      "quote": "EN: In order to create a correspondence between notes and the related main text, reference marks (aijirushi) are often added. Line breaks are not allowed before the reference mark or between letters of the reference mark itself (see Figure 88). The application of the no-line-break rule here is a matter of style. — JA: 注と本文との対応を付けるために合印が付くことが多い．この合印の前及び合印の文字列の字間（Figure 88）．これは体裁上の問題による．",
+      "rationale": "§ 3.1.10's tenth item names this boundary and § C.3 never takes it back: the very loose level relaxes nine classes, the loose level seven classes or characters, the strict level three, and cl-20 appears in none of the three lists, so the five entries below record one answer across the whole of the level selector. The spacing is stated too, and stated in prose rather than in a table, which is why this is the one cl-20 boundary whose amount can be published at all. § 4.2.3 says the mark 'and base characters before and after are set solid' / 「合印中の文字（cl-20）の前後は，……ベタ組とする」, and § 3.1.11 says 'There must be no added spacing between any characters described in § 3.1.10' / 「§ 3.1.10 分割禁止 で掲げた字間は，すべて行の調整処理で字間を空ける箇所としては避ける」. A boundary that is set solid and that line adjustment may not open carries no conditional space at all, which is what the empty `spaces` states; every other cl-20 boundary rests on a Table 1 cell published only as a PDF this snapshot does not carry, and none is stated here. One thing about the quoted item is not settled and is recorded rather than resolved silently: its last sentence does not say the same thing in the two locales. The Japanese gives a reason — 「これは体裁上の問題による」, this is a matter of appearance — and the English, 'The application of the no-line-break rule here is a matter of style', can be read as making the application of the rule optional. This project reads the English as the Japanese states it, and the case is normative on that reading, because § 3.1.11 lifts the whole of § 3.1.10's list into the no-expansion rule with no qualification and § 4.2.3 states the mark's indivisibility twice more with none. The looser reading is not recorded as a `permitted` entry because it would contradict the two `forbidden` entries below rather than sit beside them — if the item does not apply, § 3.1.11 does not apply either and § 3.2.6's quarter em returns — and because spec/derived/questions.tsv has no question keying it. It belongs in the derived record of the document's divergences, which this file does not own.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "proportional", "scale": 1 }
+        ],
+        "candidates": [{ "at": 0 }, { "at": 3 }, { "at": 6 }, { "at": 7 }],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.1.10 item 10, § 3.1.11, § 4.2.3); the answer at every § C.3 level",
+          "expect": {
+            "boundary": { "before": 1, "breakable": false, "spaces": [] }
+          }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "§ C.3 Very loose (Newspapers), whose nine relaxed classes are cl-03, cl-04, cl-05, cl-08, cl-09, cl-10, cl-11, cl-12 and cl-13",
+          "expect": {
+            "boundary": { "before": 1, "breakable": false, "spaces": [] }
+          }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "§ C.3 Loose (Magazines), whose list names cl-03, one middle dot, two inseparable pairs, 々, cl-10, cl-11 and the percent sign",
+          "expect": {
+            "boundary": { "before": 1, "breakable": false, "spaces": [] }
+          }
+        },
+        {
+          "policy": { "kinsoku.level": "strict" },
+          "source": "§ C.3 Strict (Default, general publications), whose three relaxed subjects are 々, cl-10 and cl-11",
+          "expect": {
+            "boundary": { "before": 1, "breakable": false, "spaces": [] }
+          }
+        },
+        {
+          "policy": { "kinsoku.level": "very-strict" },
+          "source": "§ C.3 Very strict (General publications), which relaxes nothing",
+          "expect": {
+            "boundary": { "before": 1, "breakable": false, "spaces": [] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "before": 1, "breakable": true } },
+          "why": "§ 3.1.10: 'Line breaks are not allowed before the reference mark'. This is a break opportunity a caller's UAX #14 implementation offers — an ideographic character followed by a European numeral — which is why the candidate is declared in the input, and § C.3's loosest level relaxes nine named classes, none of them cl-20."
+        },
+        {
+          "expect": {
+            "boundary": {
+              "before": 1,
+              "spaces": [{ "em": [1, 4], "units": 180, "referent": "preceding" }]
+            }
+          },
+          "why": "The quarter em § 3.2.6 states 'between hiragana (cl-15), katakana (cl-16) or ideographic characters (cl-19) and Western characters or European numerals' / 「欧字・アラビア数字の前後に配置される平仮名（cl-15），片仮名（cl-16）又は漢字等（cl-19）との字間は，四分アキとする」. It is the amount an implementation reaches by classifying the occurrence from its key rather than from its construct, and § 4.2.3 excludes it in so many words: the mark and the base characters before and after are set solid. § 3.2.6 itself says a quarter em is not added in the cases of Figure 103, and this boundary is one of them."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-mark/no-break-inside-the-mark",
+      "rules": ["3.1.10", "C.3"],
+      "standing": "normative",
+      "quote": "EN: Characters as reference marks (cl-20) do not include line breaks when including opening brackets (cl-01) and closing brackets (cl-02), and are handled as one object. — JA: 合印中の文字（cl-20）は始め括弧類（cl-01）及び終わり括弧類（cl-02）を含めて一体として扱い，その字間では2行に分割してはならない．",
+      "rationale": "This boundary is stated three times, and the standing turns on that. § 3.1.10's tenth item names 「合印の文字列の字間」, the spaces between the letters of the mark; the quoted sentence of § 4.2.3 states it for the inline style in vertical writing and the same sentence appears again for horizontal writing; and § 4.2.3's interlinear list states it a third time. Only § 3.1.10's statement carries the sentence about style that makes the boundary *before* the mark an adjudication in the companion case above; the § 4.2.3 statements carry no qualification, and they are what makes this one normative. The mark is 「※1」 rather than two digits because the interior boundary must be a break opportunity a caller's line breaker actually offers, and a break between two digits is not one. § 4.2.3 states the indivisibility as extending through any cl-01 and cl-02 brackets inside the mark, which is what distinguishes it from ordinary bracket handling — the brackets are interior to the construct — and this case does not exercise that, because a bracketed mark needs an item shape for `constructs.reference_marks` that the committed schema does not yet specify. The expectation states breakability and nothing else: cl-20 has no Table 1 or Table 2 row in the rendering this repository vendors, and § 4.2.3 says nothing about the amount inside a mark, so an amount stated here would be invented. The companion case above states one only because two sentences of prose state it there.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文※1",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 700, "frame": "full-em", "scale": 1 },
+          { "start": 9, "advance": 389, "frame": "proportional", "scale": 1 }
+        ],
+        "candidates": [
+          { "at": 0 },
+          { "at": 3 },
+          { "at": 6 },
+          { "at": 9 },
+          { "at": 10 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 4] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.1.10 item 10, § 4.2.3 stated twice); the answer at every § C.3 level",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "§ C.3 Very loose (Newspapers), whose nine relaxed classes do not include cl-20",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "§ C.3 Loose (Magazines), whose list does not include cl-20",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "strict" },
+          "source": "§ C.3 Strict (Default, general publications), whose list does not include cl-20",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-strict" },
+          "source": "§ C.3 Very strict (General publications), which relaxes nothing",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "before": 2, "breakable": true } },
+          "why": "§ 3.1.10: 'Line breaks are not allowed ... between letters of the reference mark itself', and § 4.2.3 twice: the mark is 'handled as one object' / 「一体として扱い」. An implementation that classifies the two occurrences from their keys sees an ideographic character followed by a European numeral, which no rule of this document or of UAX #14 makes unbreakable, and takes the break."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.20/inline-mark/no-break-before-a-following-full-stop",
+      "rules": ["3.1.10", "C.3"],
+      "standing": "normative",
+      "quote": "EN: Often there are full stops (cl-06) after reference marks. In these cases, line breaks are not allowed between the reference marks and the full stops. The reason is that full stops should not be set at the head of lines (see Figure 88). — JA: 合印の後ろには句点類（cl-06）がくる場合は多い．この場合は，合印と句点類の間でも，句点類は行頭禁止であるから分割禁止となる（Figure 88）．",
+      "rationale": "§ 3.1.10's second Note on the reference-mark item adds a boundary the item's own sentence does not: the one *after* the mark, when a full stop follows. It is worth publishing because of where it comes from. The prohibition is not a property of cl-20 — the Note derives it from the line-head prohibition on cl-06 — so an implementation with no reference-mark construct at all still has to refuse this break, and one that has a construct must not think this boundary is protected by the construct. § C.3 states the same thing from the other side and states it as invariant: 'breaking a line ... before closing brackets (cl-02), full stops (cl-06) or commas (cl-07) is prohibited at all levels' / 「どんなレベルでも……句点類（cl-06）……と，その前に配置する文字との字間で2行に分割することを許容することはない」. The five entries below are that invariance. The full stop declares the half em frame because § 3.1.2 names cl-06 among the five classes whose occurrences must, and the frame is the case's only claim about geometry: the amount at this boundary is a Table 1 cl-20 by cl-06 cell that this rendering of the specification does not carry, so the expectation states breakability alone. § 4.2.3's Note records that a mark at the end of a sentence is generally set before the full stop rather than after it, which is why this adjacency is the ordinary one and not a contrived one.",
+      "input": {
+        "kind": "boundary",
+        "text": "本文1。",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 700, "block_em": 700 }
+        ],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 389, "frame": "proportional", "scale": 1 },
+          { "start": 7, "advance": 500, "frame": "half-em", "scale": 0 }
+        ],
+        "candidates": [
+          { "at": 0 },
+          { "at": 3 },
+          { "at": 6 },
+          { "at": 7 },
+          { "at": 10 }
+        ],
+        "constructs": {
+          "reference_marks": [{ "base": [0, 2], "mark": [2, 3] }]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq normative (§ 3.1.10 Note 2, § C.3's sentence common to all four levels)",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "§ C.3 Very loose (Newspapers); the section exempts the boundary before cl-06 from every level",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "loose" },
+          "source": "§ C.3 Loose (Magazines); the section exempts the boundary before cl-06 from every level",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "strict" },
+          "source": "§ C.3 Strict (Default, general publications); the section exempts the boundary before cl-06 from every level",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        },
+        {
+          "policy": { "kinsoku.level": "very-strict" },
+          "source": "§ C.3 Very strict (General publications), which relaxes nothing",
+          "expect": { "boundary": { "before": 2, "breakable": false } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "boundary": { "before": 2, "breakable": true } },
+          "why": "§ C.3: 'breaking a line ... before closing brackets (cl-02), full stops (cl-06) or commas (cl-07) is prohibited at all levels'. The break would put 。 at a line head, and § 3.1.10's Note names that as the reason. An implementation that protects the boundary before a reference mark and forgets the one after it produces exactly this line."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

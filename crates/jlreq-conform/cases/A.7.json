@@ -1,0 +1,806 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.7",
+  "heading_en": "Commas (cl-07)",
+  "heading_ja": "読点類（cl-07）",
+  "cases": [
+    {
+      "id": "A.7/ideographic-comma/half-em-advance",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The following are lists of (non-ideographic) characters from a subset of ISO/IEC 10646 (collection number 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\") grouped by character class according to the classification explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning.",
+      "rationale": "A.7's first row is U+3001 IDEOGRAPHIC COMMA, common name 読点, with an empty Remarks (備考) cell in both locales, and Appendix A's preamble binds that table to cl-07. U+3001 is listed by A.7 and by no other table anywhere in Appendix A, so nothing the caller declares can move it: the key alone decides the class, and an implementation may answer without consulting the frame, the role or the neighbors. The caller declares the half em because that is the character advance § 3.1.2 states for cl-07 ('The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em)'), so this is the occurrence supplied by a caller who set the glyph on JLReq's own geometry. The case declares no direction because A.7's first row states none: § 3.1.1 makes U+3001 the cl-07 member of vertical writing mode and of the third of its three horizontal conventions.",
+      "input": {
+        "kind": "classify",
+        "text": "、",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 1 (U+3001), under the A preamble",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/ideographic-comma/ideographic-advance",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em). But when those punctuation marks are placed side-by-side with ideographic (cl-19), hiragana (cl-15), or katakana (cl-16) characters, in principle, a given amount of spacing will be inserted before or after the symbols, which makes them appear as if they were intrinsically full-width (one em).",
+      "rationale": "The same key on the other frame (字幅): the advance a modern OpenType font reports for 、 is a full em, because the conditional space § 3.1.2 describes is already inside it. The expected class is byte-identical to the case above, and that equality is the assertion. A.7 states no frame for U+3001 at all — its Remarks cell is empty — so here the frame decides a geometry and never a class. That is the distinction ADR 0008 turns on, and cl-07 is one of the five classes where getting it wrong costs half an em at the commonest adjacency in Japanese text: an implementation that refuses a cl-07 occurrence whose advance is not half an em, or that reads a full-em advance as evidence of some other class, differs from the document here.",
+      "input": {
+        "kind": "classify",
+        "text": "、",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 1 (U+3001), with the frame of § 3.1.2",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/ideographic-comma/vertical-composition",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In vertical writing mode, IDEOGRAPHIC FULL STOP \"。\" and IDEOGRAPHIC COMMA \"、\" are used for full stops (cl-06) and commas (cl-07).",
+      "rationale": "A.7 has two rows and only the second carries a Remark, 'used in horizontal composition' / '横組で使用'. Read as a per-direction membership table that Remark would make cl-07 direction-conditional, and the sentence quoted above says it is not: § 3.1.1 names cl-07 in vertical writing mode in so many words, and names U+3001 as the member the writing system uses there. There is one A.7, reached in both writing modes; what the Remark on the other row states is which of the two members an author picks, which is a fact about the writing system rather than about the classification. The closing Note of § 3.1.1 confirms that reading from the glyph side and is the reason this case is not a rotation of a horizontal one: 'The position of the letter face of commas (cl-07) and full stops (cl-06) within the character frame differs in vertical and horizontal writing modes', where cl-01, cl-02 and cl-03 use one letter face rotated. Two letter faces, one class, one answer.",
+      "input": {
+        "kind": "classify",
+        "text": "、",
+        "direction": "vertical",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq § 3.1.1 item 1 (i), A.7 row 1 (U+3001)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/halfwidth-ideographic-comma/narrow-counterpart",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The text is U+FF64 HALFWIDTH IDEOGRAPHIC COMMA, whose Unicode decomposition is <narrow> U+3001 — A.7's own first key, encoded separately for round-trip integrity with the legacy encodings, which is exactly the situation the preamble Note quoted above describes. The Note's worked example runs the other way, from U+0028 to the Wide counterpart U+FF08, and an implementation that reads it as a rule about Wide alone answers nothing for this occurrence: the two compatibility decompositions that reach Appendix A are Wide and Narrow, and both are legacy-encoding artifacts of the same kind. The frame is the half em that U+FF64 itself asserts, so the declaration and the code point agree. This is also the one member of cl-07 for which a Narrow counterpart exists at all, which is why the case sits here and not under a class whose keys have only Wide ones.",
+      "input": {
+        "kind": "classify",
+        "text": "､",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 1 (U+3001) reached through the A preamble Note",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16
+            }
+          },
+          "why": "U+FF64 sits in the Halfwidth and Fullwidth Forms block between halfwidth katakana, and its decomposition is U+3001, which A.7 lists and A.16 does not. A Unicode block is not a character class, and an implementation that classifies the whole run FF61 to FF9F as katakana (cl-16) gives the wrong class to three of its members."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/fullwidth-comma/compatibility-counterpart",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "To work around this issue, many existing implementations use compatibility characters encoded separately in the standard for the purpose of round-trip integrity with the legacy encoding standards. For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The text is U+FF0C FULLWIDTH COMMA, which is the glyph A.7's own Character (字形) column prints in its second row while that row's UCS column reads 002C and its Name column reads COMMA. The Character column is an illustration and not the key: the same key 002C is illustrated as an ASCII comma in A.24 and in A.27. One code point, two illustrations, one key. This class is the one place the point can be checked twice, because § 3.9.2's own example list for cl-07 is written 、 followed by U+FF0C — the compatibility counterpart, not U+002C — so the section that establishes the classification illustrates it with exactly the occurrence this case supplies. The full-width frame is also what leaves cl-07 alone standing: § 3.9.2 scopes cl-24 to 'European numerals which are not full-width' and A.24 states 'quarter em width or half-width', while A.27 states 'proportionally-spaced'. An implementation that keys Appendix A by the printed glyph, or that folds nothing, reports no class for the commonest way a Japanese comma is actually encoded in horizontal text.",
+      "input": {
+        "kind": "classify",
+        "text": "，",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 2 (U+002C) reached through the A preamble Note",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 24
+            }
+          },
+          "why": "A.24 lists the same key 002C with the Remarks 'quarter em width or half-width' / '位取りのコンマ・字幅は四分角又は半角', and § 3.9.2 scopes cl-24 to European numerals 'which are not full-width'. A full-width occurrence is outside that scope on the width alone, before the question of what job it does is reached."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/comma-in-horizontal-composition/half-em-advance",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In horizontal writing mode, there are three conventions in choice of symbols for full stops (cl-06) and commas (cl-07): 1. Using COMMA \"，\" and FULL STOP \"．\" (see Figure 57). 2. Using COMMA \"，\" and IDEOGRAPHIC FULL STOP \"。\" (see Figure 58). 3. Using IDEOGRAPHIC COMMA \"、\" and IDEOGRAPHIC FULL STOP \"。\" (see Figure 59).",
+      "rationale": "A.7's second and last row is U+002C COMMA, common name コンマ, and it is the only row in the class carrying a Remark: 'used in horizontal composition' / '横組で使用'. § 3.1.1 unpacks that Remark into the rule the five words only gesture at — the first two of its three horizontal conventions use this member — and the case declares the direction the Remark names. The comma is set on the half em because that is the advance § 3.1.2 states for cl-07, and that declaration is the whole difference between this case and the two below it. Two other Appendix A tables list this same key and neither reaches this occurrence: A.27's Remarks cell reads 'proportionally-spaced', which the caller has not declared, and cl-24 is 'characters in a grouped numeral' (連数字中の文字), whose § 3.9.2 description is 'the decimal point or the comma and space used as a decimal place indicator in numbers' — a comma between two hiragana is in no numeral, so its membership cannot arise. Membership of cl-24 is a property of the construct the occurrence sits in, and this occurrence sits in none.",
+      "input": {
+        "kind": "classify",
+        "text": "あい,",
+        "direction": "horizontal",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 2 (U+002C), Remarks 'used in horizontal composition'",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          },
+          "why": "A.27 lists U+002C with the Remark 'proportionally-spaced', and this occurrence declares the half em § 3.1.2 states for cl-07. Answering cl-27 for every ASCII comma reads the code point and ignores the frame, which is the axis Appendix A's Remarks column uses to separate the three listings of this key."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 2
+            }
+          },
+          "why": "The answer JIS X 4051 gives, which the § 3.9.2 Note on cl-02 records and this document overrides: 'in this document, the handling of IDEOGRAPHIC COMMA \"、\" and COMMA \",\" are described as an independent class, named commas (cl-07)'."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/comma-in-horizontal-composition/quarter-em-advance",
+      "rules": [
+        "3.1.2",
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "§3.1.2: The character advance of commas (cl-07), full stops (cl-06), opening brackets (cl-01), closing brackets (cl-02) and middle dots (cl-05) is half-width (half em). — §3.9.2, cl-24: Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "An occurrence the document describes under no class, published as the two readings it leaves standing rather than as one. §A.24's Remarks cell for U+002C is the only listing of the key that names the quarter em — 'quarter em width or half-width' / 「位取りのコンマ／字幅は四分角又は半角」 — and §A.7 names none, but §3.1.2 states cl-07's character advance outside the table, and a quarter em is neither the half-width it states nor the full-width ADR 0017 reads as the same geometry declared from the other side. So the width reaches cl-24 and rules cl-07 out. The same cell names the job, and §3.9.2 scopes the class to 'the comma and space used as a decimal place indicator in numbers'; a comma between two hiragana indicates no decimal place, so on that reading cl-24 is out too and §A.7's listing is what remains. Nothing in the document ranks the width against the job, so both are recorded with the question that selects each. An earlier revision of this case asserted cl-07 as normative and never engaged §3.1.2; the sentence is quoted above so the reading cannot be made again by accident.",
+      "input": {
+        "kind": "classify",
+        "text": "あい,",
+        "direction": "horizontal",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 250,
+            "frame": "quarter-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.24's Remarks cell for U+002C, the only listing of the key that names the quarter em",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 24,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.grouped_numeral_qualification": "by-role"
+          },
+          "source": "JLReq §3.9.2's cl-24 item, which scopes the class to the digit-grouping job; with cl-24 out and §3.1.2 ruling out cl-07, no listing describes the occurrence and §A.7's is the lowest-numbered survivor",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 7,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          },
+          "why": "§A.27's Remarks cell for U+002C names the proportional frame and this occurrence declares a quarter em, so the one listing of the key that the frame plainly refuses is cl-27's."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/comma-in-horizontal-composition/proportional-advance",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Western characters (cl-27) include punctuation marks, such as commas, used in Western context. Among these punctuation marks, several marks are used both in a Japanese context and Western context. However, these marks have different character shapes depending on whether they are used in a Japanese context or Western context.",
+      "rationale": "This is where cl-07 stops, and the Note quoted above is the document naming the comma as its example while it says so. The input is byte-identical to the two cases above except for the comma's declared frame and the advance that frame describes, and the class changes: A.27's Remarks cell for U+002C reads 'proportionally-spaced', § 3.1.2 states the character advance of cl-07 is half-width, and no frame satisfies both, so the same code point in the same neighborhood is a Western character (cl-27) when the caller set the Western design and a comma (cl-07) when they set the Japanese one. The Note goes on to concede an ambiguous case, 'エディター（editor）は……', but the concession is about which design an author should choose, not about how a described occurrence is classified — the same Note requires the usage to be explicit, and the declared frame is that explicitness. So this case has one answer rather than two.",
+      "input": {
+        "kind": "classify",
+        "text": "あい,",
+        "direction": "horizontal",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 250,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.27 (U+002C), Remarks 'proportionally-spaced'",
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 27
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 2,
+              "class": 7
+            }
+          },
+          "why": "§ 3.1.2 states the character advance of commas (cl-07) is half-width, and A.27 states this key is proportionally-spaced. An occurrence measured on the proportional frame is not a cl-07 occurrence, whatever its neighbors are."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/comma-as-digit-group-separator/half-em-advance",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "Sequences of European numerals which are not full-width and are handled as Japanese text, the decimal point or the comma and space used as a decimal place indicator in numbers.",
+      "rationale": "The boundary of cl-07 that the frame cannot draw. A.24 lists the same key U+002C that A.7 lists, with the Remarks 'quarter em width or half-width', and A.7 states no width for it at all, so half-width is a frame both classes accept: an implementation separating cl-07 from cl-24 by the advance alone has nothing to separate them with. What separates them is the job the document gives the occurrence, which § 3.9.2's description of cl-24 states — the comma used as a place indicator in a number — and which this case declares as the digit-group-separator role on a comma between European numerals. The two locales of A.24's own Remarks cell do not state that job equally: the English cell carries only the width, the Japanese cell begins '位取りのコンマ'. § 3.9.2 carries it in both, and Appendix A's preamble makes § 3.9.2 the classification these tables enumerate, so the Japanese cell is the fuller rendering of a rule the English states elsewhere rather than a second rule. The four neighboring digits are not what this case asks about; they are what makes the role true.",
+      "input": {
+        "kind": "classify",
+        "text": "1,234",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 500,
+            "frame": "half-em",
+            "role": "digit-group-separator",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq § 3.9.2 (cl-24), A.24 (U+002C)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 24
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 7
+            }
+          },
+          "why": "The answer an implementation gives that decides cl-07 from the key and the half-width frame. Both are equally true of A.24's row for the same key, so neither excludes it; § 3.9.2 gives the digit-grouping comma to grouped numerals (cl-24), and this occurrence declares that role."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/consecutive-ideographic-commas/two-occurrences",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "、 3001 IDEOGRAPHIC COMMA 読点",
+      "rationale": "A.7's first row, quoted above in the document's own column order — Character, UCS, Name, Common name — with its fifth column, Remarks, empty in both locales. A.7 holds two keys and both are a single code point: this class contains no code-point sequence. That is a claim worth an executable case rather than a reading, because Appendix A does key on sequences elsewhere — cl-27 lists <02E5, 02E9> and <02E9, 02E5> as two distinct members, and fourteen kana pairs are keys of their own — so a key of several code points is a real shape in this appendix and not a hypothetical. Two adjacent ideographic commas are therefore two occurrences of one key and never one occurrence of a two-code-point key, and the well-formedness of this two-item stream is the assertion: an input whose items cut an Appendix A key in half is refused rather than misclassified, so the fact that this stream is accepted is the fact that nothing in cl-07 spans its two items. An implementation that pairs them reports one occurrence where the document has two, and every downstream count is then off by one.",
+      "input": {
+        "kind": "classify",
+        "text": "、、",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.7 row 1 (U+3001), the second of two occurrences",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 7
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/closing-bracket/jis-x-4051-merges-the-two-classes",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "In JIS X 4051, IDEOGRAPHIC COMMA \"、\" and COMMA \",\" are classified as closing brackets (cl-02), because they have similar positioning methods. However, in this document, the handling of IDEOGRAPHIC COMMA \"、\" and COMMA \",\" are described as an independent class, named commas (cl-07).",
+      "rationale": "The reason cl-07 exists, stated as a case. The Note quoted above is attached to cl-02 in § 3.9.2's own list and is the only place the document says where this class came from: JIS X 4051 has one class where JLReq has two, and every later disagreement between the two documents about a comma traces to this one sentence. The direction of the split matters and is the assertion here. The Note takes the two commas out of cl-02; it does not put the brackets into cl-07. So a closing bracket is cl-02 in both documents, A.2 enumerates it and A.7 does not, and an implementation whose class table was ported from JIS X 4051's clause 6.1.1 — where the same table serves both — answers cl-02 for the bracket correctly and cl-02 for the comma wrongly, which no case confined to A.2 would catch. U+300D is set on the half em § 3.1.2 states for cl-02, the same frame this file declares for cl-07, so the frame separates nothing here and the key is the whole answer.",
+      "input": {
+        "kind": "classify",
+        "text": "」",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq A.2 (U+300D), under the § 3.9.2 Note on cl-02",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 2
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          },
+          "why": "A.7 enumerates two keys, U+3001 and U+002C, and U+300D is neither. The § 3.9.2 Note moves the commas out of cl-02 and leaves the brackets where they were, so reading it as a merge in the other direction inverts the one sentence that creates this class."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/vertical-comma-presentation-form/unlisted",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "JIS X 4051 also provides similar character classes but that are slightly different from this document. Furthermore JIS X 4051 states that it is implementation-defined how to handle characters that are not explicitly mentioned, e.g. whether they should belong to either class or not.",
+      "rationale": "U+FE11 PRESENTATION FORM FOR VERTICAL IDEOGRAPHIC COMMA is the vertical-writing presentation form of A.7's own first key — its Unicode decomposition is <vertical> U+3001 — and the document lists it nowhere. That is not an exclusion. § A scopes every one of its tables to the non-ideographic characters of ISO/IEC 10646 collections 285 and 286, and the sentence quoted above records that JIS X 4051 leaves the handling of a character its lists do not mention implementation-defined, and that JLReq inherits that position. So the boundary of cl-07 is drawn by the collection the tables enumerate rather than by a judgment about the mark, and an answer here is a published reading and never a requirement, which is why both readings are recorded. Two further facts make this the right member to ask the question about. § 3.9.2's example list for cl-07 is written 、， with no 'etc.' / 'など', where cl-01, cl-02, cl-03, cl-04 and cl-08 all end in one, which is the strongest statement in the document that A.7's two rows are the whole class. And the compatibility folding that reaches U+3001 from U+FF64 and U+FF0C is the Wide and Narrow decompositions and nothing else: <vertical> is neither, and folding it would add to cl-07 a member the specification never listed, in exactly the class whose example list declines to say 'etc.'.",
+      "input": {
+        "kind": "classify",
+        "text": "︑",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan published reading (docs/decisions/unlisted-code-point.md), by frame",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.unlisted_code_point": "ideographic"
+          },
+          "source": "The unconditional reading: every unlisted occurrence is cl-19",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 19
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 7
+            }
+          },
+          "why": "A.7 lists two keys and U+FE11 is not one of them. Adding an unlisted mark to the class it decomposes to is the one thing § 3.9.2 does not license: it records that the question is implementation-defined, not that the answer is the nearest table."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.7/comma/every-kinsoku-level",
+      "rules": [
+        "C.3"
+      ],
+      "standing": "normative",
+      "quote": "As noted in § B. Spacing between Characters and § C.2 Notes , there are several conventions for line-start prohibition, line-end prohibition and unbreakable character rules. The following lists four levels of convention. Note that breaking a line after opening brackets (cl-01) and before closing brackets (cl-02), full stops (cl-06) or commas (cl-07) is prohibited at all levels. Likewise, those rules common to all levels are not listed below.",
+      "rationale": "§ C.3 publishes four conventions for line-start prohibition (行頭禁則) and lets a caller choose between them, and cl-07 is named in the sentence quoted above and in none of the four level lists that follow it. That combination is what makes this case worth publishing rather than assuming: the four lists between them relax cl-03, cl-04, cl-05, cl-08, cl-09, cl-10, cl-11, cl-12 and cl-13, so an implementation that reaches the loosest level by relaxing the whole line-start prohibition of § 3.1.7 has relaxed nine classes correctly and one wrongly, and only a case over the tenth says so. The five permitted entries below record it — one per choice of kinsoku.level plus the fallback, all with the same expectation — and recording it as five entries rather than one is deliberate, because the assertion is about the selector rather than about a single setting. The caller's own line breaker offers a break at this boundary, which is why the candidate is declared: an implementation that honors UAX #14 here puts 、 at a line head, and the sentence above says no convention permits that.",
+      "input": {
+        "kind": "boundary",
+        "text": "あ、",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          }
+        ],
+        "candidates": [
+          {
+            "at": 0
+          },
+          {
+            "at": 3
+          },
+          {
+            "at": 6
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq § C.3, the sentence common to all four levels",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose"
+          },
+          "source": "JLReq § C.3 level 1 (very loose), which does not list cl-07",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "loose"
+          },
+          "source": "JLReq § C.3 level 2 (loose), which does not list cl-07",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "strict"
+          },
+          "source": "JLReq § C.3 level 3 (strict), which does not list cl-07",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq § C.3 level 4 (very strict), which does not list cl-07",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "§ C.3: 'breaking a line ... before closing brackets (cl-02), full stops (cl-06) or commas (cl-07) is prohibited at all levels'. The Japanese half states the same exemption from the level selector, so no reading of the section makes this boundary breakable."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

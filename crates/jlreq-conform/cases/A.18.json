@@ -1,0 +1,903 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.18",
+  "heading_en": "Math operators (cl-18)",
+  "heading_ja": "演算記号（cl-18）",
+  "cases": [
+    {
+      "id": "A.18/plus-sign/frame-full-em",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: The width of math symbols (cl-17) and math operators (cl-18) is full-width, i.e. one em (see Figure 176). — JA: 等号類（cl-17）及び演算記号（cl-18）の字幅は，全角とする（Figure 176）．",
+      "rationale": "§A.18 keys six members by the UCS column — 002B, 2212, 00D7, 00F7, 00B1, 2213, in that order — and U+002B PLUS SIGN is its first row. Every one of the six Remarks (備考) cells is empty in both renderings, so Appendix A qualifies no member of this class by frame (字幅), by writing direction or by role, and §A.18 carries no prose at all: the heading is followed immediately by the table. All six keys are listed a second time under §A.27, where the Remarks cell reads 'proportionally-spaced' / 「プロポーショナル」, so every cl-18 occurrence has at least two candidate listings before the caller says anything. The frame is what separates them, and the sentence that fills §A.18's silence about it is the quoted one from §3.7.4 — the only statement of cl-18's 字幅 anywhere in the document. This occurrence declares the one em that sentence names, so §A.27's qualification does not describe it and cl-18 is what is left standing. §3.7.4 is deliberately not cited in `rules`: what a classification answer exercises is §3.9.2's grouping and the first of §3.9.1's axes, while §3.7.4's own three rules — the width, the four spacings and the break permission — are composition rules whose cases a later milestone writes.",
+      "input": {
+        "kind": "classify",
+        "text": "+",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, first row, against §A.27's Remarks column (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27 lists 002B with the Remarks cell 'proportionally-spaced' / 「プロポーショナル」, which an occurrence declared one em wide does not satisfy. §3.9.1 asks 'Is the character width full-width, half-width, or something else?' / 「文字・記号の字幅は，全角か，半角か，又はそれ以外か．」 first among the ways positioning differs, so the answer may not be reached without reading the declared frame. Answering cl-27 for every U+002B is answering from the code point rather than from the occurrence (ADR 0008)."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/plus-sign/frame-proportional",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: Is the character width full-width, half-width, or something else? — JA: 文字・記号の字幅は，全角か，半角か，又はそれ以外か．",
+      "rationale": "The same code point as the case above on a different frame (字幅), and the answer is a different class — which is the whole reason a class is a function of an occurrence and not of a code point. §A.27 lists 002B with the Remarks cell 'proportionally-spaced' / 「プロポーショナル」 and this occurrence declares exactly that frame, so §A.27's sentence describes it. §A.18's own row states nothing about width, but the class it enumerates does have one: §3.7.4 states that the 字幅 of math operators (演算記号) is one em, and a proportionally set plus is not that, so the two listings do not both survive here either. The advance is the caller's measurement of a proportional glyph and is not what decides this: the frame is declared, never inferred from the advance (ADR 0002).",
+      "input": {
+        "kind": "classify",
+        "text": "+",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 584,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's Remarks column for 002B (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18
+            }
+          },
+          "why": "Answering cl-18 for every U+002B discards the only thing §A.27's Remarks column says about this key, and gives one answer for this case and for A.18/plus-sign/frame-full-em, which are the same key on two frames. §3.7.4 states that the width of math operators (cl-18) is one em, so a plus the caller measured proportionally is not being set as one."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/plus-sign/frame-unstated",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "unstated",
+      "quote": "However, there are some ambiguous cases, such as \"エディター（editor）は……\". In this case, English spelling is indicated using parentheses in a Japanese line of text. In this particular case, Japanese design is better.",
+      "rationale": "U+002B is named by two Appendix A tables, §A.18 and §A.27, and the only thing separating them is §A.27's Remarks qualification, which is a statement about the frame (字幅). A caller who declares no frame has supplied nothing that separates them, and §3.9.2 does not decide the case: it concedes an ambiguity over one example and says one design is 'better', which is a preference, is stated about that one example, and names no class. Both survivors are therefore recorded here rather than one, each with the policy question that selects it. This project answers with the lowest-numbered survivor, published in docs/decisions/ambiguous-context.md, and that is what the empty overlay selects. Nothing in the input hints at the answer: the advance is one em and the frame is still unstated, because ADR 0002 forbids inferring one from the other and a proportional glyph exactly one em wide is undecidable anyway. Every one of §A.18's six keys has this shape, since every one of them is also an §A.27 row and none of the six carries a Remark of its own.",
+      "input": {
+        "kind": "classify",
+        "text": "+",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "unstated",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md): the lowest-numbered surviving class",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "classification.ambiguous_context": "highest-class"
+          },
+          "source": "The other survivor of §A.18 and §A.27, preferring the Western design over the Japanese one",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/plus-sign/kinsoku-level-relaxed",
+      "rules": [
+        "3.9.2",
+        "C.3"
+      ],
+      "standing": "normative",
+      "quote": "Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it.",
+      "rationale": "§C.3 lists four levels of kinsoku (禁則, line-break prohibition) convention, and cl-18 is named in none of them. It is named nowhere in Appendix B or Appendix C at all: the whole of what the document says about a math operator (演算記号) beyond its six keys is in §3.7.4 and §3.9.2, and Table 1 and Table 2 are published only as the PDFs spec/PROVENANCE.toml records as absent by design. The contrast is inside §3.9.2 itself, which for three subjects does state a reclassification — 々 is regarded as cl-19, ー as cl-16, and the small kana as cl-15 or cl-16, each conditioned on relaxing the line-head prohibition — and states nothing of the kind for cl-18, whose own list item carries no Note whatever. So the class of this occurrence is invariant across the whole relaxation surface, and the three entries below form a chain over the two questions that describe that surface rather than asserting the invariance once. An implementation that discharged a relaxation by moving an operator into some other class would change its spacing and its matrix answers everywhere, not only at the break the level was about.",
+      "input": {
+        "kind": "classify",
+        "text": "+",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18 under §C.3's default level 3 (Strict)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose"
+          },
+          "source": "JLReq alternative (§C.3 level 1, the loosest of the four, which names cl-03, cl-04, cl-05, cl-08, cl-09, cl-10, cl-11, cl-12 and cl-13 and not cl-18)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2",
+                "C.3"
+              ]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose",
+            "kinsoku.relaxation_mechanism": "reclassify"
+          },
+          "source": "JLReq alternative (§C.3 with §C.2 notes 1 to 3 read as a change of class rather than as an override of Table 2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2",
+                "C.3"
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/fullwidth-plus-sign/wide-folding",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The Character (字形) column of §A.18's first row prints ＋ — U+FF0B FULLWIDTH PLUS SIGN — against the UCS value 002B, and real Japanese text carries that same fullwidth glyph, which is the practice the quoted preamble Note describes. UnicodeData.txt gives U+FF0B the decomposition '<wide> 002B', so the Wide and Narrow folding ADR 0008 admits, and only that folding, carries this occurrence onto §A.18's first row; full compatibility folding is not admitted, because it would fold U+2160, a genuine cl-19 member, onto 'I'. The code point the caller wrote asserts the full-width frame (字幅) by itself and the item declares the same one, so nothing here is in tension. This is the positive half of a pair. §A.18's second row prints － — U+FF0D FULLWIDTH HYPHEN-MINUS — against the UCS value 2212, and U+FF0D decomposes to 002D and not to 2212, so the fullwidth glyph the document prints for its own minus row does not reach cl-18 by this route or by any other. The far end of that mapping is A.18/western-hyphen-minus/wide-decomposition-target.",
+      "input": {
+        "kind": "classify",
+        "text": "＋",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, applied to §A.18's first row (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "Folding the compatibility character and then taking §A.27's row for 002B. That row is qualified 'proportionally-spaced' / 「プロポーショナル」, and a fullwidth plus sign is the opposite declaration: U+FF0B's decomposition mapping is '<wide> 002B', so the code point the caller wrote states the frame without the item having to."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/minus-sign/frame-full-em",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: Units described here include combinations of Latin script and Greek script characters used for international units (SI). — JA: ここでいう単位記号は，国際単位系（SI）として使用されているラテン文字又はギリシャ文字を組み合わせて単位を示すものである．",
+      "rationale": "U+2212 MINUS SIGN is §A.18's second row and the only one of its six keys that three Appendix A tables name: §A.18 with an empty Remarks (備考) cell, §A.25 with an empty Remarks cell, and §A.27 with 'proportionally-spaced' / 「プロポーショナル」. The declared frame (字幅) settles §A.27 and cannot settle §A.25, because neither §A.18 nor §A.25 states a 字幅 for this key — §3.7.4 states cl-18's one em from outside the appendix, and §A.25 states nothing at all, so an occurrence declared one em wide satisfies both listings and this is the one cl-18 key where the frame leaves two candidates. What separates them is the quoted §3.9.2 item: cl-25 is the characters *in* a unit symbol (単位記号中の文字), so its listing describes an occurrence by the construct it belongs to rather than by its key, exactly as §A.25's own heading says. This input declares no unit symbol, so §A.25's sentence does not describe this occurrence and cl-18 is what remains. Its twin, A.18/minus-sign/inside-a-unit-symbol, declares one and gets the other answer from the same key on the same frame.",
+      "input": {
+        "kind": "classify",
+        "text": "−",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ],
+        "constructs": {}
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, second row, against §A.25 and §A.27 (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 25
+            }
+          },
+          "why": "Answering from the key. §A.25 does list 2212, but its heading is 'Unit symbols' / 「単位記号中の文字」 and §3.9.2's item for the class describes SI units built by combining Latin and Greek letters, so membership is a property of the construct the occurrence sits in. Nothing in this input is a unit symbol, and no frame declaration could have said so: §A.25's Remarks cell for this key is empty."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27 qualifies its 2212 row 'proportionally-spaced' / 「プロポーショナル」, which an occurrence declared one em wide does not satisfy."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/minus-sign/inside-a-unit-symbol",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: Units described here include combinations of Latin script and Greek script characters used for international units (SI). — JA: ここでいう単位記号は，国際単位系（SI）として使用されているラテン文字又はギリシャ文字を組み合わせて単位を示すものである．",
+      "rationale": "The differential twin of A.18/minus-sign/frame-full-em: the same key on the same frame (字幅), with one further fact declared, and a different class. The text is the SI unit s−1, and §A.25 lists all three of its keys — 0073, 2212 and 0031 — so all three occurrences are characters in a unit symbol (単位記号中の文字) and the minus is cl-25 rather than cl-18. Note what does not do the separating. §A.25's Remarks cell for 2212 is empty, so cl-25 states no 字幅 for this key and a frame declaration cannot reach it; §A.25's cells for 0073 and 0031 do state one, 'proportionally-spaced' and 'half-width or proportional', and this input declares exactly those, which is why only the minus is interesting here. The one em on the minus is deliberate rather than typographic: it is the declaration under which §A.27's proportional listing drops out and §A.18's and §A.25's both survive, so the construct is the only axis left and this case tests it alone. U+2212 is the one cl-18 key where that is possible; for the other five §A.25 lists nothing and the frame settles everything. Read this case beside A.25/minus-sign/remarks-cell-states-no-frame, which declares the same key, the same one-em frame and the same unit-symbol role and differs only in the neighbors' frames — there every character of the unit is full-width, which is the 全角単位字 §3.9.2's Note removes from this class by name. The pair is what shows that the Note ranges over the unit and not over one of its characters: no rule an implementation can apply to a single occurrence answers both, and the occurrence is identical in both. Which means the Note is unreachable from classification and arrives with the layer that can see the run (ADR 0015).",
+      "input": {
+        "kind": "classify",
+        "text": "s−1",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 389,
+            "frame": "proportional",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 1000,
+            "frame": "full-em",
+            "role": "unit-symbol",
+            "scale": 0
+          },
+          {
+            "start": 4,
+            "advance": 500,
+            "frame": "half-em",
+            "role": "unit-symbol",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.25 with §3.9.2's cl-25 item (the construct decides, not the key)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 25,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 18
+            }
+          },
+          "why": "Answering from the key and the frame alone. A one-em minus is a math operator (cl-18) only when it is not inside a unit symbol; this one is declared inside one, and §3.9.2's cl-25 item is the sentence that says what a unit symbol is."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/minus-sign/before-a-grouped-numeral",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: The inter-character spacing between ideographic characters (cl-19), hiragana (cl-15) or katakana (cl-16) and math symbols (cl-17) or math operators (cl-18) is solid. However, it is better to add quarter em spacing between ideographic characters (cl-19),hiragana (cl-15) or katakana (cl-16) and adjacent math operators (cl-18) when the math operators (cl-18) are followed by grouped numerals (cl-24) or Western characters (cl-27) which represent some mathematical value (see Figure 177). — JA: ただし，“これは－5となり”のように演算記号（cl-18）と連数字中の文字（cl-24）が連続する文字列，又は“これは－aとなり”のように演算記号（cl-18）と量を示す欧文用文字（cl-27）が連続する文字列を配置する場合は，前に配置する漢字等（cl-19），平仮名（cl-15）及び片仮名（cl-16）と演算記号との字間は四分アキとした方がよい（Figure 177）．",
+      "rationale": "§3.7.4's Note supplies the document's only worked string containing a math operator (演算記号) — これは－5となり, an operator read as the sign of a negative quantity directly before a digit — and this case is that string. It asserts one thing about it: the class of the operator is cl-18 there as it is anywhere, because neither neighbor is an axis. The hiragana before it and the half-width digit after it decide nothing; §A.18's Remarks column is empty and the frame the caller declared is what §A.27's row is tested against. Two things this case does not claim. The quarter em the quoted Note prefers is a spacing answer belonging to §3.7.4, whose cases a later milestone writes. And the string is not the document's own bytes: the Note prints U+FF0D where this input writes U+2212, because U+FF0D decomposes '<wide> 002D' and reaches cl-27, so the document's single worked example of a cl-18 operator, read literally, contains no cl-18 member — an observation published in A.18/western-hyphen-minus/wide-decomposition-target rather than smuggled into an expectation. The quoted halves also state different rules: the Japanese restricts the quarter em to the preceding side, 前に配置する, and supplies two worked strings, while the English says only 'adjacent' and gives none, so read literally the English permits it on both sides. A boundary is one-sided or two-sided, so that is a divergence; it moves no class, which is what lets this case be normative.",
+      "input": {
+        "kind": "classify",
+        "text": "これは−5となり",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 3,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 6,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 9,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 12,
+            "advance": 500,
+            "frame": "half-em",
+            "scale": 0
+          },
+          {
+            "start": 13,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 16,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 19,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, second row, in §3.7.4's own worked string (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 3,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 3,
+              "class": 24
+            }
+          },
+          "why": "Letting the neighbor decide. §A.24 is grouped numerals (連数字中の文字) and does not list 2212 at all — its members are the digits, the decimal point, the comma and the space — so an operator standing before a numeral does not join it. §3.7.4's Note calls the two 演算記号 and 連数字中の文字 in the same sentence, which is what makes them two classes rather than one run."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/multiplication-sign/vertical-writing-mode",
+      "rules": [
+        "3.9.1",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "There are some punctuation marks that are used uniquely in either vertical writing mode or horizontal writing mode.",
+      "rationale": "cl-18 has no direction-conditional membership, and this case is where that is written down. §3.1.1 is where the document restricts a member to one writing mode, and Appendix A carries those restrictions in the Remarks (備考) column: exactly twelve keys carry one, spread over §A.1, §A.2, §A.5, §A.6, §A.7 and §A.8, and each reads 'used in vertical composition' / 「縦組で使用」 or 'used in horizontal composition' / 「横組で使用」 — U+301D 〝 and U+002E FULL STOP among them. None of §A.18's six keys is among them: its Remarks column is empty in every row and in both renderings, and the other two tables naming these keys say only 'proportionally-spaced' / 「プロポーショナル」 (§A.27) and nothing (§A.25 for 2212). So U+00D7 is cl-18 in vertical writing exactly as it is in horizontal, and the direction a caller declares is a fact about the line rather than an axis of classification. The case names the direction on purpose, which is unusual here: the direction-parity gate composes a case that names none in both modes and requires identical results, so the invariance is already proved over every other case in this file, and this one states it where a reader looking for cl-18's direction behavior would look for it.",
+      "input": {
+        "kind": "classify",
+        "text": "×",
+        "direction": "vertical",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, third row; no Remarks cell of §A.18 names a writing mode (§3.1.1, §3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.1",
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27's row for 00D7 is qualified 'proportionally-spaced' / 「プロポーショナル」 and this occurrence declares one em, in vertical writing as in horizontal. A writing mode is not a frame (字幅), and no Remark anywhere in Appendix A makes any cl-18 key conditional on one."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/division-sign/english-note-swaps-the-class-names",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: In JIS X 4051, math symbols (＋－÷×etc.) and math operators (＝≠＜＞≦≧⊆⊇∪∩etc.) are included in the \"Japanese characters excluded from 1. to 12.\" class or Western character class. However, handling of math symbols and math operators adjacent to Western character or Arabic numerals is different from kanji. So, in this document, new math operators (cl-18) and math symbols (cl-17) classes are defined. — JA: 数式などに使う演算記号（＋－÷×等）や等号類（＝≠＜＞≦≧⊆⊇∪∩等）は，JIS X 4051では漢字などと同じ文字クラス（1.～12.以外の和字）又は欧文用文字に含まれている．しかし，欧字やアラビア数字と連続した場合の扱いは，漢字とは異なるので，次項の演算記号とともに新たな文字クラスを作成した．",
+      "rationale": "U+00F7 DIVISION SIGN is §A.18's fourth row and one of the four glyphs §3.9.2's own illustration prints for this class. The quoted Note is the origin of both math classes; it hangs off §3.9.2's cl-17 item rather than its cl-18 item, and its two halves do not state the same thing. The English calls ＋－÷× *math symbols* and ＝≠＜＞≦≧⊆⊇∪∩ *math operators*, which is the reverse of the two list items it sits under: §3.9.2 illustrates cl-17 (math symbols / 等号類) with the second string and cl-18 (math operators / 演算記号) with the first, and the Japanese half agrees with the items and with the tables. The English half therefore calls cl-18's own members cl-17's and cl-17's members cl-18's. Two independent statements settle the answer — §A.18's table lists 00F7 while §A.17's forty-five rows do not, and §3.9.2's cl-18 item prints ÷ directly — so this project reads the Japanese, which is also the reading the tables state. The divergence is published here because it is exactly the shape already recorded as b2-note-7-locale-class-divergence and it is absent from spec/derived/defects.tsv; that absence is reported as a finding rather than repaired by a case.",
+      "input": {
+        "kind": "classify",
+        "text": "÷",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, fourth row, and §3.9.2's cl-18 illustration; the Japanese half of the cl-17 item's first Note (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 17
+            }
+          },
+          "why": "Reading the English half of §3.9.2's first Note under the cl-17 item as a class assignment. It calls ＋－÷× math symbols, which is cl-17, while §A.17's table does not list 00F7 and §A.18's does. An implementation built from that sentence rather than from the tables puts all six cl-18 members into cl-17 and cl-17's members into cl-18, and both classes are then wrong everywhere at once."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "§A.27's row for 00F7 is qualified 'proportionally-spaced' / 「プロポーショナル」, which this occurrence does not declare."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/plus-minus-sign/omitted-from-the-class-list-example",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "During layout processing, the issues mentioned in the previous section are addressed by grouping characters and symbols according to their characteristics, and handling them as character classes.",
+      "rationale": "U+00B1 PLUS-MINUS SIGN is §A.18's fifth row and one of the two members — the other is U+2213 — that §3.9.2's illustration of this class omits: the cl-18 item prints ＋－÷× followed by 'etc.' / 「など」, four glyphs for a six-key class. What enumerates the class is §A.18, so ± is a member on exactly the same footing as ＋, and this is the case an implementation that built cl-18 from the readable prose fails: with §A.18 unread, the only table reachable for 00B1 is §A.27's. The Japanese Common name (通用名称) column reads 正又は負符号, the sign of a positive or a negative quantity, which is the same unary reading §3.7.4's Note relies on when it writes これは－5となり; the Appendix A preamble Note says in Japanese that the column is JIS X 0213's informative common name, so it names a job rather than a class and changes no answer. The English half of that preamble Note omits the sentence.",
+      "input": {
+        "kind": "classify",
+        "text": "±",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, fifth row (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 27
+            }
+          },
+          "why": "The class an implementation that took §3.9.2's four-glyph illustration for the enumeration falls back to: §A.27 is the only other table naming 00B1, and its Remarks cell 'proportionally-spaced' / 「プロポーショナル」 is not what this occurrence declares. §A.18 enumerates six keys; the illustration prints four and an 'etc.'."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/minus-or-plus-sign/adjacent-occurrences",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "The following are lists of (non-ideographic) characters from a subset of ISO/IEC 10646 (collection number 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\") grouped by character class according to the classification explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning.",
+      "rationale": "The quoted preamble says what an Appendix A table is a list of, and the UCS column is how it keys one. Twenty-five of those entries key on an ordered pair of code points, and §A.27 lists <02E5, 02E9> and <02E9, 02E5> as two distinct members, so an Appendix A key is a sequence and a longest-match scan over the tables is the only correct lookup. cl-18 contributes no such entry: each of §A.18's six rows holds a single UCS value, and the class holds no code-point sequence at all. This case asserts that, and it does so by being answerable — an implementation whose key table wrongly held a pair rooted at U+00B1 would match across these two items and would have to refuse the stream, since the key would begin in one occurrence and end in the next. The second occurrence is the one asked about, because that is the ordinal a spurious pair key would swallow, and it is also §A.18's last row, so this is the far end of the table stated together with the sequence fact.",
+      "input": {
+        "kind": "classify",
+        "text": "±∓",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.18, sixth and last row (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 18,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 27
+            }
+          },
+          "why": "§A.27's row for 2213 is qualified 'proportionally-spaced' / 「プロポーショナル」 and this occurrence declares one em. The neighboring ± decides nothing either: no Appendix A key begins at U+00B1 and continues."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/math-symbols-union/excluded-from-cl-18",
+      "rules": [
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "EN: From mathematical view point, \"∪∩∧∨⊕⊗\" are included in math operators (cl-18), however, in this document, these symbols are included in math symbols (cl-17) because these symbols are traditionally considered to behave in the same way as other Math symbols. — JA: “∪∩∧∨⊕⊗”は，これまでの組版上の慣習的処理から等号類に含めている．",
+      "rationale": "The boundary of cl-18 that the document draws in a sentence rather than by omission. Six symbols that are operators mathematically are placed in math symbols (cl-17) on purpose, and the quoted Note is the only place the document says so. The tables agree with it: §A.17 lists all six — 222A, 2229, 2227, 2228, 2295, 2297 — and §A.18's six rows hold none of them. The two halves of the Note do not agree with each other. The English states the exclusion from cl-18 and gives the reason; the Japanese states only the positive placement in 等号類 and says nothing about cl-18, so the English half is the only place the boundary is written down, and the divergence is unrecorded in spec/derived/defects.tsv. Note also where the Note lives: under §3.9.2's cl-17 item, together with the JIS X 4051 origin Note, while §3.9.2's cl-18 item carries no Note of its own. A reader who consults only the cl-18 item, or only §A.18, meets neither of the two sentences that bound this class.",
+      "input": {
+        "kind": "classify",
+        "text": "∪",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 1000,
+            "frame": "full-em",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.17 with §3.9.2's second Note under the cl-17 item",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 17,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 18
+            }
+          },
+          "why": "The reading the quoted Note states and then withdraws in the same sentence. From a mathematical point of view ∪ is an operator; this document's cl-18 has six members and 222A is not one of them, and §A.17 lists it. An implementation that classified by mathematical category rather than by the table answers cl-18 for all six of ∪∩∧∨⊕⊗."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.18/western-hyphen-minus/wide-decomposition-target",
+      "rules": [
+        "3.2.4",
+        "3.9.2"
+      ],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The negative half of A.18/fullwidth-plus-sign/wide-folding, and the reason that pair is worth publishing. §A.18's Character (字形) column prints ＋ (U+FF0B) against the UCS value 002B and － (U+FF0D) against the UCS value 2212, so its first two rows look like a matched pair of fullwidth glyphs. They are not. UnicodeData.txt gives U+FF0B the decomposition '<wide> 002B' and U+FF0D the decomposition '<wide> 002D': the first reaches §A.18's first row under the folding the quoted preamble Note licenses, and the second reaches U+002D HYPHEN-MINUS, which Appendix A names under §A.27 alone and under no Japanese class anywhere. U+FF0D is not the compatibility counterpart of U+2212 — they are different code points with different names, and the Note's warrant runs from the compatibility character to the key the appendix lists, which for U+FF0D is 002D. This case fixes the far end of that mapping: a hyphen-minus set proportionally in Western text is cl-27 and is never cl-18. What the class of a *fullwidth* U+FF0D is — the glyph the document itself prints for its own minus row — is decided by nothing in Appendix A, since 002D's sole listing is qualified 'proportionally-spaced' and a full-width Western character is §3.2.4's subject rather than the appendix's; that gap is reported as a finding rather than guessed at in an expectation here.",
+      "input": {
+        "kind": "classify",
+        "text": "a-b",
+        "scales": [
+          {
+            "inline_em": 1000,
+            "block_em": 1000
+          }
+        ],
+        "items": [
+          {
+            "start": 0,
+            "advance": 500,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 1,
+            "advance": 333,
+            "frame": "proportional",
+            "scale": 0
+          },
+          {
+            "start": 2,
+            "advance": 556,
+            "frame": "proportional",
+            "scale": 0
+          }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27, the sole Appendix A listing of 002D (§3.9.2)",
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 27,
+              "rules": [
+                "3.9.2"
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 18
+            }
+          },
+          "why": "Reading §A.18's Character column as the class's key, or folding U+FF0D onto U+2212 because both are called a minus. The UCS column is the key — the appendix preamble calls its tables lists of characters from ISO/IEC 10646 collections 285 and 286 — and §A.18's second row keys 2212. An implementation that indexed Appendix A by the glyph it renders puts every hyphen-minus in a Japanese document into cl-18, including the one in every Western hyphenated word."
+        },
+        {
+          "expect": {
+            "class": {
+              "item": 1,
+              "class": 3
+            }
+          },
+          "why": "§A.3 is hyphens (ハイフン類) and its four rows key 2010 HYPHEN, 301C WAVE DASH, 30A0 KATAKANA-HIRAGANA DOUBLE HYPHEN and 2013 EN DASH — not 002D. The name HYPHEN-MINUS is not a class assignment, and Appendix A names 002D exactly once, in §A.27."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

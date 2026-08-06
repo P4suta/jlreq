@@ -1,0 +1,261 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.12",
+  "heading_en": "Prefixed abbreviations (cl-12)",
+  "heading_ja": "前置省略記号（cl-12）",
+  "cases": [
+    {
+      "id": "A.12/yen-sign/frame-full-em",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "The following are lists of (non-ideographic) characters from a subset of ISO/IEC 10646 (collection number 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\") grouped by character class according to the classification explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning.",
+      "rationale": "§A.12 is the first of the two places the document states cl-12, and its table keys six members by the UCS column: 00A5, 0024, 00A3, 0023, 20AC, 2116, in that order. U+00A5 YEN SIGN is its first row and its Remarks cell is empty, in both the English and the Japanese rendering, so the document qualifies this member by nothing at all — not by frame (字幅), not by writing direction, not by role. The same key is listed a second time under §A.27, where the Remarks cell reads \"proportionally-spaced\" / 「プロポーショナル」; that qualification is the one thing separating the two listings, and an occurrence the caller declares on the ideographic frame does not satisfy it. cl-12 is therefore the answer, and it is reached by the axis §3.9.1 names first rather than by a preference. The neighboring §A.13 rows do carry a frame qualification in their Remarks cells, so §A.12's empty cell is a silence the document chose and not a gap in the transcription.",
+      "input": {
+        "kind": "classify",
+        "text": "¥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.12, first row, against §A.27's Remarks column (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "§A.27 lists 00A5 with the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」. This occurrence is declared on the ideographic frame, so the sentence that would put it in cl-27 does not describe it. §3.9.1 asks \"Is the character width full-width, half-width, or something else?\" / 「文字・記号の字幅は，全角か，半角か，又はそれ以外か．」 first among the axes on which positioning differs, which is why the answer may not be reached without reading the declared frame."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/yen-sign/frame-proportional",
+      "rules": ["3.9.1", "3.9.2"],
+      "standing": "normative",
+      "quote": "Is the character width full-width, half-width, or something else?",
+      "rationale": "The same code point as the case above, declared on a different frame, and the answer is a different class — which is the whole reason a class is a function of an occurrence and not of a code point. §A.27 lists 00A5 with the Remarks cell \"proportionally-spaced\" / 「プロポーショナル」, and this occurrence declares exactly that frame, so §A.27's sentence describes it. §A.12's own row states nothing about width, so nothing there contradicts §A.27's qualification; the qualified listing is the one that speaks about a proportionally-set occurrence, and the unqualified one is what remains for every other frame. §3.9.2's own note on cl-27 states the distinction in the document's words — of LEFT PARENTHESIS it says the Japanese and the Western usage \"has not only different width (Japanese, half em, Western, proportional)\" — so the width the caller declares is what chooses between two listings of one key, and a proportional yen sign is Western text. The advance is the caller's measurement of a proportional glyph and is not what decides this: the frame is declared, never inferred from the advance.",
+      "input": {
+        "kind": "classify",
+        "text": "¥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 556, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.27's Remarks column for 00A5 (§3.9.1, §3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.1", "3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 12 } },
+          "why": "Answering cl-12 for every occurrence of 00A5 is answering from the code point rather than from the occurrence, and it discards the only thing §A.27's Remarks column says. An implementation that does this cannot tell this case from `A.12/yen-sign/frame-full-em`, and the two are the same key set on two frames."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/yen-sign/frame-unstated",
+      "rules": ["3.9.2"],
+      "standing": "unstated",
+      "quote": "However, there are some ambiguous cases, such as \"エディター（editor）は……\". In this case, English spelling is indicated using parentheses in a Japanese line of text. In this particular case, Japanese design is better.",
+      "rationale": "U+00A5 is named by two Appendix A tables, §A.12 and §A.27, and the only thing separating them is §A.27's Remarks qualification, which is a statement about the frame. A caller who declares no frame has supplied nothing that separates the two, and the document does not decide the case: §3.9.2 offers a preference over one example — Japanese design is \"better\" for a parenthesis inside Japanese text — and a preference stated about one example is not a rule that names a class. Both surviving readings are therefore recorded here rather than one, with the policy question that selects each. This project's own reading is the lowest-numbered survivor, published in docs/decisions/ambiguous-context.md, and it is what the empty overlay selects. Nothing in the input hints at the answer: the advance is a full em and the frame is still unstated, because ADR 0002 forbids inferring one from the other and a proportional glyph exactly one em wide is undecidable anyway.",
+      "input": {
+        "kind": "classify",
+        "text": "¥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan's published reading of §3.9.2's silence (docs/decisions/ambiguous-context.md)",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.ambiguous_context": "highest-class" },
+          "source": "The other survivor of §A.12 and §A.27, preferring the Western design over the Japanese one",
+          "expect": {
+            "class": { "item": 0, "class": 27, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/numero-sign/sole-listing",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "During layout processing, the issues mentioned in the previous section are addressed by grouping characters and symbols according to their characteristics, and handling them as character classes.",
+      "rationale": "U+2116 NUMERO SIGN is the last row of §A.12 and the only one of its six members that no other Appendix A table names: §A.27 lists 0023, 0024, 00A2, 00A3, 00A5 and 20AC as proportionally-spaced and does not list 2116. It is therefore the one key on which cl-12 is the answer with no further fact declared and no axis to consult, which is why the frame is stated unstated here and the answer is still cl-12 — the case that separates an implementation reading the table from one guessing at a frame. Its Remarks cell is empty like every other §A.12 cell. Its Common name cell reads 全角NO, which is the only place any word about width appears anywhere near cl-12; the Japanese half of the Appendix A preamble Note says what that column is — 「なお，“通用名称”は，JIS X 0213の“日本語通用名称（参考）”である．」, the informative JIS X 0213 Japanese common name — so it is not a frame qualification and does not restrict this member to one frame. The English half of that Note omits the sentence entirely.",
+      "input": {
+        "kind": "classify",
+        "text": "№",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.12, sixth row; §A.27 does not list 2116 (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 27 } },
+          "why": "§A.27's 778 rows do not include 2116. Answering cl-27 here is answering from a glyph's Latin appearance rather than from the tables, and the document names 2116 exactly once in its whole length."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/numero-sign/kinsoku-level-relaxed",
+      "rules": ["3.9.2", "C.3"],
+      "standing": "normative",
+      "quote": "Breaking a line is allowed before or after the following character classes even though Table 2 prohibits it.",
+      "rationale": "§C.3 lists four levels of kinsoku (禁則, line-break prohibition) convention and names cl-12 in exactly one of them, level 1 \"Very loose (Newspapers)\" / 「レベル1（新聞など）」; cl-12 appears in no other level's list. What the level relaxes is the break decision, and it does not name a class for cl-12 to become. The contrast is inside §3.9.2 itself, which for small kana (cl-11) does state a reclassification — \"When it is permitted to break a line before small hiragana (ぁぃぅ etc.) are regarded as members of the hiragana (cl-15) class\" — and states nothing of the kind for cl-12. So an occurrence of a cl-12 member is cl-12 at every level and under either mechanism, and the three readings below record that invariance across the whole relaxation surface rather than asserting it once. An implementation that discharges §C.3's permission by moving cl-12 into some other class is inventing a target the document never names, and it would change the spacing and the matrix answers of that occurrence everywhere, not only at the break the level was about.",
+      "input": {
+        "kind": "classify",
+        "text": "№",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "unstated", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.3 level 4 is the strict convention Policy::JLREQ selects; §A.12 decides the class (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.level": "very-loose" },
+          "source": "JLReq §C.3 level 1 \"Very loose (Newspapers)\" / 「レベル1（新聞など）」, the one level naming cl-12",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2", "C.3"] }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.level": "very-loose",
+            "kinsoku.relaxation_mechanism": "matrix"
+          },
+          "source": "The same level read as an override of Table 2's cell rather than as a reclassification (§C.3)",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2", "C.3"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/fullwidth-yen-sign/compatibility-spelling",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "The document states cl-12 twice, in two code-point spellings, and this case is the second one. §A.12's UCS column keys the class by 00A5, 0024, 00A3, 0023, while its own Character column prints U+FFE5, U+FF04, U+FFE1, U+FF03 for those four rows, and §3.9.2 illustrates the class as 「￥＄￡＃ など」 — U+FFE5 U+FF04 U+FFE1 U+FF03, the compatibility forms and not the keys. The Appendix A preamble Note quoted above is what licenses reading the two as one member: the compatibility counterpart is what Japanese layout software actually sets. Folding the Wide decomposition onto the key is therefore required by the document rather than adopted for convenience, and an implementation that keys only on the UCS column fails on the spelling real Japanese text uses. The folding is the Wide and Narrow decompositions and nothing more — full compatibility folding would fold U+2160, a genuine §A.19 member, onto \"I\". U+20AC and U+2116, the two rows whose Character cell shows the key itself, have no fullwidth compatibility form and so raise no such question.",
+      "input": {
+        "kind": "classify",
+        "text": "￥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note, with §3.9.2's own cl-12 example 「￥＄￡＃ など」",
+          "expect": {
+            "class": { "item": 0, "class": 12, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/adjacent-members/second-occurrence",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "A few character classes of this document are modified from JIS X 4051. In § A. Character Classes , there is a whole mapping table to ISO/IEC 10646 Annex A collection 285 (BASIC JAPANESE) and collection 286 (JAPANESE NON IDEOGRAPHIC EXTENSION). All character classes of this document are as follows:",
+      "rationale": "§A.12 enumerates six rows and every one of them keys a single code point. Unlike §A.27, which lists ordered pairs and lists <02E5, 02E9> and <02E9, 02E5> as two distinct members, cl-12 holds no code-point sequence at all, so there is nothing here for a longest-first match to join. Two cl-12 members written side by side are consequently two occurrences of two keys, and the case asks about the second one — the occurrence an implementation that glued the pair into one key would no longer have. The answer is the same class as if it stood alone, because §A.12 says nothing about what precedes a member.",
+      "input": {
+        "kind": "classify",
+        "text": "$¥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.12, rows two and one; six single-code-point keys and no sequence (§3.9.2)",
+          "expect": {
+            "class": { "item": 1, "class": 12, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [],
+      "disagreements": []
+    },
+    {
+      "id": "A.12/cent-sign/listed-under-cl-13",
+      "rules": ["3.9.2"],
+      "standing": "normative",
+      "quote": "Between prefixed abbreviations (cl-12) (YEN SIGN \"¥\"，DOLLAR SIGN \"$\"，CENT SIGN \"¢\" etc.) and the following arabic or ideographic numeral (see Figure 82). The reason is that such character sequences are to be handled as one unit.",
+      "rationale": "This is the boundary the document draws around cl-12, and it is drawn against the document's own prose. The sentence quoted above is the English half of §3.1.10's fourth item and it names CENT SIGN as an example of cl-12. Appendix A says otherwise and says it twice: §A.12's six rows do not include 00A2, and §A.13 lists it — 「￠ | 00A2 | CENT SIGN | セント記号」 — under postfixed abbreviations. §3.9.2 illustrates cl-13 with 「°′″℃￠％‰ など」, ￠ among them. The Japanese half of the same §3.1.10 item names only two examples, 円記号 and ドル記号, and does not name CENT SIGN, so the extra example exists in one rendering alone and contradicts Appendix A in both. The enumeration is what a class is; the parenthesized examples of §3.1.10 are illustration. An implementation taking the English half at face value classifies ¢ as a prefixed abbreviation and then makes ¢ unbreakable from a numeral that follows it, when the document's own tables put its unbreakable neighbor before it. 00A2 is also listed by §A.27 as proportionally-spaced, so this occurrence declares the ideographic frame, on which §A.13's unqualified listing is the one that describes it.",
+      "input": {
+        "kind": "classify",
+        "text": "¢",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.13 and §3.9.2's cl-13 example, against §3.1.10's English example set (§3.9.2)",
+          "expect": {
+            "class": { "item": 0, "class": 13, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 12 } },
+          "why": "§A.12 does not list 00A2 and §A.13 does. Only the English half of §3.1.10's fourth item calls CENT SIGN a prefixed abbreviation; its Japanese half names 円記号 and ドル記号 and stops. Appendix A is the enumeration §3.9.2 groups, so a class assignment stated only in one rendering of one illustrative parenthesis does not overturn it."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

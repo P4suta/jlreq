@@ -1,0 +1,530 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "A.11",
+  "heading_en": "Small kana (cl-11)",
+  "heading_ja": "小書きの仮名（cl-11）",
+  "cases": [
+    {
+      "id": "A.11/small-hiragana-a/first-row-of-the-table",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "In principle, small kana (cl-11) should be placed neither at the head of a line nor that of an inline cutting note in principle. If it were to be allowed, HIRAGANA LETTER SMALL * shall be treated as part of the hiragana (cl-15) class, and KATAKANA LETTER SMALL * as part of the katakana (cl-16) class.",
+      "rationale": "U+3041 is the first row of §A.11, and §A.11 is a heading and a five-column table with nothing else in it: no preamble sentence, no note, no cross-reference. Its Remarks cell is empty, as all forty-one are in both renderings, so the section qualifies no member by frame (字幅), by writing direction or by role, and membership is the whole of what it states. What an occurrence answers is not membership alone, because the document states four times — §3.9.2's third cl-11 note, §B.2 note 16, §C.2 note 3 and §E.2 note 3 — that a small kana permitted at a line head is treated as a member of hiragana (cl-15) or katakana (cl-16). §C.3 grants that permission at three of its four levels, and the third is headed \"Strict (Default, general publications)\" / 「レベル3（デフォルト，一般の書籍）」. spec/derived/questions.tsv records kinsoku.level jlreq = strict and kinsoku.relaxation_mechanism jlreq = reclassify, so an implementation declaring Policy::JLREQ is scored against the second entry below rather than the first: the empty overlay is the fallback, and the applying entry naming the most questions is the one selected. The English half quoted above carries \"in principle\" twice in one sentence, where the parallel note for cl-10 says it once; it is quoted as published. Its Japanese half asserts what the English half omits — 「ただし，小書きの仮名（cl-11）を行頭又は割注行頭に配置することを許容する処理方法もあり，書籍などでもよく採用されている」, that the permissive method exists and is often adopted in books — which is the evidence for the default this case turns on, and it is stated in one rendering only.",
+      "input": {
+        "kind": "classify",
+        "text": "ぁ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11, first row; the class the enumeration states, and the answer under §C.3 read as an override of Table 2",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 16, §C.2 note 3 and §E.2 note 3, in force at §C.3 level 3 \"Strict (Default, general publications)\", the level Policy::JLREQ selects",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4 \"Very strict (General publications)\", the one level that keeps the line-start prohibition, so the condition the three notes state fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 16 } },
+          "why": "The reclassification does not have one target. §B.2 note 16 keys it on the UCS name — \"HIRAGANA LETTER SMALL * shall be treated as part of the hiragana (cl-15) class, and KATAKANA LETTER SMALL * as part of the katakana (cl-16) class\" — and §C.2 note 3 keys it on \"the script type of the character\". U+3041 is HIRAGANA LETTER SMALL A and its script is Hiragana, so it is treated as cl-15 under either formulation and never as cl-16. An implementation that sends the whole class to katakana answers twenty-nine of §A.11's forty-one rows correctly and the other twelve wrongly."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/small-katakana-ro/last-single-code-point-row",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "ㇿ 31FF KATAKANA LETTER SMALL RO 小書き片仮名ロ",
+      "rationale": "The last single-code-point row of §A.11, and one of the sixteen Katakana Phonetic Extensions U+31F0 through U+31FF the class holds. Those sixteen are the longest run of the class no example list in the document shows: §3.9.2's example row is ぁぃぅぇぉァィゥェォっゃゅょッャュョ and §2.1.2's is ぁぃぅァィゥ, so an implementation built from the prose rather than from the table is missing every one of them, and they are exactly the members Ainu transcription needs — a use §G's English definition, \"contracted sounds or prolonged vowels\", excludes outright. This row's Remarks cell is empty like every other. Its script is Katakana, since Scripts.txt gives the whole of 31F0..31FF to Katakana, so §C.2 note 3's script clause sends it to cl-16 where the line-head permission is in force, and §C.3's level 4 leaves it in cl-11.",
+      "input": {
+        "kind": "classify",
+        "text": "ㇿ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11, last single-code-point row; the class the enumeration states",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3's script clause with §B.2 note 16 and §E.2 note 3, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 15 } },
+          "why": "§C.2 note 3 makes the target depend on \"the script type of the character\" and U+31FF is Script=Katakana, so the class it is treated as is cl-16. An implementation that reclassifies by a member's position in §A.11 rather than by its script sends much of the table to the wrong class, because the document's order is not code-point order and the two scripts are interleaved: five small hiragana, five small katakana, seven more hiragana, seven more katakana, then sixteen katakana and the sequence."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/semi-voiced-small-hu/two-code-point-key",
+      "rules": ["3.9.2", "C.3", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "ㇷ゚ <31F7, 309A> <KATAKANA LETTER SMALL HU, COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK> 小書き半濁点付き片仮名フ",
+      "rationale": "The last row of §A.11 and the only key in cl-11 that is not a single code point. Three facts meet in it. Its first code point U+31F7 is also listed alone, as the thirty-second of the forty-one rows, so the key can be found only by matching longest-first — an implementation scanning code point by code point finds the short key and stops. Its second code point U+309A is listed nowhere in Appendix A, under any class, so an implementation that splits the pair reports two occurrences where the document has one and the second of them is unlisted. And §C.2 note 3 states the reclassification in terms of \"the script type of the character\", which for this key is the Katakana of U+31F7: U+309A is Script=Inherited and carries no script of its own. §B.2 note 16's formulation cannot reach this row at all, because it names the two targets by the UCS names KATAKANA LETTER SMALL * and HIRAGANA LETTER SMALL * and this key's name is a pair name, so the script clause is what decides it — which is why §B.2#16 is not among the rules this case exercises and the other cl-11 cases carry it. This case supplies the pair as one item and can therefore assert only the answer to the joined key: a case states its own items, so an implementation that would have split the pair is not observable here, and what catches it is the input contract rather than an expectation.",
+      "input": {
+        "kind": "classify",
+        "text": "ㇷ゚",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11, last row; the class the enumeration states for the joined key",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3's script clause and §E.2 note 3, in force at §C.3 level 3; the script is that of the key's first code point, U+309A being Script=Inherited",
+          "expect": {
+            "class": { "item": 0, "class": 16, "rules": ["C.3", "C.2#3", "E.2#3"] }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 15 } },
+          "why": "U+309A is Script=Inherited, so a script lookup reading the last code point of the key rather than its first has no answer, and one falling back on the code point's own name — COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK names both scripts — has no reason to prefer either. §C.2 note 3 speaks of the character, which here is the key §A.11 lists, and the character §A.11 lists is a small katakana."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/small-katakana-tu/frame-unstated",
+      "rules": ["3.1.2", "3.9.2", "B.2#16", "C.2#3", "C.3", "E.2#3"],
+      "standing": "normative",
+      "quote": "ッ 30C3 KATAKANA LETTER SMALL TU 小書き片仮名ツ",
+      "rationale": "This item declares no frame at all, and the class is still decided. Two facts of §A.11 make that so, and both are silences that have to be read rather than assumed. Every one of its forty-one Remarks cells is empty in both renderings, so the section draws no width distinction of the kind §A.13 draws with \"proportionally-spaced\" / 「プロポーショナル」 or §A.1 with \"used in horizontal composition\" / 「横組で使用」; and no key of cl-11 is named by any other Appendix A table, which is unusual, since two Appendix A keys in five are named by more than one class. So there is no second candidate for a declared frame to select between, and cl-11 is not one of the five classes of §3.1.2 whose members must declare one. cl-11 is consequently a class where an occurrence answers a single class with no axis declared — the case an implementation that reaches for a frame before it reaches for the table gets wrong.",
+      "input": {
+        "kind": "classify",
+        "text": "ッ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11, eighteenth row; the class the enumeration states, with no axis consulted",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 16, §C.2 note 3 and §E.2 note 3, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/halfwidth-small-katakana-tu/narrow-compatibility",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "For example, while this document lists U+0028 LEFT PARENTHESIS as a member of opening brackets (cl-01), the compatibility counterpart U+FF08 FULLWIDTH LEFT PARENTHESIS is used in the Japanese context in most Japanese text layout software.",
+      "rationale": "§A's preamble scopes every one of its tables to a subset of ISO/IEC 10646 — collections 285 and 286 — and its Note says what real Japanese text carries instead: the compatibility counterpart of the code point the table keys. cl-11 has nine of them, U+FF67 through U+FF6F, whose UnicodeData.txt decompositions are <narrow> onto U+30A1, U+30A3, U+30A5, U+30A7, U+30A9, U+30E3, U+30E5, U+30E7 and U+30C3 — the five small katakana vowels, ャ, ュ, ョ and this one. The decomposition tag is itself a statement about width, so a caller who set U+FF6F has thereby declared the half-em frame and this item says so; a full-em declaration on the same code point would be a diagnostic rather than a silent choice. The folding is the Wide and Narrow decompositions and nothing wider, because full compatibility folding would fold U+2160 onto \"I\" and lose a genuine §A.19 member. The class does not move with the frame here: §A.11's Remarks column states no width, and no other Appendix A table lists U+30C3, so the same answer is due on every frame.",
+      "input": {
+        "kind": "classify",
+        "text": "ｯ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A preamble Note with §A.11's eighteenth row; the class the enumeration states for the folded key",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 16, §C.2 note 3 and §E.2 note 3, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 19 } },
+          "why": "An implementation that keys Appendix A by code point without folding the Narrow decomposition finds no listing for U+FF6F and falls through to whatever it answers for an unlisted occurrence — cl-19 under the reading that answers ideographic unconditionally, cl-27 under the reading that answers by frame. §A's preamble forbids both: the tables list a subset of ISO/IEC 10646 and name the compatibility-counterpart problem in so many words, so a compatibility spelling of a listed key is that key."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/sokuon/example-list-of-3.9.2",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "ぁぃぅぇぉァィゥェォっゃゅょッャュョ etc.",
+      "rationale": "The example row §3.9.2 prints for cl-11, supplied as the eighteen occurrences it is, with the case asking about the eleventh — HIRAGANA LETTER SMALL TU, the sokuon (促音). All eighteen are in §A.11's table, so the example and the enumeration agree here, which is not true of every class in this document. The sokuon is where the glossary's two halves part: §G defines the class in English as \"Kana with smaller letter faces to be used mainly for representing contracted sounds or prolonged vowels. (JIS Z 8125)\" and in Japanese as 「拗音，促音，外来語などを書き表す場合に用いる，字面を小さくした仮名．捨て仮名，半音ともいう．（JIS Z 8125）」. 拗音 is the contracted sound the English half names; 促音 is this character, and the English half does not name it; and the \"prolonged vowels\" the English half puts in its place are written with U+30FC, which is cl-10 and not in this class at all. The divergence is not recorded in spec/derived/defects.tsv. The stream is also the negative statement about keys: cl-11 holds exactly one code-point sequence, it is <31F7, 309A>, and it is not in this string, so eighteen characters are eighteen occurrences and nothing joins.",
+      "input": {
+        "kind": "classify",
+        "text": "ぁぃぅぇぉァィゥェォっゃゅょッャュョ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 12, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 15, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 18, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 21, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 24, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 27, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 30, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 33, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 36, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 39, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 42, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 45, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 48, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 51, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.9.2's cl-11 example row with §A.11's eleventh row",
+          "expect": {
+            "class": { "item": 10, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 16, §C.2 note 3 and §E.2 note 3, in force at §C.3 level 3; U+3063 is HIRAGANA LETTER SMALL TU and Script=Hiragana",
+          "expect": {
+            "class": {
+              "item": 10,
+              "class": 15,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 10, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 10, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/small-hiragana-ka/relaxation-as-a-matrix-override",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "adjudicated",
+      "quote": "Breaking a line is allowed before or after the following character classes (or characters) even though Table 2 prohibits it.",
+      "rationale": "The document states one permission twice, in two forms that are not equivalent, and this case records both readings and the choice that selects each. §C.3 states it as an override of Table 2 — the sentence quoted above, under the level heading \"Strict (Default, general publications)\", followed by a list naming 々, cl-10 and cl-11 — which changes a break decision and names no class for the occurrence to become. §C.2 note 3, §B.2 note 16 and §E.2 note 3 state it as a change of class, and note 3 adds the dereference instruction \"(For how it behaves in combination with other character classes, see the cells for hiragana (cl-15) or katakana (cl-16).)\", which reaches every cell of the row and the column rather than the line-head cell alone. The two readings differ for an occurrence in the middle of a line, where one changes the spacing and the adjustment opportunities and the other does not, so this is not a distinction without a difference. spec/derived/questions.tsv records kinsoku.relaxation_mechanism as contradictory with jlreq = reclassify, so this project takes the second reading and the empty overlay below carries the first. U+3095 HIRAGANA LETTER SMALL KA appears in no example list the document prints: it and ゖ are in the table and nowhere else.",
+      "input": {
+        "kind": "classify",
+        "text": "ゕ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.3 read as an override of Table 2's cells, which leaves the class the enumeration states untouched",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §C.2 note 3 read as a change of class, with §B.2 note 16 and §E.2 note 3, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 15,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the two readings agree because no relaxation applies at all",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/small-katakana-ke/direction-agnostic",
+      "rules": ["3.9.2", "C.3", "B.2#16", "C.2#3", "E.2#3"],
+      "standing": "normative",
+      "quote": "In vertical writing mode, the letter face of small kana (cl-11) characters (ぁぃぅァィゥ etc.) is placed at the vertical center and to the right of the horizontal center of the character frame; in horizontal writing mode, it is placed at the horizontal center and below the vertical center (see Figure 4).",
+      "rationale": "cl-11 is named twice among the document's vertical-and-horizontal differences, and neither mention makes membership conditional on a direction. The sentence quoted above places the letter face (字面) inside the character frame, and §3.1.1 restates it in the section that enumerates those differences, where cl-06 and cl-07 are named for the same reason and cl-01, cl-02 and cl-03 are named for a rotation. A letter face inside a frame is the caller's font: the character frame is the same em in both directions, the class is the same class, and nothing here reads the direction to answer it. §A.11's Remarks column says so from the other side — all forty-one cells are empty, where §A.1 qualifies U+2018 and U+201C with \"used in horizontal composition\" / 「横組で使用」, which is what a direction-restricted member looks like when the document states one. This case therefore declares no direction and must answer identically composed either way. U+30F6 is the member most likely to raise the question by another route, since it is set as an abbreviation for 箇 in 三ヶ月; §A.11 gives it no qualification, and cl-11 has no role axis at all.",
+      "input": {
+        "kind": "classify",
+        "text": "ヶ",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.11, twenty-fourth row; the class the enumeration states, in either writing mode",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 16, §C.2 note 3 and §E.2 note 3, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#3", "B.2#16", "E.2#3"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 11, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 11, "rules": ["C.3"] } }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/prolonged-sound-mark/not-a-small-kana",
+      "rules": ["3.9.2", "C.3", "B.2#15", "C.2#2", "E.2#2"],
+      "standing": "normative",
+      "quote": "ー 30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK 長音記号",
+      "rationale": "This is the boundary of cl-11, and it is the one an English-only reader crosses. §G's entry for the class reads, in English, \"Kana with smaller letter faces to be used mainly for representing contracted sounds or prolonged vowels. (JIS Z 8125)\" — but a prolonged vowel in Japanese is written with U+30FC, which §A.10 lists as the sole member of the prolonged sound mark (cl-10) and which §A.11 does not list at all. The Japanese half of the same entry says 拗音，促音，外来語 and never says 長音, so the English half attributes cl-10's job to cl-11 in the one place a reader looks for a definition rather than an enumeration. The divergence is not recorded in spec/derived/defects.tsv. §3.9.2's own first note on cl-11 says why the two are separate classes here at all: JIS X 4051's \"Japanese characters with no line break allowed before\" is divided in this document into iteration marks (cl-09), prolonged sound mark (cl-10) and small kana (cl-11). The three permitted answers below are cl-10's own and take the same shape as this file's, because §C.2 note 2 sends a relaxed prolonged sound mark to katakana (cl-16) exactly as note 3 sends small kana to hiragana or katakana, and §C.3 relaxes cl-10 and cl-11 side by side at each of its three relaxing levels.",
+      "input": {
+        "kind": "classify",
+        "text": "ー",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §A.10, its only row; the class the enumeration states",
+          "expect": {
+            "class": { "item": 0, "class": 10, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "reclassify" },
+          "source": "JLReq §B.2 note 15, §C.2 note 2 and §E.2 note 2, in force at §C.3 level 3",
+          "expect": {
+            "class": {
+              "item": 0,
+              "class": 16,
+              "rules": ["C.3", "C.2#2", "B.2#15", "E.2#2"]
+            }
+          }
+        },
+        {
+          "policy": {
+            "kinsoku.relaxation_mechanism": "reclassify",
+            "kinsoku.level": "very-strict"
+          },
+          "source": "JLReq §C.3 level 4, where the prohibition stands and the notes' condition fails",
+          "expect": {
+            "class": { "item": 0, "class": 10, "rules": ["C.3", "3.9.2"] }
+          }
+        },
+        {
+          "policy": { "kinsoku.relaxation_mechanism": "matrix" },
+          "source": "JLReq §C.3 read as an override of Table 2's cells rather than as the selector of §C.2's reclassifications: the relaxation lifts a prohibition and moves no occurrence between classes, so the class the enumeration states stands at every level. This is the reading `kinsoku.relaxation_mechanism = matrix` names, and it is an entry rather than a sentence in the entry above, because docs/design/conformance.md makes `policy: {}` a case's fallback and not its \"JLReq-only\" reading — a named reading stated only in prose is one no report can say an implementation matched.",
+          "expect": { "class": { "item": 0, "class": 10, "rules": ["C.3"] } }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 11 } },
+          "why": "§A.11's forty-one keys do not include 30FC, and §A.10's single key is 30FC. Only the English half of §G's definition of small kana names prolonged vowels. An implementation that classifies from that definition rather than from the tables undoes the three-way split §3.9.2 records this document as having made, and it does so in the direction that matters most, because cl-10 and cl-11 are relaxed at the same §C.3 levels and would otherwise look interchangeable."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "A.11/katakana-letter-small-ko/outside-the-enumerated-collections",
+      "rules": ["3.9.2"],
+      "standing": "unstated",
+      "quote": "JIS X 4051 also provides similar character classes but that are slightly different from this document. Furthermore JIS X 4051 states that it is implementation-defined how to handle characters that are not explicitly mentioned, e.g. whether they should belong to either class or not.",
+      "rationale": "U+1B155 KATAKANA LETTER SMALL KO is a small katakana by its UCS name and by its script — Scripts.txt gives 1B155 to Katakana — and §A.11 does not list it. Nine such code points are in the vendored UnicodeData.txt and in none of Appendix A's tables: U+1B132, U+1B150 through U+1B152, U+1B155, and U+1B164 through U+1B167, all encoded after this document's tables were written. §A's preamble is what draws the line, because it scopes the lists to ISO/IEC 10646 collections 285 \"BASIC JAPANESE\" and 286 \"JAPANESE NON IDEOGRAPHICS EXTENSION\", and the sentence quoted above records that the handling of a character the lists do not mention is implementation-defined and that this document inherits that position. So an answer here is a published reading and never a requirement, which is why this case's standing is unstated and both readings are recorded. The trap is specific to this class: §C.2 note 3 requires a script lookup over exactly the ranges that contain this code point, so an implementation that already reads Scripts.txt for the reclassification has everything it needs to answer cl-11 here, and must not. A name test fails the same way, since the UCS name of this code point contains SMALL and so does the name of every member of the class.",
+      "input": {
+        "kind": "classify",
+        "text": "𛅕",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "kumihan published reading of §3.9.2's silence (docs/decisions/unlisted-code-point.md), by frame",
+          "expect": {
+            "class": { "item": 0, "class": 19, "rules": ["3.9.2"] }
+          }
+        },
+        {
+          "policy": { "classification.unlisted_code_point": "ideographic" },
+          "source": "The unconditional reading: every unlisted occurrence is cl-19",
+          "expect": {
+            "class": { "item": 0, "class": 19, "rules": ["3.9.2"] }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "class": { "item": 0, "class": 11 } },
+          "why": "cl-11 is an enumeration of forty-one keys, not a predicate over names or scripts. §A scopes its tables to two ISO/IEC 10646 collections and U+1B155 is outside them, so answering cl-11 here is answering from a resemblance the document never licenses — and it would carry that occurrence into §C.3's relaxations and §C.2 note 3's reclassification, which are stated about the members the tables list."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

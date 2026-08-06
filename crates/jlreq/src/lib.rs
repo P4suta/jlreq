@@ -27,6 +27,18 @@
 //!
 //! The design constraints behind that boundary are recorded in `docs/adr/`.
 //!
+//! # What is here today
+//!
+//! The facade re-exports the layers, so a caller depends on one crate and names one path
+//! for a type that lives in whichever layer owns it (`docs/design/api-spine.md`). Three
+//! layers exist at M0 — the units, the specification's own vocabulary, and character
+//! classification — and their surfaces are re-exported below; `jlreq-spacing`,
+//! `jlreq-line` and `jlreq-inline` join them as they are written.
+//!
+//! The one thing the facade will own rather than re-export is `diagnose`, which reports
+//! what a caller's input says that is unlikely to be what they meant. It needs the
+//! constructs, so it arrives with the crate that carries them.
+//!
 //! # Status
 //!
 //! Bootstrap. No composition is implemented yet; see `ROADMAP.md`.
@@ -34,3 +46,19 @@
 //! [jlreq]: https://www.w3.org/TR/jlreq/
 
 #![no_std]
+
+pub use jlreq_class::{
+    Annotation, AnnotationIndex, AxisSet, Class, ClassSet, Classified, Member, Members,
+    Reclassification, Subject, Text, TextError, Usage, classify, classify_annotation,
+    fold_compatibility, members, resolve, usage,
+};
+pub use jlreq_spec::{
+    Address, Answer, Choice, Policy, PolicyConflict, Provenance, Question, RuleId, Standing,
+};
+pub use jlreq_unit::{
+    Advance, BlockDemand, BlockExtent, BlockOffset, ByteOffset, Carry, Construct, ConstructKind,
+    ConstructRef, Direction, Distribution, Em, FormulaSetting, Frame, GroupId, InlineCursor,
+    InlineEdge, InlineExtent, InlineOffset, Interior, Item, ItemIndex, Ratio, RemainderRule, Role,
+    RubyOverhang, RunId, Runs, RunsError, Scale, ScaleId, Segment, Separation, Side, Size,
+    Straddle, UNITS_PER_EM, distribute,
+};
