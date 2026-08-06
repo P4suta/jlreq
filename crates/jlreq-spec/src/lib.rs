@@ -39,27 +39,31 @@
 //!
 //! # Status
 //!
-//! The vocabulary is complete; the inventories it indexes are not yet emitted. The address
-//! grammar, the provenance chain, and the structural validation that keeps a
-//! self-contradictory [`Policy`] from being built are implemented and tested here.
-//! [`RuleId::ALL`] and [`Question::ALL`] are empty, and every table-reading answer is
-//! empty with them, until `spec/derived/rules.tsv` and `spec/derived/questions.tsv` exist
-//! and `cargo run -p xtask -- generate` fills the two inventories from them. Both are
-//! empty and hand-written today, beside the schema each is written against, because there
-//! is no generator output to commit: a generated file is one the emitter wrote and
-//! `generate --check` reproduces byte for byte, and claiming that provenance for a table
-//! nobody generated is the overclaim `docs/adr/0009` exists to prevent. That is the honest
-//! state of a table awaiting its pipeline rather than a placeholder: nothing here answers
-//! a question the specification has not been read for.
+//! The vocabulary is complete. The rule inventory is generated and populated: `src/
+//! generated/inventory.rs` holds one row and one named [`RuleId`] constant per statement of
+//! §3 and of Appendices B through F, emitted by `cargo run -p xtask -- generate` from
+//! `spec/derived/rules.tsv` and byte-checked by `generate --check`. The matrix cells
+//! `Address` can address are transcribed rather than derived and join the inventory with
+//! the captured matrices, so a cell address parses today and names no rule.
 //!
-//! Three published items wait on the same data and are absent for the same reason, rather
-//! than present and answering wrongly: the named `RuleId` constants, the named [`Question`]
-//! constants, and `Policy::remainder`, which reads `Question::REMAINDER` and has no
-//! question to read and no answer to give until the policy space exists.
+//! The policy space is not emitted. [`Question::ALL`] is empty, [`Question::COUNT`] is
+//! zero, and the five [`Policy`] presets are the same empty answer, until
+//! `spec/derived/questions.tsv` exists and `generate` fills the space from it. A question
+//! is a section that states two readings, which is a reading of prose rather than a
+//! property a scanner computes, so that file is written with the choices, the presets and
+//! the exclusions read by a person. Nothing here answers a question the specification has
+//! not been read for: an invented one would publish a permitted alternative the
+//! specification does not permit, which is the overclaim `docs/adr/0009` exists to prevent.
+//!
+//! Two published items wait on the policy space and are absent for the same reason, rather
+//! than present and answering wrongly: the named [`Question`] constants and
+//! `Policy::remainder`, which reads `Question::REMAINDER` and has no question to read and
+//! no answer to give until the space exists.
 
 #![no_std]
 
 mod answer;
+mod generated;
 mod policy;
 mod rule;
 

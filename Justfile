@@ -90,6 +90,16 @@ spec-links:
 direction:
     cargo run --quiet -p xtask -- direction
 
+# Read the vendored specification snapshot into spec/derived/. Stage 1 of the pipeline
+# (docs/design/generation.md).
+derive:
+    cargo run --quiet -p xtask -- derive
+
+# Prove that rereading the snapshot would change no byte of spec/derived/. This is the
+# gate; `just derive` is the writer.
+derive-check:
+    cargo run --quiet -p xtask -- derive --check
+
 # Emit the specification data from spec/ (docs/design/generation.md).
 generate:
     cargo run --quiet -p xtask -- generate
@@ -100,9 +110,12 @@ generate-check:
     cargo run --quiet -p xtask -- generate --check
 
 # Attest the transcribed specification data against its double entry, its provenance, and
-# the cross-table invariants (docs/adr/0009).
+# the cross-table invariants (docs/adr/0009). `--digests` additionally hashes every recorded
+# document present on disk, which is what anchors the derived files' digest chain to the
+# upstream digests spec/PROVENANCE.toml records; the weaker form would leave that chain a
+# closed loop agreeing with itself.
 attest:
-    cargo run --quiet -p xtask -- attest
+    cargo run --quiet -p xtask -- attest --digests
 
 # Validate the conformance suite and the rule coverage it declares
 # (docs/design/conformance.md).
@@ -148,7 +161,7 @@ msrv:
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
-design: purity ops placeholder api spec-links direction generate-check attest conform
+design: purity ops placeholder api spec-links direction derive-check generate-check attest conform
     @echo "design gates passed"
 
 # Fast deterministic checks used during the edit/commit loop.

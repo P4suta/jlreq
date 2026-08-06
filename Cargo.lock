@@ -9,6 +9,10 @@ version = "0.0.0"
 [[package]]
 name = "jlreq-class"
 version = "0.0.0"
+dependencies = [
+ "jlreq-spec",
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-conform"

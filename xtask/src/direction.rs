@@ -30,6 +30,18 @@
 //! 3. The union of the rules those two name equals the set the rule inventory marks
 //!    direction-conditional.
 //!
+//! Check 3 is an equality between what this workspace reads and what the specification
+//! conditions, and one side of it is written milestone by milestone. A marked rule whose
+//! reader has not been written yet is therefore neither passed over nor reported as broken:
+//! `docs/direction-sites.toml` carries a `[[pending]]` table naming the rule, the crate
+//! whose first item closes it, and why that is where it will be read, and the census names
+//! every rule so deferred. The entry expires by itself — it is a violation once anything
+//! reads the rule, and a violation once the crate it waits on declares an item — so it can
+//! neither rot into a permanent exemption nor be written for a rule that has a reader today.
+//! Without it this gate could only choose between two false sentences: that ADR 0011's
+//! equality is broken, when what is true is that half of it has no subject yet, or that the
+//! equality holds, by comparing an empty set with an empty set.
+//!
 //! Four spellings would let a variant be named where this gate could not attribute it —
 //! a glob import of the variants, a brace import of one, renaming the type in a `use`, and
 //! aliasing it with `type` — so each is rejected wherever it appears rather than being left
@@ -58,11 +70,17 @@
 //!
 //! Every check above runs now. Check 1 constrains every core source in the workspace
 //! today: no item is allowlisted, so naming a variant anywhere in hand-written core code is
-//! a failure until an entry is written and reviewed. Checks 2 and 3 have empty subjects —
-//! no generated override table exists and `spec/derived/rules.tsv` has not been emitted —
-//! and they constrain those subjects from the commit that creates them: an allowlist entry
-//! added before the inventory marks its rule fails check 3, and a `Predicate::InDirection`
-//! row whose rule the gate cannot resolve fails check 2.
+//! a failure until an entry is written and reviewed. Check 2 has an empty subject — no
+//! generated override table exists — and it constrains that subject from the commit that
+//! creates it: a `Predicate::InDirection` row whose rule the gate cannot resolve fails.
+//!
+//! Check 3 now has one populated side. `spec/derived/rules.tsv` marks §3.1.3, §3.2.5 and
+//! §3.3.5, and each of the three is read in a crate that is still a module comment and
+//! `#![no_std]`: §3.1.3 reaches the boundary evaluator as data in `jlreq-spacing`, and
+//! §3.2.5 and §3.3.5 are read where the tate-chu-yoko (縦中横) segment is built and where
+//! ruby is lowered, both in `jlreq-inline`. All three are deferred by `[[pending]]` entries
+//! naming those crates, so the first item either of them declares is what turns the last
+//! half of check 3 back on, one crate at a time rather than all at once.
 //!
 //! # What it cannot see, named rather than glossed
 //!
@@ -101,8 +119,9 @@ use crate::shared::{self, CoreCrate, Gate};
 pub(crate) const GATE: Gate = Gate {
     name: "direction",
     purpose: concat!(
-        "the rules that read the writing direction are exactly the rules ",
-        "the inventory marks direction-conditional"
+        "the rules that read the writing direction are exactly the rules the inventory ",
+        "marks direction-conditional, less the ones the allowlist defers to a crate that ",
+        "has not started — each named above"
     ),
     reference: concat!(
         "docs/adr/0011-typed-axes-and-direction-as-a-datum.md ",
@@ -144,6 +163,27 @@ const GENERATED: &str = "generated";
 /// The four keys a `[[site]]` table carries, and no others.
 const SITE_KEYS: [&str; 4] = ["crate", "item", "rule", "why"];
 
+/// The three keys a `[[pending]]` table carries, and no others.
+const PENDING_KEYS: [&str; 3] = ["rule", "crate", "why"];
+
+/// The keywords whose presence makes a crate one that declares something.
+///
+/// A `[[pending]]` entry expires when the crate it names starts, so "started" needs a
+/// definition a scan can apply. A crate whose sources hold none of these declares nothing
+/// that could contain a branch: `jlreq-spacing` today is a module comment and `#![no_std]`.
+const ITEM_KEYWORDS: [&str; 10] = [
+    "fn",
+    "struct",
+    "enum",
+    "trait",
+    "impl",
+    "type",
+    "const",
+    "static",
+    "union",
+    "macro_rules",
+];
+
 /// Check every core source, the allowlist and the inventory. Takes no arguments.
 fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     if !arguments.is_empty() {
@@ -161,10 +201,10 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let variants = subject(&sources)?;
 
     let mut violations = Vec::new();
-    let (sites, problems) = parse_sites(&read_allowlist(&root.join(ALLOWLIST))?);
+    let (allowlist, problems) = parse_allowlist(&read_allowlist(&root.join(ALLOWLIST))?);
     violations.extend(problems);
     let inventory = read_inventory(&root.join(INVENTORY), &mut violations)?;
-    check_site_crates(&sites, &core, &mut violations);
+    check_named_crates(&allowlist, &core, &mut violations);
 
     let mut census = Census::default();
     let mut predicate_rules = BTreeSet::new();
@@ -183,14 +223,33 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
             );
         } else {
             census.hand_written = census.hand_written.saturating_add(1);
-            check_hand_written(source, &found, &sites, &mut allowed_items, &mut violations);
+            check_hand_written(
+                source,
+                &found,
+                &allowlist.sites,
+                &mut allowed_items,
+                &mut violations,
+            );
         }
     }
 
-    check_stale_sites(&sites, &allowed_items, &mut violations);
-    check_union(&sites, &predicate_rules, &inventory, &mut violations);
+    let deferred = check_pending(
+        &allowlist,
+        &predicate_rules,
+        &inventory,
+        &sources,
+        &mut violations,
+    );
+    check_stale_sites(&allowlist.sites, &allowed_items, &mut violations);
+    check_union(
+        &allowlist.sites,
+        &predicate_rules,
+        &inventory,
+        &deferred,
+        &mut violations,
+    );
     check_emitted_agrees(&sources, &inventory, &mut violations);
-    report_census(&census, &sites, &inventory);
+    report_census(&census, &allowlist, &inventory, &deferred);
     Ok(violations)
 }
 
@@ -210,7 +269,12 @@ struct Census {
 /// Printed by the check itself rather than carried in the gate's purpose line, because a
 /// census is a count and the purpose line is a sentence. A gate whose subject does not
 /// exist yet has to say so in numbers, or its silence reads as a pass.
-fn report_census(census: &Census, sites: &[Site], inventory: &Inventory) {
+fn report_census(
+    census: &Census,
+    allowlist: &Allowlist,
+    inventory: &Inventory,
+    deferred: &BTreeSet<String>,
+) {
     let note = if inventory.present {
         String::new()
     } else {
@@ -223,10 +287,27 @@ fn report_census(census: &Census, sites: &[Site], inventory: &Inventory) {
          direction-conditional{note}",
         hand = census.hand_written,
         generated = census.generated,
-        count = sites.len(),
+        count = allowlist.sites.len(),
         rows = census.rows,
         marked = inventory.conditional.len(),
     );
+    if deferred.is_empty() {
+        return;
+    }
+    for rule in deferred {
+        let waiting = allowlist
+            .pending
+            .iter()
+            .find(|entry| entry.rule == *rule)
+            .map_or("a crate this gate could not name", |entry| {
+                entry.crate_name.as_str()
+            });
+        println!(
+            "direction: rule `{rule}` is marked {FLAG_COLUMN} and nothing reads it; \
+             {ALLOWLIST} defers it until `{waiting}` declares an item, so that half of the \
+             union did not run over it (ADR 0011)"
+        );
+    }
 }
 
 /// One `.rs` file of a core crate, with its comments and string literals blanked out.
@@ -849,15 +930,23 @@ fn structural(source: &Source, occurrence: &Occurrence) -> String {
 }
 
 /// Reject an allowlist entry naming a crate that is not part of the layout core.
-fn check_site_crates(sites: &[Site], core: &[CoreCrate], violations: &mut Vec<String>) {
-    let names: BTreeSet<&str> = core.iter().map(|each| each.name.as_str()).collect();
-    for site in sites {
-        if !names.contains(site.crate_name.as_str()) {
+fn check_named_crates(allowlist: &Allowlist, core: &[CoreCrate], violations: &mut Vec<String>) {
+    let core_names: BTreeSet<&str> = core.iter().map(|each| each.name.as_str()).collect();
+    let cited = allowlist
+        .sites
+        .iter()
+        .map(|site| (site.line, site.crate_name.as_str()))
+        .chain(
+            allowlist
+                .pending
+                .iter()
+                .map(|entry| (entry.line, entry.crate_name.as_str())),
+        );
+    for (line, name) in cited {
+        if !core_names.contains(name) {
             violations.push(format!(
                 "{ALLOWLIST}:{line}: `{name}` is not a core crate; the key is the package \
-                 name, so `jlreq-inline` and never `jlreq_inline`",
-                line = site.line,
-                name = site.crate_name,
+                 name, so `jlreq-inline` and never `jlreq_inline`"
             ));
         }
     }
@@ -889,12 +978,105 @@ fn check_stale_sites(
     }
 }
 
+/// Which marked rules the allowlist validly defers, and the four ways an entry is wrong.
+///
+/// A `[[pending]]` entry is the only thing that keeps a marked rule out of check 3's last
+/// half, and it is written to expire rather than to be maintained. It is a violation when it
+/// defers a rule the inventory does not mark (nothing to wait for), when something already
+/// reads that rule (the wait is over and the entry now hides a real answer), and when the
+/// crate it names has declared its first item (the reader could have been written, so the
+/// gate goes back to demanding one). Only the surviving entries defer, and the census names
+/// each of them, so the half that did not run is stated and never claimed.
+///
+/// This is what keeps the gate from having to choose between two false sentences: that a
+/// rule is read when the layer that would read it is an empty crate, or that ADR 0011's
+/// equality is broken when what is actually true is that half of it has no subject yet.
+///
+/// Without the inventory nothing here can be judged — whether an entry defers a marked rule
+/// is a question only the inventory answers — so no entry is read and none defers. That
+/// costs nothing: with no inventory the marked set is empty and check 3 demands nothing, and
+/// the census already reports that the inventory has not been generated.
+fn check_pending(
+    allowlist: &Allowlist,
+    predicate_rules: &BTreeSet<String>,
+    inventory: &Inventory,
+    sources: &[Source],
+    violations: &mut Vec<String>,
+) -> BTreeSet<String> {
+    if !inventory.present {
+        return BTreeSet::new();
+    }
+    let read: BTreeSet<&str> = allowlist
+        .sites
+        .iter()
+        .map(|site| site.rule.as_str())
+        .chain(predicate_rules.iter().map(String::as_str))
+        .collect();
+    let mut deferred = BTreeSet::new();
+    for entry in &allowlist.pending {
+        let Pending {
+            rule,
+            crate_name,
+            line,
+        } = entry;
+        if !inventory.conditional.contains(rule) {
+            violations.push(format!(
+                "{ALLOWLIST}:{line}: defers rule `{rule}`, which {INVENTORY} does not mark \
+                 {FLAG_COLUMN}; there is nothing for it to wait for (ADR 0011)"
+            ));
+            continue;
+        }
+        if read.contains(rule.as_str()) {
+            violations.push(format!(
+                "{ALLOWLIST}:{line}: defers rule `{rule}`, which is already read by an \
+                 allowlisted item or a generated predicate row; the entry has served its \
+                 purpose and now hides an answer this gate has (ADR 0011)"
+            ));
+            continue;
+        }
+        if declares_items(sources, crate_name) {
+            violations.push(format!(
+                "{ALLOWLIST}:{line}: defers rule `{rule}` until `{crate_name}` declares an \
+                 item, and `{crate_name}` now declares one; either the rule is read there \
+                 and this file says where, or the entry goes (ADR 0011)"
+            ));
+            continue;
+        }
+        deferred.insert(rule.clone());
+    }
+    deferred
+}
+
+/// Whether a core crate declares anything at all yet.
+///
+/// The question a `[[pending]]` entry expires on. A crate whose sources hold no item
+/// keyword is a module comment and an attribute: there is no item for an allowlist to name
+/// and no row for a table to carry, so the rule waiting on it could not be read there by
+/// anyone. The moment one appears the entry is stale, whether or not it is the item that
+/// will do the reading, because from then on the question is answerable.
+fn declares_items(sources: &[Source], crate_name: &str) -> bool {
+    sources
+        .iter()
+        .filter(|source| source.crate_name == crate_name)
+        .any(|source| {
+            paired(&source.code)
+                .iter()
+                .any(|token| ITEM_KEYWORDS.contains(&token.text))
+        })
+}
+
 /// The union of the allowlisted rules and the generated predicate rows equals the set the
 /// inventory marks direction-conditional.
+///
+/// The last loop is the half that closes over readers, and `deferred` is the set of marked
+/// rules `docs/direction-sites.toml` states have none yet. Those are reported by the census
+/// as a check that did not run over them rather than passed on: `check_pending` above is
+/// what makes each one a reviewed, self-expiring statement instead of a silence.
 fn check_union(
     sites: &[Site],
     predicate_rules: &BTreeSet<String>,
     inventory: &Inventory,
+    deferred: &BTreeSet<String>,
     violations: &mut Vec<String>,
 ) {
     for site in sites {
@@ -922,10 +1104,11 @@ fn check_union(
         .chain(predicate_rules)
         .collect();
     for rule in &inventory.conditional {
-        if !union.contains(rule) {
+        if !union.contains(rule) && !deferred.contains(rule) {
             violations.push(format!(
                 "{INVENTORY} marks rule `{rule}` {FLAG_COLUMN} and nothing reads it: no item \
-                 in {ALLOWLIST} and no generated predicate row names it (ADR 0011)"
+                 in {ALLOWLIST} and no generated predicate row names it, and no `[[pending]]` \
+                 entry says which crate's arrival will (ADR 0011)"
             ));
         }
     }
@@ -966,7 +1149,7 @@ fn marked_rows(code: &str) -> usize {
         .count()
 }
 
-/// One entry of `docs/direction-sites.toml`.
+/// One `[[site]]` entry of `docs/direction-sites.toml`.
 #[derive(Debug)]
 struct Site {
     /// The crate the item is declared in, as a package name.
@@ -979,9 +1162,63 @@ struct Site {
     line: usize,
 }
 
-/// One `[[site]]` table under construction.
+/// One `[[pending]]` entry of `docs/direction-sites.toml`.
+///
+/// A marked rule whose reader has not been written yet, and the crate whose first item
+/// closes it. This is the only thing that keeps a marked rule out of check 3's "and nothing
+/// reads it", and it expires by itself: the entry is a violation the moment its crate
+/// declares an item, and a violation the moment anything does read the rule.
+#[derive(Debug)]
+struct Pending {
+    /// The direction-conditional rule nothing reads yet, as a canonical address.
+    rule: String,
+    /// The crate whose arrival closes it, as a package name.
+    crate_name: String,
+    /// The line the entry opens on, so a finding names it.
+    line: usize,
+}
+
+/// Everything `docs/direction-sites.toml` states.
+#[derive(Debug, Default)]
+struct Allowlist {
+    /// The items that may name a variant of the direction.
+    sites: Vec<Site>,
+    /// The marked rules whose reader has not arrived.
+    pending: Vec<Pending>,
+}
+
+/// Which of the two tables a draft is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Table {
+    /// A `[[site]]`: an item that may name a variant.
+    Site,
+    /// A `[[pending]]`: a marked rule whose reader has not been written.
+    Pending,
+}
+
+impl Table {
+    /// The table's header, for a message that names what it read.
+    fn header(self) -> &'static str {
+        match self {
+            Self::Site => "[[site]]",
+            Self::Pending => "[[pending]]",
+        }
+    }
+
+    /// The keys the table carries, and no others.
+    fn keys(self) -> &'static [&'static str] {
+        match self {
+            Self::Site => &SITE_KEYS,
+            Self::Pending => &PENDING_KEYS,
+        }
+    }
+}
+
+/// One table of the allowlist under construction.
 #[derive(Debug)]
 struct Draft {
+    /// Which table it is.
+    table: Table,
     /// The line the table header sits on.
     line: usize,
     /// The keys read so far.
@@ -991,12 +1228,12 @@ struct Draft {
 /// Read the allowlist, and complain about anything the schema does not allow.
 ///
 /// Hand-rolled for the reason the manifest scan is: the tool that enforces "the layout core
-/// has no outside dependencies" declares none itself. It reads the one form this file is
-/// written in — `[[site]]` tables of one-line basic strings — and rejects everything else
-/// rather than skipping it, because a key this reader passed over in silence would be a key
-/// no reviewer was told about.
-fn parse_sites(text: &str) -> (Vec<Site>, Vec<String>) {
-    let mut sites = Vec::new();
+/// has no outside dependencies" declares none itself. It reads the two forms this file is
+/// written in — `[[site]]` and `[[pending]]` tables of one-line basic strings — and rejects
+/// everything else rather than skipping it, because a key this reader passed over in silence
+/// would be a key no reviewer was told about.
+fn parse_allowlist(text: &str) -> (Allowlist, Vec<String>) {
+    let mut allowlist = Allowlist::default();
     let mut problems = Vec::new();
     let mut draft: Option<Draft> = None;
 
@@ -1007,24 +1244,32 @@ fn parse_sites(text: &str) -> (Vec<Site>, Vec<String>) {
             continue;
         }
         if content.starts_with('[') {
-            close_draft(draft.take(), &mut sites, &mut problems);
-            if array_header(content) == Some("site") {
-                draft = Some(Draft {
+            close_draft(draft.take(), &mut allowlist, &mut problems);
+            draft = match array_header(content) {
+                Some("site") => Some(Draft {
+                    table: Table::Site,
                     line,
                     values: BTreeMap::new(),
-                });
-            } else {
-                problems.push(format!(
-                    "{ALLOWLIST}:{line}: `{content}` is not a table this file has; the schema \
-                     is `[[site]]` and nothing else"
-                ));
-            }
+                }),
+                Some("pending") => Some(Draft {
+                    table: Table::Pending,
+                    line,
+                    values: BTreeMap::new(),
+                }),
+                _ => {
+                    problems.push(format!(
+                        "{ALLOWLIST}:{line}: `{content}` is not a table this file has; the \
+                         schema is `[[site]]`, `[[pending]]` and nothing else"
+                    ));
+                    None
+                },
+            };
             continue;
         }
         read_key(content, line, draft.as_mut(), &mut problems);
     }
-    close_draft(draft.take(), &mut sites, &mut problems);
-    (sites, problems)
+    close_draft(draft.take(), &mut allowlist, &mut problems);
+    (allowlist, problems)
 }
 
 /// Read one `key = "value"` line into the table it belongs to.
@@ -1039,15 +1284,17 @@ fn read_key(content: &str, line: usize, draft: Option<&mut Draft>, problems: &mu
     let key = key.trim();
     let Some(draft) = draft else {
         problems.push(format!(
-            "{ALLOWLIST}:{line}: `{key}` sits outside a `[[site]]` table; this file has no \
-             top-level keys"
+            "{ALLOWLIST}:{line}: `{key}` sits outside a `[[site]]` table or a `[[pending]]` \
+             one; this file has no top-level keys"
         ));
         return;
     };
-    if !SITE_KEYS.contains(&key) {
+    let allowed = draft.table.keys();
+    if !allowed.contains(&key) {
         problems.push(format!(
-            "{ALLOWLIST}:{line}: `{key}` is not a key of `[[site]]`; the schema is {SITE_KEYS:?} \
-             and nothing else"
+            "{ALLOWLIST}:{line}: `{key}` is not a key of `{header}`; the schema is {allowed:?} \
+             and nothing else",
+            header = draft.table.header()
         ));
         return;
     }
@@ -1064,36 +1311,68 @@ fn read_key(content: &str, line: usize, draft: Option<&mut Draft>, problems: &mu
         .is_some()
     {
         problems.push(format!(
-            "{ALLOWLIST}:{line}: `{key}` is written twice in one `[[site]]` table"
+            "{ALLOWLIST}:{line}: `{key}` is written twice in one `{header}` table",
+            header = draft.table.header()
         ));
     }
 }
 
-/// Turn a finished draft into a site, or say which key it is missing.
-fn close_draft(draft: Option<Draft>, sites: &mut Vec<Site>, problems: &mut Vec<String>) {
+/// Turn a finished draft into an entry, or say which key it is missing.
+fn close_draft(draft: Option<Draft>, allowlist: &mut Allowlist, problems: &mut Vec<String>) {
     let Some(draft) = draft else { return };
     let line = draft.line;
     let mut missing = Vec::new();
-    for key in SITE_KEYS {
-        if draft.values.get(key).is_none_or(String::is_empty) {
-            missing.push(key);
+    for key in draft.table.keys() {
+        if draft.values.get(*key).is_none_or(String::is_empty) {
+            missing.push(*key);
         }
     }
     if !missing.is_empty() {
-        problems.push(format!(
-            "{ALLOWLIST}:{line}: this `[[site]]` table has no {missing:?}; every entry carries \
-             the crate, the item, the rule it reads and why the branch is unavoidable"
-        ));
+        problems.push(match draft.table {
+            Table::Site => format!(
+                "{ALLOWLIST}:{line}: this `[[site]]` table has no {missing:?}; every entry \
+                 carries the crate, the item, the rule it reads and why the branch is \
+                 unavoidable"
+            ),
+            Table::Pending => format!(
+                "{ALLOWLIST}:{line}: this `[[pending]]` table has no {missing:?}; every entry \
+                 carries the rule nothing reads yet, the crate whose first item closes it, \
+                 and why that is where it will be read"
+            ),
+        });
         return;
     }
     let read = |key: &str| draft.values.get(key).cloned().unwrap_or_default();
+    match draft.table {
+        Table::Site => close_site(
+            read("crate"),
+            read("item"),
+            read("rule"),
+            line,
+            allowlist,
+            problems,
+        ),
+        Table::Pending => close_pending(read("rule"), read("crate"), line, allowlist, problems),
+    }
+}
+
+/// Add a finished `[[site]]`, unless the file already carries it.
+fn close_site(
+    crate_name: String,
+    item: String,
+    rule: String,
+    line: usize,
+    allowlist: &mut Allowlist,
+    problems: &mut Vec<String>,
+) {
     let site = Site {
-        crate_name: read("crate"),
-        item: read("item"),
-        rule: read("rule"),
+        crate_name,
+        item,
+        rule,
         line,
     };
-    if let Some(twin) = sites
+    if let Some(twin) = allowlist
+        .sites
         .iter()
         .find(|each| each.crate_name == site.crate_name && each.item == site.item)
         .filter(|each| each.rule == site.rule)
@@ -1108,7 +1387,31 @@ fn close_draft(draft: Option<Draft>, sites: &mut Vec<Site>, problems: &mut Vec<S
         ));
         return;
     }
-    sites.push(site);
+    allowlist.sites.push(site);
+}
+
+/// Add a finished `[[pending]]`, unless the file already defers that rule.
+fn close_pending(
+    rule: String,
+    crate_name: String,
+    line: usize,
+    allowlist: &mut Allowlist,
+    problems: &mut Vec<String>,
+) {
+    if let Some(twin) = allowlist.pending.iter().find(|each| each.rule == rule) {
+        problems.push(format!(
+            "{ALLOWLIST}:{line}: rule `{rule}` is already deferred on line {first}; one rule \
+             waits on one crate, or the file states two answers to the question of where it \
+             will be read",
+            first = twin.line
+        ));
+        return;
+    }
+    allowlist.pending.push(Pending {
+        rule,
+        crate_name,
+        line,
+    });
 }
 
 /// The name inside an `[[array]]` header, if the line is one.
@@ -1537,9 +1840,10 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::{
-        Census, CoreCrate, Inventory, Naming, Occurrence, Row, Site, Source, check_emitted_agrees,
-        check_generated, check_hand_written, check_site_crates, check_stale_sites, check_union,
-        declared_variants, occurrences, parse_inventory, parse_sites, read_allowlist, run, strip,
+        Allowlist, Census, CoreCrate, Inventory, Naming, Occurrence, Pending, Row, Site, Source,
+        check_emitted_agrees, check_generated, check_hand_written, check_named_crates,
+        check_pending, check_stale_sites, check_union, declared_variants, occurrences,
+        parse_allowlist, parse_inventory, read_allowlist, run, strip,
     };
 
     /// The declaration the workspace actually carries, as a fixture.
@@ -1577,6 +1881,33 @@ mod tests {
             item: item.to_owned(),
             rule: rule.to_owned(),
             line: 60,
+        }
+    }
+
+    /// One deferral, without going through the file.
+    fn pending(rule: &str, crate_name: &str) -> Pending {
+        Pending {
+            rule: rule.to_owned(),
+            crate_name: crate_name.to_owned(),
+            line: 80,
+        }
+    }
+
+    /// An allowlist holding only deferrals, which is this repository's shape today.
+    fn deferring(entries: Vec<Pending>) -> Allowlist {
+        Allowlist {
+            sites: Vec::new(),
+            pending: entries,
+        }
+    }
+
+    /// A crate that has not started: a module comment and an attribute, nothing else.
+    fn unstarted(crate_name: &str) -> Source {
+        Source {
+            crate_name: crate_name.to_owned(),
+            shown: format!("crates/{crate_name}/src/lib.rs"),
+            generated: false,
+            code: strip("//! Mojikumi.\n#![no_std]\n"),
         }
     }
 
@@ -1879,6 +2210,7 @@ mod tests {
             &[site("lower", "3.3.5")],
             &BTreeSet::from(["3.2.5".to_owned()]),
             &marking(&["3.2.5", "3.3.5"]),
+            &BTreeSet::new(),
             &mut violations,
         );
         assert!(violations.is_empty(), "found {violations:?}");
@@ -1891,6 +2223,7 @@ mod tests {
             &[site("lower", "3.1.7")],
             &BTreeSet::new(),
             &marking(&["3.3.5"]),
+            &BTreeSet::new(),
             &mut violations,
         );
         assert_eq!(violations.len(), 2, "found {violations:?}");
@@ -1911,7 +2244,13 @@ mod tests {
     #[test]
     fn a_marked_rule_nothing_reads_is_a_violation() {
         let mut violations = Vec::new();
-        check_union(&[], &BTreeSet::new(), &marking(&["3.2.5"]), &mut violations);
+        check_union(
+            &[],
+            &BTreeSet::new(),
+            &marking(&["3.2.5"]),
+            &BTreeSet::new(),
+            &mut violations,
+        );
         assert_eq!(violations.len(), 1, "found {violations:?}");
     }
 
@@ -1922,6 +2261,7 @@ mod tests {
             &[],
             &BTreeSet::new(),
             &Inventory::default(),
+            &BTreeSet::new(),
             &mut violations,
         );
         assert!(
@@ -1931,23 +2271,156 @@ mod tests {
     }
 
     #[test]
+    fn a_deferred_rule_is_not_reported_as_unread_and_nothing_else_is_deferred() {
+        let mut violations = Vec::new();
+        check_union(
+            &[],
+            &BTreeSet::new(),
+            &marking(&["3.2.5", "3.3.5"]),
+            &BTreeSet::from(["3.2.5".to_owned()]),
+            &mut violations,
+        );
+        assert_eq!(
+            violations.len(),
+            1,
+            "the deferred rule is the census's business and the other is still unread: \
+             {violations:?}"
+        );
+        assert!(
+            violations
+                .first()
+                .is_some_and(|violation| violation.contains("`3.3.5`")),
+            "found {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_deferral_holds_only_while_its_crate_declares_nothing() {
+        let sources = [unstarted("jlreq-spacing")];
+        let allowlist = deferring(vec![pending("3.1.3", "jlreq-spacing")]);
+        let mut violations = Vec::new();
+        let deferred = check_pending(
+            &allowlist,
+            &BTreeSet::new(),
+            &marking(&["3.1.3"]),
+            &sources,
+            &mut violations,
+        );
+        assert!(violations.is_empty(), "found {violations:?}");
+        assert_eq!(deferred, BTreeSet::from(["3.1.3".to_owned()]));
+
+        let started = [Source {
+            crate_name: "jlreq-spacing".to_owned(),
+            shown: "crates/jlreq-spacing/src/lib.rs".to_owned(),
+            generated: false,
+            code: strip("#![no_std]\npub struct Boundary;\n"),
+        }];
+        let mut violations = Vec::new();
+        let deferred = check_pending(
+            &allowlist,
+            &BTreeSet::new(),
+            &marking(&["3.1.3"]),
+            &started,
+            &mut violations,
+        );
+        assert!(deferred.is_empty(), "the entry has expired");
+        assert_eq!(violations.len(), 1, "found {violations:?}");
+        assert!(
+            violations
+                .first()
+                .is_some_and(|violation| violation.contains("now declares one")),
+            "found {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_deferral_of_a_rule_that_is_read_or_is_not_marked_is_a_violation() {
+        let sources = [unstarted("jlreq-inline")];
+        let allowlist = deferring(vec![pending("3.3.5", "jlreq-inline")]);
+
+        let mut violations = Vec::new();
+        let deferred = check_pending(
+            &allowlist,
+            &BTreeSet::from(["3.3.5".to_owned()]),
+            &marking(&["3.3.5"]),
+            &sources,
+            &mut violations,
+        );
+        assert!(deferred.is_empty(), "a rule with a reader is not deferred");
+        assert!(
+            violations
+                .first()
+                .is_some_and(|violation| violation.contains("already read")),
+            "found {violations:?}"
+        );
+
+        let mut violations = Vec::new();
+        let deferred = check_pending(
+            &allowlist,
+            &BTreeSet::new(),
+            &marking(&["3.1.3"]),
+            &sources,
+            &mut violations,
+        );
+        assert!(deferred.is_empty(), "an unmarked rule waits for nothing");
+        assert!(
+            violations
+                .iter()
+                .any(|violation| violation.contains("nothing for it to wait for")),
+            "found {violations:?}"
+        );
+    }
+
+    #[test]
+    fn without_the_inventory_a_deferral_is_neither_judged_nor_honored() {
+        let sources = [unstarted("jlreq-inline")];
+        let allowlist = deferring(vec![pending("3.3.5", "jlreq-inline")]);
+        let mut violations = Vec::new();
+        let deferred = check_pending(
+            &allowlist,
+            &BTreeSet::new(),
+            &Inventory::default(),
+            &sources,
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "which rules are marked is a question only the inventory answers, and it has \
+             not been generated: {violations:?}"
+        );
+        assert!(
+            deferred.is_empty(),
+            "and nothing is deferred, which costs nothing because the marked set is empty too"
+        );
+    }
+
+    #[test]
     fn an_allowlist_entry_naming_something_that_is_not_a_core_crate_is_a_violation() {
         let core = [CoreCrate {
             name: "jlreq-inline".to_owned(),
             directory: std::path::PathBuf::from("crates/jlreq-inline"),
         }];
+        let allowlist = Allowlist {
+            sites: vec![site("lower", "3.3.5")],
+            pending: vec![pending("3.1.3", "jlreq-inline")],
+        };
         let mut violations = Vec::new();
-        check_site_crates(&[site("lower", "3.3.5")], &core, &mut violations);
+        check_named_crates(&allowlist, &core, &mut violations);
         assert!(violations.is_empty(), "found {violations:?}");
 
         let mut misspelled = site("lower", "3.3.5");
         misspelled.crate_name = "jlreq_inline".to_owned();
+        let allowlist = Allowlist {
+            sites: vec![misspelled],
+            pending: vec![pending("3.1.3", "jlreq_spacing")],
+        };
         let mut violations = Vec::new();
-        check_site_crates(&[misspelled], &core, &mut violations);
+        check_named_crates(&allowlist, &core, &mut violations);
         assert_eq!(
             violations.len(),
-            1,
-            "the key is the package name, and the two spellings are not the same crate"
+            2,
+            "the key is the package name in both tables, and the two spellings are not the \
+             same crate"
         );
     }
 
@@ -1986,17 +2459,23 @@ mod tests {
     fn the_allowlist_reads_the_four_keys_and_refuses_the_rest() {
         let text = "[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\nrule = \"3.3.5\"\n\
                     why = \"katatsuki is resolved here\"\n";
-        let (sites, problems) = parse_sites(text);
+        let (allowlist, problems) = parse_allowlist(text);
         assert!(problems.is_empty(), "found {problems:?}");
-        assert_eq!(sites.len(), 1);
-        assert_eq!(sites.first().map(|site| site.rule.as_str()), Some("3.3.5"));
+        assert_eq!(allowlist.sites.len(), 1);
+        assert_eq!(
+            allowlist.sites.first().map(|site| site.rule.as_str()),
+            Some("3.3.5")
+        );
     }
 
     #[test]
     fn an_allowlist_entry_missing_a_key_is_refused() {
         let text = "[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\nrule = \"3.3.5\"\n";
-        let (sites, problems) = parse_sites(text);
-        assert!(sites.is_empty(), "an incomplete entry permits nothing");
+        let (allowlist, problems) = parse_allowlist(text);
+        assert!(
+            allowlist.sites.is_empty(),
+            "an incomplete entry permits nothing"
+        );
         assert_eq!(problems.len(), 1, "found {problems:?}");
         assert!(
             problems
@@ -2010,7 +2489,7 @@ mod tests {
     fn an_unknown_key_or_table_in_the_allowlist_is_refused() {
         let text = "[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\nrule = \"3.3.5\"\n\
                     why = \"because\"\nsince = \"today\"\n\n[[exception]]\ncrate = \"x\"\n";
-        let (_, problems) = parse_sites(text);
+        let (_, problems) = parse_allowlist(text);
         assert_eq!(problems.len(), 3, "found {problems:?}");
         assert!(problems.iter().any(|problem| problem.contains("`since`")));
         assert!(
@@ -2021,7 +2500,7 @@ mod tests {
         assert!(
             problems
                 .iter()
-                .any(|problem| problem.contains("sits outside a `[[site]]` table")),
+                .any(|problem| problem.contains("sits outside a `[[site]]` table or a")),
             "a table this file has no schema for holds no keys either: {problems:?}"
         );
     }
@@ -2030,8 +2509,12 @@ mod tests {
     fn a_repeated_item_and_rule_in_the_allowlist_is_refused() {
         let entry = "[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\nrule = \"3.3.5\"\n\
                      why = \"because\"\n";
-        let (sites, problems) = parse_sites(&format!("{entry}{entry}"));
-        assert_eq!(sites.len(), 1, "the second is not a second permission");
+        let (allowlist, problems) = parse_allowlist(&format!("{entry}{entry}"));
+        assert_eq!(
+            allowlist.sites.len(),
+            1,
+            "the second is not a second permission"
+        );
         assert_eq!(problems.len(), 1, "found {problems:?}");
     }
 
@@ -2040,16 +2523,23 @@ mod tests {
         let text = "[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\nrule = \"3.3.5\"\n\
                     why = \"because\"\n\n[[site]]\ncrate = \"jlreq-inline\"\nitem = \"lower\"\n\
                     rule = \"3.2.5\"\nwhy = \"and because\"\n";
-        let (sites, problems) = parse_sites(text);
+        let (allowlist, problems) = parse_allowlist(text);
         assert!(problems.is_empty(), "found {problems:?}");
-        assert_eq!(sites.len(), 2, "the union in check 3 is this column");
+        assert_eq!(
+            allowlist.sites.len(),
+            2,
+            "the union in check 3 is this column"
+        );
     }
 
     #[test]
     fn a_comment_in_the_allowlist_is_not_an_entry() {
         let text = "# [[site]]\n# crate = \"jlreq-inline\"\n";
-        let (sites, problems) = parse_sites(text);
-        assert!(sites.is_empty(), "the file is empty today by design");
+        let (allowlist, problems) = parse_allowlist(text);
+        assert!(
+            allowlist.sites.is_empty(),
+            "the file has no site today by design"
+        );
         assert!(problems.is_empty(), "found {problems:?}");
     }
 
@@ -2061,11 +2551,20 @@ mod tests {
                 .join(super::ALLOWLIST),
         )
         .expect("the allowlist is readable");
-        let (sites, problems) = parse_sites(&text);
+        let (allowlist, problems) = parse_allowlist(&text);
         assert!(problems.is_empty(), "found {problems:?}");
         assert!(
-            sites.is_empty(),
-            "the file is deliberately empty until a composition source names a variant"
+            allowlist.sites.is_empty(),
+            "the file names no site until a composition source names a variant"
+        );
+        assert_eq!(
+            allowlist
+                .pending
+                .iter()
+                .map(|entry| entry.rule.as_str())
+                .collect::<Vec<&str>>(),
+            vec!["3.1.3", "3.2.5", "3.3.5"],
+            "and it defers the whole marked set, because no crate that reads one has started"
         );
     }
 

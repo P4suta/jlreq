@@ -20,9 +20,12 @@
 
 mod api;
 mod attest;
+mod classes;
 mod conform;
+mod derive;
 mod direction;
 mod generate;
+mod inventory;
 mod ops;
 mod placeholder;
 mod purity;
@@ -41,6 +44,7 @@ const GATES: &[Gate] = &[
     api::GATE,
     spec_links::GATE,
     direction::GATE,
+    derive::GATE,
     generate::GATE,
     attest::GATE,
     conform::GATE,

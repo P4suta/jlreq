@@ -280,7 +280,7 @@ pub enum RemainderRule {
 /// at, so the iterator is empty and a non-zero total has nowhere to go; a caller holding
 /// space and no site has a question this primitive cannot answer.
 ///
-/// JLReq: §3.8.3, §3.8.4, §3.3.6, §F.3.4
+/// JLReq: §3.8.3, §3.8.4, §3.3.6, §F.3
 #[must_use]
 pub fn distribute(
     total: InlineExtent,

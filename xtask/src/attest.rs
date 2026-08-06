@@ -172,14 +172,16 @@ const SKIPPED_DIRECTORIES: [&str; 2] = [".git", "target"];
 /// One identifier per row of that document's table. `spec/derived/defects.tsv` must record
 /// exactly these: a defect that disappears upstream fails this gate and forces a review,
 /// rather than changing an answer quietly (ADR 0009).
-const RECORDED_DEFECTS: [&str; 10] = [
+const RECORDED_DEFECTS: [&str; 12] = [
     "cl-19-duplicate-u216b",
     "cl-25-remarks-without-locale-span",
+    "cl-24-remarks-role-stated-only-in-japanese",
     "d2-note-5-priority-contradiction",
     "reduction-step-1-locale-divergence",
     "b2-note-11-simple-ruby-misnomer",
     "b2-note-7-locale-class-divergence",
     "line-composition-note-locale-divergence",
+    "dividing-punctuation-note-unresolved-reference",
     "appendix-d-table-numbering-off-by-one",
     "legend-anchor-and-filename-off-by-one",
     "bracket-class-enumeration-mismatch",

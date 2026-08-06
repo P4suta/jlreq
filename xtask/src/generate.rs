@@ -4,7 +4,7 @@
 
 //! The `generate` gate: stage 2 of the specification data pipeline.
 //!
-//! Stage 1 is `tools/jlreq-gen`, an excluded workspace that may parse HTML and emits
+//! Stage 1 is the `derive` gate, which reads the vendored snapshot and emits
 //! `spec/derived/*.tsv`. Stage 2 is this module: it turns the tab-separated files under
 //! `spec/derived/` and `spec/captured/` into the Rust modules committed at
 //! `crates/*/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
@@ -22,16 +22,24 @@
 //!
 //! - every declared unit's output is exactly what its input generates, byte for byte, and
 //!   a unit whose output file is absent is as much a failure as one whose output differs;
-//! - every Rust module under a `generated` directory is claimed by some unit, so a
-//!   hand-written file cannot hide among the machine-written ones;
-//! - `data/manifest.toml` records the SHA-256 of every generated file and of every input
-//!   it was generated from, and of nothing else, so a hand edit to an input that was never
-//!   regenerated from is visible too.
+//! - every file under a `generated` directory is claimed by some unit, so a hand-written
+//!   one cannot hide among the machine-written ones — every file and not every `.rs` file,
+//!   because a binary table pulled in with `include_bytes!` is generated data too;
+//! - `data/manifest.toml` records the SHA-256 of every file the pipeline reads or writes,
+//!   and of nothing else, so a hand edit to an input that was never regenerated from is
+//!   visible too. That is wider than the units' own outputs and inputs: it covers the two
+//!   derived tables no unit consumes yet and that `spec-links` and `attest` nonetheless
+//!   read, the vendored documents behind all of them, and the modules of this program that
+//!   emit them. A ledger that records part of a chain records nothing about the rest of it.
 //!
-//! `UNITS` is empty until the specification snapshot is vendored, so the first check has
-//! nothing to compare and the gate reports how much it examined rather than claiming to
-//! have proved something. Adding a generated table is adding one entry to `UNITS`; nothing
-//! else in this module changes.
+//! The gate reports how much it examined rather than claiming to have proved something,
+//! because `UNITS` covers the tables written so far and not the ones still to arrive.
+//! Adding a generated table is adding one entry to `UNITS`; nothing else in this module
+//! changes, and the generator itself lives in the module that owns the subject.
+//!
+//! Stage 1 is `derive`, which reads the vendored snapshot and writes the tab-separated
+//! files this gate reads. The two together are the pipeline, and both are byte-identity
+//! gates.
 //!
 //! Three conventions are pinned here, because a generated file has to agree with the tool
 //! that writes it:
@@ -51,6 +59,9 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::classes;
+use crate::derive;
+use crate::inventory;
 use crate::shared::{self, Gate};
 
 /// The name this gate is invoked by.
@@ -85,6 +96,10 @@ const PROVENANCE_PATH: &str = "spec/PROVENANCE.toml";
 /// The key naming the revision of JLReq the snapshot was taken from.
 const SPECIFICATION_DATE_KEY: &str = "specification-date";
 
+/// The module every generation unit is driven by, and therefore a generator of every one of
+/// them: the header below is written here, so a change to it changes every emitted file.
+const FRAME: &str = "xtask/src/generate.rs";
+
 /// The copyright line every emitted file carries.
 ///
 /// A constant rather than the clock: the output must be byte-identical on every run, so
@@ -109,62 +124,77 @@ enum Mode {
 /// The input is a tab-separated file under `spec/`, the output a Rust module in a crate's
 /// `generated` directory, and the generator a function from the records of the first to
 /// the items of the second. Everything a generated file states about itself — its license,
-/// its source, that source's digest, the specification revision, the generator version and
-/// the entry count — is written by this module and not by the generator, so every
-/// generated file in the repository carries the same header whoever wrote the unit.
+/// its source, that source's digest, the specification revision, the generator and its
+/// digest, and the entry count — is written by this module and not by the generator, so
+/// every generated file in the repository carries the same header whoever wrote the unit.
 #[derive(Debug)]
-struct Unit {
+pub(crate) struct Unit {
     /// The tab-separated input, relative to the workspace root, with forward slashes.
-    input: &'static str,
+    pub(crate) input: &'static str,
+    /// The `xtask` modules whose bytes decide what this unit writes, beside the frame in
+    /// this file, which is added to every one of them.
+    ///
+    /// A generated file states the digest of its input so that a reader can tell which data
+    /// it was generated from. It states the digest of its generator for the same reason and
+    /// against the same failure: the semantic columns of a generated table are the
+    /// generator's reading of the source rather than a column of it — which frame a Remarks
+    /// cell permits, which role it names — so a file that named only its input could change
+    /// the meaning of every row with every recorded provenance byte unchanged.
+    pub(crate) generator: &'static [&'static str],
     /// The Rust module this unit writes, relative to the workspace root.
-    output: &'static str,
+    pub(crate) output: &'static str,
     /// The first line of the emitted module's documentation, which is the one sentence a
     /// reader of the generated file meets before the header explains where it came from.
-    summary: &'static str,
+    pub(crate) summary: &'static str,
     /// Turns the records of the input into the items of the output.
-    emit: fn(&Table) -> Result<Emission, String>,
+    pub(crate) emit: fn(&Table) -> Result<Emission, String>,
 }
 
 /// Every generated file, in the order `docs/design/generation.md` lists them.
 ///
-/// Empty until the specification snapshot is vendored: the tables it would name do not
-/// exist yet, and a unit naming an absent input is a violation rather than a placeholder.
-/// The two checks that do not need a unit — that no unclaimed module hides in a `generated`
-/// directory, and that `data/manifest.toml` records exactly what the units account for —
-/// run against the repository as it stands.
-const UNITS: &[Unit] = &[];
+/// A unit's generator lives in the module that owns the subject rather than here, so that
+/// adding a generated table touches this list and nothing else in this file. The units
+/// still to arrive are the policy space, the appendix notes and the captured matrices.
+const UNITS: &[Unit] = &[
+    classes::APPENDIX_A_TABLE,
+    classes::CLASS_TABLE,
+    classes::IDEOGRAPH_TABLE,
+    classes::FOLDING_TABLE,
+    classes::SCRIPT_TABLE,
+    inventory::RULE_INVENTORY,
+];
 
 /// A tab-separated input, as a generator sees it.
 #[derive(Debug)]
-struct Table {
+pub(crate) struct Table {
     /// Repository-relative name of the file the records were read from, for messages.
-    source: String,
+    pub(crate) source: String,
     /// The names on the header line, in order.
-    columns: Vec<String>,
+    pub(crate) columns: Vec<String>,
     /// Every record under the header line, in file order.
-    records: Vec<Record>,
+    pub(crate) records: Vec<Record>,
 }
 
 /// One record of a tab-separated input.
 #[derive(Debug)]
-struct Record {
+pub(crate) struct Record {
     /// The one-based line the record was read from, so a rejection names it.
-    line: usize,
+    pub(crate) line: usize,
     /// The fields, one per column of the header line.
-    fields: Vec<String>,
+    pub(crate) fields: Vec<String>,
 }
 
 /// What a generator produced.
 #[derive(Debug)]
-struct Emission {
+pub(crate) struct Emission {
     /// The items of the module, without the header this module writes.
-    items: String,
+    pub(crate) items: String,
     /// How many entries those items define.
     ///
     /// Stated by the generator rather than counted from the input, because the two differ
     /// wherever the published table repeats a key: §A.19 lists 465 rows for 464 members,
     /// which is a recorded defect and not a license to conflate the two counts.
-    entries: usize,
+    pub(crate) entries: usize,
 }
 
 /// One unit, rendered: the exact bytes its output file must contain.
@@ -180,6 +210,53 @@ struct Rendered {
     input_digest: String,
 }
 
+/// The modules that decided a generated file's bytes, and their digest together.
+#[derive(Debug)]
+struct Generator {
+    /// The modules, sorted, each named the way this repository names a path.
+    modules: Vec<String>,
+    /// One digest over all of them.
+    digest: String,
+}
+
+/// The digest of the modules that decide what one unit writes.
+///
+/// The frame in this file is added to whatever the unit declares. The digest is taken over
+/// the paths as well as the bytes, so renaming a generator is a change and not a
+/// coincidence, and it replaces the version string an earlier revision of this header
+/// carried: `env!("CARGO_PKG_VERSION")` is the shared workspace version, which moves on a
+/// release and never on a change to a generator, so it was churn where information was
+/// wanted (`docs/design/generation.md`).
+fn generator_digest(
+    root: &Path,
+    modules: &[&'static str],
+    violations: &mut Vec<String>,
+) -> io::Result<Option<Generator>> {
+    let mut named: BTreeSet<&str> = modules.iter().copied().collect();
+    named.insert(FRAME);
+    let mut ledger = String::new();
+    let mut listed = Vec::new();
+    for module in named {
+        let path = root.join(module);
+        if !path.is_file() {
+            violations.push(format!(
+                "{module}: declared as a generator and not present, so no digest states what \
+                 emitted the file it writes"
+            ));
+            return Ok(None);
+        }
+        ledger.push_str(module);
+        ledger.push(' ');
+        ledger.push_str(&sha256(&fs::read(&path)?));
+        ledger.push('\n');
+        listed.push(module.to_owned());
+    }
+    Ok(Some(Generator {
+        digest: sha256(ledger.as_bytes()),
+        modules: listed,
+    }))
+}
+
 /// Render every unit, write when asked to, and report what does not agree.
 fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let mode = mode(arguments)?;
@@ -187,7 +264,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 
     let mut violations = check_declarations(UNITS);
     let rendered = render(&root, UNITS, &mut violations)?;
-    let digests = digests(&rendered);
+    let digests = digests(&root, &rendered, &mut violations)?;
 
     if mode == Mode::Emit && violations.is_empty() {
         emit(&root, &rendered, &digests)?;
@@ -253,6 +330,21 @@ fn check_declarations(units: &[Unit]) -> Vec<String> {
                 output = unit.output
             ));
         }
+        for module in unit.generator {
+            if !is_xtask_module(module) {
+                violations.push(format!(
+                    "{module}: a unit's generator is an `xtask` module, and its digest is \
+                     what makes `{output}` state which generator emitted it",
+                    output = unit.output
+                ));
+            }
+        }
+        if unit.generator.is_empty() {
+            violations.push(format!(
+                "{output}: names no generator, so its header could not state what emitted it",
+                output = unit.output
+            ));
+        }
         if !claimed.insert(unit.output) {
             violations.push(format!(
                 "{output}: claimed by two generation units, so which one writes it would \
@@ -262,6 +354,14 @@ fn check_declarations(units: &[Unit]) -> Vec<String> {
         }
     }
     violations
+}
+
+/// Whether a repository path names a Rust module of this program.
+fn is_xtask_module(path: &str) -> bool {
+    path.starts_with("xtask/src/")
+        && path
+            .strip_suffix(".rs")
+            .is_some_and(|stem| !stem.is_empty())
 }
 
 /// Whether a repository path names a Rust module directly inside a crate's `generated`
@@ -333,6 +433,10 @@ fn render_one(
         },
     };
 
+    let Some(generator) = generator_digest(root, unit.generator, violations)? else {
+        return Ok(None);
+    };
+
     let emission = match (unit.emit)(&table) {
         Ok(emission) => emission,
         Err(reason) => {
@@ -349,7 +453,13 @@ fn render_one(
         return Ok(None);
     }
 
-    let contents = compose(unit, &input_digest, specification_date, &emission);
+    let contents = compose(
+        unit,
+        &input_digest,
+        specification_date,
+        &generator,
+        &emission,
+    );
     if contents.contains('\r') {
         violations.push(format!(
             "{output}: holds a carriage return; generated Rust is LF, because \
@@ -376,7 +486,10 @@ fn render_one(
 /// short row in a provenance-bearing file is a cell with no provenance; and a carriage
 /// return is rejected rather than absorbed, because these files are compared byte for byte
 /// and `.gitattributes` keeps the whole tree LF.
-fn read_table(source: String, text: &str) -> Result<Table, String> {
+///
+/// Crate-visible so that a unit's own tests can run its generator over the committed file it
+/// reads, rather than over a fixture that agrees with the generator by construction.
+pub(crate) fn read_table(source: String, text: &str) -> Result<Table, String> {
     let mut columns: Vec<String> = Vec::new();
     let mut records = Vec::new();
 
@@ -446,6 +559,7 @@ fn compose(
     unit: &Unit,
     input_digest: &str,
     specification_date: &str,
+    generator: &Generator,
     emission: &Emission,
 ) -> String {
     // REUSE-IgnoreStart
@@ -468,30 +582,93 @@ fn compose(
          //! - Source: `{input}`\n\
          //! - Source SHA-256: `{input_digest}`\n\
          //! - Specification: JLReq, {specification_date}\n\
-         //! - Generator: `xtask` {version}\n\
+         //! - Generator: {modules}\n\
+         //! - Generator SHA-256: `{generator}`\n\
          //! - Entries: {entries}\n\
          \n\
          {items}\n",
         summary = unit.summary,
         input = unit.input,
-        version = env!("CARGO_PKG_VERSION"),
+        modules = generator
+            .modules
+            .iter()
+            .map(|module| format!("`{module}`"))
+            .collect::<Vec<String>>()
+            .join(", "),
+        generator = generator.digest,
         entries = emission.entries,
         items = emission.items.trim_end_matches('\n'),
     )
     // REUSE-IgnoreEnd
 }
 
-/// The digest of every rendered output and of every input it was rendered from.
+/// The digest of every file the pipeline reads or writes.
 ///
 /// Keyed by repository path and therefore sorted, so the manifest this becomes is
 /// byte-identical wherever it was written.
-fn digests(rendered: &[Rendered]) -> BTreeMap<String, String> {
+///
+/// Not only the units' own outputs and inputs. Two of the eight derived tables — the
+/// document skeleton and the appendix notes — are consumed by no generation unit yet and are
+/// load-bearing all the same: `spec-links` resolves every cited address against the first
+/// and `attest` names the second in six of its invariants. The vendored documents and this
+/// program's own reading and emitting modules are recorded for the same reason. The manifest
+/// is this repository's one ledger of what produced what, and a ledger that records part of
+/// a chain records nothing about the rest of it.
+fn digests(
+    root: &Path,
+    rendered: &[Rendered],
+    violations: &mut Vec<String>,
+) -> io::Result<BTreeMap<String, String>> {
     let mut entries = BTreeMap::new();
     for one in rendered {
         entries.insert(one.output.clone(), sha256(one.contents.as_bytes()));
         entries.insert(one.input.clone(), one.input_digest.clone());
     }
-    entries
+    if rendered.is_empty() {
+        return Ok(entries);
+    }
+    for path in ledger() {
+        if entries.contains_key(&path) {
+            // A unit's own render is the authority for its own two files: it hashed the
+            // input it actually read and the bytes it actually produced. This pass fills in
+            // the rest of the chain and never restates either.
+            continue;
+        }
+        let full = root.join(&path);
+        if !full.is_file() {
+            violations.push(format!(
+                "{path}: read or written by the specification data pipeline and not present, \
+                 so {MANIFEST_PATH} could not record a digest for it"
+            ));
+            continue;
+        }
+        entries.insert(path, sha256(&fs::read(&full)?));
+    }
+    Ok(entries)
+}
+
+/// Every path the manifest records beside the units' own outputs and inputs.
+fn ledger() -> BTreeSet<String> {
+    let mut paths: BTreeSet<String> = BTreeSet::new();
+    for derivation in derive::DERIVATIONS {
+        paths.insert(derivation.output.to_owned());
+    }
+    for source in derive::distinct_sources(derive::DERIVATIONS) {
+        paths.insert(source.to_owned());
+    }
+    for module in derive::distinct_readers(derive::DERIVATIONS) {
+        paths.insert(module.to_owned());
+    }
+    for unit in UNITS {
+        for module in unit.generator {
+            paths.insert((*module).to_owned());
+        }
+    }
+    paths.insert(FRAME.to_owned());
+    // The provenance record is an input of this stage too: `specification-date` is copied
+    // into the header of every emitted file.
+    paths.insert(PROVENANCE_PATH.to_owned());
+    paths
 }
 
 /// Write every rendered file and the manifest recording them.
@@ -518,29 +695,53 @@ fn emit(root: &Path, rendered: &[Rendered], entries: &BTreeMap<String, String>) 
     fs::write(&path, render_manifest(entries).as_bytes())
 }
 
-/// Every Rust module under a `generated` directory anywhere in `crates/`.
+/// Every file under a `generated` directory anywhere in `crates/`.
 ///
-/// Discovered rather than declared: a module in a directory no unit knows about is exactly
+/// Discovered rather than declared: a file in a directory no unit knows about is exactly
 /// what this gate is looking for, so the scan cannot be driven by the unit list.
+///
+/// Every file and not only every `.rs` one. A binary table beside the modules, pulled into a
+/// hand-written `generated.rs` with `include_bytes!`, is generated data no unit writes, in
+/// the one directory this scan exists to close.
 fn generated_files(root: &Path) -> io::Result<BTreeSet<String>> {
     let mut found = BTreeSet::new();
-    for source in shared::rust_sources(&root.join(CRATES_DIRECTORY))? {
-        let path = repository_path(root, &source);
-        if path.split('/').any(|part| part == GENERATED_DIRECTORY) {
-            found.insert(path);
-        }
-    }
+    collect_generated(&root.join(CRATES_DIRECTORY), root, false, &mut found)?;
     Ok(found)
 }
 
-/// Report every generated module no unit writes.
+/// Walk one directory, collecting every file at or below a `generated` component.
+fn collect_generated(
+    directory: &Path,
+    root: &Path,
+    inside: bool,
+    found: &mut BTreeSet<String>,
+) -> io::Result<()> {
+    if !directory.is_dir() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            let generated = inside
+                || path
+                    .file_name()
+                    .is_some_and(|name| name == GENERATED_DIRECTORY);
+            collect_generated(&path, root, generated, found)?;
+        } else if inside {
+            found.insert(repository_path(root, &path));
+        }
+    }
+    Ok(())
+}
+
+/// Report every generated file no unit writes.
 fn check_orphans(units: &[Unit], found: &BTreeSet<String>, violations: &mut Vec<String>) {
     let claimed: BTreeSet<&str> = units.iter().map(|unit| unit.output).collect();
     for path in found {
         if !claimed.contains(path.as_str()) {
             violations.push(format!(
-                "{path}: no generation unit writes this file, and every Rust module under \
-                 a `{GENERATED_DIRECTORY}` directory is generated; a hand-written module \
+                "{path}: no generation unit writes this file, and everything under a \
+                 `{GENERATED_DIRECTORY}` directory is generated; a hand-written module \
                  declaring the others belongs in `src/{GENERATED_DIRECTORY}.rs` beside the \
                  directory"
             ));
@@ -908,7 +1109,11 @@ const ROUND_CONSTANTS: [u32; ROUNDS] = [
 /// because it is what enforces that the layout core declares none. A hundred lines of
 /// arithmetic is a smaller price than a dependency in the tool that polices dependencies,
 /// and the published test vectors below say whether the price bought the right answer.
-fn sha256(bytes: &[u8]) -> String {
+///
+/// Shared with `derive`, which states the digest of every vendored source inside the file
+/// it reads out of it, so that the chain from the published document to the emitted Rust
+/// is digest-linked at every step and computed by one implementation.
+pub(crate) fn sha256(bytes: &[u8]) -> String {
     let mut padded = Vec::with_capacity(bytes.len().saturating_add(BLOCK.saturating_mul(2)));
     padded.extend_from_slice(bytes);
     padded.push(0x80);
@@ -990,10 +1195,11 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::{
-        Emission, Mode, Rendered, Table, UNITS, Unit, check_declarations, check_manifest,
-        check_orphans, compose, difference, digests, is_generated_module, manifest_entries, mode,
-        quoted, read_table, render_manifest, sha256, specification_date,
+        Emission, Generator, Mode, Rendered, Table, UNITS, Unit, check_declarations,
+        check_manifest, check_orphans, compose, difference, digests, is_generated_module,
+        manifest_entries, mode, quoted, read_table, render_manifest, sha256, specification_date,
     };
+    use crate::shared;
 
     /// A tab-separated input in the shape `docs/design/generation.md` writes.
     const CAPTURED: &str = "# spec/captured/table1.en.tsv\nsource\ttable\tbefore\tafter\ttoken\tnote\ntable_en2.pdf\t1\tcl-05\tcl-05\t1/4 be + 1/4 af\tB.2#3\ntable_en2.pdf\t1\tcl-02\tline-end\t1/2 be\tB.2#2\n";
@@ -1002,9 +1208,53 @@ mod tests {
     fn unit(input: &'static str, output: &'static str) -> Unit {
         Unit {
             input,
+            generator: &["xtask/src/classes.rs"],
             output,
             summary: "A fixture.",
             emit: |_| Err("a fixture generator emits nothing".to_owned()),
+        }
+    }
+
+    /// The generator a composed fixture states.
+    fn generator() -> Generator {
+        Generator {
+            modules: vec![
+                "xtask/src/classes.rs".to_owned(),
+                "xtask/src/generate.rs".to_owned(),
+            ],
+            digest: "0f0f0f".to_owned(),
+        }
+    }
+
+    /// The workspace root, for the checks that read the tree they ship with.
+    fn root() -> std::path::PathBuf {
+        shared::workspace_root().expect("the workspace root")
+    }
+
+    #[test]
+    fn the_gate_holds_over_this_repository() {
+        // The gate run over the tree it ships with, so `just test` exercises the real
+        // pipeline against the real derived tables rather than against fixtures that agree
+        // with the generator by construction.
+        let violations = super::run(&["--check".to_owned()]).expect("the gate can run");
+        assert!(
+            violations.is_empty(),
+            "regenerating the specification data changes a committed file: {violations:?}"
+        );
+    }
+
+    #[test]
+    fn every_declared_unit_names_a_generator_of_this_program() {
+        assert!(
+            check_declarations(UNITS).is_empty(),
+            "the units this repository declares must satisfy the gate that reads them"
+        );
+        for unit in UNITS {
+            assert!(
+                !unit.generator.is_empty(),
+                "{output} states which generator emitted it",
+                output = unit.output
+            );
         }
     }
 
@@ -1101,7 +1351,7 @@ mod tests {
             items: "/// The keys.\npub static KEYS: [u32; 0] = [];".to_owned(),
             entries: 1133,
         };
-        let file = compose(&declared, "0123abc", "2020-08-11", &emission);
+        let file = compose(&declared, "0123abc", "2020-08-11", &generator(), &emission);
 
         // REUSE-IgnoreStart
         // The header this asserts on is the emitted file's, not this one's.
@@ -1114,10 +1364,17 @@ mod tests {
         assert!(file.contains("//! - Source SHA-256: `0123abc`\n"));
         assert!(file.contains("//! - Specification: JLReq, 2020-08-11\n"));
         assert!(file.contains("//! - Entries: 1133\n"));
-        assert!(file.contains(&format!(
-            "//! - Generator: `xtask` {}\n",
-            env!("CARGO_PKG_VERSION")
-        )));
+        assert!(
+            file.contains(
+                "//! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`\n\
+                 //! - Generator SHA-256: `0f0f0f`\n"
+            ),
+            "the generator is provenance too: the semantic columns of a generated table are \
+             its reading of the source rather than a column of it, so a file naming only its \
+             input overstates what its digests cover. A version string cannot do this work — \
+             it is the shared workspace version, which moves on a release and never on a \
+             change to a generator: {file}"
+        );
         assert!(
             file.ends_with("pub static KEYS: [u32; 0] = [];\n"),
             "{file}"
@@ -1136,8 +1393,8 @@ mod tests {
             entries: 1,
         };
         assert_eq!(
-            compose(&declared, "abc", "2020-08-11", &emission),
-            compose(&declared, "abc", "2020-08-11", &emission),
+            compose(&declared, "abc", "2020-08-11", &generator(), &emission),
+            compose(&declared, "abc", "2020-08-11", &generator(), &emission),
             "nothing in a generated file may come from the clock or the environment"
         );
     }
@@ -1295,8 +1552,29 @@ mod tests {
             contents: "pub static KEYS: [u32; 0] = [];\n".to_owned(),
             input_digest: sha256(b"a\tb\n"),
         }];
-        let entries = digests(&rendered);
-        assert_eq!(entries.len(), 2);
+        let mut violations = Vec::new();
+        let entries = digests(&root(), &rendered, &mut violations).expect("the tree is readable");
+        assert!(violations.is_empty(), "{violations:?}");
+        assert!(
+            entries.len() > 2,
+            "the manifest records the whole chain and not only this unit's two files, and \
+             this run recorded {count}",
+            count = entries.len()
+        );
+        for path in [
+            "spec/derived/anchors.tsv",
+            "spec/derived/notes.tsv",
+            "spec/snapshot/index.html",
+            "xtask/src/classes.rs",
+            "xtask/src/derive.rs",
+            "xtask/src/generate.rs",
+            "xtask/src/inventory.rs",
+        ] {
+            assert!(
+                entries.contains_key(path),
+                "{path} is read or written by the pipeline and the manifest records it"
+            );
+        }
         assert_eq!(
             entries.get("spec/derived/appendix-a.tsv"),
             Some(&sha256(b"a\tb\n"))

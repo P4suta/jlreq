@@ -43,6 +43,15 @@ projections = ["is_conforming"]
 type = "jlreq_class::Classified"
 projections = ["is_ambiguous"]
 [[frozen]]
+type = "jlreq_class::Usage"
+projections = ["is_restricted"]
+[[frozen]]
+type = "jlreq_class::TextError"
+projections = ["is_segmentation"]
+[[frozen]]
+type = "jlreq_class::Subject"
+projections = ["is_boundary"]
+[[frozen]]
 type = "jlreq_spec::Provenance"
 projections = ["is_specified"]
 [[frozen]]

@@ -22,7 +22,9 @@
 #     named variant is.
 #  2. The union of the rules named here and the rules carrying a `Predicate::InDirection`
 #     row equals the set the generated rule inventory marks direction-conditional, which
-#     today is 3.1.3, 3.2.5 and 3.3.5 and nothing else.
+#     today is 3.1.3, 3.2.5 and 3.3.5 and nothing else — less the rules a `[[pending]]`
+#     table below defers, each of which the gate names in its census as a rule that half of
+#     check 2 did not run over.
 #
 # Adding a fourth is therefore a change to generated data plus a code-owner review, not an
 # incidental branch. This file is owned by the code owners in .github/CODEOWNERS for exactly
@@ -49,13 +51,47 @@
 #   why    Why the branch is unavoidable at that item, in a sentence a reviewer can disagree
 #          with.
 #
-# Empty today, and deliberately so: no core composition source exists yet, so the set of
-# allowlisted rules is empty and check 2 is satisfied by the generated predicate rows alone.
-# Entries arrive with the code they name, each under code-owner review. The first one the
-# design already names is written out here in comment form, to fix the shape:
+# No `[[site]]` today, and deliberately so: no core composition source exists yet, so the
+# set of allowlisted rules is empty. Entries arrive with the code they name, each under
+# code-owner review. The first one the design already names is written out here in comment
+# form, to fix the shape:
 #
 #   [[site]]
 #   crate = "jlreq-inline"
 #   item = "lower"
 #   rule = "3.3.5"
 #   why = "3.3.5 recommends against katatsuki ruby alignment in horizontal writing, and lowering is the one place that alignment question is resolved; refusing it at construction would publish a prohibition the specification does not state, so the recommendation is applied here and a caller who overrides it is honored and told."
+#
+# Schema. One `[[pending]]` table per rule nothing reads yet, with these three keys and no
+# others:
+#
+#   rule   The specification address of a rule the inventory marks direction-conditional,
+#          spelled as above. One table per rule.
+#   crate  The core crate whose first item closes it, as a package name. While that crate
+#          declares nothing at all, the rule cannot be read anywhere, so check 2 does not run
+#          over it and the gate says so by name. The entry is a violation from the moment
+#          that crate declares an item, whether or not it is the item that reads the rule.
+#   why    Where in that crate the rule will be read, and on whose authority, in a sentence a
+#          reviewer can disagree with.
+#
+# The three tables below are the whole marked set, because the reading half of the workspace
+# is written milestone by milestone while the inventory is generated whole. Each expires by
+# itself in both directions — once something reads the rule, the entry hides an answer this
+# gate has and fails; once the crate starts, the reader could have been written and the gate
+# demands one — so this is a statement about a subject that does not exist yet, and never an
+# exemption. Deleting one is the reviewable act that says the rule is now read.
+
+[[pending]]
+rule = "3.1.3"
+crate = "jlreq-spacing"
+why = "ADR 0011 reads 3.1.3 as a spacing amount that reaches the boundary evaluator as data: the space after IDEOGRAPHIC COMMA and around KATAKANA MIDDLE DOT is set solid in vertical writing, which is a `Predicate::InDirection` row of the generated spacing table rather than a branch anyone writes. `jlreq-spacing` is a module comment and `#![no_std]` today, so there is no table for the row to sit in."
+
+[[pending]]
+rule = "3.2.5"
+crate = "jlreq-inline"
+why = "ADR 0011 reads 3.2.5 as an availability fact — JLReq defines no horizontal tate-chu-yoko (縦中横) at all — so it is refused where the segment is built, which is `jlreq-inline`. The crate declares nothing today, so the constructor that would refuse it does not exist."
+
+[[pending]]
+rule = "3.3.5"
+crate = "jlreq-inline"
+why = "ADR 0011 reads 3.3.5 as a recommendation rather than a prohibition — katatsuki (肩付き) ruby alignment 'should not be adopted' horizontally — resolved once during lowering in `jlreq-inline`, which is the `[[site]]` written out in comment form above. The crate declares nothing today, so `lower` does not exist to be listed."

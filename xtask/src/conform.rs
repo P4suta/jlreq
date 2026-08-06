@@ -30,6 +30,14 @@
 //! set has not been generated, the census below says so and the checks that need it
 //! degrade to the part that is still decidable, rather than reporting that they passed.
 //!
+//! The suite itself is read the same way, because declared coverage is a subtraction and
+//! either operand can be the one that does not exist yet. A `cases` directory holding no
+//! case is a suite someone has started, and every inventoried rule is subtracted from it;
+//! no directory at all is the state before that, and then the subtraction does not run and
+//! the census names it as the check that did not, together with how many rules it would
+//! have closed over. What is *not* deferred is everything decidable without the suite: the
+//! schema, the two inventories, and every property of each case that exists.
+//!
 //! The reader is hand-rolled for the same reason `jlreq-conform`'s is: the subset is small
 //! and unusually safe to own, because [ADR
 //! 0005](../../docs/adr/0005-integer-layout-units.md) already guarantees that every number
@@ -49,8 +57,9 @@ use crate::shared::{self, Gate};
 pub(crate) const GATE: Gate = Gate {
     name: "conform",
     purpose: concat!(
-        "every conformance case holds the published format, ",
-        "case ids are unique, and every inventoried rule has a case"
+        "every conformance case holds the published format, case ids are unique, and ",
+        "every inventoried rule has a case as far as the suite and the two inventories ",
+        "exist — the census above says which of those a run could not read"
     ),
     reference: "docs/design/conformance.md",
     run,
@@ -157,7 +166,27 @@ impl Suite {
         (self.census(&cases), violations)
     }
 
+    /// Whether the published suite exists at all.
+    ///
+    /// Not "is empty": a directory holding no case is a suite someone has started, and the
+    /// subtraction below runs over it in full. This is the state before that — no directory
+    /// and no case file anywhere — in which the suite is the operand that is *absent* rather
+    /// than empty, exactly as the inventory is absent before `xtask derive` writes it.
+    fn suite_is_unstarted(&self, cases: &[Case]) -> bool {
+        !self.directory_exists && cases.is_empty()
+    }
+
     /// Subtract the cases from the inventory, in both directions (ADR 0013).
+    ///
+    /// The subtraction needs both operands, and until this milestone only one of them could
+    /// go missing: the inventory. Now that `spec/derived/rules.tsv` is generated, the other
+    /// side can be the absent one, and it is treated the same way — the half that needs it
+    /// does not run, the census says which half and over how many rules, and no sentence
+    /// anywhere claims it held. A gate that reported "every rule has a case" by subtracting
+    /// from a suite that does not exist would be the false pass `xtask/src/main.rs` says no
+    /// gate may give; a gate that fails because a later milestone has not happened yet
+    /// reports the schedule rather than the invariant. Creating the directory turns the
+    /// check on, whether or not a case is in it.
     fn coverage(&self, cases: &[Case]) -> Vec<String> {
         let Some(inventory) = self.rules.as_ref() else {
             if cases.is_empty() {
@@ -169,6 +198,9 @@ impl Suite {
                 count = cases.len()
             )];
         };
+        if self.suite_is_unstarted(cases) {
+            return Vec::new();
+        }
         let mut found = unresolved_addresses(cases, inventory);
         let declared = declared_addresses(cases, inventory);
         let uncovered: Vec<&str> = inventory
@@ -190,7 +222,7 @@ impl Suite {
     /// What was examined, stated whether or not anything was found.
     fn census(&self, cases: &[Case]) -> Vec<String> {
         let declared: BTreeSet<&str> = cases.iter().flat_map(Case::rules).collect();
-        vec![
+        let mut lines = vec![
             if self.directory_exists {
                 format!(
                     "read {count} case file(s) under {CASES_DIR}",
@@ -236,7 +268,22 @@ impl Suite {
                     format!("{SCHEMA_FILE} is not written yet and no em denominator was found")
                 },
             },
-        ]
+        ];
+        if self.suite_is_unstarted(cases) {
+            lines.push(match self.rules.as_ref() {
+                Some(rules) => format!(
+                    "declared coverage: did not run, {CASES_DIR} does not exist, so the \
+                     {count} inventoried rule(s) were subtracted from nothing rather than \
+                     found covered (ADR 0013)",
+                    count = rules.len()
+                ),
+                None => format!(
+                    "declared coverage: did not run, neither {CASES_DIR} nor \
+                     {RULES_INVENTORY} exists yet (ADR 0013)"
+                ),
+            });
+        }
+        lines
     }
 }
 
@@ -316,12 +363,24 @@ fn read_if_present(path: &Path) -> io::Result<Option<String>> {
 /// The column is found by name in the header row rather than by position, so an inventory
 /// that grows a column keeps working and one that renames the column this gate needs fails
 /// with a sentence naming it instead of silently reading the wrong field.
+///
+/// The rows are the lines *after* the header, found the same way the header is rather than
+/// by counting one line. Every file `xtask derive` writes opens with a comment block naming
+/// the derivation and the digest of the snapshot it read, so the header is not line 1 and
+/// skipping one line hands the column line back as a row — which reads as a rule addressed
+/// `address` and inflates every count this gate reports by exactly one.
 fn read_inventory(path: &Path, column: &str) -> io::Result<Option<BTreeSet<String>>> {
     let Some(source) = read_if_present(path)? else {
         return Ok(None);
     };
+    inventory_column(&source, column, path).map(Some)
+}
+
+/// One column of an inventory that has already been read, as its own function so the row
+/// rule above is exercised by a fixture rather than only by the committed file.
+fn inventory_column(source: &str, column: &str, path: &Path) -> io::Result<BTreeSet<String>> {
     let Some(header) = source.lines().find(|line| !is_skippable(line)) else {
-        return Ok(Some(BTreeSet::new()));
+        return Ok(BTreeSet::new());
     };
     let Some(index) = header.split('\t').position(|name| name.trim() == column) else {
         return Err(io::Error::new(
@@ -332,16 +391,16 @@ fn read_inventory(path: &Path, column: &str) -> io::Result<Option<BTreeSet<Strin
             ),
         ));
     };
-    let values = source
+    Ok(source
         .lines()
+        .skip_while(|line| is_skippable(line))
         .skip(1)
         .filter(|line| !is_skippable(line))
         .filter_map(|line| line.split('\t').nth(index))
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_owned)
-        .collect();
-    Ok(Some(values))
+        .collect())
 }
 
 /// Whether a line of a tab-separated file carries no row.
@@ -2304,11 +2363,13 @@ impl Reader<'_> {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
+    use std::path::Path;
 
     use super::{
-        Case, Json, REQUIRED_BY_SHAPE, Reference, Suite, accept_arguments, check_input,
-        check_permitted, check_schema, check_trims, declared_addresses, declared_units_per_em,
-        examine_file, frame_pairs, is_path, parse_address, unique_ids, unresolved_addresses,
+        Case, Json, REQUIRED_BY_SHAPE, RULES_INVENTORY, Reference, Suite, accept_arguments,
+        check_input, check_permitted, check_schema, check_trims, declared_addresses,
+        declared_units_per_em, examine_file, frame_pairs, inventory_column, is_path, parse_address,
+        unique_ids, unresolved_addresses,
     };
     use crate::shared;
 
@@ -3035,6 +3096,66 @@ mod tests {
     }
 
     #[test]
+    fn a_suite_that_has_not_been_started_defers_coverage_and_names_it() {
+        let mut suite = bare_suite();
+        suite.rules = Some(inventory());
+        assert!(
+            suite.coverage(&[]).is_empty(),
+            "an inventory subtracted from a suite that does not exist is not a finding"
+        );
+        let census = suite.census(&[]);
+        assert!(
+            census
+                .iter()
+                .any(|line| line.contains("declared coverage: did not run")
+                    && line.contains("3 inventoried rule(s)")),
+            "and the run says which check it could not make, and over how many rules: \
+             {census:#?}"
+        );
+    }
+
+    #[test]
+    fn a_suite_directory_that_exists_is_subtracted_from_even_when_it_is_empty() {
+        let mut suite = bare_suite();
+        suite.rules = Some(inventory());
+        suite.directory_exists = true;
+        let found = suite.coverage(&[]);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("3 inventoried rule(s) have no conformance case")),
+            "creating the directory is what turns the subtraction on: {found:#?}"
+        );
+        assert!(
+            !suite
+                .census(&[])
+                .iter()
+                .any(|line| line.contains("did not run")),
+            "and then nothing is deferred"
+        );
+    }
+
+    #[test]
+    fn the_column_line_is_not_read_as_a_row_under_the_comment_block_derive_writes() {
+        let source = concat!(
+            "# spec/derived/rules.tsv\n",
+            "#\n",
+            "# Generated by `cargo run -p xtask -- derive`. Do not edit.\n",
+            "\n",
+            "address\tname\tstanding\n",
+            "# A comment below the column line is a comment too.\n",
+            "3.1.9\tPOSITIONING\tNormative\n",
+        );
+        let read = inventory_column(source, "address", Path::new(RULES_INVENTORY))
+            .expect("the fixture names the column");
+        assert_eq!(
+            read,
+            BTreeSet::from(["3.1.9".to_owned()]),
+            "`address` is the header, not a rule addressed `address`"
+        );
+    }
+
+    #[test]
     fn a_family_credits_the_cells_it_names_and_a_dead_one_is_reported() {
         let row = MINIMAL.replace(
             "\"rules\": [\"3.1.9\"],",
@@ -3162,6 +3283,13 @@ mod tests {
         let suite = Suite::read(&root).expect("the suite and its inventories are readable");
         let (census, violations) = suite.examine();
         assert!(violations.is_empty(), "{violations:#?}");
-        assert_eq!(census.len(), 5, "{census:#?}");
+        assert_eq!(census.len(), 6, "{census:#?}");
+        assert!(
+            census
+                .iter()
+                .any(|line| line.starts_with("declared coverage: did not run")),
+            "the suite has not been started, and a run that did not say so would be \
+             reporting a coverage it never subtracted: {census:#?}"
+        );
     }
 }

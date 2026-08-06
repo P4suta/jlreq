@@ -47,7 +47,11 @@ spec/
       Scripts.txt            Hiragana / Katakana           (derived source)
       UnicodeData.txt        Wide / Narrow decomposition   (derived source)
   derived/
+    classes.tsv              the thirty classes of §3.9.2: id, name (both locales), section
     appendix-a.tsv           1133 keys, class, Remarks (both locales)
+    ideographs.tsv           Unified_Ideograph, the members §A.19 does not list
+    folding.tsv              the Wide and Narrow decompositions, with the frame each asserts
+    scripts.tsv              Script=Hiragana and Script=Katakana
     anchors.tsv              rendered section number → anchor id → heading
     notes.tsv                every note of §B.2, §C.2, §D.2, §E.2, both locales
     rules.tsv                the rule inventory: address, standing, statement
@@ -60,19 +64,27 @@ spec/
     figures.tsv              the arrangements published only as images (§3.4.3, §3.7.2)
     invariants.tsv           each cross-table check, with the sentence justifying it
   upstream/                  gitignored; the PDFs, if a developer fetched them
-tools/jlreq-gen/             excluded workspace, stage 1, may parse HTML
 crates/*/src/generated/*.rs  committed output of stage 2
-data/manifest.toml           SHA-256 of every generated file and every input
-docs/decisions/*.toml        this project's published readings of silences
+data/manifest.toml           SHA-256 of every file the pipeline reads or writes
+docs/decisions/*.md          this project's published readings of silences
 ```
 
-Two crates take their generated tables in a module of their own rather than under a
-`generated/` directory: `jlreq-spec`'s rule inventory is emitted into `src/rule.rs` and its
-policy space into `src/policy.rs`, beside the vocabulary that indexes each. A rule address,
-its inventory and the identifier that reads it are one module's worth of subject. Everywhere
-else the emitted tables are several files and the directory is what keeps them together, so
-`generate --check` reads the two shapes and `docs/design/api-spine.md`'s file maps state the
-same layout this list does.
+An earlier revision of this document said `jlreq-spec` would take its two generated tables
+in modules of their own — the rule inventory emitted into `src/rule.rs` and the policy space
+into `src/policy.rs`, beside the vocabulary that indexes each — on the grounds that a rule
+address, its inventory and the identifier that reads it are one module's worth of subject.
+That is not how it is built, for two reasons that only appeared once the emitter existed.
+`src/rule.rs` holds the hand-written `const fn` address parser, `Standing`, `Detail` and
+`Section`, so it cannot be *wholly* generated and a partly-generated file is one no
+byte-identity gate can check. And `generate`'s own `check_declarations` refuses any output
+outside `crates/<crate>/src/generated/<module>.rs`, which is what lets its scan for
+unclaimed modules find a hand-written file hiding among machine-written ones.
+
+So `jlreq-spec` takes the same shape every other crate does. The inventory is emitted into
+`src/generated/inventory.rs` and `src/rule.rs` reads `RULES` from it; `src/generated.rs`
+declares the module beside the directory and holds, by hand, the figures the inventory was
+measured against. The policy space will arrive the same way. `docs/design/api-spine.md`'s
+file maps state the same layout this list does.
 
 `spec/captured/figures.tsv` emits to `crates/jlreq-line/src/generated/figures.rs`, which is
 the module the earlier revision of this document did not name. The arrangements of §3.4.3
@@ -88,22 +100,29 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 
 ## Two stages
 
-**Stage 1**, `tools/jlreq-gen`, lives in its own workspace excluded from the root. It may
-parse HTML, because it is not published and its dependency tree does not tax the crates
-that are. It emits `spec/derived/*.tsv` and nothing else. It runs only when the
-specification revises.
+**Stage 1**, `cargo run -p xtask -- derive`, reads `spec/snapshot/` and emits
+`spec/derived/*.tsv` and nothing else.
 
-**Stage 2**, `cargo run -p xtask -- generate`, is dependency-free — TSV is trivial to
-read — and emits `crates/*/src/generated/*.rs` from `spec/derived/` and `spec/captured/`.
-It runs in CI on every commit.
+**Stage 2**, `cargo run -p xtask -- generate`, emits `crates/*/src/generated/*.rs` from
+`spec/derived/` and `spec/captured/`.
 
-The split exists for two reasons. `xtask` has an intentionally empty dependency table
-because it is the tool that enforces the core's emptiness, and parsing 2.3 MB of HTML with
-`std` alone is fragile. And an in-workspace generator would put an HTML parser into a
-dependency graph where `deny.toml` sets `bans.multiple-versions = "deny"` with empty skip
-lists, making one transitive duplicate a permanent tax on the *published* crates for the
-sake of a build tool. A `build.rs` generator is not merely undesirable but impossible: the
-purity gate rejects a `[build-dependencies]` table of any kind.
+Both are byte-identity gates, both are dependency-free, and both run in CI on every commit.
+Adding a derived file is one entry in `DERIVATIONS`; adding a generated one is one entry in
+`UNITS`; each reader and each generator lives in the `xtask` module that owns its subject.
+
+An earlier revision of this document put stage 1 in `tools/jlreq-gen`, a workspace excluded
+from the root, so that it could parse HTML with a crate. That reasoning was sound and its
+premise turned out not to hold: the scanner is 500 lines of `std`, in the same hand-rolled
+style as the manifest reader in `purity` and the SHA-256 in `generate`, so there is no
+dependency to keep out of the workspace and no transitive duplicate for `deny.toml`'s
+`bans.multiple-versions = "deny"` to charge the published crates for. What the split would
+still have cost is everything workspace membership buys — Clippy, `rustfmt`, `cargo-msrv`,
+and decisively `cargo nextest`, which is workspace-scoped, so the tests that prove the
+scanner reads the document's actual shape would never have run in CI. The scanner is
+therefore in `xtask` and this document records the change rather than the intention.
+
+A `build.rs` generator remains not merely undesirable but impossible: the purity gate
+rejects a `[build-dependencies]` table of any kind.
 
 The intermediate TSV is itself a deliverable. A JLReq reader can review
 `spec/derived/appendix-a.tsv` and `spec/captured/table1.en.tsv` without reading a line of
@@ -130,6 +149,23 @@ defect in the published table, and the generator fails on an unrecorded duplicat
 `defects.tsv` records each known one with its evidence, and `attest` requires the detected
 set to equal the recorded set — so a defect fixed upstream fails the gate and forces a
 review instead of changing behavior quietly.
+
+**Count rows and not character cells.** Appendix A holds 1687 data rows: 1662 whose UCS cell
+is a bare hex value, and 25 written as a code-point sequence, `<304B, 309A>`. Removing the one
+recorded duplicate leaves the 1686 listings the generated table holds, over 1133 distinct
+keys. A scan keyed on `td.character` measures 1686 *rows* and is off by one, because §A.12's
+`U+2116` NUMERO SIGN is the only row in the whole appendix written `<td class="character-latn">`;
+the reader counts `<tr>` inside `<tbody>` instead, and the per-class figures in `CENSUS` are
+what would catch it if that ever stopped being true. An extractor that assumes one code point
+per row silently drops the 25 sequences, which is what `Member` being an ordered sequence and
+not a `char` exists for.
+
+The alternation form `<0254, 0300/0301>` is read and does not occur: measured, the rendered
+snapshot holds none and neither does the pre-ReSpec editorial source — both write
+`<0254, 0300>` and `<0254, 0301>` as two rows. Reading it is safe rather than permissive,
+because a row that yielded two keys would move a class's total and fail the census before
+anything was emitted; the doc comment on that reader records the measurement rather than
+asserting the form exists.
 
 **Derive cl-19 honestly.** §A.19's header says the table lists only the *non-ideographic*
 members, so the ideographs come from the UCD. `Unified_Ideograph=Yes` is the base: it
@@ -243,17 +279,28 @@ separately, so checking it is close to a proof of correct capture for those cell
 
 ## Recorded defects
 
-These are data in `defects.tsv`, each with a conformance case:
+These are data in `defects.tsv`, each with a conformance case. That file is written by the
+derivation that accompanies the captured stage, because most of its rows are defects of the
+matrices and the appendix notes, which no stage reads yet; `attest` says so in its census
+rather than reporting a pass over a file that is not there. What holds the derived stage
+today is the closed Remarks vocabulary in `xtask/src/classes.rs`: every distinct cell of
+Appendix A is enumerated there with the frame, direction and role it states, with the count
+of cells holding it, and with the defect it is an instance of where it is one. A cell nobody
+has read fails the derivation, and a recorded cell whose count has moved fails it too — so
+the rule that the extractor fails on an unrecorded divergence is enforced against that
+vocabulary, and the identifiers below are the ones `defects.tsv` must record when it arrives.
 
 | Defect | Where |
 | --- | --- |
 | `U+216B` appears twice in the cl-19 body (465 rows, 464 members) | §A.19 |
 | Three cl-25 Remarks cells hold bare Japanese with no locale span | §A.25 |
+| Three Remarks cells state the digit-grouping role in Japanese alone — 位取りの空白, 位取りのコンマ — where the English half gives the width only. §A.24's `U+002E` does *not* diverge: both halves carry the decimal-point line | §A.24, §A.25 |
 | §D.2 note 5 contradicts notes 1–3 on a priority ordinal | §D.2 |
 | §3.8.3 step 1 says "the same width reduction is applied to all spaces" in English against 文字サイズ比で均等に, in proportion to character size, in Japanese | §3.8.3 |
 | §B.2 note 11 says "simple-ruby" where jukugo-ruby is meant | §B.2#11 |
 | §B.2 note 7's English names only katakana; the Japanese names cl-16, cl-10 and cl-11 | §B.2#7 |
 | §3.1.3's closing Note reads "vertical" in English against 横組 in Japanese | §3.1.3 |
+| §3.1.6's second Note leaves a cross-reference unresolved in English, as the literal `[[[#spacing_between_characters"]]]`, where the Japanese resolves it to §B | §3.1.6 |
 | §3.8.3 numbers Appendix D's tables one higher than Appendix D does | §3.8.3, §D |
 | The legend anchor ids and the PDF filenames are off by one from the table numbers | §B–§E |
 | §3.9.2 lists cl-28 and cl-29 as "（〔［ etc." while §A.28 and §A.29 enumerate exactly three | §3.9.2 |
@@ -264,18 +311,59 @@ the caller's rather than ours.
 ## The gates
 
 ```sh
+cargo run -p xtask -- derive            # reread spec/snapshot/ into spec/derived/*.tsv
+cargo run -p xtask -- derive --check    # fail if rereading would change a derived file
 cargo run -p xtask -- generate          # regenerate crates/*/src/generated/*.rs
 cargo run -p xtask -- generate --check  # fail if regeneration would change a file
-cargo run -p xtask -- attest            # double entry, provenance, invariants, defects
-cargo run -p xtask -- attest --digests  # additionally verify spec/upstream/ if present
+cargo run -p xtask -- attest --digests  # double entry, provenance, invariants, defects
 ```
 
 `generate --check` is byte identity, not semantic equivalence: `data/manifest.toml` holds
 the SHA-256 of every generated file and of every input it was generated from, and `xtask`
 computes SHA-256 with `std` alone in about a hundred lines, preserving its empty dependency
-table. A hand-edited generated file fails immediately. A regeneration job also runs the real
-stage-1 generator from the vendored snapshot and `git diff --exit-code`s the result, which
-is offline and therefore fits in `ci-required`.
+table. A hand-edited generated file fails immediately. `derive --check` is byte identity in
+the same sense one step earlier, and each derived file carries in its own comment header the
+SHA-256 of every vendored source it was read from, so the chain from the published document
+through the tab-separated tables to the emitted Rust is digest-linked at every step. Both
+gates are offline and therefore sit in `ci-required`, which the CI workflow satisfies by
+running the `design` recipe rather than by listing the gates a second time — the two lists
+drifted once, and `derive --check`, the only gate that binds `spec/derived/` to the vendored
+document, was the one that fell through the gap.
+
+Three things the chain would otherwise not cover, and each is a link that was missing:
+
+**Its far end.** Every derived file states the digest of the snapshot *as it sits on disk*,
+so `derive --check` rederives whatever is there and agrees with itself. What anchors the
+loop to the recorded upstream digest is `attest --digests`, and that is now what `just
+attest` runs: the weaker form has no reason to be the default, because the implementation
+hashes every recorded document present on disk, which is more than the sentence about
+`spec/upstream/` claims. Its own end is closed too — `derive` requires every declared source
+to be a document `PROVENANCE.toml` records, and requires every file vendored under
+`spec/snapshot/` to be one, so the input directory is closed the way both output directories
+already were.
+
+**Its near end.** The generator is not the data. An editorial judgment lives in the reading
+and in the emitter rather than in the document — which Remarks cell carries which frame,
+which heading closes a class name — so a change to one rewrites the meaning of thousands of
+rows with the source digest, the specification date and the entry count all unchanged. Every
+derived file therefore states `Reader:` and `Reader SHA-256:`, every generated file states
+`Generator:` and `Generator SHA-256:`, and `data/manifest.toml` records a digest for each of
+those modules. This replaces a `Generator: xtask 0.0.0` line taken from the shared workspace
+version, which moved on a release and never on a change to a generator: churn where
+information was wanted, and the one recorded identifier that could not distinguish two
+generators.
+
+**Its claim about itself.** `specification-date` was a free string copied into the header of
+every generated file and checked against nothing. The published rendering carries its own
+publication date in a `<time class="dt-published">` element, so `derive` now requires the
+recorded date to equal it, and to equal the `published` field of the snapshot's own
+`[[document]]` block.
+
+`data/manifest.toml` accordingly records every file the pipeline reads or writes: the six
+generated modules, all eight derived tables — including the two no generation unit consumes
+yet, which `spec-links` and `attest` nonetheless read — the four vendored documents, and the
+four `xtask` modules that produce them. A ledger that records part of a chain records nothing
+about the rest of it.
 
 `attest` needs no network and no PDF: double entry and the invariants run over the committed
 transcriptions. `--digests` additionally verifies any PDFs a developer placed in the
@@ -298,33 +386,49 @@ failure on Windows. Tables are `static` arrays and never functions, because
 [[annotations]]
 path = ["spec/snapshot/index.html", "spec/derived/**", "spec/captured/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2011-2020 W3C (MIT, ERCIM, Keio, Beihang)"
+SPDX-FileCopyrightText = "2020 W3C (MIT, ERCIM, Keio, Beihang)"
 SPDX-License-Identifier = "W3C-20150513"
 
 [[annotations]]
 path = ["spec/snapshot/ucd/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "1991-2024 Unicode, Inc."
+SPDX-FileCopyrightText = "2025 Unicode, Inc."
 SPDX-License-Identifier = "Unicode-3.0"
 ```
+
+Each copyright line is the notice the vendored file itself prints, and nothing wider.
+The snapshot's footer reads "Copyright © 2020 W3C (MIT, ERCIM, Keio, Beihang)" and
+names no earlier year — the only prior edition it links is the 2012 Note — and the
+Unicode Character Database extracts read "© 2025 Unicode, Inc.", the year of the
+17.0.0 release `spec/PROVENANCE.toml` pins. An earlier revision of this document gave
+both as ranges, `2011-2020` and `1991-2024`, which were written before either file was
+measured and which reproduce no notice that exists. Reproducing the notice on the work
+is what [REUSE](https://reuse.software) asks for, and a range nobody can point at in the
+file is the same species of unfounded claim as a scraped matrix.
 
 Both licenses need a `LICENSES/*.txt` file, and `reuse lint` fails on an unused one, so
 they are added in the same commit as the first snapshot file. `Unicode-3.0` is already on
 `deny.toml`'s allow list; `W3C-20150513` applies to committed documents rather than to a
 crate in the dependency graph, so `cargo deny` never sees it.
 
-Two further traps, both measured. `reuse lint` flags *untracked* files, so
-`tools/jlreq-gen/target/` must enter `.gitignore` in the same commit as the tool or every
-build artifact becomes a violation. And `taplo.toml` includes `**/*.toml`, so
-`spec/PROVENANCE.toml`, `data/manifest.toml` and `docs/decisions/*.toml` are format-checked
-even though they are outside every cargo workspace — as is `tools/jlreq-gen/Cargo.toml`.
+Three files under `spec/derived/` are read out of the Unicode Character Database rather
+than out of the W3C document, so they carry Unicode's notice and not W3C's. `REUSE.toml`
+names them one by one with `precedence = "override"`, ahead of the `spec/derived/**` block,
+because a glob that covered both would attribute the ideograph predicate to W3C.
 
-A nested workspace needs five coordinated edits or a gate breaks: the directory in the root
-`exclude`, its own `[workspace]` table, its `target/` in `.gitignore`, its TOML reachable by
-taplo, and SPDX headers on its `.rs` and `.toml` files. `fuzz/` is the existing worked
-example.
+`reuse lint` flags *untracked* files, so a new derived or generated file must be `git add`ed
+in the same change that writes it. And `taplo.toml` includes `**/*.toml`, so
+`spec/PROVENANCE.toml` and `data/manifest.toml` are format-checked even though they are
+outside every cargo workspace. `docs/decisions/` is Markdown rather than TOML, for the reason
+its own README states: a published reading is an argument from the specification's own words,
+nothing reads one mechanically, and TOML would either flatten the argument into one quoted
+string or invent a record format for paragraphs.
 
-Everything outside the cargo workspace escapes clippy, `cargo-deny`, `cargo-msrv` and
-`cargo-fmt`, all of which are workspace-scoped, while remaining covered by `typos`, `reuse`
-and `taplo`. The generator is therefore unlinted but not unchecked, and that is stated here
-so nobody discovers it as a surprise.
+Everything outside the cargo workspace would escape clippy, `cargo-deny`, `cargo-msrv`,
+`cargo-fmt` and `cargo-nextest`, all of which are workspace-scoped, while remaining covered
+by `typos`, `reuse` and `taplo`. That is the reason both stages of the pipeline are `xtask`
+subcommands: the readers and the emitters are held to exactly the gates the code they write
+is held to. A nested workspace would need five coordinated edits or a gate breaks — the
+directory in the root `exclude`, its own `[workspace]` table, its `target/` in `.gitignore`,
+its TOML reachable by taplo, and SPDX headers on its `.rs` and `.toml` files — and `fuzz/`
+is the one place this repository pays that price, because `cargo-fuzz` requires nightly.

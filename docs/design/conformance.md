@@ -389,7 +389,7 @@ in the format lets a silence be laundered into a requirement.
     "version": "2024-11-01",
     "behavior": "Sets the line end solid after cl-02 regardless of the configured convention.",
     "our_reading": "B.2 note 2 makes a half em the preferred spacing and solid the alternative, so the convention is a caller choice rather than a fixed answer.",
-    "evidence": "docs/decisions/line-end-punctuation.toml"
+    "evidence": "docs/decisions/line-end-punctuation.md"
   }
 ]
 ```
@@ -563,7 +563,13 @@ arithmetic, because the tables, the doc comments, and the case files all use one
 space. Two gates, because one is not enough.
 
 **Declared coverage**, static, in `cargo run -p xtask -- conform --check`:
-`RuleId::ALL` minus the union of every case's `rules` field must be empty. It also checks
+`RuleId::ALL` minus the union of every case's `rules` field must be empty. That subtraction
+has two operands and either can be the one that does not exist yet. The inventory is
+generated whole at M0-a; the suite is written milestone by milestone, and until the `cases`
+directory exists at all the gate reports the subtraction as a check that did not run,
+naming how many inventoried rules it would have closed over, rather than reporting a
+coverage it never computed or a failure that is only the schedule. Creating the directory
+turns it on, empty or not, so the deferral cannot outlive the first case. It also checks
 that every `rules` entry resolves to a known rule, every case id is unique, every case
 validates against the schema, every `permitted` entry's overlay is valid and the entries'
 key sets are totally ordered by inclusion, every integer is inside 2^53, every fraction

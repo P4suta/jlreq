@@ -1015,17 +1015,24 @@ The specification-reference vocabulary. Generated; no lengths, no classes, no ta
 ```text
 src/
   lib.rs        re-exports; crate docs
-  rule.rs       RuleId, Address, Standing, RULES  (generated)
+  rule.rs       RuleId, Address, Standing; reads RULES
   answer.rs     Answer<T>, Provenance
-  policy.rs     Question, Choice, Policy, QUESTIONS  (generated)
+  policy.rs     Question, Choice, Policy; reads QUESTIONS
+  generated.rs  the module declarations, and the figures measured by hand
+  generated/
+    inventory.rs  RULES, and one RuleId constant per rule  (generated, M0)
+    policy.rs     QUESTIONS, and one Question constant each (generated, M1)
 ```
 
-This crate's two generated tables sit beside the vocabulary that indexes them rather than
-under a `generated/` directory, which the three crates below do use. A rule address, its
-inventory and the identifier that reads it are one module's worth of subject, and splitting
-them would put a `pub(crate)` table one `use` away from its only reader for no gain.
-`docs/design/generation.md` states the same, so the pipeline document and this file map
-describe one layout.
+An earlier revision put this crate's two generated tables beside the vocabulary that indexes
+them, in `rule.rs` and `policy.rs`, rather than under a `generated/` directory. It is built
+the other way, for two reasons that appeared when the emitter did. `rule.rs` holds the
+hand-written `const fn` address parser as well as the table, so it cannot be wholly
+generated, and a partly-generated file is one no byte-identity gate can check. And the
+`generate` gate refuses an output outside `crates/<crate>/src/generated/<module>.rs`,
+because that is what lets its scan for unclaimed modules find a hand-written file hiding
+among machine-written ones. `docs/design/generation.md` records the same, so the pipeline
+document and this file map describe one layout.
 
 ### Rule addressing — M0
 
@@ -1348,8 +1355,10 @@ src/
   text.rs               Text, Annotation, AnnotationIndex, TextError
   classify.rs           Classified, Subject, Reclassification, classify(), resolve()
   usage.rs              Usage, usage()
+  generated.rs          the module declarations, and the figures measured by hand
   generated/
     appendix_a.rs       the 1133 keys           (generated, M0)
+    class_name.rs       the thirty names §3.9.2 publishes (generated, M0)
     ideograph.rs        the cl-19 predicate     (generated, M0)
     folding.rs          Wide/Narrow mapping     (generated, M0)
     script.rs           the small-kana fallback (generated, M0)
@@ -1438,6 +1447,7 @@ impl Class {
     /// `1` through `30`. JLReq: §3.9.2
     pub const fn number(self) -> u8;
     /// The identifier JLReq uses in every rule sentence: `cl-01` … `cl-30`.
+    /// JLReq: §3.9.2, §A
     pub const fn id(self) -> &'static str;
     /// JLReq's English name, generated from §3.9.2 rather than from an Appendix A
     /// heading — §A.19's heading names the class's own complement.
@@ -1446,15 +1456,57 @@ impl Class {
     pub const fn name_ja(self) -> &'static str;
     /// The Appendix A section enumerating this class, if it enumerates anything.
     /// Five classes enumerate nothing: their section text reads in full "Any character
-    /// may participate in …". JLReq: §A.20–§A.23, §A.30
+    /// may participate in …". Read from that section's own rendered `<bdi class="secno">`
+    /// and held equal to the class number, so a renumbered Appendix A is a build failure
+    /// rather than a wrong specification address on this surface.
+    /// JLReq: §A.20–§A.23, §A.30
     pub const fn enumeration(self) -> Option<Address>;
+    /// JLReq: §3.9.2
     pub const fn from_number(n: u8) -> Option<Self>;
+    /// Whether membership of this class is a property of the construct an occurrence sits
+    /// in rather than of the key. Nine classes: the five that enumerate nothing, and the
+    /// four that enumerate what may appear *inside* a grouped numeral (連数字), a unit
+    /// symbol, or a warichu (割注) bracket.
+    ///
+    /// Published rather than crate-visible, because it is what a caller needs in order to
+    /// read a `ClassSet` this crate hands them: [`Classified::Several`] names
+    /// [`AxisSet::CONSTRUCT`] when one of these survives, and [`resolve`] passes over them
+    /// in its tie-break for the same reason. A caller who cannot ask the question cannot
+    /// check either answer. JLReq: §A.20–§A.25, §A.28–§A.30
+    pub const fn is_construct_membership(self) -> bool;
 }
 
 /// A set of classes, as a bitmask. Allocation-free and order-deterministic, which is why
-/// it is not a `BTreeSet`.
+/// it is not a `BTreeSet`. Thirty classes fit in a `u32` with two bits to spare, and
+/// iterating one answers in class-number order on every target, which is what a report and
+/// a conformance case need.
+///
+/// JLReq: §3.9.2
+#[non_exhaustive]
 pub struct ClassSet(u32);
+
+impl ClassSet {
+    pub const EMPTY: Self;
+    pub const ALL: Self;
+    pub const fn of(class: Class) -> Self;
+    pub const fn with(self, class: Class) -> Self;
+    pub const fn without(self, class: Class) -> Self;
+    pub const fn contains(self, class: Class) -> bool;
+    pub const fn len(self) -> usize;
+    pub const fn is_empty(self) -> bool;
+    /// The one class in this set, or `None` when it holds none or several. Two surviving
+    /// candidates are an ambiguity to report, never a class to pick.
+    pub const fn only(self) -> Option<Class>;
+    /// In class-number order, on every target.
+    pub fn classes(self) -> impl Iterator<Item = Class>;
+}
 ```
+
+`ClassSet` appears in output positions — `Classified::Several { candidates, .. }` and
+`Classified::Irreducible { candidates, .. }` — so the accessors above are not optional
+detail: a caller handed a candidate set with no way to read it has been told nothing. The
+`#[non_exhaustive]` on this and on the other newtypes below is a no-op for downstream, since
+every field is private, and it states the intent where the next reader will look for it.
 
 ### The Appendix A key — M0
 
@@ -1470,12 +1522,22 @@ pub struct ClassSet(u32);
 /// a silent truncation.
 ///
 /// JLReq: §A
+#[non_exhaustive]
 pub struct Member { /* private */ }
 
 impl Member {
     pub const MAX_LEN: usize;
     pub const fn single(c: char) -> Self;
     pub const fn pair(first: char, second: char) -> Self;
+    /// How many code points this key holds. JLReq: §A
+    pub const fn len(self) -> usize;
+    /// Never true — both constructors take at least one code point — and present because a
+    /// length without one is a Clippy finding. JLReq: §A
+    pub const fn is_empty(self) -> bool;
+    /// The code points, in the order Appendix A writes them. A `Member` reaches the caller
+    /// in `TextError::MemberCrossesItem { key }` and in `usage(member)`, so one must be
+    /// readable back. JLReq: §A
+    pub fn code_points(self) -> impl Iterator<Item = char>;
 }
 
 /// Longest-match scan over Appendix A's key structure, yielding each member with its
@@ -1536,10 +1598,14 @@ that documents its invariant instead of holding it
 pub struct Text<'t> { /* private */ }
 
 impl<'t> Text<'t> {
+    /// JLReq: §A, §3.1.2, ADR-0018
     pub fn new(text: &'t str, items: &'t [Item], scales: &'t [Scale])
         -> Result<Self, TextError>;
+    /// JLReq: n/a (addressing)
     pub fn as_str(self) -> &'t str;
+    /// JLReq: §A, ADR-0018
     pub fn items(self) -> &'t [Item];
+    /// JLReq: §B.1, §3.3.3
     pub fn scales(self) -> &'t [Scale];
     /// The size of one item: its [`Scale`] together with the ordinal [`Carry`] keys on.
     /// The only source of a [`Size`], which is what makes the per-size exactness claim of
@@ -1565,10 +1631,14 @@ impl<'t> Text<'t> {
 pub struct Annotation<'a> { /* private */ }
 
 impl<'a> Annotation<'a> {
+    /// JLReq: §3.3.1, §A, ADR-0016, ADR-0018
     pub fn new(text: &'a str, items: &'a [Item], scales: &'a [Scale])
         -> Result<Self, TextError>;
+    /// JLReq: n/a (addressing)
     pub fn as_str(self) -> &'a str;
+    /// JLReq: §A, ADR-0018
     pub fn items(self) -> &'a [Item];
+    /// JLReq: §3.3.3
     pub fn scales(self) -> &'a [Scale];
     /// The ruby em, and the only statement of it: §3.3.8's overhang allowances and
     /// §3.3.6's distribution both read this, so they cannot disagree about what one is
@@ -1580,7 +1650,16 @@ impl<'a> Annotation<'a> {
 
 /// An ordinal into one [`Annotation`]'s items. See [`ItemIndex`], which it is deliberately
 /// not.
+/// JLReq: n/a (addressing)
+#[non_exhaustive]
 pub struct AnnotationIndex(u32);
+
+impl AnnotationIndex {
+    /// JLReq: n/a (addressing)
+    pub const fn new(index: u32) -> Self;
+    /// JLReq: n/a (addressing)
+    pub const fn get(self) -> u32;
+}
 
 pub enum TextError {
     /// Offsets are not strictly increasing.
@@ -1607,6 +1686,20 @@ pub enum TextError {
     /// commonest adjacency in Japanese. JLReq: §3.1.2
     FrameRequired { at: ItemIndex, class: Class },
 }
+
+impl TextError {
+    /// Frozen projection (ADR-0012): whether the caller fixes this by cutting the text into
+    /// items differently, rather than by changing what an item or the scale table declares.
+    /// `true` for the five refusals about where the boundaries fall, `false` for the three
+    /// about a declaration. The two answers are the two kinds of work, so a refusal added
+    /// later is detail. JLReq: §A, §3.1.2
+    pub const fn is_segmentation(self) -> bool;
+    /// The item the caller must fix, where one item is what is wrong. `None` for
+    /// [`TextError::ScaleCount`] alone, which is about the scale table. An ordinary
+    /// accessor and not the projection above: its answer set is the stream's ordinals,
+    /// which grow with the stream. JLReq: §A, §3.1.2
+    pub const fn at(self) -> Option<ItemIndex>;
+}
 ```
 
 ### Classification — M0
@@ -1630,6 +1723,14 @@ pub enum Classified {
     /// JIS X 4051 leaves this implementation-defined and that JLReq inherits it, so the
     /// answer is a published reading marked [`Standing::Unstated`].
     Unlisted,
+    /// The ordinal names no item of this stream, so there is no occurrence to classify.
+    ///
+    /// Distinct from [`Classified::Unlisted`], which is a fact about Appendix A. "The
+    /// specification lists no class for the member at this ordinal" and "there is no
+    /// member at this ordinal" are two different answers, and a caller who could not tell
+    /// them apart would read a class for an occurrence that is not there. Detail and not
+    /// an outcome under ADR-0012: [`Classified::is_ambiguous`] still answers `true`.
+    NoSuchItem,
 }
 
 impl Classified {
@@ -1645,7 +1746,26 @@ impl Classified {
 /// look like a fourth and are not: they change the *spacing* between cl-17 or cl-18 and
 /// its neighbors, never which class a member is in, so they belong to
 /// [`ConstructKind::MathFormula`] and to an override predicate, not here.
+/// JLReq: §3.2.4, §3.2.6, §3.9.2
+#[non_exhaustive]
 pub struct AxisSet(u8);   // Frame, Role, Construct
+
+impl AxisSet {
+    pub const EMPTY: Self;
+    /// The frame (字幅) the caller's advance covers. JLReq: §3.2.4, §3.2.6, §A Remarks
+    pub const FRAME: Self;
+    /// The syntactic job the document gives the occurrence. JLReq: §3.1.3, §A.24
+    pub const ROLE: Self;
+    /// Which ruby, tate-chu-yoko (縦中横), warichu (割注), grouped numeral (連数字) or unit
+    /// symbol the occurrence belongs to. JLReq: §A.20–§A.25, §A.28–§A.30
+    pub const CONSTRUCT: Self;
+    pub const fn with(self, other: Self) -> Self;
+    /// Whether every axis of `axis` is in this set. `AxisSet::EMPTY` is in every set,
+    /// which is what asking for nothing means — stated here because a caller writing
+    /// `needs.contains(x)` in a loop meets it. JLReq: §3.9.2
+    pub const fn contains(self, axis: Self) -> bool;
+    pub const fn is_empty(self) -> bool;
+}
 
 /// What a relaxation or a reclassification applies to.
 ///
@@ -1659,7 +1779,16 @@ pub struct AxisSet(u8);   // Frame, Role, Construct
 /// out of cl-13's thirty-two. Both mechanisms therefore key on this type.
 ///
 /// JLReq: §C.3, §C.2#1–#3, §A.9, §A.13
+#[non_exhaustive]
 pub enum Subject { Class(Class), Member(Member), Pair(Member, Member) }
+
+impl Subject {
+    /// Frozen projection (ADR-0012): whether this subject names an adjacency rather than
+    /// something one occurrence can be. A boundary is `jlreq-spacing`'s to evaluate and
+    /// never this crate's to classify, so a subject added later that names a wider
+    /// adjacency still answers `true`. JLReq: §C.2#1–#3, §C.3
+    pub const fn is_boundary(self) -> bool;
+}
 
 /// A policy-driven change of class, applied before any table lookup.
 ///
@@ -1676,7 +1805,19 @@ pub enum Subject { Class(Class), Member(Member), Pair(Member, Member) }
 /// selector drives them.
 ///
 /// JLReq: §C.2#1–#3, §B.2#14–#16, §E.2#1–#3, §C.3
+#[non_exhaustive]
 pub struct Reclassification { /* subject: Subject, to: Class, when: Choice, rule: RuleId */ }
+
+impl Reclassification {
+    /// What this change applies to. JLReq: §C.2#1–#3
+    pub const fn subject(self) -> Subject;
+    /// The class the subject is treated as a member of. JLReq: §C.2#1–#3
+    pub const fn to(self) -> Class;
+    /// The answer that puts this change in force. JLReq: §C.2#1–#3, §C.3
+    pub const fn when(self) -> Choice;
+    /// The section that states it. JLReq: §C.2#1–#3
+    pub const fn rule(self) -> RuleId;
+}
 
 /// Resolve the class of one item.
 ///
@@ -1702,8 +1843,19 @@ pub fn classify_annotation(annotation: Annotation<'_>, index: AnnotationIndex,
 /// not two. The answer's provenance records which of the two applied, so a caller can
 /// tell a decided class from a policy tie-break.
 ///
+/// `None` exactly when `index` names no item. An occurrence that is not there has no
+/// class, and answering one would put a class a caller cannot distinguish from a real one
+/// into a loop over `0..=items.len()`. This is where `Text::size` answers with an option
+/// for the same reason and `Text::size_of` does not: a stream always declares a first
+/// size, and no fallback class exists to play that part.
+///
+/// Until the policy space is generated neither question exists, `policy` cannot change
+/// either outcome, and what applies is this project's published reading in
+/// `docs/decisions/`. The implementation says so in its own doc comment rather than
+/// naming two constants that are not there yet.
+///
 /// JLReq: §3.9.2
-pub fn resolve(text: Text<'_>, index: ItemIndex, policy: Policy) -> Answer<Class>;
+pub fn resolve(text: Text<'_>, index: ItemIndex, policy: Policy) -> Option<Answer<Class>>;
 
 /// Whether the writing system uses this member in one direction only.
 ///
@@ -1725,6 +1877,17 @@ pub enum Usage {
     /// Western characters are rotated. The restriction is conditional on a rotation
     /// policy the caller owns.
     HorizontalOrRotatedWestern,
+}
+
+impl Usage {
+    /// Frozen projection (ADR-0012): whether the writing system restricts this member to
+    /// one direction at all. `false` for [`Usage::Both`] and `true` for every restriction,
+    /// so a further restriction §3.1.1 turns out to state is detail — where a caller's
+    /// catch-all arm would silently treat the new one as unrestricted, which is the failure
+    /// ADR-0012 exists to prevent. This is the one open output enum in this crate a caller
+    /// genuinely branches on, since the answer decides whether to rotate a glyph.
+    /// JLReq: §3.1.1, §A Remarks
+    pub const fn is_restricted(self) -> bool;
 }
 ```
 
@@ -2241,7 +2404,7 @@ impl Demerits {
 /// rule is for the best appearance at the line head, while the strict rule is best to
 /// avoid inter-character spacing adjustment" — is guidance on choosing a *level*, not a
 /// rule for ranking two candidate paragraphs. Their placement is published in
-/// `docs/decisions/adjustment-preference.toml` with [`Standing::Unstated`], and a
+/// `docs/decisions/adjustment-preference.md` with [`Standing::Unstated`], and a
 /// conformance case pins each of the two permutations:
 ///
 /// - `least-adjustment`, the [`Policy::JLREQ`] value and the declaration order of the
@@ -3074,6 +3237,10 @@ pub struct PolicyConflict { pub questions: [Question; 2], pub rule: RuleId }
 
 // jlreq-class
 /// The iterator [`members`] returns.
+/// The range is first and it is typed: a caller compares it against `Item::start`, which
+/// is a `ByteOffset`, so a raw `usize` here would be the untyped channel ADR-0011 narrows
+/// everywhere else. JLReq: §A
+#[non_exhaustive]
 pub struct Members<'t> { /* Iterator<Item = (Range<ByteOffset>, Member)> */ }
 
 // jlreq-line
@@ -3168,6 +3335,15 @@ projections = ["is_conforming"]
 [[frozen]]
 type = "jlreq_class::Classified"
 projections = ["is_ambiguous"]
+[[frozen]]
+type = "jlreq_class::Usage"
+projections = ["is_restricted"]
+[[frozen]]
+type = "jlreq_class::TextError"
+projections = ["is_segmentation"]
+[[frozen]]
+type = "jlreq_class::Subject"
+projections = ["is_boundary"]
 [[frozen]]
 type = "jlreq_spec::Provenance"
 projections = ["is_specified"]
@@ -3283,10 +3459,10 @@ New `xtask` subcommands, all `std`-only so `xtask`'s empty dependency table surv
 | `placeholder` | No `todo!`, `unimplemented!`, `#[allow(`, or `#[expect(` in core sources. Measured: a body of `todo!()` produces zero diagnostics today. |
 | `api` | Every public type is `#[non_exhaustive]` unless `[[exempt]]` lists it; every `[[frozen]]` projection still exists; every `#[non_exhaustive]` type in an input position has a named constructor, under the two definitions pinned above; no `[[forbidden]]` shape appears, matching declared item identifiers only. |
 | `spec-links` | Every public item carries a `JLReq:` line; every address resolves; every rule cited by an item has a conformance case. |
-| `direction` | Union of the rules named in `docs/direction-sites.toml` and the rules carrying a `Predicate::InDirection` row equals the set the inventory marks direction-conditional — today §3.1.3, §3.2.5, §3.3.5. A variant of `Direction` may appear in hand-written core sources only inside an allowlisted item, and in generated sources only in that predicate. Naming the *type* is unrestricted, because passing a value through a signature is not a branch. |
+| `direction` | Union of the rules named in `docs/direction-sites.toml` and the rules carrying a `Predicate::InDirection` row equals the set the inventory marks direction-conditional — today §3.1.3, §3.2.5, §3.3.5 — less the rules a `[[pending]]` table of that same file defers to a crate that has not declared an item yet, each of which the gate names in its census as a rule the equality did not run over. Such an entry is a violation the moment anything reads its rule or the crate it waits on starts, so it expires rather than being maintained. A variant of `Direction` may appear in hand-written core sources only inside an allowlisted item, and in generated sources only in that predicate. Naming the *type* is unrestricted, because passing a value through a signature is not a branch. |
 | `generate --check` | Byte-identical regeneration. See [generation.md](generation.md). |
 | `attest` | Double entry, provenance, cross-table invariants, recorded defects. See [generation.md](generation.md). |
-| `conform --check` | Schema, unique ids, declared rule coverage. See [conformance.md](conformance.md). |
+| `conform --check` | Schema, unique ids, declared rule coverage. See [conformance.md](conformance.md). Declared coverage is a subtraction with two operands, and either can be the one that does not exist yet: before `crates/jlreq-conform/cases` is created at all, the census names the subtraction as the check that did not run and says how many inventoried rules it would have closed over. Creating the directory turns it on, empty or not. |
 
 Four invariants are held by the shape of the API rather than by a gate, and each is stated
 here so none is mistaken for unguarded.
@@ -3369,10 +3545,19 @@ Noted here, changed in the implementation phase — this phase writes documents 
     first `xtask` gate that reads it, and each added to `CODEOWNERS` in that commit — the
     code-owner guard is what makes them controls rather than documentation.
 15. **`docs/decisions/`**: the published readings this design commits to, one file each,
-    including `adjustment-preference.toml` (where the four non-ladder demerit components
+    including `adjustment-preference.md` (where the four non-ladder demerit components
     sit, which JLReq does not state — the ladder pair is §3.8.2's and is not a choice),
-    `ambiguous-context.toml` (§3.9.2's conceded case), and
-    `compatibility-ideographs.toml`.
+    `ambiguous-context.md` (§3.9.2's conceded case), `unlisted-code-point.md` (the silence
+    §3.9.2 records that JIS X 4051 leaves open), and `compatibility-ideographs.md` (whether
+    a CJK Compatibility Ideograph is cl-19, and whether it is normalized first).
+
+    Markdown and not TOML, which an earlier revision of this list said. A reading is an
+    argument from the specification's own words, with the alternatives and the reason each
+    is worse; TOML would either flatten that into one quoted string or invent a record
+    format for paragraphs. Nothing reads these mechanically — the `conform` gate's overlay
+    keys name a reading by its file stem, which is the same whichever extension follows it
+    — so the format is chosen for the reader, and `docs/decisions/README.md` fixes the four
+    headings every one of them carries.
 
 No change is needed to `typos.toml` or `clippy.toml`. Both were probed: every romanized
 term this design uses — warichu, jukugo, katatsuki, nakatsuki, kenten, hanmen, kihon,

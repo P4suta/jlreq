@@ -24,7 +24,11 @@ use core::fmt;
 /// path is a letter and two, so four is the specification's depth with headroom for a
 /// revision that numbers one level deeper. The bound exists because this crate allocates
 /// nothing, and it is part of what `parse` checks.
-const MAX_PARTS: usize = 4;
+///
+/// Crate-visible because the generated inventory writes an address as its components: the
+/// emitter cannot call [`Address::parse`] and refuse a spelling at run time, so it states
+/// the representation and the assertion below reads it back.
+pub(crate) const MAX_PARTS: usize = 4;
 
 /// The number of character classes §3.9.2 closes the set at.
 const CLASS_COUNT: u8 = 30;
@@ -232,6 +236,45 @@ impl Address {
         }
     }
 
+    /// The address a generated row states, assembled from its rendered components.
+    ///
+    /// The emitter writes the representation directly rather than calling [`parse`], because
+    /// a generated table is a `const` and a parse that could answer `None` at run time is
+    /// not one. Nothing is trusted for it: the compile-time assertion over `RULES` reads
+    /// every assembled address back through [`is_canonical`], so a component the grammar
+    /// refuses is a build failure rather than a rule nobody can cite.
+    ///
+    /// A `note` of zero is the absence of one, which is unambiguous because JLReq numbers
+    /// its notes from one and `is_canonical` refuses a zeroth note.
+    ///
+    /// [`parse`]: Address::parse
+    /// [`is_canonical`]: Address::is_canonical
+    pub(crate) const fn assembled(
+        appendix: Option<Appendix>,
+        values: [u8; MAX_PARTS],
+        depth: u8,
+        note: u8,
+    ) -> Self {
+        let section = Section {
+            appendix,
+            parts: Parts { values, depth },
+        };
+        if note == 0 {
+            Self(Detail::Section(section))
+        } else {
+            Self(Detail::Note(section, note))
+        }
+    }
+
+    /// Whether this address names a numbered note of its section rather than the whole of
+    /// it.
+    ///
+    /// Crate-visible because the two are what the inventory partitions into and the size of
+    /// each partition is asserted against the published document.
+    pub(crate) const fn is_note(self) -> bool {
+        matches!(self.0, Detail::Note(_, _))
+    }
+
     /// Whether this address is the one form `parse` accepts and `Display` writes.
     ///
     /// Held over generated data by a compile-time assertion, because the emitter writes
@@ -326,27 +369,18 @@ impl Standing {
 
 /// Every inventoried rule, in the specification's own reading order.
 ///
-/// # Empty, and why
+/// Generated. Stage 1 of the pipeline reads the vendored snapshot of the published
+/// specification into `spec/derived/rules.tsv`, and stage 2 turns that file into
+/// `src/generated/inventory.rs`, which holds these rows and one named [`RuleId`] constant
+/// per row (see `docs/design/generation.md`). A hand edit to either is a bug even when it
+/// is correct, because the next revision of the specification will not carry it forward
+/// (ADR-0009).
 ///
-/// The inventory is empty because `spec/derived/rules.tsv` does not exist yet. That file
-/// is produced by stage 1 of the pipeline, which reads the vendored snapshot of the
-/// published specification and emits the address, the standing and the quoted sentence of
-/// every normative statement, every appendix note and every matrix cell (see
-/// `docs/design/generation.md`). Neither the snapshot nor the tool is committed yet, so
-/// there is nothing to read a rule from.
-///
-/// Everything indexing this table therefore answers over an empty inventory:
-/// [`RuleId::ALL`] is empty and [`RuleId::parse`] finds nothing. That is the honest state
-/// of an inventory nobody has read the specification for, and not a placeholder — a rule
-/// invented here would be published as a requirement of a document nobody checked it
-/// against (ADR-0009).
-///
-/// Two things arrive with the inventory. The rows below, one per rule. And one named
-/// constant per row — `LINE_START_PROHIBITION` for `3.1.7`, `MIDDLE_DOT_SUM` for `B.2#3`,
-/// and so on — so that a rule is cited in code by a name and in a report by its address.
-/// Both are written by the generator rather than by hand once it exists, which is why
-/// neither is hand-written now.
-pub(crate) const RULES: &[Rule] = &[];
+/// What the inventory covers is §3 and Appendices B through F: every section that states
+/// something in its own words, and every note of the four `Notes` sections. The matrix
+/// cells `Detail::Cell` addresses are transcribed rather than derived and join this table
+/// with the captured matrices, so a cell address parses today and resolves to no rule.
+pub(crate) use crate::generated::inventory::RULES;
 
 /// One row of the rule inventory.
 ///
@@ -988,17 +1022,66 @@ mod tests {
     }
 
     #[test]
-    fn the_inventory_is_empty_until_it_is_generated() {
+    fn a_rule_is_reached_by_the_address_the_specification_gives_it() {
+        let closing = RuleId::parse("3.1.9").expect("§3.1.9 states something in its own words");
+        assert_eq!(
+            Rendered::of(closing.address()).as_str(),
+            "3.1.9",
+            "the address parsed and the address reported are the same spelling"
+        );
+        assert_eq!(closing.standing(), Standing::Normative);
         assert!(
-            RuleId::ALL.is_empty(),
-            "spec/derived/rules.tsv has not been emitted yet"
+            closing.statement().contains("closing brackets"),
+            "the sentence is quoted from the published document"
+        );
+    }
+
+    #[test]
+    fn an_address_the_inventory_does_not_name_is_no_rule() {
+        assert_eq!(
+            RuleId::parse("B.1@cl-05,cl-05"),
+            None,
+            "a matrix cell is transcribed rather than derived and joins the inventory with \
+             the captured matrices"
         );
         assert_eq!(
-            RuleId::parse("3.1.9"),
+            RuleId::parse("2.1.1"),
             None,
-            "the address is well formed and the inventory has no rule at it"
+            "the inventory covers §3 and Appendices B through F: a rule no layer here \
+             answers for could never gain the case ADR 0013 requires of every one"
         );
         assert_eq!(RuleId::parse("not an address"), None);
+    }
+
+    #[test]
+    fn every_identifier_of_the_inventory_addresses_its_own_row() {
+        for (ordinal, rule) in RuleId::ALL.iter().enumerate() {
+            let address = Rendered::of(rule.address());
+            assert_eq!(
+                RuleId::parse(address.as_str()),
+                Some(*rule),
+                "identifier {ordinal} and its address name one rule"
+            );
+            assert!(!rule.statement().is_empty());
+        }
+    }
+
+    #[test]
+    fn exactly_three_rules_read_the_writing_direction() {
+        let marked = RuleId::ALL
+            .iter()
+            .filter(|rule| rule.is_direction_conditional())
+            .map(|rule| Rendered::of(rule.address()));
+        assert!(
+            marked
+                .into_iter()
+                .map(|rendered| rendered.as_str() == "3.1.3"
+                    || rendered.as_str() == "3.2.5"
+                    || rendered.as_str() == "3.3.5")
+                .eq([true, true, true]),
+            "ADR 0011 fixes §3.1.3, §3.2.5 and §3.3.5, and a fourth is a change to generated \
+             data plus a code-owner review rather than an incidental branch"
+        );
     }
 
     #[test]

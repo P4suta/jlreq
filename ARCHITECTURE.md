@@ -42,6 +42,12 @@ These are enforced mechanically by `just purity`, `just no-std`, `just wasm`, an
    The generated rule inventory marks them, `docs/direction-sites.toml` names the item that
    reads each, and `just direction` fails unless the two sets are equal, so a fourth branch
    is a change to generated data plus a code-owner review rather than an incidental `if`.
+   The inventory is generated whole while the reading half is written milestone by
+   milestone, so a marked rule whose reader has not been written carries a `[[pending]]`
+   entry in that same file naming the crate whose first item closes it. The gate reports
+   each one by name as a rule the equality did not run over, and the entry is itself a
+   violation once anything reads the rule or once that crate declares an item — a statement
+   about a subject that does not exist yet, never an exemption.
    Everything else the specification states twice is exact axis mapping, and the inline and
    block axes are distinct types with no conversion in either direction. A branch that reads
    the direction indirectly is invisible to that gate, so the conformance suite composes
