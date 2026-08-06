@@ -113,7 +113,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::shared::{self, CoreCrate, Gate};
+use crate::shared::{self, CoreCrate, Gate, array_header, basic_string, before_comment};
 
 /// The `direction` gate, as the dispatcher sees it.
 pub(crate) const GATE: Gate = Gate {
@@ -1231,7 +1231,8 @@ struct Draft {
 /// has no outside dependencies" declares none itself. It reads the two forms this file is
 /// written in — `[[site]]` and `[[pending]]` tables of one-line basic strings — and rejects
 /// everything else rather than skipping it, because a key this reader passed over in silence
-/// would be a key no reviewer was told about.
+/// would be a key no reviewer was told about. The line primitives are `shared`'s, so this
+/// gate and `conform`'s deferral ledger read one language rather than two (ADR 0019).
 fn parse_allowlist(text: &str) -> (Allowlist, Vec<String>) {
     let mut allowlist = Allowlist::default();
     let mut problems = Vec::new();
@@ -1412,46 +1413,6 @@ fn close_pending(
         crate_name,
         line,
     });
-}
-
-/// The name inside an `[[array]]` header, if the line is one.
-fn array_header(line: &str) -> Option<&str> {
-    line.strip_prefix("[[")
-        .and_then(|rest| rest.strip_suffix("]]"))
-        .map(str::trim)
-}
-
-/// Everything before the first `#` that is not inside a string.
-fn before_comment(line: &str) -> &str {
-    let mut inside = false;
-    let mut escaped = false;
-    for (index, character) in line.char_indices() {
-        match character {
-            '\\' if inside => escaped = !escaped,
-            '"' if !escaped => inside = !inside,
-            '#' if !inside => return line.get(..index).unwrap_or(line),
-            _ => escaped = false,
-        }
-    }
-    line
-}
-
-/// The contents of a one-line basic string, when that is all the rest of the line holds.
-fn basic_string(rest: &str) -> Option<&str> {
-    let opened = rest.trim_start().strip_prefix('"')?;
-    let mut escaped = false;
-    for (index, character) in opened.char_indices() {
-        match character {
-            '\\' if !escaped => escaped = true,
-            '"' if !escaped => {
-                let value = opened.get(..index)?;
-                let tail = opened.get(index.saturating_add(1)..)?;
-                return tail.trim().is_empty().then_some(value);
-            },
-            _ => escaped = false,
-        }
-    }
-    None
 }
 
 /// The rule inventory, as much of it as this gate reads.
