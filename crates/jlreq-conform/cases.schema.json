@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/P4suta/kumihan/blob/main/crates/jlreq-conform/cases.schema.json",
+  "title": "kumihan conformance case file",
+  "description": "One file per JLReq section. The format is specified by docs/design/conformance.md and enforced by `cargo run -p xtask -- conform --check`; the two are one contract stated twice, once for this workspace and once for everyone else. Every number is an integer inside 2^53, so a parser using IEEE-754 doubles is exact (ADR 0005). Every amount is written as a fraction and a unit count that agree under the current denominator, so the published suite is independent of kumihan's 1/720 unit (ADR 0007).",
+  "type": "object",
+  "required": ["section", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "Points at the committed schema beside the cases directory.",
+      "const": "../cases.schema.json"
+    },
+    "section": {
+      "description": "The JLReq section this file is about, in the canonical address rendering. It is also the file's own name.",
+      "$ref": "#/$defs/address"
+    },
+    "heading_en": {
+      "description": "The section heading, quoted from the published document. JLReq publishes every heading in two locales, so a file carrying one carries the other.",
+      "type": "string",
+      "minLength": 1
+    },
+    "heading_ja": {
+      "description": "The same heading in Japanese.",
+      "type": "string",
+      "minLength": 1
+    },
+    "cases": {
+      "description": "The cases this section publishes, each with a unique id.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "address": {
+      "description": "A rule address in the specification's own spelling: a section path, a section and a note ordinal, or one matrix cell. One rendering is canonical and nothing else is an address, so the bytes in a generated table, in a doc comment and in a case file are the same bytes (ADR 0013). `#` separates a note ordinal, which the published document gives no machine-readable identifier; `line-head` and `line-end` are the two axes the matrices print as prose labels. A matrix carries one line-head row and one line-end column, so the two are not interchangeable.",
+      "type": "string",
+      "pattern": "^(?:[A-G](?:\\.[1-9][0-9]*)*|[1-9][0-9]*(?:\\.[1-9][0-9]*)*)(?:#[1-9][0-9]*|@(?:cl-(?:0[1-9]|[12][0-9]|30)|line-head),(?:cl-(?:0[1-9]|[12][0-9]|30)|line-end))?$"
+    },
+    "integer": {
+      "description": "An integer a JSON parser using IEEE-754 doubles reads exactly.",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "fraction": {
+      "description": "An amount as JLReq states it: a numerator and a denominator, as a fraction of the referent's em. Not confined to Table 1's tokens, because §3.1.6 requires a full em after a sentence-final dividing punctuation mark.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "integer" },
+        { "type": "integer", "minimum": 1 }
+      ]
+    },
+    "amount": {
+      "description": "One amount, stated three ways that must agree: the fraction JLReq writes, the same amount in kumihan's 1/720 unit, and the same amount resolved into the case's own caller units. `conform --check` asserts the first two agree under the current denominator, which is what makes the published suite denominator-independent.",
+      "type": "object",
+      "required": ["em"],
+      "additionalProperties": false,
+      "properties": {
+        "em": { "$ref": "#/$defs/fraction" },
+        "units": { "$ref": "#/$defs/integer" },
+        "resolved": { "$ref": "#/$defs/integer" }
+      }
+    },
+    "case": {
+      "description": "One case: one input, and what the specification permits and forbids as an answer to it.",
+      "type": "object",
+      "required": [
+        "id",
+        "rules",
+        "standing",
+        "quote",
+        "rationale",
+        "input",
+        "permitted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "`<section>/<subject>/<variant>`, unique across the suite.",
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+/[^/]+$"
+        },
+        "rules": {
+          "description": "Every rule this case exercises, by address. The declared-coverage gate subtracts the union of these from the rule inventory and requires the remainder to be empty.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/address" }
+        },
+        "covers": {
+          "description": "A family: a row, a column or a class-pair set of one matrix, credited whole by the declared-coverage gate. Table cells are rules, so the inventory runs to several thousand and a case per cell would be abandoned; a family still has to exercise each cell it claims under the dynamic half of the gate.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/address" }
+        },
+        "standing": {
+          "description": "What kind of claim this case makes, matching `jlreq_spec::Standing`. `unstated` and `adjudicated` record that JLReq does not decide, and both readings then appear under `permitted` with `source` naming each. Nothing in this format lets a silence be laundered into a requirement.",
+          "enum": ["normative", "alternative", "unstated", "adjudicated"]
+        },
+        "quote": {
+          "description": "The specification sentence, verbatim, so a report is readable without kumihan's source. A field rather than a comment, because JSON has none and because a published disagreement must appear in a report.",
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "description": "Why the expectations below follow from that sentence, in a sentence a reviewer can disagree with.",
+          "type": "string",
+          "minLength": 1
+        },
+        "input": { "$ref": "#/$defs/input" },
+        "permitted": {
+          "description": "The (policy, expectation) pairs the specification permits. A `policy` is an overlay on `Policy::JLREQ`, not an identity; the entry that applies to a declared policy and names the most questions is the one selected, and `conform --check` makes that unique by requiring the entries' key sets to be totally ordered by inclusion.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/permitted" }
+        },
+        "forbidden": {
+          "description": "Outcomes the specification excludes even though they lie between two permitted ones. §3.1.9's quarter em is the canonical instance, and it is the value a naively continuous justifier emits.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/forbidden" }
+        },
+        "disagreements": {
+          "description": "Implementations kumihan has measured that answer this case differently, with kumihan's own reading and the evidence for it. Data rather than prose, so a disagreement appears in a report (ADR 0006).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/disagreement" }
+        }
+      }
+    },
+    "input": {
+      "description": "What the case supplies: the base running-text stream, any annotation streams, the constructs over them, the break opportunities, and the measure. Exactly what `Paragraph` accepts and nothing else — whether a line is the last one, for instance, is something composition decides.",
+      "type": "object",
+      "required": ["kind", "text", "scales", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Which of the three questions this case asks. A `compose` case additionally requires `candidates` and `measure`, because a line cannot be composed without them.",
+          "enum": ["classify", "boundary", "compose"]
+        },
+        "text": {
+          "description": "The base running-text stream, in reading order.",
+          "type": "string"
+        },
+        "scales": {
+          "description": "The character sizes this stream declares, in the caller's own unit.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scale" }
+        },
+        "items": {
+          "description": "One item per occurrence, in reading order.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/item" }
+        },
+        "annotations": {
+          "description": "Further streams, each the same shape as the base one, because annotation text is a second stream and not a range of the first (ADR 0016). Indexed by `annotation` in `constructs`. The ruby size is stated here and only here: §3.3.3 does not close the set, and the caller shaped the reading at some size and measured it there.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/stream" }
+        },
+        "constructs": { "$ref": "#/$defs/constructs" },
+        "candidates": {
+          "description": "The break opportunities the caller's UAX #14 implementation found. An offset of zero and an offset at the end of the text name the paragraph's own edges; both are accepted and neither creates a line (ADR 0018).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate" }
+        },
+        "measure": {
+          "description": "The line length, in the caller's own unit.",
+          "$ref": "#/$defs/integer"
+        },
+        "direction": {
+          "description": "The writing direction, when the case is specific to one. A case naming neither is composed both ways by the direction-parity gate and the inline results must be bit-identical, which is how ADR 0011's \"exactly three direction-conditional rules\" is proved over the whole corpus rather than reviewed.",
+          "enum": ["horizontal", "vertical"]
+        },
+        "first_line_indent": {
+          "description": "The paragraph's first-line indent, in the caller's own unit.",
+          "$ref": "#/$defs/integer"
+        }
+      }
+    },
+    "stream": {
+      "description": "One annotation stream: the same shape as the base one, validated by the same routine, indexed by its own ordinal (ADR 0016, ADR 0018).",
+      "type": "object",
+      "required": ["text", "scales", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "scales": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scale" }
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/item" }
+        }
+      }
+    },
+    "scale": {
+      "description": "One declared character size, in the caller's own unit. Anisotropic on purpose: §3.3.3 gives one-third ruby (三分ルビ) a block extent of half the base em and an inline extent of a third, so a single scalar per size cannot hold it.",
+      "type": "object",
+      "required": ["inline_em", "block_em"],
+      "additionalProperties": false,
+      "properties": {
+        "inline_em": { "type": "integer", "minimum": 1 },
+        "block_em": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "item": {
+      "description": "One occurrence of one Appendix A key (ADR 0018). `conform --check` requires every item to be exactly one key — except a Western ligature, which is several cl-27 keys on the proportional frame — because a case whose input kumihan would refuse to build a `Text` from tests nothing.",
+      "type": "object",
+      "required": ["start", "advance", "scale"],
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "description": "Where this occurrence begins, in bytes of its own stream. Strictly increasing, on a character boundary, in range.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "advance": {
+          "description": "How wide the caller measured it, in their own unit. Supplied rather than computed: kumihan never asks how wide a character is (ADR 0002).",
+          "$ref": "#/$defs/integer"
+        },
+        "scale": {
+          "description": "Which of the stream's declared sizes this occurrence is set at.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31
+        },
+        "frame": {
+          "description": "What the supplied advance covers: the character frame (字幅). Required whenever Appendix A names the item's key under cl-01, cl-02, cl-05, cl-06 or cl-07, and `conform --check` enforces it — there the frame decides a geometry and an unstated one has no answer to report (ADR 0018).",
+          "enum": [
+            "unstated",
+            "full-em",
+            "half-em",
+            "third-em",
+            "quarter-em",
+            "proportional"
+          ]
+        },
+        "role": {
+          "description": "The syntactic job the document gives this occurrence. Needed by six code points and no others.",
+          "enum": [
+            "unstated",
+            "decimal-point",
+            "digit-group-separator",
+            "unit-symbol",
+            "quantity-symbol",
+            "sentence-terminator",
+            "sentence-medial"
+          ]
+        }
+      }
+    },
+    "candidate": {
+      "description": "One break opportunity, at a byte offset into the base stream.",
+      "type": "object",
+      "required": ["at"],
+      "additionalProperties": false,
+      "properties": {
+        "at": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "constructs": {
+      "description": "The constructs declared over the streams above. A construct is named in a report by its kind and its position in its array — the ruby you wrote third — never by an identity kumihan allocated, because a caller never saw those (ADR 0015).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ruby": { "type": "array", "items": { "$ref": "#/$defs/ruby" } },
+        "emphasis": { "type": "array", "items": { "$ref": "#/$defs/emphasis" } },
+        "tate_chu_yoko": { "type": "array" },
+        "warichu": { "type": "array" },
+        "furiwake": { "type": "array" },
+        "jidori": { "type": "array" },
+        "reference_marks": { "type": "array" },
+        "ornaments": { "type": "array" },
+        "formulae": { "type": "array" }
+      }
+    },
+    "range": {
+      "description": "A half-open range of ordinals into one stream, as `[first, past-the-end]`. The runner rejects a case that indexes one stream with another's ordinal, which is the same invariant `ItemIndex` and `AnnotationIndex` hold inside kumihan (ADR 0016).",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "ruby": {
+      "description": "One ruby construct: a range of the base stream, the annotation stream holding the reading, and the run pairing. There is deliberately no size here and no `ruby.size` policy question — the annotation stream's own `scales` is where the ruby em is stated, and it is stated once (ADR 0019).",
+      "type": "object",
+      "required": ["base", "annotation", "runs"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "$ref": "#/$defs/range" },
+        "annotation": { "type": "integer", "minimum": 0 },
+        "style": { "enum": ["mono", "group", "jukugo"] },
+        "runs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/run" }
+        }
+      }
+    },
+    "run": {
+      "description": "One pairing inside a ruby construct: which base characters this reading belongs to. §B.2 notes 9 through 11 and §C.2 notes 6 through 8 all turn on whether two neighbors are in the same run, which is why the pairing is data rather than an inference.",
+      "type": "object",
+      "required": ["base", "annotation"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "$ref": "#/$defs/range" },
+        "annotation": { "$ref": "#/$defs/range" }
+      }
+    },
+    "emphasis": {
+      "description": "One emphasis-dot (圏点) construct. No stream and no side, because §3.3.9 fixes the size and the side and repeats one mark.",
+      "type": "object",
+      "required": ["base", "symbol", "advance"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "$ref": "#/$defs/range" },
+        "symbol": {
+          "description": "The mark, as a hexadecimal code point.",
+          "type": "string",
+          "pattern": "^[0-9A-F]{4,6}$"
+        },
+        "advance": { "$ref": "#/$defs/integer" }
+      }
+    },
+    "permitted": {
+      "description": "One permitted answer, with the policy that selects it and the source that states it.",
+      "type": "object",
+      "required": ["policy", "source", "expect"],
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "description": "An overlay on `Policy::JLREQ`: a partial map from a question's stable dotted path to a choice's stable name. `{}` names none, so it applies to every policy and is the case's fallback entry. Renaming a question therefore breaks the case files at gate time rather than silently.",
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "source": {
+          "description": "Who states this answer: \"JLReq preferred (B.2#2)\", \"JIS X 4051 (3.1.9, Figure 77)\", and so on.",
+          "type": "string",
+          "minLength": 1
+        },
+        "expect": { "$ref": "#/$defs/expect" }
+      }
+    },
+    "forbidden": {
+      "description": "One outcome the specification excludes, and the sentence that excludes it.",
+      "type": "object",
+      "required": ["expect", "why"],
+      "additionalProperties": false,
+      "properties": {
+        "expect": { "$ref": "#/$defs/expect" },
+        "why": { "type": "string", "minLength": 1 }
+      }
+    },
+    "expect": {
+      "description": "What an implementation should answer. A `forbidden` entry states only the fields it forbids, so every field here is optional and a missing one asserts nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": { "$ref": "#/$defs/class" },
+        "boundary": { "$ref": "#/$defs/boundary" },
+        "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } },
+        "violations": {
+          "description": "Every rule the composition could not satisfy, by address. An empty array asserts that it satisfied all of them.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/address" }
+        }
+      }
+    },
+    "class": {
+      "description": "A classification answer: the class number §3.9.2 gives, and the rules that decided it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "item": { "type": "integer", "minimum": 0 },
+        "class": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/address" } }
+      }
+    },
+    "boundary": {
+      "description": "A boundary answer. The conditional spaces, never their sum: §B.2 note 3 makes the space between two middle dots the sum of a quarter em of each, and §D.2 note 3 then gives the two components different reduction priorities, which a single number cannot state (ADR 0014).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "before": { "type": "integer", "minimum": 0 },
+        "spaces": { "type": "array", "items": { "$ref": "#/$defs/space" } },
+        "breakable": { "type": "boolean" },
+        "permitted": { "type": "boolean" },
+        "ruby_overhang": { "$ref": "#/$defs/amount" },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/address" } }
+      }
+    },
+    "space": {
+      "description": "One conditional space: one neighbor's contribution to the space at a boundary.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "em": { "$ref": "#/$defs/fraction" },
+        "units": { "$ref": "#/$defs/integer" },
+        "resolved": { "$ref": "#/$defs/integer" },
+        "referent": {
+          "description": "Whose em the amount is a fraction of, which Appendix B writes `be` and `af`.",
+          "enum": ["preceding", "trailing"]
+        },
+        "reduction": {
+          "description": "How the amount shrinks. §3.1.9's two-valued case is not a range: it says twice that at the line end \"the possibilities are only half em spacing or solid\", and a continuous notion of shrink emits the value the specification forbids.",
+          "enum": ["rigid", "range", "discrete"]
+        },
+        "floor": { "$ref": "#/$defs/fraction" },
+        "floor_units": { "$ref": "#/$defs/integer" },
+        "ladder": {
+          "description": "Which ladder the stage below belongs to. Appendix D's six steps and Appendix E's four are two orderings of two different things and §3.8.2 orders the ladders themselves, so a bare stage would mean two things in one field (ADR 0014).",
+          "enum": ["reduction", "expansion"]
+        },
+        "stage": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "rule": { "$ref": "#/$defs/address" }
+      }
+    },
+    "line": {
+      "description": "One composed line. The three quantities are ADR 0017's and none is reconstructed by the runner, because two runners would reconstruct them differently.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "placements": {
+          "description": "The caller's own glyph-box origins, always on the line's own inline axis and relative to the line's origin, one per item of the line. May be negative and may run past `extent`. A segment's interior items are here like any other; §3.2.5's tate-chu-yoko (縦中横) does not run along this axis, so its items all carry the segment's own inline origin and their spread is `parts[].across`.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/integer" }
+        },
+        "trailing": {
+          "description": "The realized conditional space at the line end, whether or not it lives inside the last item's supplied advance.",
+          "$ref": "#/$defs/amount"
+        },
+        "extent": {
+          "description": "The line in normalized geometry, excluding anything hung outside the measure.",
+          "$ref": "#/$defs/integer"
+        },
+        "trims": {
+          "description": "Every unit taken out of a supplied advance, with the sentence that took it. `conform --check` requires each rule to be §3.1.2 or a Table 1 cell stating that amount with that referent; without the check, an implementation could discharge an overlong line by subtracting an arbitrary quantity from a caller's advance and calling it a trim (ADR 0002, ADR 0017).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/trim" }
+        },
+        "parts": {
+          "description": "The sub-lines of every segment touching this line. Empty for a case with no segment, which is most of them.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/part" }
+        },
+        "hanging": {
+          "description": "How far hanging punctuation (ぶら下げ, burasage) extends past the measure.",
+          "$ref": "#/$defs/integer"
+        }
+      }
+    },
+    "trim": {
+      "description": "One unit count taken out of one item's supplied advance, with the sentence that took it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "item": { "type": "integer", "minimum": 0 },
+        "em": { "$ref": "#/$defs/fraction" },
+        "units": { "$ref": "#/$defs/integer" },
+        "resolved": { "$ref": "#/$defs/integer" },
+        "referent": { "enum": ["preceding", "trailing"] },
+        "rule": { "$ref": "#/$defs/address" }
+      }
+    },
+    "part": {
+      "description": "One sub-line of one segment. `inline` and `block` are its origin relative to the line's; `across` is one block offset per interior item and is non-empty only for §3.2.5's tate-chu-yoko (縦中横).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "segment": { "type": "integer", "minimum": 0 },
+        "index": { "type": "integer", "minimum": 0 },
+        "items": { "$ref": "#/$defs/range" },
+        "inline": { "$ref": "#/$defs/integer" },
+        "block": { "$ref": "#/$defs/integer" },
+        "extent": { "$ref": "#/$defs/integer" },
+        "across": { "type": "array", "items": { "$ref": "#/$defs/integer" } }
+      }
+    },
+    "disagreement": {
+      "description": "One implementation kumihan has measured that answers this case differently. Publishing these is uncomfortable and correct: a case saying \"we read §3.1.9 this way, this implementation does otherwise, here is why\" is more useful to the ecosystem than a green suite that hides the question (ADR 0006).",
+      "type": "object",
+      "required": [
+        "implementation",
+        "version",
+        "behavior",
+        "our_reading",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "implementation": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "behavior": { "type": "string", "minLength": 1 },
+        "our_reading": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "description": "Where kumihan's reading is recorded, as a repository path.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
