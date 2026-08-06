@@ -5,6 +5,8 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/jlreq-unit",
+  "crates/jlreq-spec",
   "crates/jlreq-class",
   "crates/jlreq-spacing",
   "crates/jlreq-line",

@@ -22,6 +22,14 @@ git_release_enable = false
 changelog_update = false
 
 [[package]]
+name = "jlreq-unit"
+version_group = "kumihan"
+
+[[package]]
+name = "jlreq-spec"
+version_group = "kumihan"
+
+[[package]]
 name = "jlreq-class"
 version_group = "kumihan"
 
@@ -43,6 +51,8 @@ version_group = "kumihan"
 changelog_update = true
 changelog_path = "./CHANGELOG.md"
 changelog_include = [
+  "jlreq-unit",
+  "jlreq-spec",
   "jlreq-class",
   "jlreq-spacing",
   "jlreq-line",

@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "jlreq-unit"
+description = "Quantities, axes, and the item vocabulary shared by the JLReq Japanese layout crates"
+keywords = ["japanese", "typesetting", "jlreq", "text-layout", "no-std"]
+categories = ["text-processing", "internationalization", "no-std::no-alloc"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true

@@ -27,5 +27,13 @@ name = "jlreq-spacing"
 version = "0.0.0"
 
 [[package]]
+name = "jlreq-spec"
+version = "0.0.0"
+
+[[package]]
+name = "jlreq-unit"
+version = "0.0.0"
+
+[[package]]
 name = "xtask"
 version = "0.0.0"
