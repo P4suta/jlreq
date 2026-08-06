@@ -17,3 +17,19 @@
 # are compared byte-exact, so never rewrite LF <-> CRLF inside them.
 **/tests/fixtures/** -text
 fuzz/corpus/** -text
+
+# The conformance suite is a published deliverable rather than a fixture: it is read
+# by implementations that are not this one, and `conform --check` refuses a case file
+# holding a CR. It is written with LF everywhere, on every platform.
+crates/jlreq-conform/cases.schema.json text eol=lf
+crates/jlreq-conform/cases/** text eol=lf
+crates/jlreq-conform/answers/** text eol=lf
+
+# The vendored upstream snapshot is verified byte for byte against the SHA-256 in
+# spec/PROVENANCE.toml, so Git must never rewrite a line ending inside it. As
+# retrieved, every one of these files is already LF throughout, so the marker
+# records an invariant rather than protecting a difference — which is the point:
+# an upstream revision that arrives with CRLF must change the digest and fail
+# `attest --digests`, not be silently normalized into agreement with the old one.
+spec/snapshot/** -text
+spec/upstream/** -text

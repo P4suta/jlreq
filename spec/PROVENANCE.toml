@@ -1,0 +1,210 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Provenance of every upstream file this repository reads.
+#
+# `cargo run -p xtask -- attest --digests` reads the `[[document]]` blocks below and hashes
+# each recorded file that is present on disk. That is the form `just attest` runs and the
+# form CI runs: without it the digest chain is a closed loop, because every derived file
+# states the digest of the snapshot as it currently sits on disk and `derive --check`
+# rereads whatever is there. This file is what anchors that loop to the bytes W3C and
+# Unicode published. No gate fetches anything: CI must not depend on w3.org or unicode.org
+# being reachable (docs/design/generation.md).
+#
+# `cargo run -p xtask -- derive` reads this file too, and closes the input directory against
+# it: every file vendored under `snapshot/` must be recorded here, every derivation may read
+# only a recorded document, and `specification-date` must equal the publication date the
+# vendored rendering itself carries.
+#
+# Every block states:
+#
+#   path       where the file sits, relative to spec/
+#   url        where these bytes were retrieved from
+#   retrieved  the date this repository fetched them
+#   sha256     their digest, lowercase hex
+#   bytes      their length
+#   published  the date the upstream work itself carries
+#   purpose    what this repository reads the file for
+#
+# The files under `snapshot/` are committed, so regeneration needs no network and the
+# byte-identity check is a hard `git diff --exit-code` rather than a job that can fail
+# for connectivity. The files under `upstream/` are not committed: `.gitignore`
+# excludes that directory, because the six matrices are published only as PDF and a
+# PDF is not a source this project derives anything from (ADR 0009). They are recorded
+# anyway, so that a developer transcribing a matrix can prove the bytes in front of
+# them are the bytes this repository was written against:
+#
+#   mkdir -p spec/upstream
+#   for number in 2 3 4 5 6 7; do
+#     for locale in en ja; do
+#       curl -sS -o "spec/upstream/table_$locale$number.pdf" \
+#         "https://www.w3.org/TR/jlreq/tables/table_$locale$number.pdf"
+#     done
+#   done
+#   cargo run -p xtask -- attest --digests
+#
+# One upstream file is deliberately absent. The pre-ReSpec editorial source at
+# https://raw.githubusercontent.com/w3c/jlreq/gh-pages/index.html carries the same 25
+# charclass tables, but it has no generated section numbers and 861 unresolved
+# cross-reference placeholders, so ADR 0013's requirement that a rule address quote the
+# document's own rendered numbering cannot be met from it. It was retrieved 2026-08-05
+# and measured at 1925819 bytes, sha256
+# 121eaf237819942c1e26c074bde48e4238428f899777ec2fdd95c83637b9f86f. Recording that
+# measurement here and vendoring nothing is the whole of its usefulness: a second
+# rendering to diff against costs 1.9 MB of committed bytes that no stage reads, and
+# `docs/design/generation.md` names exactly one snapshot.
+
+# The revision of JLReq every generated file was generated from. Stated at the top
+# level, above the first table, so that a `published` date describing one upstream
+# document is never mistaken for the snapshot's own: `cargo run -p xtask -- generate`
+# writes this string into the header of every emitted module, and refuses to emit
+# anything at all when it is absent.
+specification-date = "2020-08-11"
+
+[[document]]
+path = "snapshot/index.html"
+url = "https://www.w3.org/TR/jlreq/"
+retrieved = "2026-08-05"
+sha256 = "cfb1def5bf1594d59080a26d8d03c2670bb3116490ab57ef6e131b166a7c832f"
+bytes = 2318308
+published = "2020-08-11"
+purpose = "Requirements for Japanese Text Layout, W3C Working Group Note, as W3C renders it. The derived stage reads Appendix A's 25 charclass tables, the appendix legends and notes, and the rendered section number of every heading, which is the only place a rule address can be read from (ADR 0013)."
+
+[[document]]
+path = "snapshot/ucd/PropList.txt"
+url = "https://www.unicode.org/Public/17.0.0/ucd/PropList.txt"
+retrieved = "2026-08-06"
+sha256 = "130dcddcaadaf071008bdfce1e7743e04fdfbc910886f017d9f9ac931d8c64dd"
+bytes = 145465
+published = "2025-09-09"
+version = "17.0.0"
+purpose = "Unified_Ideograph, which is the base of the cl-19 ideograph predicate. §A.19 lists only the non-ideographic members, and this property is the one that excludes U+3005 and U+303B, which JLReq puts in cl-09 (docs/design/generation.md)."
+
+[[document]]
+path = "snapshot/ucd/Scripts.txt"
+url = "https://www.unicode.org/Public/17.0.0/ucd/Scripts.txt"
+retrieved = "2026-08-06"
+sha256 = "9f5e50d3abaee7d6ce09480f325c706f485ae3240912527e651954d2d6b035bf"
+bytes = 192460
+published = "2025-09-09"
+version = "17.0.0"
+purpose = "Script=Hiragana and Script=Katakana, which stand behind §C.2 note 3's small-kana fallback."
+
+[[document]]
+path = "snapshot/ucd/UnicodeData.txt"
+url = "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt"
+retrieved = "2026-08-06"
+sha256 = "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
+bytes = 2198209
+published = "2025-09-09"
+version = "17.0.0"
+purpose = "Decomposition_Type=Wide and Decomposition_Type=Narrow, and nothing else in the file. Real text carries U+FF08 where Appendix A keys U+0028, and these two mappings are the whole of the folding ADR 0008 permits: full compatibility folding would put U+2160, a genuine cl-19 member, onto the letter I."
+
+[[document]]
+path = "upstream/table_en2.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en2.pdf"
+retrieved = "2026-08-06"
+sha256 = "4ad1150c3820608884da9a06d36989c5a88f9b0bd5e6db4717af0bd706776f8c"
+bytes = 31661
+published = "2020-08-11"
+purpose = "Table 1, the spacing matrix of Appendix B, as the English rendering prints it. Transcribed into spec/captured/table1.en.tsv. The filename is off by one from the table number, which is a recorded defect rather than an absorbed one."
+
+[[document]]
+path = "upstream/table_en3.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en3.pdf"
+retrieved = "2026-08-06"
+sha256 = "abc11675c9c5d5638aa9a3b03db736780a78ff07ccb3833075f57c24c5440d9c"
+bytes = 30130
+published = "2020-08-11"
+purpose = "Table 2, the line-breaking matrix of Appendix C, English rendering."
+
+[[document]]
+path = "upstream/table_en4.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en4.pdf"
+retrieved = "2026-08-06"
+sha256 = "e2750825c403fd047a32259b51697bc0749fcf2809cb4c4a54a7905929454d35"
+bytes = 32017
+published = "2020-08-11"
+purpose = "Table 3, Appendix D's reduction matrix for the JLReq reading, English rendering."
+
+[[document]]
+path = "upstream/table_en5.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en5.pdf"
+retrieved = "2026-08-06"
+sha256 = "17508d6ee68c7cc31d3fbd6893c4e9daf039876f668b0bc46c7d9213c4672d17"
+bytes = 30192
+published = "2020-08-11"
+purpose = "Table 4, Appendix D's reduction matrix for the JIS X 4051 reading, English rendering."
+
+[[document]]
+path = "upstream/table_en6.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en6.pdf"
+retrieved = "2026-08-06"
+sha256 = "62181f4c015e84be2247e30f6d365601d21722e9ff99af7f255ad6f7a684039e"
+bytes = 31004
+published = "2020-08-11"
+purpose = "Table 5, Appendix D's reduction matrix for common book practice, English rendering."
+
+[[document]]
+path = "upstream/table_en7.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_en7.pdf"
+retrieved = "2026-08-06"
+sha256 = "536ba027f76e057504b7e33ed57f8f12bded71ef57aa5a486f86fd8074778eb3"
+bytes = 32176
+published = "2020-08-11"
+purpose = "Table 6, the expansion matrix of Appendix E, English rendering."
+
+[[document]]
+path = "upstream/table_ja2.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja2.pdf"
+retrieved = "2026-08-06"
+sha256 = "e969cbbd30a68d78ad102b1b7e7f7915ffa758b2c9f4574e92bd4ae7b267055b"
+bytes = 566941
+published = "2020-08-11"
+purpose = "Table 1, the spacing matrix of Appendix B, as the Japanese rendering prints it. Transcribed independently into spec/captured/table1.ja.tsv, which is the double entry ADR 0009 requires."
+
+[[document]]
+path = "upstream/table_ja3.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja3.pdf"
+retrieved = "2026-08-06"
+sha256 = "c71b43da76250b20d8df0c24a4f5b8013be85655c2a6728676550b16e8a71f2f"
+bytes = 540682
+published = "2020-08-11"
+purpose = "Table 2, the line-breaking matrix of Appendix C, Japanese rendering."
+
+[[document]]
+path = "upstream/table_ja4.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja4.pdf"
+retrieved = "2026-08-06"
+sha256 = "76af7b1fe842562814698b490d75d7ce0ce53dd6ca1c505c83792b4c045e9cb5"
+bytes = 557917
+published = "2020-08-11"
+purpose = "Table 3, Appendix D's reduction matrix for the JLReq reading, Japanese rendering."
+
+[[document]]
+path = "upstream/table_ja5.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja5.pdf"
+retrieved = "2026-08-06"
+sha256 = "b572bab64dd0ee5065999450ba27a0c59bc2bd477e7174e4563b46e9131c7fbd"
+bytes = 566149
+published = "2020-08-11"
+purpose = "Table 4, Appendix D's reduction matrix for the JIS X 4051 reading, Japanese rendering."
+
+[[document]]
+path = "upstream/table_ja6.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja6.pdf"
+retrieved = "2026-08-06"
+sha256 = "c60fa39fd723de0bcbdc0455a5b1ae7cfaac21e9ac3d3c680cf67b4e655d5c06"
+bytes = 565630
+published = "2020-08-11"
+purpose = "Table 5, Appendix D's reduction matrix for common book practice, Japanese rendering."
+
+[[document]]
+path = "upstream/table_ja7.pdf"
+url = "https://www.w3.org/TR/jlreq/tables/table_ja7.pdf"
+retrieved = "2026-08-06"
+sha256 = "8a6db8dde1b850c8a0324b5113dfe2d1a27b0d78c717f92ca81e1aefa18f2112"
+bytes = 561792
+published = "2020-08-11"
+purpose = "Table 6, the expansion matrix of Appendix E, Japanese rendering."

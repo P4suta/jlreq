@@ -24,3 +24,50 @@ path = ["**/tests/fixtures/**", "fuzz/corpus/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 kumihan contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# The conformance suite. JSON has no comments, so the format contract and the cases
+# that validate against it carry their notice here. They are a published deliverable
+# rather than a fixture, which is why they are named separately from the block above
+# (docs/design/conformance.md, docs/adr/0006).
+[[annotations]]
+path = [
+  "crates/jlreq-conform/cases.schema.json",
+  "crates/jlreq-conform/cases/**",
+  "crates/jlreq-conform/answers/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 kumihan contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# The vendored specification and everything read out of it. The snapshot is W3C's
+# document verbatim; spec/derived/ is generated from it and spec/captured/ is
+# transcribed from the matrices W3C publishes only as PDF, so both carry the same
+# copyright as the work they read (docs/design/generation.md). The notice is the one
+# the snapshot itself prints: "Copyright © 2020 W3C (MIT, ERCIM, Keio, Beihang)".
+[[annotations]]
+path = ["spec/snapshot/index.html", "spec/derived/**", "spec/captured/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020 W3C (MIT, ERCIM, Keio, Beihang)"
+SPDX-License-Identifier = "W3C-20150513"
+
+# The Unicode Character Database extracts, at the version spec/PROVENANCE.toml pins.
+# The notice is the one those files print: "© 2025 Unicode, Inc."
+[[annotations]]
+path = ["spec/snapshot/ucd/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Unicode, Inc."
+SPDX-License-Identifier = "Unicode-3.0"
+
+# Three derived files are read out of the character database rather than out of the W3C
+# document, so they carry Unicode's notice and not W3C's. Named one by one and placed
+# after the spec/derived/** block, with `override`, because a glob covering both would
+# attribute the cl-19 ideograph predicate to W3C (docs/design/generation.md).
+[[annotations]]
+path = [
+  "spec/derived/ideographs.tsv",
+  "spec/derived/folding.tsv",
+  "spec/derived/scripts.tsv",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2025 Unicode, Inc."
+SPDX-License-Identifier = "Unicode-3.0"
