@@ -13,3 +13,9 @@
 
 # The gate that keeps the layout core free of std, I/O, font, and float dependencies.
 /xtask/ @P4suta
+
+# The control files the gates read. The code-owner guard is what makes these controls
+# rather than documentation: relaxing one is a review, never an edit in passing.
+/docs/api-frozen.toml @P4suta
+/docs/direction-sites.toml @P4suta
+/docs/scalar-sites.toml @P4suta

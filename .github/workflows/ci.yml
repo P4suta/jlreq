@@ -5,6 +5,8 @@
 # CI for kumihan (Japanese line composition following JLReq and JIS X 4051).
 #
 # Layout under test:
+#   - jlreq-unit     no_std, no alloc. Quantities, axes, and the item vocabulary.
+#   - jlreq-spec     no_std, no alloc. Rule addresses, provenance, and policy.
 #   - jlreq-class    no_std, no alloc. JLReq character classes.
 #   - jlreq-spacing  no_std, no alloc. Mojikumi spacing amounts.
 #   - jlreq-line     no_std. Kinsoku and line adjustment.
@@ -176,6 +178,30 @@ jobs:
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       - run: just purity
 
+  design:
+    # The gates that hold the frozen design (docs/design/api-spine.md). Each reads the
+    # tree and none needs the network, so they run together in one job. `purity` runs
+    # above on its own because branch protection already names it.
+    name: design (the frozen design holds mechanically)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - run: just ops
+      - run: just placeholder
+      - run: just api
+      - run: just spec-links
+      - run: just direction
+      - run: just generate-check
+      - run: just attest
+      - run: just conform
+
   doc:
     name: doc (rustdoc, warnings are errors)
     runs-on: ubuntu-latest
@@ -280,6 +306,7 @@ jobs:
       - no_std
       - wasm
       - purity
+      - design
       - doc
       - typos
       - msrv

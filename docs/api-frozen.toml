@@ -1,0 +1,184 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The frozen API file: the machine-readable half of docs/design/api-spine.md.
+#
+# Written at M0 with its full contents, before the types it governs exist. A gate authored
+# against types that already compile is a gate written to pass them, which inverts its
+# purpose (docs/adr/0012-outcome-and-detail-compatibility.md). It is owned by the code
+# owners, so every one of these lists is relaxed only by review.
+#
+# Read by the `api` gate (the `[[frozen]]`, `[[exempt]]` and `[[forbidden]]` tables) and by
+# the `ops` gate (the `[[no_impl]]`, `[[no_public_constructor]]` and `[[scalar_channel]]`
+# tables). `[[closed_choices]]` is named by no gate row of the API spine's table today: it is
+# the frozen record of two choice sets, against which the generated policy space
+# (spec/derived/questions.tsv, and the `QUESTIONS` it emits) is checked once that check is
+# written. It is stated here rather than left out, because a count that may never grow is
+# only a control if it is written down before the data that could grow it.
+#
+# The contents are the ones docs/design/api-spine.md publishes under "The frozen API file",
+# entry for entry and comment for comment. Only the array layout differs: this file is
+# taplo-formatted, as `just toml-check` requires, and the copy embedded in the spine is
+# indented for prose. The two agree in content, not byte for byte.
+#
+# Two definitions the `api` gate needs, pinned in the API spine rather than settled by
+# whatever the code turns out to do. A public type is in an *input position* when it appears
+# in the parameter list of any public function in the workspace other than as the receiver,
+# including inside a reference, a slice, a range, an `Option` or a `Result`. A *named
+# constructor* is an associated function returning `Self`, `Result<Self, _>`, or
+# `Option<Self>`.
+
+# Output enums that are open, each with the total accessor whose answer set is frozen.
+[[frozen]]
+type = "jlreq_spacing::Boundary"
+projections = ["is_breakable", "is_permitted"]
+[[frozen]]
+type = "jlreq_line::Fit"
+projections = ["is_feasible"]
+[[frozen]]
+type = "jlreq_line::Composition"
+projections = ["is_conforming"]
+[[frozen]]
+type = "jlreq_class::Classified"
+projections = ["is_ambiguous"]
+[[frozen]]
+type = "jlreq_spec::Provenance"
+projections = ["is_specified"]
+[[frozen]]
+type = "jlreq_line::Line"
+projections = ["is_last"]
+
+# Public types allowed to be exhaustive, each closed by the specification rather than
+# by us.
+[[exempt]]
+type = "jlreq_class::Class"
+why = "3.9.2 closes the set at thirty; a catch-all arm over character classes is where a silently wrong default hides"
+[[exempt]]
+type = "jlreq_spacing::Before"
+why = "B.1 gives Table 1 one line-head row and nothing else"
+[[exempt]]
+type = "jlreq_spacing::After"
+why = "B.1 gives Table 1 one line-end column and nothing else"
+[[exempt]]
+type = "jlreq_spacing::Referent"
+why = "B.1's referent vocabulary is exactly `be` and `af`; a space has two owners"
+[[exempt]]
+type = "jlreq_spacing::Breakable"
+why = "C.1's legend has one token for permitted and one for prohibited"
+[[exempt]]
+type = "jlreq_spacing::Placement"
+why = "the `x` of B.1, C.1, D.1 and E.1 is one token"
+[[exempt]]
+type = "jlreq_unit::Direction"
+why = "2.3.1 defines two writing modes; a caller mapping them onto screen axes must handle both or draw a mirrored page"
+[[exempt]]
+type = "jlreq_unit::Side"
+why = "an axis has two ends"
+[[exempt]]
+type = "jlreq_unit::InlineEdge"
+why = "an axis has two ends"
+[[exempt]]
+type = "jlreq_spec::Standing"
+why = "a fifth kind of claim would be an outcome, not a detail"
+
+# Choice sets that may never grow, for the same reason.
+[[closed_choices]]
+question = "kinsoku.level"
+count = 4
+why = "C.3 enumerates four levels"
+[[closed_choices]]
+question = "adjustment.reduction_table"
+count = 3
+why = "D publishes Tables 3, 4 and 5"
+[[closed_choices]]
+question = "adjustment.remainder"
+count = 2
+why = "jlreq_unit::RemainderRule enumerates the two readings of JLReq's silence as Rust variants, Leading and Trailing, and Policy::remainder is the one mapping from this question onto them; a third generated choice would have no variant to map to and no conformance case"
+
+# Traits no listed type may ever implement or derive, matched on the trait's name so an
+# import cannot evade the check.
+[[no_impl]]
+types = [
+  "Em",
+  "Advance",
+  "InlineOffset",
+  "BlockOffset",
+  "InlineExtent",
+  "BlockExtent",
+  "Badness",
+  "Demerits",
+  "Breakable",
+  "Placement",
+  "Fit",
+]
+traits = [
+  "Add",
+  "Sub",
+  "Mul",
+  "Div",
+  "Rem",
+  "Neg",
+  "AddAssign",
+  "SubAssign",
+  "MulAssign",
+  "DivAssign",
+  "Ord",
+  "PartialOrd",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Deref",
+  "DerefMut",
+  "AsRef",
+  "AsMut",
+  "Borrow",
+  "BorrowMut",
+]
+why = "ADR-0010: no expression may turn a prohibition into a number. ADR-0011: two conversions in either direction let a value round-trip between the axes in two well-typed steps."
+
+# Types with no public constructor beyond a named factory.
+[[no_public_constructor]]
+type = "jlreq_line::Feasible"
+factory = "compute"
+why = "ADR-0010: a forbidden break is absent from the search space, not expensive within it"
+[[no_public_constructor]]
+type = "jlreq_line::FeasibleBreak"
+factory = ""
+why = "ADR-0010: naming only the set would leave a later `FeasibleBreak::new` free to hand the optimizer a prohibited break while the gate still passed"
+
+# Raw-integer construction and read-back on the axis types, permitted only here. Every
+# other site is a gate failure. See docs/scalar-sites.toml for the allowlist itself.
+[[scalar_channel]]
+types = [
+  "InlineOffset",
+  "BlockOffset",
+  "InlineExtent",
+  "BlockExtent",
+  "Advance",
+]
+methods = ["new", "units", "get", "of", "raw"]
+home = "jlreq-unit::axis, jlreq-unit::length"
+allowlist = "docs/scalar-sites.toml"
+why = "ADR-0011: `BlockExtent::new(inline.units())` is a cross-axis assignment in two well-typed steps, and no arrangement of types removes the pair. The channel is narrowed to a reviewed list instead of being denied. `of` and `raw` are the crate-visible half of the same pair: the four axis types hold their integer in a private field rather than a `pub(crate)` one, so that `InlineExtent(raw)` and `value.0` are not a second channel this method list cannot reach."
+
+# Shapes that may never appear in the public surface at all.
+[[forbidden]]
+crates = ["jlreq-class", "jlreq-spacing", "jlreq-line", "jlreq-inline", "jlreq"]
+item_names = [
+  "measure",
+  "width",
+  "height",
+  "metrics",
+  "advance_of",
+  "glyph_advance",
+  "font",
+  "load_font",
+]
+matches = "declared public item identifiers only: fn, struct, enum, trait, const, static, mod, type. Never parameter names, field names, or keys in a data format."
+why = "ADR-0002: the library never asks how wide a character is. A name-level guard, and it is named as one; the substantive control is that no core crate may gain a dependency. `Paragraph::new(.., measure, ..)` is a parameter and does not match."
+[[forbidden]]
+crates = ["jlreq-class"]
+signature = "(char) -> Class"
+why = "ADR-0008: no total function from a code point to a class exists. 473 of 1133 enumerated keys are multi-class and five classes enumerate nothing. This is the first thing an adopter in a hurry reaches for."

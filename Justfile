@@ -8,7 +8,7 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 export RUSTDOCFLAGS := "-D warnings"
 
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
-core_crates := "-p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
+core_crates := "-p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
 
 # List the available development commands.
 default:
@@ -67,6 +67,48 @@ wasm:
 purity:
     cargo run --quiet -p xtask -- purity
 
+# Hold the listed types to the operator, constructor, and scalar-channel tables of
+# docs/api-frozen.toml (docs/adr/0011, docs/adr/0012).
+ops:
+    cargo run --quiet -p xtask -- ops
+
+# Reject unwritten bodies and suppressed lints in the layout core (CONTRIBUTING.md).
+placeholder:
+    cargo run --quiet -p xtask -- placeholder
+
+# Hold the published surface to the shape frozen in docs/api-frozen.toml (docs/adr/0012).
+api:
+    cargo run --quiet -p xtask -- api
+
+# Require every public item of the core to cite a specification address that resolves and
+# is tested, as far as the inventory and the conformance cases exist (docs/adr/0013).
+spec-links:
+    cargo run --quiet -p xtask -- spec-links
+
+# Require the rules that read the writing direction to be exactly the rules the inventory
+# marks direction-conditional (docs/adr/0011).
+direction:
+    cargo run --quiet -p xtask -- direction
+
+# Emit the specification data from spec/ (docs/design/generation.md).
+generate:
+    cargo run --quiet -p xtask -- generate
+
+# Prove that regenerating the specification data would change no byte. This is the gate;
+# `just generate` is the writer.
+generate-check:
+    cargo run --quiet -p xtask -- generate --check
+
+# Attest the transcribed specification data against its double entry, its provenance, and
+# the cross-table invariants (docs/adr/0009).
+attest:
+    cargo run --quiet -p xtask -- attest
+
+# Validate the conformance suite and the rule coverage it declares
+# (docs/design/conformance.md).
+conform:
+    cargo run --quiet -p xtask -- conform --check
+
 # Spell-check the repository.
 typos:
     typos
@@ -94,6 +136,8 @@ zizmor:
 
 # Verify every workspace crate at the shared declared MSRV.
 msrv:
+    cargo msrv verify --path crates/jlreq-unit
+    cargo msrv verify --path crates/jlreq-spec
     cargo msrv verify --path crates/jlreq-class
     cargo msrv verify --path crates/jlreq-spacing
     cargo msrv verify --path crates/jlreq-line
@@ -102,10 +146,15 @@ msrv:
     cargo msrv verify --path crates/jlreq-conform
     cargo msrv verify --path xtask
 
+# The gates that hold the design itself, all of them reading the tree and none of them
+# needing the network (docs/design/api-spine.md).
+design: purity ops placeholder api spec-links direction generate-check attest conform
+    @echo "design gates passed"
+
 # Fast deterministic checks used during the edit/commit loop.
-check: fmt-check toml-check typos lint purity shear reuse actionlint zizmor
+check: fmt-check toml-check typos lint design shear reuse actionlint zizmor
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc no-std wasm purity deny shear reuse actionlint zizmor msrv
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc no-std wasm design deny shear reuse actionlint zizmor msrv
     @echo "local CI passed"

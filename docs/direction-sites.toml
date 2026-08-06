@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The direction allowlist: the items in hand-written core sources that may name a variant of
+# `jlreq_unit::Direction`.
+#
+# JLReq conditions exactly three rules on the writing direction: 3.1.3 (ideographic numerals
+# with `、` and `・` are set solid in vertical writing), 3.2.5 (tate-chu-yoko 縦中横 exists
+# only in vertical writing) and 3.3.5 (katatsuki 肩付き ruby alignment should not be adopted
+# in horizontal writing). Everything else the specification states twice is exact axis
+# mapping, and is expressed with `Side` and `InlineEdge` rather than with a direction
+# (docs/adr/0011-typed-axes-and-direction-as-a-datum.md).
+#
+# The `direction` gate reads this file and enforces two things.
+#
+#  1. With comments and string literals stripped, a variant of `Direction` may appear in a
+#     hand-written core source only inside an item listed here, and in a generated source
+#     only in a `Predicate::InDirection` row. Naming the *type* is unrestricted, because
+#     passing a value through a signature is not a branch — the direction is threaded by
+#     signature through most of the workspace, so a token scan is not a mechanism and a
+#     named variant is.
+#  2. The union of the rules named here and the rules carrying a `Predicate::InDirection`
+#     row equals the set the generated rule inventory marks direction-conditional, which
+#     today is 3.1.3, 3.2.5 and 3.3.5 and nothing else.
+#
+# Adding a fourth is therefore a change to generated data plus a code-owner review, not an
+# incidental branch. This file is owned by the code owners in .github/CODEOWNERS for exactly
+# that reason: the guard is what makes it a control rather than documentation.
+#
+# What this gate cannot see is a branch that reads the direction indirectly, through a
+# boolean some other function derived from it. That residue is covered by the parity gate —
+# every conformance case not marked direction-specific is composed both ways and the inline
+# results must be bit-identical — and neither gate is claimed to do the other's work.
+#
+# Schema. One `[[site]]` table per (item, rule) pair, with these four keys and no others:
+#
+#   crate  The workspace crate the item is declared in, spelled as the package name:
+#          `jlreq-inline`, not `jlreq_inline`.
+#   item   The path to the item from its crate root with the crate name omitted: a free
+#          function as `lower`, an associated function as `Segment::new`, an inherent method
+#          as `Type::method`. This is the enclosing item the gate attributes an occurrence of
+#          a variant to, so a nested closure or block is named by the item containing it.
+#   rule   The specification address of the direction-conditional rule the item reads, in the
+#          canonical rendering of `jlreq_spec::Address` — `3.3.5`, `B.2#3`, `B.1@cl-05,cl-05`
+#          — with no section sign. Exactly one rule per entry: an item that reads two of the
+#          three gets two entries, so that the union in check 2 above is a projection of this
+#          column.
+#   why    Why the branch is unavoidable at that item, in a sentence a reviewer can disagree
+#          with.
+#
+# Empty today, and deliberately so: no core composition source exists yet, so the set of
+# allowlisted rules is empty and check 2 is satisfied by the generated predicate rows alone.
+# Entries arrive with the code they name, each under code-owner review. The first one the
+# design already names is written out here in comment form, to fix the shape:
+#
+#   [[site]]
+#   crate = "jlreq-inline"
+#   item = "lower"
+#   rule = "3.3.5"
+#   why = "3.3.5 recommends against katatsuki ruby alignment in horizontal writing, and lowering is the one place that alignment question is resolved; refusing it at construction would publish a prohibition the specification does not state, so the recommendation is applied here and a caller who overrides it is honored and told."

@@ -1,0 +1,64 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The scalar allowlist: the items outside `jlreq-unit`'s own `axis` and `length` modules that
+# may build one of the axis types from a plain integer, or read one back out.
+#
+# `InlineOffset`, `BlockOffset`, `InlineExtent`, `BlockExtent` and `Advance` have no
+# conversion between any two of them and none between one of them and the caller's scalar:
+# no `From`, no `Into`, no `Deref`, no `Ord`, and no arithmetic accepting another axis. The
+# `[[no_impl]]` table of docs/api-frozen.toml names every one of those so a later `impl`
+# block is a gate failure (docs/adr/0011-typed-axes-and-direction-as-a-datum.md).
+#
+# `new`, `units` and `get` are the residue, and this project states that rather than claiming
+# the separation is total. `BlockExtent::new(inline.units())` is a cross-axis assignment in
+# two well-typed steps, and no arrangement of types removes the pair: a value the caller
+# supplies must get in, and a position the caller draws must get out. So the untyped channel
+# is narrowed rather than denied, and this file is the narrowing.
+#
+# The `ops` gate rejects any call of `new`, `units` or `get` on one of those five types
+# outside `jlreq-unit`'s `axis` and `length` modules and outside an item listed here — the
+# `[[scalar_channel]]` table of docs/api-frozen.toml carries the type list, the method list
+# and the two home modules. This file is owned by the code owners in .github/CODEOWNERS for
+# the same reason the direction allowlist is: the guard is what makes it a control rather
+# than documentation, and a cross-axis assignment then has to be argued for in a reviewed
+# file rather than written.
+#
+# The list is short by construction. The inherent arithmetic surface is closed over each axis
+# type and every public output is already typed, so what remains is the ratio the badness
+# function needs, the bridge to the conformance case format, and nothing else. A proposed
+# entry that is neither is first an argument that some output is untyped.
+#
+# Schema. One `[[site]]` table per item, with these three keys and no others:
+#
+#   crate  The workspace crate the item is declared in, spelled as the package name:
+#          `jlreq-line`, not `jlreq_line`.
+#   item   The path to the item from its crate root with the crate name omitted: a free
+#          function as `compose`, an associated function as `Badness::of`, an inherent method
+#          as `Type::method`. This is the enclosing item the gate attributes a call to, so a
+#          nested closure or block is named by the item containing it.
+#   why    Why a raw quantity is unavoidable at that item, in a sentence a reviewer can
+#          disagree with.
+#
+# Two entries today, both inside `jlreq-unit` itself. `axis.rs` and `length.rs` declare the
+# six length types and expand the closed arithmetic macro that serves them, so both are home;
+# `arith.rs` holds the two items that accumulate and divide, and each of them ends by turning
+# a count this crate computed back into a typed value. Neither can be written any other way —
+# a cursor's position is a running `i32` until it is answered, and a distributed part is a
+# narrowed `i64` — so they are argued for here rather than hidden by widening the home list.
+#
+# Two more are foreseen and are not written until the items exist, because an allowlist entry
+# naming an item that does not exist is an entry no gate can check: `jlreq-line`'s
+# `Badness::of`, whose ratio of two inline extents is a raw quantity because the axis types
+# have no division, and `jlreq-conform`'s bridge to the conformance case format.
+
+[[site]]
+crate = "jlreq-unit"
+item = "InlineCursor::position"
+why = "a cursor accumulates a bare count of the caller's units across a line, because a saturating addition has to be observed before the value is answered for; `position` is where that count becomes an `InlineOffset` again, and it is the only exit."
+
+[[site]]
+crate = "jlreq-unit"
+item = "Distribution::next"
+why = "a distributed part is computed in `i64`, because the proportional share of a total by a weight leaves `i32` before it comes back; `next` narrows it and returns the one typed value, so the widening and the narrowing are one item apart rather than spread across the module."
