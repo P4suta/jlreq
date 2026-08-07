@@ -53,7 +53,7 @@
 //! character inside a unit symbol" for every proportional Latin letter in a Japanese
 //! document. [`resolve`] passes over them, and reaches one only when nothing else survived.
 
-use jlreq_spec::{Answer, Choice, Policy, Provenance, RuleId, Standing};
+use jlreq_spec::{Answer, Choice, Policy, Provenance, Question, RuleId, Standing};
 use jlreq_unit::{Frame, Item, ItemIndex, Role};
 
 use crate::class::{Class, ClassSet};
@@ -62,6 +62,7 @@ use crate::generated::appendix_a::{
     FRAMES_UNSTATED, Listing, REMARKS, ROLE_DECIMAL_POINT, ROLE_DIGIT_GROUP_SEPARATOR,
     ROLE_UNSTATED,
 };
+use crate::generated::script;
 use crate::member::{
     Member, asserted_frame, folded, is_ideograph, listings, members, only_code_point,
 };
@@ -234,6 +235,32 @@ pub enum Subject {
     Member(Member),
     /// One adjacency of two members, which is a boundary and never one occurrence.
     Pair(Member, Member),
+    /// Every member of one class whose first code point carries one Unicode kana script.
+    ///
+    /// §C.2 note 3 sends small kana (cl-11) to hiragana (cl-15) or katakana (cl-16) "shall
+    /// be treated as a member of the hiragana or katakana classes accordingly, depending on
+    /// the script type of the character" — one class with two destinations, which
+    /// [`Subject::Class`] cannot name because [`Reclassification::to`] is one class per row.
+    ///
+    /// JLReq: §C.2#3
+    ClassInScript(Class, KanaScript),
+}
+
+/// Which Unicode kana script one occurrence's first code point carries.
+///
+/// §C.2 note 3's own fallback, for a member beyond the forty §A.11 enumerates, reads the
+/// same two-script table `crate::generated::script` holds for the const assertions in
+/// `crate::generated` — this is the classification path that table was emitted for and, at
+/// M0, had none.
+///
+/// JLReq: §C.2#3
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum KanaScript {
+    /// `Script=Hiragana`.
+    Hiragana,
+    /// `Script=Katakana`.
+    Katakana,
 }
 
 impl Subject {
@@ -313,27 +340,136 @@ impl Reclassification {
             Subject::Class(class) => candidates.contains(class),
             Subject::Member(subject) => subject == member,
             Subject::Pair(_, _) => false,
+            Subject::ClassInScript(class, script) => {
+                candidates.contains(class) && kana_script(member) == Some(script)
+            },
         }
     }
 }
 
+/// The [`KanaScript`] `member`'s first code point carries, read from the generated Unicode
+/// Script ranges `crate::generated::script` holds.
+///
+/// A pair's script is its first code point's: §A.11 pairs a small kana with a combining
+/// mark, and the mark carries no script of its own to disagree with the kana it modifies.
+fn kana_script(member: Member) -> Option<KanaScript> {
+    let code_point = member.code_points().next()? as u32;
+    let found = script::RANGES
+        .binary_search_by(|range| {
+            if range.last < code_point {
+                core::cmp::Ordering::Less
+            } else if range.first > code_point {
+                core::cmp::Ordering::Greater
+            } else {
+                core::cmp::Ordering::Equal
+            }
+        })
+        .ok()?;
+    match script::RANGES.get(found)?.script {
+        script::HIRAGANA => Some(KanaScript::Hiragana),
+        script::KATAKANA => Some(KanaScript::Katakana),
+        _ => None,
+    }
+}
+
+/// Byte comparison of two strings, because `str`'s `PartialEq` is not `const fn` and the
+/// choices this module names are looked up by the name the generated policy space gives
+/// them rather than by a hand-picked ordinal that a stage-1 derivation could silently
+/// renumber.
+const fn same(a: &str, b: &str) -> bool {
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut index = 0;
+    while index < a.len() {
+        if a[index] != b[index] {
+            return false;
+        }
+        index = index.saturating_add(1);
+    }
+    true
+}
+
+/// The answer of `question` named `name`, or `question`'s first answer when none is —
+/// which the `const _: () = assert!` beside every call site below turns into a build
+/// failure rather than a silently wrong reclassification, because there is no named
+/// `Choice` constant to reach for directly (unlike [`RuleId`], `Choice` publishes no such
+/// constants) and no `const fn` string search can report "not found" any other way.
+const fn named(question: Question, name: &str) -> Choice {
+    let choices = question.permits();
+    let mut index = 0;
+    while index < choices.len() {
+        if same(choices[index].name(), name) {
+            return choices[index];
+        }
+        index = index.saturating_add(1);
+    }
+    choices[0]
+}
+
+/// `kinsoku.relaxation_mechanism = reclassify`, the answer §C.2's three notes take effect
+/// under (ADR 0012's compatibility regime; `Policy::JLREQ`'s own default).
+const RECLASSIFY: Choice = named(Question::RELAXATION_MECHANISM, "reclassify");
+const _: () = assert!(
+    same(RECLASSIFY.name(), "reclassify"),
+    "kinsoku.relaxation_mechanism no longer permits an answer named \"reclassify\"; \
+     RECLASSIFICATIONS names the wrong index and needs to be revisited"
+);
+
+/// `kinsoku.iteration_mark_at_line_head = permitted`, §B.2 note 14's second method, the one
+/// answer under which §C.2 note 1 and §E.2 note 1 move `々` into cl-19.
+const ITERATION_MARK_PERMITTED: Choice = named(Question::ITERATION_MARK_AT_LINE_HEAD, "permitted");
+const _: () = assert!(
+    same(ITERATION_MARK_PERMITTED.name(), "permitted"),
+    "kinsoku.iteration_mark_at_line_head no longer permits an answer named \"permitted\"; \
+     RECLASSIFICATIONS names the wrong index and needs to be revisited"
+);
+
 /// Every reclassification the specification states.
 ///
-/// # Empty, and why
+/// §C.2 notes 1 through 3, each read against the `Choice` its own question permits rather
+/// than invented here (ADR 0009): note 1 moves the single member `々` (and only `々`, not
+/// the rest of cl-09) into cl-19 when `kinsoku.iteration_mark_at_line_head` is permitted;
+/// note 2 moves every member of cl-10 into cl-16 when `kinsoku.relaxation_mechanism` is
+/// `reclassify`; note 3 moves every member of cl-11 into cl-15 or cl-16 by the member's own
+/// Unicode kana script under the same answer, which is why it is two rows and not one —
+/// [`Reclassification::to`] is one class per row, and [`Subject::ClassInScript`] is what
+/// lets two rows share one subject class and diverge only on script.
 ///
-/// The three §C.2 notes that state one — note 1 moving `々` into cl-19, and the two
-/// alternatives beside it — are appendix notes, and an appendix note becomes data when the
-/// policy space and the note table are generated (`docs/design/generation.md`). Both are
-/// derived and neither is emitted yet: `spec/derived/questions.tsv` records
-/// `kinsoku.iteration_mark_at_line_head` and `kinsoku.relaxation_mechanism`, whose answers
-/// decide what a row here would say, and stage 2 is what turns them into a `Choice` this
-/// table could name.
-///
-/// A reclassification invented here would publish a permitted alternative the specification
-/// does not permit, which is what ADR 0009 exists to prevent, so the table is empty and the
-/// mechanism above it is written and total. The moment the rows arrive, [`classify`] reads
-/// them.
-const RECLASSIFICATIONS: &[Reclassification] = &[];
+/// `Policy::JLREQ` cannot hold `kinsoku.level = very-strict` alongside
+/// `kinsoku.relaxation_mechanism = reclassify` — §C.3's own text defines Very strict as
+/// applying "no alternate rule explained in § C.2 Notes", and `Policy::with` enforces the
+/// exclusion at construction (`crates/jlreq-spec/src/generated/policy.rs`'s `excludes` on
+/// the `very-strict` choice) — so [`reclassification`] needs no separate check for the
+/// level: a `Policy` naming both does not exist to be checked against.
+const RECLASSIFICATIONS: &[Reclassification] = &[
+    Reclassification {
+        subject: Subject::Member(Member::single('々')),
+        to: Class::Ideographic,
+        when: ITERATION_MARK_PERMITTED,
+        rule: RuleId::C_2_NOTE_1,
+    },
+    Reclassification {
+        subject: Subject::Class(Class::ProlongedSoundMark),
+        to: Class::Katakana,
+        when: RECLASSIFY,
+        rule: RuleId::C_2_NOTE_2,
+    },
+    Reclassification {
+        subject: Subject::ClassInScript(Class::SmallKana, KanaScript::Hiragana),
+        to: Class::Hiragana,
+        when: RECLASSIFY,
+        rule: RuleId::C_2_NOTE_3,
+    },
+    Reclassification {
+        subject: Subject::ClassInScript(Class::SmallKana, KanaScript::Katakana),
+        to: Class::Katakana,
+        when: RECLASSIFY,
+        rule: RuleId::C_2_NOTE_3,
+    },
+];
 
 /// Resolve the class of one item.
 ///
@@ -1054,13 +1190,14 @@ fn unlisted_code_point(frame: Frame) -> Answer<Class> {
 
 #[cfg(test)]
 mod tests {
-    use jlreq_spec::{Policy, Standing};
+    use jlreq_spec::{Policy, RuleId, Standing};
     use jlreq_unit::{
         Advance, ByteOffset, Frame, InlineExtent, Item, ItemIndex, Role, Scale, ScaleId,
     };
 
     use super::{
-        AxisSet, Classified, FRAMES, RECLASSIFICATIONS, ROLES, classify, frame_bit, resolve,
+        AxisSet, Classified, FRAMES, ITERATION_MARK_PERMITTED, RECLASSIFICATIONS, ROLES, classify,
+        frame_bit, resolve,
     };
     use crate::class::{Class, ClassSet};
     use crate::generated::appendix_a::{FRAMES_UNSTATED, LISTINGS, Listing};
@@ -1601,27 +1738,102 @@ mod tests {
     }
 
     #[test]
-    fn no_reclassification_is_in_force_until_the_policy_space_is_generated() {
-        assert!(
-            RECLASSIFICATIONS.is_empty(),
-            "§C.2's three notes become data with the note table and the policy space; one \
-             invented here would publish an alternative the specification does not permit"
+    fn every_reclassification_cites_a_c_2_note_and_none_invents_a_fourth_destination() {
+        // The policy space is generated now (`spec/derived/questions.tsv`, stage 2), which
+        // is what the retired name of this test — `..._until_the_policy_space_is_generated`
+        // — was waiting for. §C.2 states three notes; note 3 has two destinations for one
+        // subject class, so four rows and not three.
+        assert_eq!(RECLASSIFICATIONS.len(), 4);
+        for change in RECLASSIFICATIONS {
+            assert!(
+                matches!(
+                    change.rule(),
+                    RuleId::C_2_NOTE_1 | RuleId::C_2_NOTE_2 | RuleId::C_2_NOTE_3
+                ),
+                "{change:?} cites a rule outside §C.2's three notes"
+            );
+            assert!(
+                matches!(
+                    change.to(),
+                    Class::Ideographic | Class::Hiragana | Class::Katakana
+                ),
+                "{change:?} names a destination none of the three notes states"
+            );
+        }
+    }
+
+    #[test]
+    fn a_reclassification_only_applies_under_the_choice_that_states_it() {
+        // §C.2 note 2: `Policy::JLREQ` already answers `kinsoku.relaxation_mechanism =
+        // reclassify`, so a prolonged sound mark (cl-10) is katakana (cl-16) under the
+        // preset the library's own documentation is written against, with no override.
+        assert_eq!(
+            decided("ー", Frame::Unstated, Role::Unstated),
+            Some(Class::Katakana),
+            "§C.2 note 2 is in force under Policy::JLREQ's own default"
+        );
+
+        // §C.2 note 1: `々` stays cl-09 under `Policy::JLREQ`, because
+        // `kinsoku.iteration_mark_at_line_head`'s default is `prohibited` (§B.2 note 14's
+        // first, preferred method) rather than `permitted` — dormant and not absent.
+        assert_eq!(
+            decided("々", Frame::Unstated, Role::Unstated),
+            Some(Class::IterationMark),
+            "§C.2 note 1 fires only under kinsoku.iteration_mark_at_line_head = permitted, \
+             which is not Policy::JLREQ's default"
+        );
+        let permitted = Policy::JLREQ
+            .with(ITERATION_MARK_PERMITTED)
+            .expect("permitting the iteration mark applies no §C.2 alternate rule of its own");
+        let (items, scales) = occurrence(Frame::Unstated, Role::Unstated);
+        let stream = Text::new("々", &items, &scales).expect("one well-formed occurrence");
+        let answer = match classify(stream, ItemIndex::new(0), permitted) {
+            Classified::One(answer) => Some(answer.value()),
+            _ => None,
+        };
+        assert_eq!(
+            answer,
+            Some(Class::Ideographic),
+            "and once permitted, §C.2 note 1 moves it into cl-19"
         );
     }
 
     #[test]
-    fn a_subject_names_a_class_a_member_or_an_adjacency() {
+    fn a_subject_names_a_class_a_member_an_adjacency_or_a_class_in_script() {
         // §C.3's levels differ precisely on this: Very loose relaxes cl-05, cl-09 and cl-13
         // as whole classes where Loose relaxes `・`, `々` and `%` as single members of the
         // same classes, so a subject typed as a class cannot tell the two levels apart.
         let whole = super::Subject::Class(Class::IterationMark);
         let one = super::Subject::Member(Member::single('々'));
         let adjacency = super::Subject::Pair(Member::single('々'), Member::single('々'));
+        let by_script =
+            super::Subject::ClassInScript(Class::SmallKana, super::KanaScript::Hiragana);
         assert_ne!(whole, one);
         assert_ne!(one, adjacency);
         assert_ne!(whole, adjacency);
+        assert_ne!(by_script, super::Subject::Class(Class::SmallKana));
+        assert_ne!(
+            by_script,
+            super::Subject::ClassInScript(Class::SmallKana, super::KanaScript::Katakana)
+        );
         assert!(adjacency.is_boundary());
-        assert!(!whole.is_boundary() && !one.is_boundary());
+        assert!(!whole.is_boundary() && !one.is_boundary() && !by_script.is_boundary());
+    }
+
+    #[test]
+    fn small_kana_reclassify_to_hiragana_or_katakana_by_their_own_script() {
+        // §C.2 note 3: hiragana small kana go to hiragana (cl-15), katakana small kana go
+        // to katakana (cl-16), under `Policy::JLREQ`'s own default relaxation mechanism.
+        assert_eq!(
+            decided("ぁ", Frame::Unstated, Role::Unstated),
+            Some(Class::Hiragana),
+            "U+3041 HIRAGANA LETTER SMALL A is Script=Hiragana"
+        );
+        assert_eq!(
+            decided("ァ", Frame::Unstated, Role::Unstated),
+            Some(Class::Katakana),
+            "U+30A1 KATAKANA LETTER SMALL A is Script=Katakana"
+        );
     }
 
     #[test]
