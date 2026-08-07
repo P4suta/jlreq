@@ -106,6 +106,58 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   neither.
 - The `jlreq` facade re-exports the three layers that exist, so a caller depends on one crate
   and names one path for a type wherever it lives.
+- Appendices B through E's six matrices — Table 1 (spacing), Table 2 (line-breaking), Tables
+  3 through 5 (reduction priority: JLReq's own, JIS X 4051's, and book practice's) and Table 6
+  (expansion) — transcribed independently from the English and Japanese PDF renderings into
+  `spec/captured/table1.en.tsv` through `table6.ja.tsv`, the one CAPTURED (attested) category
+  ADR 0009 carves out for data W3C publishes only as PDF. `xtask attest` cross-checks the two
+  locales cell for cell, requires every cell's provenance (source PDF, table number, row and
+  column label, legend token), and holds the transcription against the cross-table invariants
+  `docs/design/generation.md` derives from prose that *is* machine-readable: 4,932 cells
+  double-entered across the six tables, 841 of 961 in Table 1, 3, 4 and 5's 31 × 31 grid and
+  784 of 900 in Table 2 and 6's 30 × 30. One invariant retired on measurement rather than kept
+  unchecked: cl-28 and cl-29 were assumed to track cl-01 and cl-02 except for scattered
+  per-cell exceptions, and the landed data holds roughly 311 unnoted disagreements across the
+  six tables — a class-level license §3.9.2's own prose states once for the pair, not a
+  per-cell footnote, so the invariant is removed and the measurement is recorded in its place.
+- Stage 2 of the policy-space derivation. `spec/derived/questions.tsv` now carries, for each
+  of twenty-two places JLReq permits more than one answer — one more than at M0:
+  `spacing.line_end_full_stop_comma`, §B.2 note 6's own preferred/JIS split for full stops and
+  commas at the line end, distinct from §B.2 note 2's closing-bracket question beside it —
+  every answer's own sentence and citing rule, whether JLReq calls one preferred, the answer
+  each of the five presets selects, and the exclusions between answers. `xtask generate` turns
+  the file into `crates/jlreq-spec/src/generated/policy.rs`, closing `jlreq_spec::QUESTIONS`
+  and `Question::ALL`, both empty since M0. `Policy::BOOK`, `MAGAZINE`, `NEWSPAPER` and
+  `JIS_READING` are no longer four names for one empty answer set; each now diverges from
+  `Policy::JLREQ` at exactly its documented questions and nowhere else.
+- `jlreq-spacing`, the mojikumi (文字組み) evaluator ADR 0014 specifies:
+  `ConditionalSpace`, `Boundary` and `evaluate::boundary`, which answer one adjacency of two
+  character classes against everything Table 1, Table 2 and Appendix D/E's reduction and
+  expansion ladders state about it. The atom is the conditional space per referent (`be`/`af`)
+  and not the table cell, so a note like §B.2#3's middle-dot pair — two quarter-em
+  contributions from two different characters' ems, at two different reduction priorities in
+  Appendix D — is two `ConditionalSpace` values on one `Boundary` rather than one number.
+  §3.1.3's vertical-writing withdrawal of the conditional space around an ideographic comma
+  used as a digit separator and a katakana middle dot used as a decimal point is the crate's
+  one direction-conditional site, registered in `docs/direction-sites.toml`. §3.7.4's
+  math-formula spacing (cl-17, cl-18) is out of scope: neither class appears in any of the six
+  matrices by the specification's own axis, so the crate answers "no table constrains this"
+  rather than the quarter-em §3.7.4 states in prose. Kinsoku relaxation and line breaking
+  proper stay `jlreq-line`'s, the next milestone.
+- `jlreq-class` applies §C.2's three reclassification notes, dormant since M0-b published
+  `RECLASSIFICATIONS` empty pending the policy space: note 1 moves `々` alone into cl-19 under
+  `kinsoku.iteration_mark_at_line_head = permitted`; note 2 moves every prolonged sound mark
+  (cl-10) into katakana (cl-16), and note 3 moves every small kana (cl-11) into hiragana or
+  katakana by its own Unicode script, both under `kinsoku.relaxation_mechanism = reclassify` —
+  `Policy::JLREQ`'s own default for both. `Subject::ClassInScript` is the new variant note 3
+  needed: one subject class with two destinations picked by the member's own script, which no
+  existing `Subject` shape could state.
+- The mutation-testing gate, baseline only: `.github/workflows/mutants.yml` runs
+  `cargo-mutants` weekly and on demand over the four crates with logic to mutate today
+  (`jlreq-unit`, `jlreq-spec`, `jlreq-class`, `jlreq-spacing`), and `just mutants` runs the
+  same thing locally. Neither `check` nor `ci` runs it yet: it is a report, not a
+  kill-everything threshold, until the next milestone's independently-authored cases give
+  kinsoku and line adjustment the discipline classification already has.
 
 ### Changed
 
@@ -187,3 +239,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Report` carries `unselectable`, the count of permitted entries no declared policy of a run
   could select. A published reading nothing can select is evaluated by nothing, and the number
   is what stops that being a silence on a green run.
+- **The M0 policy-space entry above is stale, and this is the correction rather than a silent
+  edit of it.** "The twenty-one places" is twenty-two, and "Stage 2 ... is still to come:
+  `Question::ALL` remains empty" is no longer true — see this milestone's Added entries for
+  what stage 2 generated and what `jlreq-class` and `jlreq-spacing` now read from it.
+- `crates/jlreq-conform/tests/suite.rs`'s `UNSELECTABLE` fell from 170 to 0. Every permitted
+  reading a published case names was, at M0, a reading naming a question the policy space did
+  not have yet; now that `jlreq_spec::QUESTIONS` holds all twenty-two, every one of those
+  readings is a `Choice` this workspace can evaluate, and the count that used to state how
+  much of the suite nothing could measure now states that nothing is in that position.
