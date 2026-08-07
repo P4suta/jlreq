@@ -122,7 +122,7 @@ impl<'r> Adjacency<'r> {
     /// iteration gets `None` — a value that forces a decision — rather than an
     /// out-of-range `after` silently resolving to no class and folding into the same
     /// unconstrained answer [`boundary`] gives cl-17/cl-18, indistinguishable from that
-    /// legitimate case ([`class_of`]'s own doc states the invariant this bound now holds by
+    /// legitimate case (`class_of`'s own doc states the invariant this bound now holds by
     /// construction).
     ///
     /// JLReq: §B, §C, §D, §E
