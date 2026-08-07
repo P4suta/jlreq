@@ -110,6 +110,10 @@ question = "spacing.line_end_punctuation"
 count = 2
 why = "B.2 note 2 states the preferred half em and the solid alternative, and no third"
 [[closed_choices]]
+question = "spacing.line_end_full_stop_comma"
+count = 2
+why = "B.2 note 6 states the preferred half em for both and the JIS X 4051 alternative (full stop stays half em, comma goes solid), and no third"
+[[closed_choices]]
 question = "spacing.line_head_opening_bracket"
 count = 3
 why = "3.1.5 shows Figure 71's patterns as three list items; a fourth would be a pattern the figure does not draw"

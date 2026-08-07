@@ -63,7 +63,9 @@ use std::path::Path;
 use crate::classes;
 use crate::derive;
 use crate::inventory;
+use crate::policy;
 use crate::shared::{self, Gate};
+use crate::spacing;
 
 /// The name this gate is invoked by.
 const NAME: &str = "generate";
@@ -155,7 +157,7 @@ pub(crate) struct Unit {
 ///
 /// A unit's generator lives in the module that owns the subject rather than here, so that
 /// adding a generated table touches this list and nothing else in this file. The units
-/// still to arrive are the policy space, the appendix notes and the captured matrices.
+/// still to arrive are the appendix notes and the captured matrices.
 const UNITS: &[Unit] = &[
     classes::APPENDIX_A_TABLE,
     classes::CLASS_TABLE,
@@ -163,6 +165,13 @@ const UNITS: &[Unit] = &[
     classes::FOLDING_TABLE,
     classes::SCRIPT_TABLE,
     inventory::RULE_INVENTORY,
+    policy::POLICY_SPACE_UNIT,
+    spacing::TABLE1,
+    spacing::TABLE2,
+    spacing::TABLE3,
+    spacing::TABLE4,
+    spacing::TABLE5,
+    spacing::TABLE6,
 ];
 
 /// A tab-separated input, as a generator sees it.

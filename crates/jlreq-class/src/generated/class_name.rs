@@ -13,7 +13,7 @@
 //! - Source SHA-256: `f19d929b3880d94fdbb6ccc7c6b60e98bd1523a7c830b5f3cdeebb5db6f495a9`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `d956a3e7a92bc9dc3250848ed8a86db702f88b172a36826b7c9ff89d8eb6930f`
+//! - Generator SHA-256: `ff0107ad6c9dd9959bea3dd64cdebfee9aeb1a37a166c060c7216cdf525a4aeb`
 //! - Entries: 30
 
 /// One character class, as §3.9.2 names it.

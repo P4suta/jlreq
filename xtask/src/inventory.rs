@@ -532,6 +532,41 @@ pub(crate) fn prose(html: &str) -> Result<BTreeMap<String, [String; 2]>, String>
     Ok(found)
 }
 
+/// The position of every inventoried rule's address in the rule inventory's own reading
+/// order.
+///
+/// Read by `crate::policy`, which cites a rule by the address JLReq states rather than by a
+/// number invented beside it — a policy answer's `RuleId` has to be the same ordinal
+/// `crates/jlreq-spec/src/generated/inventory.rs` assigns the address once stage 2 emits it.
+/// This function computes that ordinal from the same reading `build_rules` produces, because
+/// `read_rules` writes `spec/derived/rules.tsv` one row per `document.rules` entry with
+/// nothing interspersed between them, and `xtask/src/inventory.rs`'s own stage-2 unit numbers
+/// `RuleId` by position in that same file re-read row by row (`generate.rs::read_table` skips
+/// only the comment block above the header, never a row). The three walks agree because they
+/// walk the same sequence.
+///
+/// `Err` on the same findings `read_rules` would raise, so a policy question that cites a
+/// malformed document fails exactly where the rule inventory itself would.
+pub(crate) fn rule_ordinals(html: &str) -> Result<BTreeMap<String, u16>, String> {
+    let document = read_document(html)?;
+    let mut found = BTreeMap::new();
+    for (index, rule) in document.rules.iter().enumerate() {
+        let Ok(ordinal) = u16::try_from(index) else {
+            return Err(format!(
+                "{RULES_FILE}: {count} rule(s), which is more than a `RuleId` ordinal holds",
+                count = document.rules.len()
+            ));
+        };
+        if found.insert(rule.address.clone(), ordinal).is_some() {
+            return Err(format!(
+                "{RULES_FILE}: `{address}` addresses two rules, so its ordinal is ambiguous",
+                address = rule.address
+            ));
+        }
+    }
+    Ok(found)
+}
+
 /// The one source these derivations read.
 fn only(sources: &[String]) -> Result<&str, String> {
     match sources {
@@ -1672,8 +1707,9 @@ mod tests {
         NOTE_RULES, NOTE_SECTIONS, NOTES, NUMBERED_HEADINGS, RULE_ROWS, RULE_SECTIONS, RULES,
         RULES_FILE, SNAPSHOT, UNADDRESSABLE, UNNUMBERED_HEADINGS, canonical, collapse, declaration,
         emit_inventory, headings, identifier, in_scope, is_constant_name, items, literal,
-        names_a_direction, one_locale, paragraphs, plain, read_document, row,
+        names_a_direction, one_locale, paragraphs, plain, read_document, row, rule_ordinals,
     };
+    use crate::generate::read_table;
     use crate::shared;
 
     /// A heading of the published rendering, copied out of `spec/snapshot/index.html`.
@@ -1938,6 +1974,42 @@ mod tests {
                 .count(),
             DIRECTION_CONDITIONAL.len()
         );
+    }
+
+    #[test]
+    fn rule_ordinals_matches_the_committed_rule_inventorys_own_row_order() {
+        // The claim `crate::policy` builds on: the ordinal `rule_ordinals` assigns an address
+        // is the same ordinal `crates/jlreq-spec/src/generated/inventory.rs` assigns the row
+        // at that address, because both walk `spec/derived/rules.tsv` in the same order — one
+        // by re-reading the committed file, the other by parsing the document it was written
+        // from. This test holds the two against each other directly, over the committed file
+        // itself, rather than trusting that the two readings agree by inspection.
+        let root = shared::workspace_root().expect("the workspace root");
+        let html = std::fs::read_to_string(root.join(SNAPSHOT)).expect("the vendored snapshot");
+        let ordinals = rule_ordinals(&html).expect("the snapshot reads cleanly");
+
+        let text = std::fs::read_to_string(root.join(RULES_FILE)).expect("the committed inventory");
+        let table = read_table(RULES_FILE.to_owned(), &text).expect("the inventory parses");
+        let address = table
+            .columns
+            .iter()
+            .position(|column| column == "address")
+            .expect("the inventory names an `address` column");
+
+        assert_eq!(table.records.len(), ordinals.len());
+        for (row_index, record) in table.records.iter().enumerate() {
+            let ordinal = u16::try_from(row_index).expect("fewer than u16::MAX rows");
+            let address = record
+                .fields
+                .get(address)
+                .expect("every row states its address");
+            assert_eq!(
+                ordinals.get(address),
+                Some(&ordinal),
+                "row {row_index} of the committed inventory addresses `{address}`, and \
+                 `rule_ordinals` assigns that address a different position"
+            );
+        }
     }
 
     #[test]

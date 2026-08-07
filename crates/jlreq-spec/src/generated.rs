@@ -27,6 +27,7 @@
 //! JLReq: §3, §B, §C, §D, §E, §F
 
 pub(crate) mod inventory;
+pub(crate) mod policy;
 
 use crate::rule::{RuleId, Standing};
 
@@ -122,3 +123,52 @@ const _: () = assert!(
 
 // Every identifier addresses a row, which is what makes `RuleId::address` total.
 const _: () = assert!(RuleId::ALL.len() == inventory::RULES.len());
+
+/// How many places JLReq permits more than one answer.
+///
+/// 22: `docs/api-frozen.toml`'s `[[closed_choices]]` table and `docs/design/api-spine.md`'s
+/// `impl Question` block both name the same twenty-two, and the `api` gate holds
+/// `spec/derived/questions.tsv` to that list in both directions.
+const QUESTIONS_COUNT: usize = 22;
+
+const _: () = assert!(
+    policy::QUESTIONS.len() == QUESTIONS_COUNT,
+    "the policy space no longer holds the number of questions this crate was written against"
+);
+
+// The generated policy space states a `RuleId` ordinal rather than the address that earned
+// it — `xtask/src/policy.rs` resolves the address to the ordinal at generation time, over the
+// rule inventory it also emits — so this is the one place left that can hold the resolved
+// number against the table it indexes. A stale ordinal from a rule inventory that has since
+// grown or shrunk is not caught by `is_sound` (a question compiles against any `RuleId` at
+// all); it is caught here.
+const _: () = assert!(
+    every_cited_rule_resolves(policy::QUESTIONS),
+    "a question or an answer of the policy space cites a `RuleId` past the end of the rule \
+     inventory"
+);
+
+/// Whether every `RuleId` a question or one of its answers cites addresses a row of
+/// [`inventory::RULES`].
+const fn every_cited_rule_resolves(table: &[crate::policy::QuestionRecord]) -> bool {
+    let mut index = 0;
+    while index < table.len() {
+        if !cites_a_rule(table[index].rule) {
+            return false;
+        }
+        let mut choice = 0;
+        while choice < table[index].choices.len() {
+            if !cites_a_rule(table[index].choices[choice].rule) {
+                return false;
+            }
+            choice = choice.saturating_add(1);
+        }
+        index = index.saturating_add(1);
+    }
+    true
+}
+
+/// Whether a `RuleId`'s ordinal addresses a row of the rule inventory.
+const fn cites_a_rule(rule: RuleId) -> bool {
+    (rule.0 as usize) < inventory::RULES.len()
+}

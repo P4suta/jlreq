@@ -131,7 +131,11 @@ impl Choice {
         self.record().rule
     }
 
-    /// e.g. "JIS X 4051: ruby shall not extend over katakana".
+    /// The sentence this answer rests on, e.g. "JIS X 4051 adopts solid setting method".
+    /// Where the question this answers is [`Standing::Unstated`](crate::Standing) — JLReq
+    /// silent rather than stating an alternative — this is the sentence whose silence
+    /// permits the question, quoted the same way for each answer it has, because nothing in
+    /// the document distinguishes them further.
     ///
     /// JLReq: §B.2, §C.2, §C.3, §D, §E.2
     #[must_use]
@@ -332,31 +336,16 @@ impl Preset {
 
 /// Every question, in the specification's own reading order.
 ///
-/// # Empty, and why
-///
-/// The policy space is empty because stage 2 does not emit it yet, and not because nobody
-/// has read the specification for it. Stage 1 has: `spec/derived/questions.tsv` records the
-/// twenty-one places JLReq permits more than one answer, each with the section or note that
-/// permits it, where the permission comes from — stated, an English/Japanese divergence, a
-/// contradiction, or a silence — the answers, and the one this preset table's first column
-/// selects (see `docs/design/generation.md`).
-///
-/// Everything reading this table therefore still answers over an empty policy space:
-/// [`Question::ALL`] is empty, [`Question::COUNT`] is zero, and the five presets are the
-/// same empty answer. That is the honest state of a table no generator has written, and not
-/// a placeholder — a question transcribed here by hand would be a second carrier of a fact
-/// the derived file already holds (ADR-0019), and a preset filled in here would publish a
-/// factual claim about §C.3 that no gate checks (ADR-0009).
-///
-/// Three things arrive when it is emitted. The rows below, each carrying its answers and
-/// its preset columns in the order [`Preset::column`] fixes; the four columns beside
-/// `jlreq` and the sentence each answer rests on join the derived file in the same change.
-/// The exclusions each answer states — §C.3's strictest level excluding every §C.2 alternate
-/// rule is the one this design was written around — which is what [`Policy::with`] reads.
-/// And one named constant per row, `KINSOKU_LEVEL` for §C.3 and so on, which
-/// `docs/design/api-spine.md` already publishes and which the `api` gate holds equal to the
-/// derived file in both directions.
-pub(crate) const QUESTIONS: &[QuestionRecord] = &[];
+/// Generated. Stage 1 of the pipeline reads `spec/snapshot/index.html` into
+/// `spec/derived/questions.tsv` — the twenty-two places JLReq permits more than one answer,
+/// each with the section or note that permits it, where the permission comes from, every
+/// answer with the sentence it rests on and the section stating it, the answer each of the
+/// five presets selects, and the exclusions [`Policy::with`] reads — and stage 2 turns that
+/// file into `src/generated/policy.rs`, which holds these rows and one named [`Question`]
+/// constant per row (see `docs/design/generation.md`). A hand edit to either is a bug even
+/// when it is correct, because the next revision of the specification will not carry it
+/// forward (ADR-0009).
+pub(crate) use crate::generated::policy::QUESTIONS;
 
 /// One row of the policy space.
 #[derive(Clone, Copy, Debug)]
@@ -934,25 +923,138 @@ mod tests {
         assert_eq!(columns.len(), Preset::COUNT);
     }
 
+    /// The named answer of a question, for a test to set or read.
+    fn choice(question: Question, name: &str) -> Choice {
+        question
+            .permits()
+            .iter()
+            .find(|choice| choice.name() == name)
+            .copied()
+            .unwrap_or_else(|| panic!("`{name}` is not one of {question:?}'s answers"))
+    }
+
     #[test]
-    fn the_policy_space_is_empty_until_it_is_generated() {
-        assert!(
-            Question::ALL.is_empty(),
-            "spec/derived/questions.tsv is derived; stage 2 does not emit it into this table \
-             yet"
-        );
-        assert_eq!(Question::COUNT, 0);
-        assert_eq!(Policy::JLREQ.explain().count(), 0);
+    fn the_generated_policy_space_holds_the_twenty_two_questions() {
+        assert!(!Question::ALL.is_empty(), "the policy space is generated");
+        assert_eq!(Question::COUNT, 22);
+        assert_eq!(Question::ALL.len(), 22);
+        assert_eq!(Policy::JLREQ.explain().count(), 22);
+    }
+
+    #[test]
+    fn every_generated_question_answers_a_real_specification_address() {
+        for question in Question::ALL {
+            assert!(!question.path().is_empty());
+            assert!(!question.permits().is_empty());
+            for choice in question.permits() {
+                assert_eq!(choice.question(), *question);
+                assert!(!choice.name().is_empty());
+                assert!(!choice.statement().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn the_five_presets_do_not_collapse_to_one_policy() {
+        // The gap `Workflow #5` names: before the policy space was generated every preset
+        // was "the same empty answer". They no longer are.
+        assert_ne!(Policy::JLREQ, Policy::BOOK);
+        assert_ne!(Policy::JLREQ, Policy::MAGAZINE);
+        assert_ne!(Policy::JLREQ, Policy::NEWSPAPER);
+        assert_ne!(Policy::JLREQ, Policy::JIS_READING);
+        assert_ne!(Policy::MAGAZINE, Policy::NEWSPAPER);
+    }
+
+    #[test]
+    fn the_book_preset_diverges_from_jlreq_at_exactly_its_documented_overrides() {
+        // `Policy::BOOK`'s own doc: reduction Table 5, §3.1.5 pattern 3, hanging punctuation.
+        // No `Vec`: this crate is `no_std` with no `alloc`, in `#[cfg(test)]` too.
+        assert_eq!(Policy::JLREQ.diff(Policy::BOOK).count(), 3);
         assert_eq!(
-            Policy::JLREQ.diff(Policy::BOOK).count(),
-            0,
-            "two presets differ at a question, and there is no question yet"
+            Policy::BOOK.get(Question::REDUCTION_TABLE).name(),
+            "table-5"
         );
         assert_eq!(
-            Policy::JLREQ,
-            Policy::NEWSPAPER,
-            "every preset answers the same empty set of questions; they diverge when the \
-             policy space is generated"
+            Policy::BOOK.get(Question::LINE_HEAD_OPENING_BRACKET).name(),
+            "pattern-3"
+        );
+        assert_eq!(
+            Policy::BOOK.get(Question::HANGING_PUNCTUATION).name(),
+            "hanging"
+        );
+    }
+
+    #[test]
+    fn the_magazine_and_newspaper_presets_diverge_from_jlreq_at_kinsoku_level_only() {
+        let mut magazine = Policy::JLREQ.diff(Policy::MAGAZINE);
+        assert_eq!(
+            magazine.next().map(|(question, _)| question),
+            Some(Question::KINSOKU_LEVEL)
+        );
+        assert_eq!(magazine.next(), None, "no other question diverges");
+        assert_eq!(
+            Policy::MAGAZINE.get(Question::KINSOKU_LEVEL).name(),
+            "loose"
+        );
+
+        let mut newspaper = Policy::JLREQ.diff(Policy::NEWSPAPER);
+        assert_eq!(
+            newspaper.next().map(|(question, _)| question),
+            Some(Question::KINSOKU_LEVEL)
+        );
+        assert_eq!(newspaper.next(), None, "no other question diverges");
+        assert_eq!(
+            Policy::NEWSPAPER.get(Question::KINSOKU_LEVEL).name(),
+            "very-loose"
+        );
+    }
+
+    #[test]
+    fn the_strictest_kinsoku_level_excludes_a_c_2_alternate_rule_over_generated_data() {
+        // §C.3's own text: Very strict applies "no alternate rule explained in § C.2 Notes".
+        // `kinsoku.grouped_numeral_before_western`'s `breakable` applies one — and it is
+        // `Policy::JLREQ`'s own default answer there, so switching a fresh `Policy::JLREQ`
+        // straight to Very strict already meets it in force; that is the first assertion
+        // below, reached from the level's side without setting the alternate at all.
+        let very_strict = choice(Question::KINSOKU_LEVEL, "very-strict");
+        let breakable = choice(Question::GROUPED_NUMERAL_BEFORE_WESTERN, "breakable");
+        let unbreakable = choice(Question::GROUPED_NUMERAL_BEFORE_WESTERN, "unbreakable");
+        // `Policy::JLREQ`'s other default, `kinsoku.relaxation_mechanism = reclassify`,
+        // applies a §C.2 alternate rule too and has to be cleared the same way.
+        let matrix = choice(Question::RELAXATION_MECHANISM, "matrix");
+
+        let already_in_force = Policy::JLREQ
+            .with(very_strict)
+            .expect_err("breakable is already Policy::JLREQ's own answer there");
+        assert_eq!(
+            already_in_force.questions,
+            [
+                Question::GROUPED_NUMERAL_BEFORE_WESTERN,
+                Question::KINSOKU_LEVEL
+            ]
+        );
+
+        // Cleared first, the same two answers conflict from the other side too.
+        let cleared = Policy::JLREQ
+            .with(unbreakable)
+            .expect("unbreakable applies no alternate rule")
+            .with(matrix)
+            .expect("matrix applies no alternate rule either");
+        let level_first = cleared
+            .with(very_strict)
+            .expect("no alternate rule is in force once cleared")
+            .with(breakable)
+            .expect_err("Very strict excludes every §C.2 alternate rule");
+        assert_eq!(
+            level_first.questions,
+            [
+                Question::KINSOKU_LEVEL,
+                Question::GROUPED_NUMERAL_BEFORE_WESTERN
+            ]
+        );
+        assert_eq!(
+            already_in_force.rule, level_first.rule,
+            "one recorded exclusion, read from both ends"
         );
     }
 }

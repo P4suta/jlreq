@@ -1194,8 +1194,14 @@ impl Question {
     pub const KINSOKU_LEVEL: Self;
     /// Which of Tables 3, 4 and 5 governs reduction. JLReq: §D
     pub const REDUCTION_TABLE: Self;
-    /// Spacing after cl-02, cl-06 and cl-07 at the line end. JLReq: §B.2#2, §3.1.9
+    /// Spacing after cl-02 (closing brackets) at the line end. JLReq: §B.2#2, §3.1.9
     pub const LINE_END_PUNCTUATION: Self;
+    /// Spacing after cl-06 (full stops) or cl-07 (commas) at the line end. §B.2 note 6 is
+    /// its own note, distinct from note 2, and its JIS X 4051 alternative is not the same
+    /// shape as note 2's: the full stop stays at half em and only the comma goes solid, so
+    /// this is its own question rather than a third class folded into
+    /// [`Question::LINE_END_PUNCTUATION`]. JLReq: §B.2#6, §3.1.9
+    pub const LINE_END_FULL_STOP_COMMA: Self;
     /// Spacing before cl-01 at the line head. JLReq: §B.2#17, §3.1.5
     pub const LINE_HEAD_OPENING_BRACKET: Self;
     /// How far ruby may overhang adjacent kana. The English of §B.2 note 7 names only
@@ -3414,6 +3420,10 @@ why = "jlreq_unit::RemainderRule enumerates the two readings of JLReq's silence 
 question = "spacing.line_end_punctuation"
 count = 2
 why = "B.2 note 2 states the preferred half em and the solid alternative, and no third"
+[[closed_choices]]
+question = "spacing.line_end_full_stop_comma"
+count = 2
+why = "B.2 note 6 states the preferred half em for both and the JIS X 4051 alternative (full stop stays half em, comma goes solid), and no third"
 [[closed_choices]]
 question = "spacing.line_head_opening_bracket"
 count = 3

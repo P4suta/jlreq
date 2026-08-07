@@ -145,16 +145,19 @@ fn every_case_file_has_a_test_of_its_own() -> Outcome {
 
 /// How many permitted entries `Policy::JLREQ` cannot select today.
 ///
-/// Every one of them names a question the generated policy space does not have yet:
-/// `spec/derived/questions.tsv` inventories twenty-one and stage 2 of the derivation, which
-/// turns them into `Question` constants, has not run. So the entries are published readings
-/// that nothing evaluates, and the cases carrying them assert what their `{}` entry says.
+/// Stage 2 of the policy-space derivation has now run: `spec/derived/questions.tsv`
+/// inventories twenty-two places JLReq permits more than one answer, and every one of them
+/// is a `Question` constant `Policy::JLREQ` answers. A permitted entry naming any of the
+/// twenty-two is therefore selectable, and the figure that used to count every entry naming
+/// a question the policy space did not have yet (170, before stage 2 emitted
+/// `crates/jlreq-spec/src/generated/policy.rs`) fell to zero the moment it did.
 ///
 /// The number is committed rather than reported, because a run in which it changes is a run
-/// in which the suite proves something different: it falls as the policy space is generated
-/// and every reading becomes selectable, and it rises whenever a case gains a reading this
-/// workspace cannot yet be measured against. Either is a reviewable act.
-const UNSELECTABLE: usize = 170;
+/// in which the suite proves something different: it falls whenever a case gains a reading
+/// this workspace could not previously be measured against, and it rises whenever a case
+/// publishes a reading naming a question the twenty-two still do not cover. Either is a
+/// reviewable act.
+const UNSELECTABLE: usize = 0;
 
 #[test]
 fn every_published_reading_this_policy_cannot_select_is_counted() -> Outcome {

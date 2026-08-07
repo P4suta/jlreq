@@ -33,6 +33,7 @@ mod placeholder;
 mod policy;
 mod purity;
 mod shared;
+mod spacing;
 mod spec_links;
 
 use std::process::ExitCode;
