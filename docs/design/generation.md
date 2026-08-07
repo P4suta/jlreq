@@ -219,7 +219,7 @@ laundered into a requirement on the way to the generated table.
 Three further controls hold that file. `docs/design/api-spine.md` publishes one `Question`
 constant per row and the `api` gate subtracts the two lists in both directions, so a
 constant nobody read the specification for and a row no caller can name each fail the build.
-`docs/api-frozen.toml`'s `[[closed_choices]]` states, for every one of the twenty-one
+`docs/api-frozen.toml`'s `[[closed_choices]]` states, for every one of the twenty-two
 questions, how many answers its set may hold and what closes it there, and the same gate
 holds the derived counts to them. And a `divergent` row is checked for still diverging: the
 derivation compares the character classes the two renderings of its address cite and refuses
@@ -296,8 +296,24 @@ redundancy is published rather than private.
     variation against cl-15, cl-16 and cl-19.
 11. A `hang` token sits only on a cell whose amount is `1/2` or `1/4`; `ruby hang` sits
     only on a solid cell. (§B.1)
-12. cl-28 and cl-29 match cl-01 and cl-02 except where §3.9.2 and §3.1.10 state a
-    difference.
+12. **Retired.** This item read "cl-28 and cl-29 match cl-01 and cl-02 except where §3.9.2
+    and §3.1.10 state a difference," on the premise that the exception was sparse and
+    per-cell. Measured against the landed transcription, it is neither: Table 1 alone holds
+    51 agreements against 57 unnoted disagreements between the two class pairs, roughly 311
+    across the six independently double-entered tables, and the shape is not scattered —
+    cl-28's column reads `blank` in 20 of Table 1's 29 rows where cl-01's column reads a real
+    amount in 19 of them. §3.9.2's own note on cl-28 and cl-29 states why, and states it once
+    for the whole pair rather than cell by cell: "they are in a separate class since they
+    differ from normal brackets with regard to their processing." (§3.1.10, checked directly
+    against the rendering, says nothing about either class; the citation was in error.) A
+    check that demands a per-cell appendix footnote for what the source licenses at the
+    class level cannot pass on true data, so it is removed rather than weakened — the
+    measurement above is the record of what replaced it. `spec/derived/notes.tsv` would not
+    have changed this: the license is §3.9.2's body prose, not an appendix note. Left as an
+    open, unadjudicated observation for whichever milestone next reads Table 1, 3, 4, 5 and 6
+    together: twelve coordinates run the other way, where cl-28 or cl-29 carries a real
+    amount and cl-01 or cl-02 reads `blank` — cl-06×cl-29 and cl-07×cl-29 in Tables 1, 3, 4
+    and 5, and cl-12×cl-28, cl-29×cl-09, cl-29×cl-10 and cl-29×cl-11 in Table 6.
 13. Table 4's line-end column reflects §3.1.9's JIS reading — half em after cl-06, solid
     after cl-02, cl-07 and cl-05 — which is stated in prose and captured independently as
     cells, so the two must agree.

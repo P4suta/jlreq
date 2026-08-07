@@ -1,0 +1,836 @@
+# [capture]
+# author = "table6-en-reader"
+# date = "2026-08-07"
+#
+# Table 6 (Appendix E, "Positions which allow for line adjustment by interletter
+# space-addition"), read from the English rendering, table_en7.pdf.
+#
+# Reconciliation note (ADR 0009): two independent hand transcriptions of this table were
+# produced first (one per locale, without either seeing the other's work) and disagreed on
+# a large number of cells -- overwhelmingly because Table 6's priority is encoded as a cell
+# background color (E.1 id652-657) that a human transcriber cannot reliably distinguish by
+# eye at PDF scale, exactly the failure mode ADR 0009 predicts for a from-image reading.
+# Both hand transcriptions were therefore set aside as a *first pass* and this file (and its
+# table6.ja.tsv pair) were built by mechanically extracting each PDF's own text layer and
+# each cell's fill rectangle's non-stroking color (pdfplumber over table_en7.pdf and
+# table_ja7.pdf independently, one extraction per document), then reading the fill color
+# against the three colors the CMYK values decode to: (0.3,0,0,0) = cyan = id656 "1/4"
+# (solid by default, expandable to a quarter-em ceiling), (0,0.3,0,0) = pink/magenta =
+# id655 "1/4-1/2" (quarter-em by default, expandable to a half-em ceiling), (0,0,0,0.1) =
+# gray = id657 (equal-share expansion with no stated ceiling, used only once every other
+# expandable space is exhausted -- Sec 3.8.4 step (d), "residual" in this token vocabulary).
+# The priority stage suffixes (`stage 2`, `stage 3`) are this reading's own addition, not
+# printed in either PDF: Sec 3.8.4 states in words that the four steps of the expansion
+# order are (a) the Western word space alone, up to a half em -- outside this pairwise
+# matrix entirely, which is exactly why cl-26's row and column carry no colored cell of
+# their own; (b) the quarter-to-half-em Japanese/Latin-boundary case, matching pink exactly
+# by its own printed amount; (c) the general quarter-em-ceiling case "for places which do
+# not fall under (a) or (b)", matching cyan's id656 wording exactly; and (d) the ordering
+# residual, matching gray's id657 wording ("only after no other expandable inter-character
+# spacing is left") word for word. Every note-anchored cell corroborates its color's stage:
+# E.2 notes 4, 5, 6, 7, 10 and 12 each say "third order opportunity" of their cyan cell, and
+# note 11 -- on a *white* cell -- offers "an alternative way to give a fourth order
+# opportunity" only as a deviation from the table's own default reading of "blank".
+#
+# One cell disagreed between the two PDFs after this extraction, not merely between the two
+# hand transcriptions: at cl-22, cl-22 the English rendering prints "n.6" and the Japanese
+# rendering prints "注10）" (note 10), on cells that are otherwise identical (same cyan
+# fill, same position). Note 6's text is about "different simple-ruby character complexes
+# (cl-22)" -- this cell, exactly -- and note 10's text is about a preceding Western
+# character (cl-27) before a trailing postfixed abbreviation (cl-13), a different pair
+# entirely, already correctly and uniquely anchored at cl-27, cl-13 in *both* renderings.
+# The Japanese PDF's "注10）" at cl-22, cl-22 is therefore read as a defect of that published
+# document -- a duplicated/misprinted footnote number, the same species of defect
+# docs/design/generation.md's "Recorded defects" section already catalogues twelve of for
+# the HTML snapshot -- and not a genuine second reading to preserve. Both table6.en.tsv and
+# table6.ja.tsv record `E.2#6` at this cell, which is what both PDFs' own cell content
+# (color, position, and the note text itself) agree it means; only the Japanese PDF's
+# printed footnote *glyph* disagrees, and that is recorded here in prose because
+# spec/derived/defects.tsv is derived from the HTML snapshot only (docs/design/generation.md
+# is explicit that none of its twelve rows is a property of a PDF matrix) and cannot carry a
+# PDF-sourced defect without breaking `derive --check`'s byte-identity contract.
+source	table	before	after	token	note
+table_en7.pdf	6	cl-01	cl-01	blank	
+table_en7.pdf	6	cl-01	cl-02	blank	
+table_en7.pdf	6	cl-01	cl-03	blank	
+table_en7.pdf	6	cl-01	cl-04	blank	
+table_en7.pdf	6	cl-01	cl-05	blank	
+table_en7.pdf	6	cl-01	cl-06	blank	
+table_en7.pdf	6	cl-01	cl-07	blank	
+table_en7.pdf	6	cl-01	cl-08	blank	
+table_en7.pdf	6	cl-01	cl-09	blank	
+table_en7.pdf	6	cl-01	cl-10	blank	
+table_en7.pdf	6	cl-01	cl-11	blank	
+table_en7.pdf	6	cl-01	cl-12	blank	
+table_en7.pdf	6	cl-01	cl-13	blank	
+table_en7.pdf	6	cl-01	cl-14	blank	
+table_en7.pdf	6	cl-01	cl-15	blank	
+table_en7.pdf	6	cl-01	cl-16	blank	
+table_en7.pdf	6	cl-01	cl-19	blank	
+table_en7.pdf	6	cl-01	cl-20	blank	
+table_en7.pdf	6	cl-01	cl-21	blank	
+table_en7.pdf	6	cl-01	cl-22	blank	
+table_en7.pdf	6	cl-01	cl-23	blank	
+table_en7.pdf	6	cl-01	cl-24	blank	
+table_en7.pdf	6	cl-01	cl-25	blank	
+table_en7.pdf	6	cl-01	cl-26	blank	
+table_en7.pdf	6	cl-01	cl-27	blank	
+table_en7.pdf	6	cl-01	cl-28	blank	
+table_en7.pdf	6	cl-01	cl-29	×	
+table_en7.pdf	6	cl-01	cl-30	blank	
+table_en7.pdf	6	cl-02	cl-01	residual	
+table_en7.pdf	6	cl-02	cl-02	blank	
+table_en7.pdf	6	cl-02	cl-03	blank	
+table_en7.pdf	6	cl-02	cl-04	blank	
+table_en7.pdf	6	cl-02	cl-05	blank	
+table_en7.pdf	6	cl-02	cl-06	blank	
+table_en7.pdf	6	cl-02	cl-07	blank	
+table_en7.pdf	6	cl-02	cl-08	residual	
+table_en7.pdf	6	cl-02	cl-09	blank	
+table_en7.pdf	6	cl-02	cl-10	blank	
+table_en7.pdf	6	cl-02	cl-11	blank	
+table_en7.pdf	6	cl-02	cl-12	residual	
+table_en7.pdf	6	cl-02	cl-13	residual	
+table_en7.pdf	6	cl-02	cl-14	residual	
+table_en7.pdf	6	cl-02	cl-15	residual	
+table_en7.pdf	6	cl-02	cl-16	residual	
+table_en7.pdf	6	cl-02	cl-19	residual	
+table_en7.pdf	6	cl-02	cl-20	blank	
+table_en7.pdf	6	cl-02	cl-21	residual	
+table_en7.pdf	6	cl-02	cl-22	residual	
+table_en7.pdf	6	cl-02	cl-23	residual	
+table_en7.pdf	6	cl-02	cl-24	residual	
+table_en7.pdf	6	cl-02	cl-25	residual	
+table_en7.pdf	6	cl-02	cl-26	residual	
+table_en7.pdf	6	cl-02	cl-27	residual	
+table_en7.pdf	6	cl-02	cl-28	residual	
+table_en7.pdf	6	cl-02	cl-29	blank	
+table_en7.pdf	6	cl-02	cl-30	residual	
+table_en7.pdf	6	cl-03	cl-01	residual	
+table_en7.pdf	6	cl-03	cl-02	blank	
+table_en7.pdf	6	cl-03	cl-03	blank	
+table_en7.pdf	6	cl-03	cl-04	blank	
+table_en7.pdf	6	cl-03	cl-05	blank	
+table_en7.pdf	6	cl-03	cl-06	blank	
+table_en7.pdf	6	cl-03	cl-07	blank	
+table_en7.pdf	6	cl-03	cl-08	residual	
+table_en7.pdf	6	cl-03	cl-09	blank	
+table_en7.pdf	6	cl-03	cl-10	blank	
+table_en7.pdf	6	cl-03	cl-11	blank	
+table_en7.pdf	6	cl-03	cl-12	residual	
+table_en7.pdf	6	cl-03	cl-13	residual	
+table_en7.pdf	6	cl-03	cl-14	residual	
+table_en7.pdf	6	cl-03	cl-15	residual	
+table_en7.pdf	6	cl-03	cl-16	residual	
+table_en7.pdf	6	cl-03	cl-19	residual	
+table_en7.pdf	6	cl-03	cl-20	blank	
+table_en7.pdf	6	cl-03	cl-21	residual	
+table_en7.pdf	6	cl-03	cl-22	residual	
+table_en7.pdf	6	cl-03	cl-23	residual	
+table_en7.pdf	6	cl-03	cl-24	residual	
+table_en7.pdf	6	cl-03	cl-25	residual	
+table_en7.pdf	6	cl-03	cl-26	residual	
+table_en7.pdf	6	cl-03	cl-27	residual	
+table_en7.pdf	6	cl-03	cl-28	residual	
+table_en7.pdf	6	cl-03	cl-29	blank	
+table_en7.pdf	6	cl-03	cl-30	residual	
+table_en7.pdf	6	cl-04	cl-01	residual	
+table_en7.pdf	6	cl-04	cl-02	blank	
+table_en7.pdf	6	cl-04	cl-03	blank	
+table_en7.pdf	6	cl-04	cl-04	blank	
+table_en7.pdf	6	cl-04	cl-05	blank	
+table_en7.pdf	6	cl-04	cl-06	blank	
+table_en7.pdf	6	cl-04	cl-07	blank	
+table_en7.pdf	6	cl-04	cl-08	residual	
+table_en7.pdf	6	cl-04	cl-09	blank	
+table_en7.pdf	6	cl-04	cl-10	blank	
+table_en7.pdf	6	cl-04	cl-11	blank	
+table_en7.pdf	6	cl-04	cl-12	residual	
+table_en7.pdf	6	cl-04	cl-13	residual	
+table_en7.pdf	6	cl-04	cl-14	residual	
+table_en7.pdf	6	cl-04	cl-15	residual	
+table_en7.pdf	6	cl-04	cl-16	residual	
+table_en7.pdf	6	cl-04	cl-19	residual	
+table_en7.pdf	6	cl-04	cl-20	blank	
+table_en7.pdf	6	cl-04	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-04	cl-22	residual	
+table_en7.pdf	6	cl-04	cl-23	residual	
+table_en7.pdf	6	cl-04	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-04	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-04	cl-26	residual	
+table_en7.pdf	6	cl-04	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-04	cl-28	residual	
+table_en7.pdf	6	cl-04	cl-29	blank	
+table_en7.pdf	6	cl-04	cl-30	residual	
+table_en7.pdf	6	cl-05	cl-01	residual	
+table_en7.pdf	6	cl-05	cl-02	blank	
+table_en7.pdf	6	cl-05	cl-03	blank	
+table_en7.pdf	6	cl-05	cl-04	blank	
+table_en7.pdf	6	cl-05	cl-05	blank	
+table_en7.pdf	6	cl-05	cl-06	blank	
+table_en7.pdf	6	cl-05	cl-07	blank	
+table_en7.pdf	6	cl-05	cl-08	residual	
+table_en7.pdf	6	cl-05	cl-09	blank	
+table_en7.pdf	6	cl-05	cl-10	blank	
+table_en7.pdf	6	cl-05	cl-11	blank	
+table_en7.pdf	6	cl-05	cl-12	residual	
+table_en7.pdf	6	cl-05	cl-13	residual	
+table_en7.pdf	6	cl-05	cl-14	residual	
+table_en7.pdf	6	cl-05	cl-15	residual	
+table_en7.pdf	6	cl-05	cl-16	residual	
+table_en7.pdf	6	cl-05	cl-19	residual	
+table_en7.pdf	6	cl-05	cl-20	blank	
+table_en7.pdf	6	cl-05	cl-21	residual	
+table_en7.pdf	6	cl-05	cl-22	residual	
+table_en7.pdf	6	cl-05	cl-23	residual	
+table_en7.pdf	6	cl-05	cl-24	residual	
+table_en7.pdf	6	cl-05	cl-25	residual	
+table_en7.pdf	6	cl-05	cl-26	residual	
+table_en7.pdf	6	cl-05	cl-27	residual	
+table_en7.pdf	6	cl-05	cl-28	residual	
+table_en7.pdf	6	cl-05	cl-29	blank	
+table_en7.pdf	6	cl-05	cl-30	residual	
+table_en7.pdf	6	cl-06	cl-01	residual	
+table_en7.pdf	6	cl-06	cl-02	blank	
+table_en7.pdf	6	cl-06	cl-03	blank	
+table_en7.pdf	6	cl-06	cl-04	blank	
+table_en7.pdf	6	cl-06	cl-05	blank	
+table_en7.pdf	6	cl-06	cl-06	blank	
+table_en7.pdf	6	cl-06	cl-07	blank	
+table_en7.pdf	6	cl-06	cl-08	residual	
+table_en7.pdf	6	cl-06	cl-09	blank	
+table_en7.pdf	6	cl-06	cl-10	blank	
+table_en7.pdf	6	cl-06	cl-11	blank	
+table_en7.pdf	6	cl-06	cl-12	residual	
+table_en7.pdf	6	cl-06	cl-13	residual	
+table_en7.pdf	6	cl-06	cl-14	residual	
+table_en7.pdf	6	cl-06	cl-15	residual	
+table_en7.pdf	6	cl-06	cl-16	residual	
+table_en7.pdf	6	cl-06	cl-19	residual	
+table_en7.pdf	6	cl-06	cl-20	blank	
+table_en7.pdf	6	cl-06	cl-21	residual	
+table_en7.pdf	6	cl-06	cl-22	residual	
+table_en7.pdf	6	cl-06	cl-23	residual	
+table_en7.pdf	6	cl-06	cl-24	residual	
+table_en7.pdf	6	cl-06	cl-25	residual	
+table_en7.pdf	6	cl-06	cl-26	residual	
+table_en7.pdf	6	cl-06	cl-27	residual	
+table_en7.pdf	6	cl-06	cl-28	residual	
+table_en7.pdf	6	cl-06	cl-29	blank	
+table_en7.pdf	6	cl-06	cl-30	residual	
+table_en7.pdf	6	cl-07	cl-01	residual	
+table_en7.pdf	6	cl-07	cl-02	blank	
+table_en7.pdf	6	cl-07	cl-03	blank	
+table_en7.pdf	6	cl-07	cl-04	blank	
+table_en7.pdf	6	cl-07	cl-05	blank	
+table_en7.pdf	6	cl-07	cl-06	blank	
+table_en7.pdf	6	cl-07	cl-07	blank	
+table_en7.pdf	6	cl-07	cl-08	residual	
+table_en7.pdf	6	cl-07	cl-09	blank	
+table_en7.pdf	6	cl-07	cl-10	blank	
+table_en7.pdf	6	cl-07	cl-11	blank	
+table_en7.pdf	6	cl-07	cl-12	residual	
+table_en7.pdf	6	cl-07	cl-13	residual	
+table_en7.pdf	6	cl-07	cl-14	residual	
+table_en7.pdf	6	cl-07	cl-15	residual	
+table_en7.pdf	6	cl-07	cl-16	residual	
+table_en7.pdf	6	cl-07	cl-19	residual	
+table_en7.pdf	6	cl-07	cl-20	blank	
+table_en7.pdf	6	cl-07	cl-21	residual	
+table_en7.pdf	6	cl-07	cl-22	residual	
+table_en7.pdf	6	cl-07	cl-23	residual	
+table_en7.pdf	6	cl-07	cl-24	residual	
+table_en7.pdf	6	cl-07	cl-25	residual	
+table_en7.pdf	6	cl-07	cl-26	residual	
+table_en7.pdf	6	cl-07	cl-27	residual	
+table_en7.pdf	6	cl-07	cl-28	residual	
+table_en7.pdf	6	cl-07	cl-29	blank	
+table_en7.pdf	6	cl-07	cl-30	residual	
+table_en7.pdf	6	cl-08	cl-01	residual	
+table_en7.pdf	6	cl-08	cl-02	blank	
+table_en7.pdf	6	cl-08	cl-03	blank	
+table_en7.pdf	6	cl-08	cl-04	blank	
+table_en7.pdf	6	cl-08	cl-05	blank	
+table_en7.pdf	6	cl-08	cl-06	blank	
+table_en7.pdf	6	cl-08	cl-07	blank	
+table_en7.pdf	6	cl-08	cl-08	0-1/4 stage 3	E.2#4
+table_en7.pdf	6	cl-08	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-14	residual	
+table_en7.pdf	6	cl-08	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-20	blank	
+table_en7.pdf	6	cl-08	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-24	residual	
+table_en7.pdf	6	cl-08	cl-25	residual	
+table_en7.pdf	6	cl-08	cl-26	residual	
+table_en7.pdf	6	cl-08	cl-27	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-08	cl-29	blank	
+table_en7.pdf	6	cl-08	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-01	residual	
+table_en7.pdf	6	cl-09	cl-02	blank	
+table_en7.pdf	6	cl-09	cl-03	blank	
+table_en7.pdf	6	cl-09	cl-04	blank	
+table_en7.pdf	6	cl-09	cl-05	blank	
+table_en7.pdf	6	cl-09	cl-06	blank	
+table_en7.pdf	6	cl-09	cl-07	blank	
+table_en7.pdf	6	cl-09	cl-08	residual	
+table_en7.pdf	6	cl-09	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-14	residual	
+table_en7.pdf	6	cl-09	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-20	blank	
+table_en7.pdf	6	cl-09	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-09	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-09	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-09	cl-26	residual	
+table_en7.pdf	6	cl-09	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-09	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-09	cl-29	blank	
+table_en7.pdf	6	cl-09	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-01	residual	
+table_en7.pdf	6	cl-10	cl-02	blank	
+table_en7.pdf	6	cl-10	cl-03	blank	
+table_en7.pdf	6	cl-10	cl-04	blank	
+table_en7.pdf	6	cl-10	cl-05	blank	
+table_en7.pdf	6	cl-10	cl-06	blank	
+table_en7.pdf	6	cl-10	cl-07	blank	
+table_en7.pdf	6	cl-10	cl-08	residual	
+table_en7.pdf	6	cl-10	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-14	residual	
+table_en7.pdf	6	cl-10	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-20	blank	
+table_en7.pdf	6	cl-10	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-10	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-10	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-10	cl-26	residual	
+table_en7.pdf	6	cl-10	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-10	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-10	cl-29	blank	
+table_en7.pdf	6	cl-10	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-01	residual	
+table_en7.pdf	6	cl-11	cl-02	blank	
+table_en7.pdf	6	cl-11	cl-03	blank	
+table_en7.pdf	6	cl-11	cl-04	blank	
+table_en7.pdf	6	cl-11	cl-05	blank	
+table_en7.pdf	6	cl-11	cl-06	blank	
+table_en7.pdf	6	cl-11	cl-07	blank	
+table_en7.pdf	6	cl-11	cl-08	residual	
+table_en7.pdf	6	cl-11	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-14	residual	
+table_en7.pdf	6	cl-11	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-20	blank	
+table_en7.pdf	6	cl-11	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-11	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-11	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-11	cl-26	residual	
+table_en7.pdf	6	cl-11	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-11	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-11	cl-29	blank	
+table_en7.pdf	6	cl-11	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-01	blank	
+table_en7.pdf	6	cl-12	cl-02	blank	
+table_en7.pdf	6	cl-12	cl-03	blank	
+table_en7.pdf	6	cl-12	cl-04	blank	
+table_en7.pdf	6	cl-12	cl-05	blank	
+table_en7.pdf	6	cl-12	cl-06	blank	
+table_en7.pdf	6	cl-12	cl-07	blank	
+table_en7.pdf	6	cl-12	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-14	blank	
+table_en7.pdf	6	cl-12	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-20	blank	
+table_en7.pdf	6	cl-12	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-24	blank	
+table_en7.pdf	6	cl-12	cl-25	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-26	residual	
+table_en7.pdf	6	cl-12	cl-27	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-12	cl-29	×	
+table_en7.pdf	6	cl-12	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-01	residual	
+table_en7.pdf	6	cl-13	cl-02	blank	
+table_en7.pdf	6	cl-13	cl-03	blank	
+table_en7.pdf	6	cl-13	cl-04	blank	
+table_en7.pdf	6	cl-13	cl-05	blank	
+table_en7.pdf	6	cl-13	cl-06	blank	
+table_en7.pdf	6	cl-13	cl-07	blank	
+table_en7.pdf	6	cl-13	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-14	residual	
+table_en7.pdf	6	cl-13	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-20	blank	
+table_en7.pdf	6	cl-13	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-24	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-25	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-26	residual	
+table_en7.pdf	6	cl-13	cl-27	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-13	cl-29	blank	
+table_en7.pdf	6	cl-13	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-14	cl-01	residual	
+table_en7.pdf	6	cl-14	cl-02	blank	
+table_en7.pdf	6	cl-14	cl-03	blank	
+table_en7.pdf	6	cl-14	cl-04	blank	
+table_en7.pdf	6	cl-14	cl-05	blank	
+table_en7.pdf	6	cl-14	cl-06	blank	
+table_en7.pdf	6	cl-14	cl-07	blank	
+table_en7.pdf	6	cl-14	cl-08	residual	
+table_en7.pdf	6	cl-14	cl-09	blank	
+table_en7.pdf	6	cl-14	cl-10	blank	
+table_en7.pdf	6	cl-14	cl-11	blank	
+table_en7.pdf	6	cl-14	cl-12	residual	
+table_en7.pdf	6	cl-14	cl-13	residual	
+table_en7.pdf	6	cl-14	cl-14	residual	
+table_en7.pdf	6	cl-14	cl-15	residual	
+table_en7.pdf	6	cl-14	cl-16	residual	
+table_en7.pdf	6	cl-14	cl-19	residual	
+table_en7.pdf	6	cl-14	cl-20	blank	
+table_en7.pdf	6	cl-14	cl-21	residual	
+table_en7.pdf	6	cl-14	cl-22	residual	
+table_en7.pdf	6	cl-14	cl-23	residual	
+table_en7.pdf	6	cl-14	cl-24	residual	
+table_en7.pdf	6	cl-14	cl-25	residual	
+table_en7.pdf	6	cl-14	cl-26	residual	
+table_en7.pdf	6	cl-14	cl-27	residual	
+table_en7.pdf	6	cl-14	cl-28	residual	
+table_en7.pdf	6	cl-14	cl-29	blank	
+table_en7.pdf	6	cl-14	cl-30	residual	
+table_en7.pdf	6	cl-15	cl-01	residual	
+table_en7.pdf	6	cl-15	cl-02	blank	
+table_en7.pdf	6	cl-15	cl-03	blank	
+table_en7.pdf	6	cl-15	cl-04	blank	
+table_en7.pdf	6	cl-15	cl-05	blank	
+table_en7.pdf	6	cl-15	cl-06	blank	
+table_en7.pdf	6	cl-15	cl-07	blank	
+table_en7.pdf	6	cl-15	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-14	residual	
+table_en7.pdf	6	cl-15	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-20	blank	
+table_en7.pdf	6	cl-15	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-15	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-15	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-15	cl-26	residual	
+table_en7.pdf	6	cl-15	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-15	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-15	cl-29	blank	
+table_en7.pdf	6	cl-15	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-01	residual	
+table_en7.pdf	6	cl-16	cl-02	blank	
+table_en7.pdf	6	cl-16	cl-03	blank	
+table_en7.pdf	6	cl-16	cl-04	blank	
+table_en7.pdf	6	cl-16	cl-05	blank	
+table_en7.pdf	6	cl-16	cl-06	blank	
+table_en7.pdf	6	cl-16	cl-07	blank	
+table_en7.pdf	6	cl-16	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-14	residual	
+table_en7.pdf	6	cl-16	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-20	blank	
+table_en7.pdf	6	cl-16	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-16	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-16	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-16	cl-26	residual	
+table_en7.pdf	6	cl-16	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-16	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-16	cl-29	blank	
+table_en7.pdf	6	cl-16	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-01	residual	
+table_en7.pdf	6	cl-19	cl-02	blank	
+table_en7.pdf	6	cl-19	cl-03	blank	
+table_en7.pdf	6	cl-19	cl-04	blank	
+table_en7.pdf	6	cl-19	cl-05	blank	
+table_en7.pdf	6	cl-19	cl-06	blank	
+table_en7.pdf	6	cl-19	cl-07	blank	
+table_en7.pdf	6	cl-19	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-14	residual	
+table_en7.pdf	6	cl-19	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-20	blank	
+table_en7.pdf	6	cl-19	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-19	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-19	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-19	cl-26	residual	
+table_en7.pdf	6	cl-19	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-19	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-19	cl-29	blank	
+table_en7.pdf	6	cl-19	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-01	residual	
+table_en7.pdf	6	cl-20	cl-02	blank	
+table_en7.pdf	6	cl-20	cl-03	blank	
+table_en7.pdf	6	cl-20	cl-04	blank	
+table_en7.pdf	6	cl-20	cl-05	blank	
+table_en7.pdf	6	cl-20	cl-06	blank	
+table_en7.pdf	6	cl-20	cl-07	blank	
+table_en7.pdf	6	cl-20	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-14	residual	
+table_en7.pdf	6	cl-20	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-20	blank	
+table_en7.pdf	6	cl-20	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-24	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-25	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-26	residual	
+table_en7.pdf	6	cl-20	cl-27	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-20	cl-29	blank	
+table_en7.pdf	6	cl-20	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-01	residual	
+table_en7.pdf	6	cl-21	cl-02	blank	
+table_en7.pdf	6	cl-21	cl-03	blank	
+table_en7.pdf	6	cl-21	cl-04	blank	
+table_en7.pdf	6	cl-21	cl-05	blank	
+table_en7.pdf	6	cl-21	cl-06	blank	
+table_en7.pdf	6	cl-21	cl-07	blank	
+table_en7.pdf	6	cl-21	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-09	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-10	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-11	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-14	residual	
+table_en7.pdf	6	cl-21	cl-15	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-16	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-19	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-20	blank	
+table_en7.pdf	6	cl-21	cl-21	0-1/4 stage 3	E.2#5
+table_en7.pdf	6	cl-21	cl-22	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-23	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-21	cl-24	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-25	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-26	residual	
+table_en7.pdf	6	cl-21	cl-27	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-21	cl-29	blank	
+table_en7.pdf	6	cl-21	cl-30	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-22	cl-01	residual	
+table_en7.pdf	6	cl-22	cl-02	blank	
+table_en7.pdf	6	cl-22	cl-03	blank	
+table_en7.pdf	6	cl-22	cl-04	blank	
+table_en7.pdf	6	cl-22	cl-05	blank	
+table_en7.pdf	6	cl-22	cl-06	blank	
+table_en7.pdf	6	cl-22	cl-07	blank	
+table_en7.pdf	6	cl-22	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-14	residual	
+table_en7.pdf	6	cl-22	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-20	blank	
+table_en7.pdf	6	cl-22	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-22	cl-22	0-1/4 stage 3	E.2#6
+table_en7.pdf	6	cl-22	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-22	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-22	cl-26	residual	
+table_en7.pdf	6	cl-22	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-22	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-22	cl-29	×	
+table_en7.pdf	6	cl-22	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-01	residual	
+table_en7.pdf	6	cl-23	cl-02	blank	
+table_en7.pdf	6	cl-23	cl-03	blank	
+table_en7.pdf	6	cl-23	cl-04	blank	
+table_en7.pdf	6	cl-23	cl-05	blank	
+table_en7.pdf	6	cl-23	cl-06	blank	
+table_en7.pdf	6	cl-23	cl-07	blank	
+table_en7.pdf	6	cl-23	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-14	residual	
+table_en7.pdf	6	cl-23	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-20	blank	
+table_en7.pdf	6	cl-23	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-23	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-23	0-1/4 stage 3	E.2#7
+table_en7.pdf	6	cl-23	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-23	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-23	cl-26	residual	
+table_en7.pdf	6	cl-23	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-23	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-23	cl-29	×	
+table_en7.pdf	6	cl-23	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-24	cl-01	residual	
+table_en7.pdf	6	cl-24	cl-02	blank	
+table_en7.pdf	6	cl-24	cl-03	blank	
+table_en7.pdf	6	cl-24	cl-04	blank	
+table_en7.pdf	6	cl-24	cl-05	blank	
+table_en7.pdf	6	cl-24	cl-06	blank	
+table_en7.pdf	6	cl-24	cl-07	blank	
+table_en7.pdf	6	cl-24	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-24	cl-09	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-10	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-11	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-24	cl-13	blank	E.2#8
+table_en7.pdf	6	cl-24	cl-14	residual	
+table_en7.pdf	6	cl-24	cl-15	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-16	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-19	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-20	blank	
+table_en7.pdf	6	cl-24	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-24	cl-22	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-23	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-24	blank	
+table_en7.pdf	6	cl-24	cl-25	residual	
+table_en7.pdf	6	cl-24	cl-26	residual	
+table_en7.pdf	6	cl-24	cl-27	blank	E.2#9
+table_en7.pdf	6	cl-24	cl-28	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-24	cl-29	blank	
+table_en7.pdf	6	cl-24	cl-30	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-01	residual	
+table_en7.pdf	6	cl-25	cl-02	blank	
+table_en7.pdf	6	cl-25	cl-03	blank	
+table_en7.pdf	6	cl-25	cl-04	blank	
+table_en7.pdf	6	cl-25	cl-05	blank	
+table_en7.pdf	6	cl-25	cl-06	blank	
+table_en7.pdf	6	cl-25	cl-07	blank	
+table_en7.pdf	6	cl-25	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-25	cl-09	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-10	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-11	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-25	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-25	cl-14	residual	
+table_en7.pdf	6	cl-25	cl-15	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-16	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-19	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-20	blank	
+table_en7.pdf	6	cl-25	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-25	cl-22	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-23	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-24	residual	
+table_en7.pdf	6	cl-25	cl-25	blank	
+table_en7.pdf	6	cl-25	cl-26	residual	
+table_en7.pdf	6	cl-25	cl-27	blank	
+table_en7.pdf	6	cl-25	cl-28	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-25	cl-29	blank	
+table_en7.pdf	6	cl-25	cl-30	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-26	cl-01	residual	
+table_en7.pdf	6	cl-26	cl-02	blank	
+table_en7.pdf	6	cl-26	cl-03	residual	
+table_en7.pdf	6	cl-26	cl-04	residual	
+table_en7.pdf	6	cl-26	cl-05	residual	
+table_en7.pdf	6	cl-26	cl-06	residual	
+table_en7.pdf	6	cl-26	cl-07	residual	
+table_en7.pdf	6	cl-26	cl-08	residual	
+table_en7.pdf	6	cl-26	cl-09	residual	
+table_en7.pdf	6	cl-26	cl-10	residual	
+table_en7.pdf	6	cl-26	cl-11	residual	
+table_en7.pdf	6	cl-26	cl-12	residual	
+table_en7.pdf	6	cl-26	cl-13	residual	
+table_en7.pdf	6	cl-26	cl-14	residual	
+table_en7.pdf	6	cl-26	cl-15	residual	
+table_en7.pdf	6	cl-26	cl-16	residual	
+table_en7.pdf	6	cl-26	cl-19	residual	
+table_en7.pdf	6	cl-26	cl-20	residual	
+table_en7.pdf	6	cl-26	cl-21	residual	
+table_en7.pdf	6	cl-26	cl-22	residual	
+table_en7.pdf	6	cl-26	cl-23	residual	
+table_en7.pdf	6	cl-26	cl-24	residual	
+table_en7.pdf	6	cl-26	cl-25	residual	
+table_en7.pdf	6	cl-26	cl-26	residual	
+table_en7.pdf	6	cl-26	cl-27	residual	
+table_en7.pdf	6	cl-26	cl-28	residual	
+table_en7.pdf	6	cl-26	cl-29	blank	
+table_en7.pdf	6	cl-26	cl-30	residual	
+table_en7.pdf	6	cl-27	cl-01	residual	
+table_en7.pdf	6	cl-27	cl-02	blank	
+table_en7.pdf	6	cl-27	cl-03	blank	
+table_en7.pdf	6	cl-27	cl-04	blank	
+table_en7.pdf	6	cl-27	cl-05	blank	
+table_en7.pdf	6	cl-27	cl-06	blank	
+table_en7.pdf	6	cl-27	cl-07	blank	
+table_en7.pdf	6	cl-27	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-27	cl-09	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-10	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-11	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-27	cl-13	0-1/4 stage 3	E.2#10
+table_en7.pdf	6	cl-27	cl-14	residual	
+table_en7.pdf	6	cl-27	cl-15	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-16	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-19	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-20	blank	
+table_en7.pdf	6	cl-27	cl-21	0-1/4 stage 3	
+table_en7.pdf	6	cl-27	cl-22	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-23	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-24	blank	
+table_en7.pdf	6	cl-27	cl-25	blank	
+table_en7.pdf	6	cl-27	cl-26	residual	
+table_en7.pdf	6	cl-27	cl-27	blank	E.2#11
+table_en7.pdf	6	cl-27	cl-28	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-27	cl-29	blank	
+table_en7.pdf	6	cl-27	cl-30	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-28	cl-01	blank	
+table_en7.pdf	6	cl-28	cl-02	×	
+table_en7.pdf	6	cl-28	cl-03	×	
+table_en7.pdf	6	cl-28	cl-04	×	
+table_en7.pdf	6	cl-28	cl-05	×	
+table_en7.pdf	6	cl-28	cl-06	×	
+table_en7.pdf	6	cl-28	cl-07	×	
+table_en7.pdf	6	cl-28	cl-08	blank	
+table_en7.pdf	6	cl-28	cl-09	×	
+table_en7.pdf	6	cl-28	cl-10	×	
+table_en7.pdf	6	cl-28	cl-11	×	
+table_en7.pdf	6	cl-28	cl-12	blank	
+table_en7.pdf	6	cl-28	cl-13	blank	
+table_en7.pdf	6	cl-28	cl-14	blank	
+table_en7.pdf	6	cl-28	cl-15	blank	
+table_en7.pdf	6	cl-28	cl-16	blank	
+table_en7.pdf	6	cl-28	cl-19	blank	
+table_en7.pdf	6	cl-28	cl-20	×	
+table_en7.pdf	6	cl-28	cl-21	blank	
+table_en7.pdf	6	cl-28	cl-22	×	
+table_en7.pdf	6	cl-28	cl-23	×	
+table_en7.pdf	6	cl-28	cl-24	blank	
+table_en7.pdf	6	cl-28	cl-25	blank	
+table_en7.pdf	6	cl-28	cl-26	×	
+table_en7.pdf	6	cl-28	cl-27	blank	
+table_en7.pdf	6	cl-28	cl-28	×	
+table_en7.pdf	6	cl-28	cl-29	×	
+table_en7.pdf	6	cl-28	cl-30	blank	
+table_en7.pdf	6	cl-29	cl-01	residual	
+table_en7.pdf	6	cl-29	cl-02	blank	
+table_en7.pdf	6	cl-29	cl-03	blank	
+table_en7.pdf	6	cl-29	cl-04	blank	
+table_en7.pdf	6	cl-29	cl-05	blank	
+table_en7.pdf	6	cl-29	cl-06	blank	
+table_en7.pdf	6	cl-29	cl-07	blank	
+table_en7.pdf	6	cl-29	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-14	residual	
+table_en7.pdf	6	cl-29	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-20	blank	
+table_en7.pdf	6	cl-29	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-29	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-29	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-29	cl-26	residual	
+table_en7.pdf	6	cl-29	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-29	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-29	cl-29	×	
+table_en7.pdf	6	cl-29	cl-30	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-01	residual	
+table_en7.pdf	6	cl-30	cl-02	blank	
+table_en7.pdf	6	cl-30	cl-03	blank	
+table_en7.pdf	6	cl-30	cl-04	blank	
+table_en7.pdf	6	cl-30	cl-05	blank	
+table_en7.pdf	6	cl-30	cl-06	blank	
+table_en7.pdf	6	cl-30	cl-07	blank	
+table_en7.pdf	6	cl-30	cl-08	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-09	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-10	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-11	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-12	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-13	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-14	residual	
+table_en7.pdf	6	cl-30	cl-15	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-16	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-19	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-20	blank	
+table_en7.pdf	6	cl-30	cl-21	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-30	cl-22	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-23	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-24	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-30	cl-25	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-30	cl-26	residual	
+table_en7.pdf	6	cl-30	cl-27	1/4-1/2 stage 2	
+table_en7.pdf	6	cl-30	cl-28	0-1/4 stage 3	
+table_en7.pdf	6	cl-30	cl-29	blank	
+table_en7.pdf	6	cl-30	cl-30	0-1/4 stage 3	E.2#12
