@@ -10,6 +10,15 @@ export RUSTDOCFLAGS := "-D warnings"
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
 core_crates := "-p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
 
+# The crates with real logic to mutate today: jlreq-line, jlreq-inline and jlreq are still
+# bootstrap stubs (ROADMAP.md M1/M3+), and xtask is repository tooling, not the product
+# (docs/design/api-spine.md). Each crate's `src/generated/` tables are left in scope rather
+# than excluded by glob: most (jlreq-spec, jlreq-spacing) are pure data with no function
+# body for cargo-mutants to touch, and the few it finds elsewhere (jlreq-class's bitflag
+# combinators) are cheap to run. Either way their correctness is `generate-check` and
+# `attest`'s job, not this gate's.
+mutant_crates := "-p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing"
+
 # List the available development commands.
 default:
     @just --list
@@ -158,6 +167,25 @@ msrv:
     cargo msrv verify --path crates/jlreq
     cargo msrv verify --path crates/jlreq-conform
     cargo msrv verify --path xtask
+
+# Mutation-test the crates with real logic against their own `#[cfg(test)]` suites, or one
+# crate if `crate` is given (e.g. `just mutants jlreq-spacing`). Baseline only today: M1-a
+# stands the gate up with a report, not a kill-everything threshold — that discipline, and
+# the independently-authored cases it needs, arrive with M1-b. Not part of `check`, `ci` or
+# `design` yet for the same reason (see the CI workflow's own `mutants` job for where it
+# does run: `workflow_dispatch` and a weekly schedule, outside `ci-required`).
+#
+# `--test-tool nextest` matches `just test`. No `-D warnings` here unlike the other gates:
+# `[workspace.lints]` sets these at `warn`, not `deny`, and CI only escalates them to errors
+# by exporting `RUSTFLAGS` per job — which this recipe deliberately does not do. Mutated
+# code that merely provokes a new lint (an unused binding, say) still builds and runs
+# against the tests instead of being reported "unviable" for a reason unrelated to whether
+# the tests actually exercise it. The unviable mutants this gate does report are almost all
+# a different, structural thing: generic replacement values (`Default::default()`,
+# `::std::iter::empty()`) that do not type-check against this crate's domain types or its
+# `no_std` boundary — see the milestone report for the per-crate rate.
+mutants crate="":
+    cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} --test-tool nextest --no-times --colors=never -j 4
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).

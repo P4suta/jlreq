@@ -1,0 +1,68 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Mutation testing (cargo-mutants) for the crates with real logic today: jlreq-unit,
+# jlreq-spec, jlreq-class, jlreq-spacing (see the Justfile's `mutant_crates`). jlreq-line,
+# jlreq-inline and jlreq are still bootstrap stubs; xtask is tooling, not the product.
+#
+# Baseline only (M1-a): this is a report, not a kill-everything gate. cargo-mutants exits
+# non-zero whenever any mutant survives, so a red run here is the expected steady state
+# until M1-b's independently-authored cases (the discipline that already applies to
+# character classification, docs/adr/0006) raise the kill rate. That is why this workflow
+# is separate from `ci.yml` and absent from its `ci-required` aggregation gate — the same
+# precedent `codeql.yml` sets for a slow, non-blocking, regularly-scheduled check — rather
+# than a `just check`/`just ci` recipe, which both stay fast and deterministic gates a
+# developer runs on every commit.
+#
+# Each matrix leg runs `just mutants <crate>`, scoped to one package the way `-p` scopes
+# every other per-crate gate in this repository (see `just msrv`).
+name: Mutants
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly (Thu 04:38 UTC, offset from codeql.yml's Mon 03:27 UTC) so the baseline tracks
+    # the test suite even between direct changes to the four crates under test.
+    - cron: "38 4 * * 4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  mutants:
+    name: mutants (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    # First-pass ceiling: the largest crate under test (jlreq-class, ~440 mutants) finished
+    # in a few minutes on a 16-core devbox; standard GitHub-hosted runners have far fewer
+    # cores, so this leaves generous headroom rather than a tuned figure.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [jlreq-unit, jlreq-spec, jlreq-class, jlreq-spacing]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      # Deliberately no `RUSTFLAGS: -D warnings` (unlike clippy/test/design/etc. in
+      # ci.yml): that env var, not the workspace lint levels themselves, is what turns a
+      # warning into a build failure elsewhere in this repo, and mutated code that merely
+      # provokes a new lint should still build and run against the tests here. See the
+      # Justfile's `mutants` recipe for the fuller version of this reasoning.
+      - name: cargo mutants
+        run: just mutants ${{ matrix.crate }}
+      - name: upload mutants.out
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutants.out-${{ matrix.crate }}
+          path: mutants.out/
+          retention-days: 14
