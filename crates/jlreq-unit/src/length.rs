@@ -44,6 +44,12 @@ pub(crate) const UPPER: i32 = (1 << 30) - 1;
 /// hanging punctuation are naturally signed (ADR-0007).
 pub(crate) const LOWER: i32 = UPPER.saturating_neg();
 
+/// [`UPPER`]'s doc comment states this as the reason the bound sits where it does: two
+/// valid values never overflow a single `i32` addition. Proving it here, rather than
+/// leaving it as unverified prose, is what stands between a moved bound and silent wrap.
+const _: () = assert!(UPPER.checked_add(UPPER).is_some());
+const _: () = assert!(LOWER.checked_add(LOWER).is_some());
+
 /// The most em lengths one axis may carry a remainder for, as an array length.
 const SIZE_SLOTS: usize = 32;
 

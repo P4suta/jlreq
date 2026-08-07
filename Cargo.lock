@@ -38,6 +38,11 @@ version = "0.0.0"
 [[package]]
 name = "jlreq-spacing"
 version = "0.0.0"
+dependencies = [
+ "jlreq-class",
+ "jlreq-spec",
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-spec"

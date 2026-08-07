@@ -2514,9 +2514,23 @@ mod tests {
         .expect("the allowlist is readable");
         let (allowlist, problems) = parse_allowlist(&text);
         assert!(problems.is_empty(), "found {problems:?}");
-        assert!(
-            allowlist.sites.is_empty(),
-            "the file names no site until a composition source names a variant"
+        assert_eq!(
+            allowlist
+                .sites
+                .iter()
+                .map(|site| (
+                    site.crate_name.as_str(),
+                    site.item.as_str(),
+                    site.rule.as_str()
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("jlreq-spacing", "vertical_decimal_solid", "3.1.3"),
+                ("jlreq-spacing", "direction_of", "3.1.3"),
+            ],
+            "jlreq-spacing reads 3.1.3 as the vertical-writing withdrawal of the comma's and \
+             the middle dot's own conditional space, and its own tests exercise both \
+             directions through one allowlisted helper"
         );
         assert_eq!(
             allowlist
@@ -2524,8 +2538,8 @@ mod tests {
                 .iter()
                 .map(|entry| entry.rule.as_str())
                 .collect::<Vec<&str>>(),
-            vec!["3.1.3", "3.2.5", "3.3.5"],
-            "and it defers the whole marked set, because no crate that reads one has started"
+            vec!["3.2.5", "3.3.5"],
+            "3.1.3 is read now; 3.2.5 and 3.3.5 still await jlreq-inline"
         );
     }
 
