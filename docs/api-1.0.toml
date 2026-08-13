@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Exact public names for the only Rust library released as kumihan 1.0. Signatures and
+# openness are checked by xtask's structural API pass; this file makes additions and
+# removals deliberate. Implementation modules remain private.
+
+[[module]]
+path = "kumihan"
+items = [
+  "Alignment",
+  "Attachment",
+  "Break",
+  "Cluster",
+  "ClusterPlacement",
+  "ClusterRole",
+  "Composer",
+  "Construct",
+  "CoordinateTransform",
+  "Diagnostic",
+  "Frame",
+  "InputError",
+  "Layout",
+  "Line",
+  "Paragraph",
+  "ParagraphBuilder",
+  "PlacementOrigin",
+  "Ruby",
+  "RubyKind",
+  "RubyRun",
+  "SPECIFICATION",
+  "Severity",
+  "ShapedText",
+  "Size",
+  "Style",
+  "StyleBuilder",
+  "StyleError",
+  "TabAlignment",
+  "TabStop",
+  "Widow",
+  "WritingMode",
+  "compose",
+  "style",
+]
+
+[[module]]
+path = "kumihan::style"
+items = [
+  "AdjustmentPreference",
+  "AmbiguousContext",
+  "ExpansionOrder",
+  "GroupRubyDistribution",
+  "GroupedNumeralBeforeWestern",
+  "GroupedNumeralQualification",
+  "HangingPunctuation",
+  "IterationMarkAtLineHead",
+  "JapaneseLatinExpansionCeiling",
+  "JukugoRubyLayout",
+  "KinsokuLevel",
+  "LineEndFullStopComma",
+  "LineEndPunctuation",
+  "LineHeadOpeningBracket",
+  "ReductionTable",
+  "RelaxationMechanism",
+  "Remainder",
+  "RubyAlignment",
+  "RubyOverhangIndent",
+  "RubyOverhangKana",
+  "SentenceMedialDividingMark",
+  "Style",
+  "StyleBuilder",
+  "StyleError",
+  "UnlistedCodePoint",
+]

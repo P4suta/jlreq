@@ -4,6 +4,7 @@
 
 [package]
 name = "jlreq-unit"
+publish = false
 description = "Quantities, axes, and the item vocabulary shared by the JLReq Japanese layout crates"
 keywords = ["japanese", "typesetting", "jlreq", "text-layout", "no-std"]
 categories = ["text-processing", "internationalization", "no-std::no-alloc"]

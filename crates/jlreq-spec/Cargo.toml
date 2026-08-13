@@ -4,6 +4,7 @@
 
 [package]
 name = "jlreq-spec"
+publish = false
 description = "JLReq rule addressing, answer provenance, and the policy space for Japanese text layout"
 keywords = ["japanese", "typesetting", "jlreq", "specification", "no-std"]
 categories = ["text-processing", "internationalization", "no-std::no-alloc"]

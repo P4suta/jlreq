@@ -39,6 +39,15 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 kumihan contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
+[[annotations]]
+path = [
+  "crates/kumihan-conformance/protocol.schema.json",
+  "crates/kumihan-conformance/suite.ndjson",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 kumihan contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
 # The vendored specification and everything read out of it. The snapshot is W3C's
 # document verbatim; spec/derived/ is generated from it and spec/captured/ is
 # transcribed from the matrices W3C publishes only as PDF, so both carry the same

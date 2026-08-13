@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/P4suta/kumihan/blob/main/crates/kumihan-conformance/protocol.schema.json",
+  "title": "kumihan conformance protocol v1",
+  "type": "object",
+  "required": ["protocol", "spec", "id"],
+  "properties": {
+    "protocol": { "const": "kumihan.conformance/1" },
+    "spec": { "const": "jlreq-2020-08-11+unicode-17.0.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "request": { "type": "object" },
+    "response": { "type": "object" },
+    "expected": { "type": "object" }
+  },
+  "oneOf": [
+    { "required": ["request"], "not": { "required": ["response"] } },
+    { "required": ["response"], "not": { "required": ["request"] } }
+  ]
+}

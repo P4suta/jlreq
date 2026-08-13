@@ -5,6 +5,8 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/kumihan",
+  "crates/kumihan-conformance",
   "crates/jlreq-unit",
   "crates/jlreq-spec",
   "crates/jlreq-class",

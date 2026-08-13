@@ -4,6 +4,7 @@
 
 [package]
 name = "jlreq-conform"
+publish = false
 description = "An executable conformance suite for JLReq Japanese line composition, runnable against any implementation"
 keywords = ["japanese", "typesetting", "jlreq", "conformance", "testing"]
 categories = [

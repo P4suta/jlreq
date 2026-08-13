@@ -110,6 +110,10 @@ impl Adjacency {
 /// `jlreq-line` does not reach `jlreq-inline` (`docs/adr/0015`).
 const CRATE_GRAPH: &[Adjacency] = &[
     Adjacency {
+        crate_name: "kumihan",
+        may_depend_on: &[],
+    },
+    Adjacency {
         crate_name: "jlreq-unit",
         may_depend_on: &[],
     },
@@ -155,6 +159,10 @@ const CRATE_GRAPH: &[Adjacency] = &[
         crate_name: "jlreq-conform",
         may_depend_on: &["jlreq", "jlreq-spec"],
     },
+    Adjacency {
+        crate_name: "kumihan-conformance",
+        may_depend_on: &["kumihan", "serde_json"],
+    },
 ];
 
 /// Crates in the graph that `shared::core_crates` does not yield, with the member path
@@ -166,7 +174,10 @@ const CRATE_GRAPH: &[Adjacency] = &[
 /// explicitly. Its manifest is therefore read here. The name is verified against the
 /// manifest rather than assumed from the path, so this pair cannot rot into applying one
 /// crate's row to another.
-const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] = &[("jlreq-conform", "crates/jlreq-conform")];
+const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] = &[
+    ("jlreq-conform", "crates/jlreq-conform"),
+    ("kumihan-conformance", "crates/kumihan-conformance"),
+];
 
 /// One type that crosses the seam between the construct layer and the line layer.
 #[derive(Debug)]
@@ -1267,6 +1278,25 @@ mod tests {
     }
 
     #[test]
+    fn the_unified_products_have_explicit_dependency_rows() {
+        let library = CRATE_GRAPH
+            .iter()
+            .find(|row| row.crate_name == "kumihan")
+            .expect("the unified public library has a graph row");
+        assert!(
+            library.may_depend_on.is_empty(),
+            "the no_std public library has no external dependencies"
+        );
+
+        let runner = CRATE_GRAPH
+            .iter()
+            .find(|row| row.crate_name == "kumihan-conformance")
+            .expect("the binary-only conformance product has a graph row");
+        assert!(runner.may_depend_on.contains(&"kumihan"));
+        assert!(runner.may_depend_on.contains(&"serde_json"));
+    }
+
+    #[test]
     fn a_dependency_the_row_omits_is_a_violation_even_when_it_is_core() {
         let mut violations = Vec::new();
         check_row(
@@ -1317,6 +1347,12 @@ mod tests {
         let mut earlier = Vec::new();
         for row in CRATE_GRAPH {
             for permitted in row.may_depend_on {
+                if !CRATE_GRAPH
+                    .iter()
+                    .any(|candidate| candidate.crate_name == *permitted)
+                {
+                    continue;
+                }
                 assert!(
                     earlier.contains(permitted),
                     "{crate_name} may depend on {permitted}, which is not a crate the graph \

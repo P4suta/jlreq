@@ -28,6 +28,8 @@ use std::process::ExitCode;
 /// spells it, and an entry naming something that is no longer a member is an error rather
 /// than a no-op, so this list cannot rot unnoticed.
 const NON_CORE_MEMBERS: &[&str] = &[
+    // The language-independent protocol runner launches external processes and parses JSON.
+    "crates/kumihan-conformance",
     // The conformance suite is a std program that reads its own case files (ADR 0006).
     "crates/jlreq-conform",
     // The repository's own tooling, which is this program.
@@ -637,6 +639,14 @@ mod tests {
     fn the_core_is_every_member_that_is_not_exempted() {
         let core = core_crates().expect("the workspace manifest is readable");
         let names: Vec<&str> = core.iter().map(|each| each.name.as_str()).collect();
+        assert!(
+            names.contains(&"kumihan"),
+            "the unified no_std library is core: {names:?}"
+        );
+        assert!(
+            !names.contains(&"kumihan-conformance"),
+            "the process-oriented conformance product is not core: {names:?}"
+        );
         assert!(names.contains(&"jlreq-unit"), "found {names:?}");
         assert!(names.contains(&"jlreq"), "found {names:?}");
         for exempted in NON_CORE_MEMBERS {

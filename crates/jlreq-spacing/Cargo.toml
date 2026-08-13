@@ -4,6 +4,7 @@
 
 [package]
 name = "jlreq-spacing"
+publish = false
 description = "Mojikumi: inter-character spacing between JLReq character classes"
 keywords = ["japanese", "typesetting", "mojikumi", "text-layout", "no-std"]
 categories = ["text-processing", "internationalization", "no-std::no-alloc"]

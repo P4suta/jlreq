@@ -29,12 +29,16 @@
 //!
 //! ## What must cite
 //!
-//! Every item the layout core declares `pub`, wherever it is declared: in a module, in an
+//! Every item in the legacy rule-bearing crates declares `pub`, wherever it is declared: in a module, in an
 //! inherent `impl`, or in a macro that writes one. A private module is no exemption,
 //! because `pub use` carries its items into the public surface anyway. The core is the
 //! crate list `shared` derives, so `jlreq-conform` is outside it: its public types
 //! describe the case format rather than implementing a rule, and the rules its cases name
 //! are `conform --check`'s subject rather than this gate's.
+//! The unified `kumihan` crate is intentionally transport-shaped: its stable diagnostics
+//! expose JLReq references while private rules and the black-box suite carry attribution.
+//! Requiring a citation on every getter would make implementation stages public again, so
+//! its exact exported names are checked by `api` and its behavior by conformance instead.
 //!
 //! Four kinds of declaration are outside the requirement, each for a reason rather than
 //! for convenience. A `pub use` re-export names an item that carries its own citation. A
@@ -203,11 +207,12 @@ struct Citation {
 
 /// Read every core crate, requiring a citation of every public item.
 fn read_surface(core: &[CoreCrate], violations: &mut Vec<String>) -> io::Result<Surface> {
-    let mut surface = Surface {
-        crates: core.len(),
-        ..Surface::default()
-    };
+    let mut surface = Surface::default();
     for each in core {
+        if !requires_public_item_citations(&each.name) {
+            continue;
+        }
+        surface.crates = surface.crates.saturating_add(1);
         let directory = each.directory.join("src");
         for source in shared::rust_sources(&directory)? {
             let name = shared::relative_name(&source, &directory);
@@ -233,6 +238,11 @@ fn read_surface(core: &[CoreCrate], violations: &mut Vec<String>) -> io::Result<
         }
     }
     Ok(surface)
+}
+
+/// Whether the crate's public declarations are themselves the rule-bearing surface.
+fn requires_public_item_citations(crate_name: &str) -> bool {
+    crate_name != "kumihan"
 }
 
 /// Whether a source is emitted rather than written, which the emitter's stricter contract
@@ -1141,7 +1151,7 @@ mod tests {
     use super::{
         Citation, Cited, Detail, Mention, Surface, address, check_cases, check_rules,
         check_sections, claim, claim_of, declared_rules, is_generated, read_addresses, read_table,
-        scan, table_rows,
+        requires_public_item_citations, scan, table_rows,
     };
 
     /// Build a citation index the way `read_addresses` does, from addresses alone.
@@ -1159,6 +1169,12 @@ mod tests {
             );
         }
         cited
+    }
+
+    #[test]
+    fn unified_transport_api_uses_black_box_rule_attribution() {
+        assert!(!requires_public_item_citations("kumihan"));
+        assert!(requires_public_item_citations("jlreq-spacing"));
     }
 
     /// The set a generated table would have produced.

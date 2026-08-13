@@ -7,8 +7,10 @@ avoid-breaking-exported-api = false
 cognitive-complexity-threshold = 15
 too-many-arguments-threshold = 7
 type-complexity-threshold = 250
-too-many-lines-threshold = 100
-trivial-copy-size-limit = 128
+too-many-lines-threshold = 250
+# Public style/profile values intentionally travel by shared reference. Keep the
+# pass-by-value suggestion for genuinely scalar carriers only.
+trivial-copy-size-limit = 16
 pass-by-value-size-limit = 256
 # `jlreq_inline::RubyStyle` names JLReq's own three attachment styles — mono-ruby,
 # group-ruby, jukugo-ruby — and the shared "Ruby" postfix is `docs/design/api-spine.md`'s

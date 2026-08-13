@@ -140,7 +140,118 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     check_forbidden_names(&control, &surface, &mut violations);
     check_forbidden_signatures(&control, &surface, &mut violations);
     check_policy_space(&root, &control, &mut violations)?;
+    check_one_point_zero_allowlist(&root, &mut violations)?;
     Ok(violations)
+}
+
+// -------------------------------------------------------------------------------------
+// The kumihan 1.0 allowlist
+// -------------------------------------------------------------------------------------
+
+/// One public module whose directly exported item names are frozen for 1.0.
+#[derive(Debug)]
+struct AllowedModule {
+    /// `kumihan` for the crate root, or a public module path such as `kumihan::style`.
+    path: String,
+    /// Every directly nameable item in that module, in no significant order.
+    items: BTreeSet<String>,
+}
+
+/// Read the explicit 1.0 surface and reject missing, extra, or duplicated module rows.
+fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
+    let path = root.join("docs").join("api-1.0.toml");
+    let text = fs::read_to_string(path)?;
+    let entries = entries_of(&text);
+    let mut modules = Vec::new();
+    let mut paths = BTreeSet::new();
+    for entry in entries.iter().filter(|entry| entry.table == "module") {
+        let module_path = entry.single("path").ok_or_else(|| {
+            malformed("a `[[module]]` entry in docs/api-1.0.toml has no path".to_owned())
+        })?;
+        let items: BTreeSet<String> = entry.list("items").iter().cloned().collect();
+        if items.is_empty() {
+            return Err(malformed(format!(
+                "the `[[module]]` entry for `{module_path}` in docs/api-1.0.toml has no items"
+            )));
+        }
+        if !paths.insert(module_path.to_owned()) {
+            return Err(malformed(format!(
+                "docs/api-1.0.toml lists the module `{module_path}` more than once"
+            )));
+        }
+        modules.push(AllowedModule {
+            path: module_path.to_owned(),
+            items,
+        });
+    }
+    if modules.is_empty() {
+        return Err(malformed(
+            "docs/api-1.0.toml has no `[[module]]` entries".to_owned(),
+        ));
+    }
+    Ok(modules)
+}
+
+/// Compare one module source with its exact allowlist in both directions.
+fn check_allowed_items(allowed: &AllowedModule, source: &str) -> Vec<String> {
+    let actual: BTreeSet<String> = declarations_of(source, "src/lib.rs")
+        .into_iter()
+        .filter(|declaration| {
+            declaration.visibility == Visibility::Public && declaration.owner.is_none()
+        })
+        .map(|declaration| declaration.name)
+        .collect();
+    let mut violations = Vec::new();
+    for missing in allowed.items.difference(&actual) {
+        violations.push(format!(
+            "docs/api-1.0.toml allows `{path}::{missing}`, but that item is not exported",
+            path = allowed.path
+        ));
+    }
+    for extra in actual.difference(&allowed.items) {
+        violations.push(format!(
+            "`{path}::{extra}` is exported but absent from docs/api-1.0.toml",
+            path = allowed.path
+        ));
+    }
+    violations
+}
+
+/// Hold the only public Rust crate to the root and style-module names frozen for 1.0.
+fn check_one_point_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
+    let modules = allowed_modules(root)?;
+    for module in &modules {
+        let relative = match module.path.as_str() {
+            "kumihan" => "lib.rs".to_owned(),
+            path if path.starts_with("kumihan::") => {
+                format!(
+                    "{}.rs",
+                    path.trim_start_matches("kumihan::").replace("::", "/")
+                )
+            },
+            path => {
+                return Err(malformed(format!(
+                    "docs/api-1.0.toml names `{path}`; the only public Rust crate is `kumihan`"
+                )));
+            },
+        };
+        let source_path = root
+            .join("crates")
+            .join("kumihan")
+            .join("src")
+            .join(relative);
+        let source = fs::read_to_string(source_path)?;
+        violations.extend(check_allowed_items(module, &source));
+    }
+    println!(
+        "api: docs/api-1.0.toml freezes {items} item name(s) across {modules} public module(s).",
+        items = modules
+            .iter()
+            .map(|module| module.items.len())
+            .sum::<usize>(),
+        modules = modules.len()
+    );
+    Ok(())
 }
 
 // -------------------------------------------------------------------------------------
@@ -626,11 +737,11 @@ impl Surface {
         Ok(Self { members })
     }
 
-    /// The members whose surface ADR 0012 governs.
+    /// Published members plus the blocked kumihan release candidate.
     fn published(&self) -> impl Iterator<Item = &Member> {
-        self.members
-            .iter()
-            .filter(|member| member.publication == Publication::Published)
+        self.members.iter().filter(|member| {
+            member.publication == Publication::Published || member.name == "kumihan"
+        })
     }
 
     /// A member by its Rust path segment.
@@ -2693,11 +2804,12 @@ fn declared(surface: &Surface, path: &TypePath) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        ClosedChoices, Construction, Control, DerivedQuestion, Kind, Openness, Receiver, Surface,
-        TypePath, Visibility, answers_a_closed_set, check_closed_choices, check_construction,
-        check_exhaustiveness, check_forbidden_names, check_forbidden_signatures, check_projections,
-        check_readability, code_only, declarations_of, entries_of, obtainable_types,
-        parse_signature_spec, question_constants, reexported_names, results_in, tokenize,
+        AllowedModule, ClosedChoices, Construction, Control, DerivedQuestion, Kind, Openness,
+        Receiver, Surface, TypePath, Visibility, answers_a_closed_set, check_allowed_items,
+        check_closed_choices, check_construction, check_exhaustiveness, check_forbidden_names,
+        check_forbidden_signatures, check_projections, check_readability, code_only,
+        declarations_of, entries_of, obtainable_types, parse_signature_spec, question_constants,
+        reexported_names, results_in, tokenize,
     };
     use super::{Published, check_policy_space_over, derived_questions, published_questions};
     use std::collections::BTreeSet;
@@ -2716,6 +2828,26 @@ mod tests {
         declarations_of(source, "src/lib.rs")
     }
 
+    #[test]
+    fn one_point_zero_allowlist_is_exact_in_both_directions() {
+        let allowed = AllowedModule {
+            path: "kumihan".to_owned(),
+            items: ["Style".to_owned(), "compose".to_owned()]
+                .into_iter()
+                .collect(),
+        };
+        assert!(check_allowed_items(&allowed, "pub struct Style; pub fn compose() {}").is_empty());
+
+        let violations = check_allowed_items(
+            &allowed,
+            "pub struct Style; pub struct RuleId; pub fn hidden_detail() {}",
+        );
+        assert_eq!(violations.len(), 3, "found {violations:?}");
+        assert!(violations.iter().any(|line| line.contains("compose")));
+        assert!(violations.iter().any(|line| line.contains("RuleId")));
+        assert!(violations.iter().any(|line| line.contains("hidden_detail")));
+    }
+
     /// One member holding exactly this fixture, published under this crate name.
     fn member(name: &str, source: &str) -> super::Member {
         super::Member {
@@ -2725,6 +2857,13 @@ mod tests {
             files: 1,
             declarations: read(source),
         }
+    }
+
+    /// One explicitly non-publishable fixture member.
+    fn internal_member(name: &str, source: &str) -> super::Member {
+        let mut member = member(name, source);
+        member.publication = super::Publication::Internal;
+        member
     }
 
     /// A surface of one fixture crate.
@@ -2751,6 +2890,25 @@ mod tests {
     #[test]
     fn the_gate_takes_no_arguments() {
         assert!(super::run(&["--check".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn the_kumihan_release_candidate_is_checked_before_publication() {
+        let surface = Surface {
+            members: vec![
+                internal_member("kumihan", "pub struct PublicApi;\n"),
+                internal_member("jlreq-unit", "pub struct LegacyApi;\n"),
+            ],
+        };
+        let checked: Vec<_> = surface
+            .published()
+            .map(|member| member.name.as_str())
+            .collect();
+        assert_eq!(
+            checked,
+            ["kumihan"],
+            "publish=false keeps the release blocked, not the API gate blind"
+        );
     }
 
     #[test]

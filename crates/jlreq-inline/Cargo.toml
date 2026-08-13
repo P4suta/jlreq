@@ -4,6 +4,7 @@
 
 [package]
 name = "jlreq-inline"
+publish = false
 description = "Ruby, tate-chu-yoko, emphasis dots, and warichu placement for Japanese text"
 keywords = ["japanese", "typesetting", "ruby", "furigana", "no-std"]
 categories = ["text-processing", "internationalization", "no-std"]
