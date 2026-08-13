@@ -60,7 +60,7 @@ placement rules, including local direction changes such as tate-chu-yoko.
 
 ## Remaining conformance work
 
-The legacy inventory currently reports 25 deferred rules and four evidence-backed
+The legacy inventory currently reports 24 deferred rules and five evidence-backed
 editorial/non-observable classifications. Highest-priority implementation groups are:
 
 1. complete spacing/classification parity with generated Appendix tables in the unified
