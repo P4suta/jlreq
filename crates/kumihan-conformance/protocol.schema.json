@@ -93,6 +93,7 @@
             "digit-group-separator",
             "grouped-numeral",
             "unit-symbol",
+            "quantity-symbol",
             "formula",
             "warichu-bracket"
           ]

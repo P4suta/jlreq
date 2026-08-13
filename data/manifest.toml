@@ -11,75 +11,79 @@
 
 [[file]]
 path = "crates/jlreq-class/src/generated/appendix_a.rs"
-sha256 = "b65f82ff6bd067608728cae9d153ccaca88c05231374aa6c690fc3a1cab21f93"
+sha256 = "e0f8591d8588c69f5a9acb1b70a9d8136c7fcfa588d9056f32f786dc7acb67ea"
 
 [[file]]
 path = "crates/jlreq-class/src/generated/class_name.rs"
-sha256 = "8ea436aeea30ca2b9e11937d0b3b6c7f2dce6a72798cc341f1dc7933e2b7b545"
+sha256 = "d3bbddcb5833c1bc7202a37aa1299b8a7382a4f118f1da820329d936489b7255"
 
 [[file]]
 path = "crates/jlreq-class/src/generated/folding.rs"
-sha256 = "ce3b7f8bf90a93f82da09ded3b0c55fe1cd5f1501bcdff1fc5e9474a83683338"
+sha256 = "75090c40b6d67235b37817f6632bf8767f6f0874dab980b045c750ce9795a231"
 
 [[file]]
 path = "crates/jlreq-class/src/generated/ideograph.rs"
-sha256 = "9c077b0136563c65b830f0b02dc417a18e5f93397c08b259b08b57d76a5cabfb"
+sha256 = "f9033fd6767df8882985f548ab09278711ecf01e4b8a161be0911ade27d61df1"
 
 [[file]]
 path = "crates/jlreq-class/src/generated/script.rs"
-sha256 = "29ff03c3080cf8a608d94e6d3fae9eec299733a335885514d29fe51d8e0aa795"
+sha256 = "2834efd9765d71f9d4d0dc0f2b85b5650b113292e4d01b97f22a3a06ac196b1b"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table1.rs"
-sha256 = "713d894cfdc032c11e96a6a234e8013015ce0c921d70612df63e3f838f8892ec"
+sha256 = "c054622225fac1b5fbb05d701afde7267fa2af38226126fbba66cf80aacfcee0"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table2.rs"
-sha256 = "07c8e4e36bca2119c7cacbdbd2af6299594b3e3e6d9ebecab209c3e5e6c64d5e"
+sha256 = "7f6b82898ada50bec57af8ce947f5e3381ca48dc275491318eaad5aba8933dc1"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table3.rs"
-sha256 = "6a85cc1d2d56c6a1d482d3d2ceb73b36cf4e713bf11d161f84a0d68c9d2ffe50"
+sha256 = "9283cf31d8e3aac7477a7df0ef72544b4edc70c32e183aa0446c90007a3453ac"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table4.rs"
-sha256 = "097a754192c8ad54cedf496410a8d1df2e25151c61e7014431ded9a6c1036fe0"
+sha256 = "ccd4dd20b2ad8d46ed1cdfa3470fa74063d03be195e4ba9be14517bd913f25ce"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table5.rs"
-sha256 = "717545943fe981db28237a2478b60d1340145a5a1472c445b609a4a1fda7af42"
+sha256 = "b1b90a8fe0eaa215f9c4b9ec72db48d72e83fc4c44762c8b42728c9c0f8b2487"
 
 [[file]]
 path = "crates/jlreq-spacing/src/generated/table6.rs"
-sha256 = "f431186633ed174dc7549ea59238439620a59cdb0c95bbf011e6dc9b12416e6e"
+sha256 = "4cb203d8618761ea1197fc265e79131837ef69e884231782c822c83d9a5123c9"
 
 [[file]]
 path = "crates/jlreq-spec/src/generated/inventory.rs"
-sha256 = "1aa49bceb7dafa4592de903dd4206df5d5a46240547e3400b529bcb3aeec31ec"
+sha256 = "2e0197e3319adad4890b015a48f5e23af77ae1f7fb342865c3e44210f14687dc"
 
 [[file]]
 path = "crates/jlreq-spec/src/generated/policy.rs"
-sha256 = "dc59589e60120553b08ca2ce9d3c483c7a85a716f40ae86b59893aa34b520ec7"
+sha256 = "4ab515ba6ce9cb3415729868076fb5168d5cd3403d18b40ca36738023767d702"
 
 [[file]]
 path = "crates/kumihan/src/generated/appendix_a.rs"
-sha256 = "b65f82ff6bd067608728cae9d153ccaca88c05231374aa6c690fc3a1cab21f93"
+sha256 = "e0f8591d8588c69f5a9acb1b70a9d8136c7fcfa588d9056f32f786dc7acb67ea"
 
 [[file]]
 path = "crates/kumihan/src/generated/folding.rs"
-sha256 = "ce3b7f8bf90a93f82da09ded3b0c55fe1cd5f1501bcdff1fc5e9474a83683338"
+sha256 = "75090c40b6d67235b37817f6632bf8767f6f0874dab980b045c750ce9795a231"
 
 [[file]]
 path = "crates/kumihan/src/generated/ideograph.rs"
-sha256 = "9c077b0136563c65b830f0b02dc417a18e5f93397c08b259b08b57d76a5cabfb"
+sha256 = "f9033fd6767df8882985f548ab09278711ecf01e4b8a161be0911ade27d61df1"
 
 [[file]]
 path = "crates/kumihan/src/generated/script.rs"
-sha256 = "29ff03c3080cf8a608d94e6d3fae9eec299733a335885514d29fe51d8e0aa795"
+sha256 = "2834efd9765d71f9d4d0dc0f2b85b5650b113292e4d01b97f22a3a06ac196b1b"
 
 [[file]]
 path = "crates/kumihan/src/generated/table1.rs"
-sha256 = "511b5feba974fd10e55bc1fe57299a3debbe52d712bed57cd04d2d7071ec2b67"
+sha256 = "442057f320e25195e458ac4240902a65a7fb76fceb7e6d906a395ec29f7556bd"
+
+[[file]]
+path = "crates/kumihan/src/generated/table2.rs"
+sha256 = "704355cc5dd28b756466bbc1d2b75a330a95efbc1d8c32cce95a5f25548993c9"
 
 [[file]]
 path = "spec/PROVENANCE.toml"
@@ -179,7 +183,7 @@ sha256 = "9680ce7d66ec2691ac36c4a81214b8bc64827d0e5f62cfb334a4808c3ccb631f"
 
 [[file]]
 path = "xtask/src/generate.rs"
-sha256 = "b97c1340f70324f3f03ce42bfd0928de52db4592510ca241af5557e0139231df"
+sha256 = "fce5d9ff902d70579481465c6c7114d846f684489c1af767a337020779a2cba9"
 
 [[file]]
 path = "xtask/src/inventory.rs"
@@ -191,4 +195,4 @@ sha256 = "e817ab1a85b1b4d1b9c7941777d3a6b9d3229c040949072f78971fcc243c58d3"
 
 [[file]]
 path = "xtask/src/spacing.rs"
-sha256 = "321fd9f5face7670063091cb8f1a1ab4e8d118e5e45539d0acbd90f274568c5b"
+sha256 = "cf3892a867eb5e5a430753b7858ac6fbd0ef4a154cfdf0d78a6fd3e5d1d408c1"

@@ -182,6 +182,7 @@ fn parse_shaped_text(value: &Value) -> Result<ShapedText, String> {
                 "digit-group-separator" => ClusterRole::DigitGroupSeparator,
                 "grouped-numeral" => ClusterRole::GroupedNumeral,
                 "unit-symbol" => ClusterRole::UnitSymbol,
+                "quantity-symbol" => ClusterRole::QuantitySymbol,
                 "formula" => ClusterRole::Formula,
                 "warichu-bracket" => ClusterRole::WarichuBracket,
                 other => return Err(format!("unknown cluster role {other:?}")),

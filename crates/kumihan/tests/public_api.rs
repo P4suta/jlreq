@@ -1696,6 +1696,161 @@ fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
 }
 
 #[test]
+fn table_two_prohibits_a_closing_bracket_at_every_kinsoku_level() {
+    let text = shaped("日）日", Frame::FullEm, 1_000).expect("valid kinsoku fixture");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(3), Break::allowed(6)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid break opportunities");
+
+    let layout = kumihan::compose(&paragraph, &Style::newspaper_2020());
+    assert_eq!(layout.lines()[0].range(), 0..6);
+}
+
+fn lines_at_only_boundary(text: ShapedText, offset: usize, style: &Style) -> Option<usize> {
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(offset)])
+        .alignment(Alignment::Start)
+        .build()
+        .ok()?;
+    Some(kumihan::compose(&paragraph, style).lines().len())
+}
+
+#[test]
+fn table_two_note_five_only_keeps_the_five_named_pairs_together() {
+    let same = shaped("——", Frame::FullEm, 1_000).expect("valid em-dash pair");
+    assert_eq!(lines_at_only_boundary(same, 3, &Style::default()), Some(1));
+
+    let different = shaped("—…", Frame::FullEm, 1_000).expect("valid mixed marks");
+    assert_eq!(
+        lines_at_only_boundary(different, 3, &Style::default()),
+        Some(2)
+    );
+
+    let kunojiten = shaped("〳〵", Frame::FullEm, 1_000).expect("valid kunojiten pair");
+    assert_eq!(
+        lines_at_only_boundary(kunojiten, 3, &Style::default()),
+        Some(1)
+    );
+}
+
+#[test]
+fn table_two_note_ten_reads_the_grouped_numeral_choice() {
+    let make_text = || {
+        ShapedText::new(
+            "1A",
+            Size::square(1_000).expect("positive size"),
+            Frame::Proportional,
+            [
+                Cluster::new(0..1, 1_000)
+                    .with_frame(Frame::HalfEm)
+                    .with_role(ClusterRole::GroupedNumeral),
+                Cluster::new(1..2, 1_000),
+            ],
+        )
+        .expect("valid grouped numeral fixture")
+    };
+
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 1, &Style::default()),
+        Some(2)
+    );
+    let unbreakable = Style::builder()
+        .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+        .build()
+        .expect("consistent grouped-numeral style");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 1, &unbreakable),
+        Some(1)
+    );
+}
+
+#[test]
+fn table_two_note_eleven_distinguishes_text_quantity_symbols_and_digits() {
+    let with_first = |source: &str, role: Option<ClusterRole>| {
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                role.map_or_else(
+                    || Cluster::new(0..1, 1_000).with_frame(Frame::Proportional),
+                    |role| {
+                        Cluster::new(0..1, 1_000)
+                            .with_frame(Frame::Proportional)
+                            .with_role(role)
+                    },
+                ),
+                Cluster::new(1..4, 1_000),
+            ],
+        )
+        .expect("valid postfixed-abbreviation fixture")
+    };
+
+    assert_eq!(
+        lines_at_only_boundary(with_first("A％", None), 1, &Style::default()),
+        Some(2)
+    );
+    assert_eq!(
+        lines_at_only_boundary(
+            with_first("A％", Some(ClusterRole::QuantitySymbol)),
+            1,
+            &Style::default(),
+        ),
+        Some(1)
+    );
+    assert_eq!(
+        lines_at_only_boundary(with_first("5％", None), 1, &Style::default()),
+        Some(1)
+    );
+}
+
+#[test]
+fn c_three_relaxes_only_the_boundaries_named_at_each_level() {
+    let before_hyphen = shaped("日‐", Frame::FullEm, 1_000).expect("valid hyphen fixture");
+    assert_eq!(
+        lines_at_only_boundary(before_hyphen, 3, &Style::newspaper_2020()),
+        Some(2)
+    );
+
+    let before_middle_dot = shaped("日・", Frame::FullEm, 1_000).expect("valid middle-dot fixture");
+    assert_eq!(
+        lines_at_only_boundary(before_middle_dot.clone(), 3, &Style::magazine_2020()),
+        Some(2)
+    );
+    assert_eq!(
+        lines_at_only_boundary(before_middle_dot, 3, &Style::jlreq_2020()),
+        Some(1)
+    );
+}
+
+#[test]
+fn both_relaxation_mechanisms_allow_kana_but_very_strict_does_not() {
+    let make_text = || shaped("日ー", Frame::FullEm, 1_000).expect("valid prolonged-mark fixture");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 3, &Style::jlreq_2020()),
+        Some(2)
+    );
+    let matrix = Style::builder()
+        .relaxation_mechanism(RelaxationMechanism::Matrix)
+        .build()
+        .expect("consistent matrix style");
+    assert_eq!(lines_at_only_boundary(make_text(), 3, &matrix), Some(2));
+
+    let very_strict = Style::builder()
+        .kinsoku_level(KinsokuLevel::VeryStrict)
+        .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+        .relaxation_mechanism(RelaxationMechanism::Matrix)
+        .build()
+        .expect("consistent very-strict style");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 3, &very_strict),
+        Some(1)
+    );
+}
+
+#[test]
 fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
     let text = shaped("日本", Frame::FullEm, 1_000).expect("valid reuse fixture");
     let paragraph = Paragraph::builder(text, 1_000)

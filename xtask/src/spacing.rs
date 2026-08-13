@@ -67,6 +67,15 @@ pub(crate) const TABLE2: Unit = Unit {
     emit: emit_table2,
 };
 
+/// Table 2 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE2: Unit = Unit {
+    input: "spec/captured/table2.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table2.rs",
+    summary: "Table 2, \"Possibilities for Line-breaking between Characters\" (Appendix C).",
+    emit: emit_kumihan_table2,
+};
+
 /// Table 3, JLReq's own reduction-priority reading (Appendix D).
 pub(crate) const TABLE3: Unit = Unit {
     input: "spec/captured/table3.en.tsv",
@@ -415,6 +424,34 @@ fn emit_table2(table: &Table) -> Result<Emission, String> {
     Ok(Emission { items, entries })
 }
 
+/// Emit Table 2 for `kumihan`, retaining observable JLReq references without `RuleId`.
+fn emit_kumihan_table2(table: &Table) -> Result<Emission, String> {
+    let rows = rows(table)?;
+    let mut items = String::from(
+        "use crate::spec::RawBreakCell;\n\n\
+         /// Table 2's cells, in the order the transcription was read.\n\
+         ///\n\
+         /// JLReq: §C.1\n\
+         pub(crate) static CELLS: &[RawBreakCell] = &[\n",
+    );
+    let mut entries = 0usize;
+    for row in &rows {
+        let before = axis(row.before)?;
+        let after = axis(row.after)?;
+        let (prohibited, levels) =
+            break_cell(row).map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
+        let rule = if row.note.is_empty() { "C" } else { row.note };
+        let _ = write!(
+            items,
+            "    RawBreakCell {{\n        before: {before},\n        after: {after},\n        \
+             prohibited: {prohibited},\n        levels: 0b{levels:04b},\n        rule: {rule:?},\n    }},\n"
+        );
+        entries = entries.saturating_add(1);
+    }
+    items.push_str("];\n");
+    Ok(Emission { items, entries })
+}
+
 /// Which of the two ladders a ranged table belongs to (ADR-0014): the name is used only for
 /// the doc comment the emitted module carries, because the two share one cell shape and
 /// differ only in what the crate that reads them does with `limit`.
@@ -680,17 +717,16 @@ mod tests {
     fn the_generation_units_hold_over_this_repository() {
         for unit in [
             super::TABLE1,
+            super::KUMIHAN_TABLE1,
             super::TABLE2,
+            super::KUMIHAN_TABLE2,
             super::TABLE3,
             super::TABLE4,
             super::TABLE5,
             super::TABLE6,
         ] {
             assert!(unit.input.starts_with("spec/captured/table"));
-            assert!(
-                unit.output
-                    .starts_with("crates/jlreq-spacing/src/generated/table")
-            );
+            assert!(unit.output.contains("/src/generated/table"));
         }
     }
 }

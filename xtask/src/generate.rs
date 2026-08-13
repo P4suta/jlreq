@@ -173,6 +173,7 @@ const UNITS: &[Unit] = &[
     spacing::TABLE1,
     spacing::KUMIHAN_TABLE1,
     spacing::TABLE2,
+    spacing::KUMIHAN_TABLE2,
     spacing::TABLE3,
     spacing::TABLE4,
     spacing::TABLE5,

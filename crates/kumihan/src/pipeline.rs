@@ -11,7 +11,8 @@ use crate::{
     WritingMode,
     construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
     style::{
-        AdjustmentPreference, JukugoRubyLayout, KinsokuLevel, Remainder, RubyAlignment,
+        AdjustmentPreference, GroupedNumeralBeforeWestern, IterationMarkAtLineHead,
+        JukugoRubyLayout, KinsokuLevel, RelaxationMechanism, Remainder, RubyAlignment,
         RubyOverhangIndent, RubyOverhangKana,
     },
 };
@@ -2440,30 +2441,155 @@ fn add_widow_diagnostic(paragraph: &Paragraph, layout: &mut Layout) {
 }
 
 fn break_is_legal(paragraph: &Paragraph, style: &Style, offset: usize) -> bool {
-    if offset == paragraph.text.source().len() || style.kinsoku_level() == KinsokuLevel::VeryLoose {
+    if offset == paragraph.text.source().len() {
         return true;
     }
-    let before = paragraph.text.source()[..offset].chars().next_back();
-    let after = paragraph.text.source()[offset..].chars().next();
-    !before.is_some_and(is_line_end_prohibited)
-        && !after.is_some_and(|character| is_line_head_prohibited(character, style.kinsoku_level()))
-}
+    let after_ordinal = cluster_index_at_or_after(paragraph, offset);
+    let Some(before_ordinal) = after_ordinal.checked_sub(1) else {
+        return true;
+    };
+    if after_ordinal >= paragraph.text.clusters().len() {
+        return true;
+    }
 
-fn is_line_end_prohibited(character: char) -> bool {
-    is_opening_bracket(character)
-}
+    let raw_before = class_of_cluster(paragraph, before_ordinal);
+    let raw_after = class_of_cluster(paragraph, after_ordinal);
+    let before_character =
+        single_cluster_character(paragraph, &paragraph.text.clusters()[before_ordinal]);
+    let after_character =
+        single_cluster_character(paragraph, &paragraph.text.clusters()[after_ordinal]);
 
-fn is_line_head_prohibited(character: char, level: KinsokuLevel) -> bool {
-    if is_closing_bracket(character)
-        || crate::spec::single_has_class(character, crate::spec::DIVIDING_PUNCTUATION)
-        || is_middle_dot(character)
-        || is_full_stop(character)
-        || is_comma(character)
+    // §C.3 states these four prohibitions are common to every convention level.
+    if raw_before == crate::spec::OPENING_BRACKET
+        || matches!(
+            raw_after,
+            crate::spec::CLOSING_BRACKET | crate::spec::FULL_STOP | crate::spec::COMMA
+        )
     {
+        return false;
+    }
+
+    if c_3_relaxes_boundary(
+        style,
+        raw_before,
+        raw_after,
+        before_character,
+        after_character,
+    ) {
         return true;
     }
-    level != KinsokuLevel::Loose
-        && "ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々ー".contains(character)
+
+    let before = reclassified_break_class(style, raw_before, before_character);
+    let after = reclassified_break_class(style, raw_after, after_character);
+    let Some(cell) = crate::spec::table_two_cell(before, after) else {
+        return true;
+    };
+    if cell.prohibited {
+        return false;
+    }
+
+    match (before, after) {
+        (8, 8) => !inseparable_member_pair(before_character, after_character),
+        (24, 27) => {
+            style.grouped_numeral_before_western() == GroupedNumeralBeforeWestern::Breakable
+        },
+        (27, 13) => {
+            let role = paragraph.text.clusters()[before_ordinal].role();
+            role != Some(ClusterRole::QuantitySymbol)
+                && !before_character.is_some_and(|character| character.is_ascii_digit())
+        },
+        _ => cell.levels & kinsoku_level_bit(style.kinsoku_level()) == 0,
+    }
+}
+
+fn kinsoku_level_bit(level: KinsokuLevel) -> u8 {
+    match level {
+        KinsokuLevel::VeryLoose => 0b0001,
+        KinsokuLevel::Loose => 0b0010,
+        KinsokuLevel::Strict => 0b0100,
+        KinsokuLevel::VeryStrict => 0b1000,
+    }
+}
+
+fn reclassified_break_class(style: &Style, class: u8, character: Option<char>) -> u8 {
+    if character == Some('々')
+        && style.iteration_mark_at_line_head() != IterationMarkAtLineHead::Prohibited
+        && style.kinsoku_level() != KinsokuLevel::VeryStrict
+    {
+        return 19;
+    }
+    if style.relaxation_mechanism() == RelaxationMechanism::Reclassify
+        && style.kinsoku_level() != KinsokuLevel::VeryStrict
+    {
+        if class == 10 {
+            return 16;
+        }
+        if class == 11 {
+            return if character.is_some_and(crate::spec::is_hiragana) {
+                15
+            } else {
+                16
+            };
+        }
+    }
+    class
+}
+
+fn c_3_relaxes_boundary(
+    style: &Style,
+    before: u8,
+    after: u8,
+    before_character: Option<char>,
+    after_character: Option<char>,
+) -> bool {
+    let either_class = |classes: &[u8]| classes.contains(&before) || classes.contains(&after);
+    let either_character =
+        |character| before_character == Some(character) || after_character == Some(character);
+    let iteration_relaxed = style.iteration_mark_at_line_head()
+        != IterationMarkAtLineHead::Prohibited
+        && either_character('々');
+    let matrix_kana =
+        style.relaxation_mechanism() == RelaxationMechanism::Matrix && either_class(&[10, 11]);
+
+    match style.kinsoku_level() {
+        KinsokuLevel::VeryLoose => {
+            either_class(&[3, 4, 5, 9, 12, 13])
+                || matrix_kana
+                || cl_08_same_kind(before_character, after_character)
+        },
+        KinsokuLevel::Loose => {
+            either_class(&[3])
+                || either_character('・')
+                || matches!(
+                    (before_character, after_character),
+                    (Some('…'), Some('…')) | (Some('‥'), Some('‥'))
+                )
+                || iteration_relaxed
+                || matrix_kana
+                || either_character('%')
+                || either_character('％')
+        },
+        KinsokuLevel::Strict => iteration_relaxed || matrix_kana,
+        KinsokuLevel::VeryStrict => false,
+    }
+}
+
+fn inseparable_member_pair(before: Option<char>, after: Option<char>) -> bool {
+    matches!(
+        (before, after),
+        (Some('—'), Some('—'))
+            | (Some('…'), Some('…'))
+            | (Some('‥'), Some('‥'))
+            | (Some('〳' | '〴'), Some('〵'))
+    )
+}
+
+fn cl_08_same_kind(before: Option<char>, after: Option<char>) -> bool {
+    match (before, after) {
+        (Some(before), Some(after)) if before == after => true,
+        (Some(before), Some(after)) => "〳〴〵".contains(before) && "〳〴〵".contains(after),
+        _ => false,
+    }
 }
 
 fn local_orientation(

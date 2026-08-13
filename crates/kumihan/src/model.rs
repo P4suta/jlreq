@@ -80,6 +80,8 @@ pub enum ClusterRole {
     GroupedNumeral,
     /// A character inside a unit symbol.
     UnitSymbol,
+    /// A Western character used as a symbol of a quantity.
+    QuantitySymbol,
     /// A character inside a mathematical or chemical formula.
     Formula,
     /// A bracket delimiting warichu.

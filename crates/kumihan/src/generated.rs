@@ -13,6 +13,7 @@ pub(crate) mod folding;
 pub(crate) mod ideograph;
 pub(crate) mod script;
 pub(crate) mod table1;
+pub(crate) mod table2;
 
 const LISTING_COUNT: usize = 1_686;
 const DISTINCT_KEY_COUNT: usize = 1_133;
@@ -24,6 +25,7 @@ const FOLD_COUNT: usize = 226;
 const SCRIPT_RANGE_COUNT: usize = 22;
 const CLASS_COUNT: u8 = 30;
 const TABLE_WITH_LINE_EDGE_COUNT: usize = 841;
+const TABLE_WITHOUT_LINE_EDGE_COUNT: usize = 784;
 
 const ALL_FRAMES: u8 = appendix_a::FRAME_FULL_EM
     | appendix_a::FRAME_HALF_EM
@@ -129,6 +131,22 @@ const _: () = {
                 listing
             ));
         }
+        index = index.saturating_add(1);
+    }
+};
+
+const _: () = assert!(table2::CELLS.len() == TABLE_WITHOUT_LINE_EDGE_COUNT);
+const _: () = {
+    let mut index = 0_usize;
+    while index < table2::CELLS.len() {
+        let cell = &table2::CELLS[index];
+        assert!(cell.before >= 1 && cell.before <= CLASS_COUNT);
+        assert!(cell.after >= 1 && cell.after <= CLASS_COUNT);
+        assert!(cell.before != 17 && cell.before != 18);
+        assert!(cell.after != 17 && cell.after != 18);
+        assert!(cell.levels <= 0b1111);
+        let _ = cell.prohibited;
+        let _ = cell.rule;
         index = index.saturating_add(1);
     }
 };

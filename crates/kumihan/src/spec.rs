@@ -37,13 +37,21 @@ pub(crate) struct RawSpacingCell {
     pub(crate) terms: &'static [RawTerm],
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RawBreakCell {
+    pub(crate) before: u8,
+    pub(crate) after: u8,
+    pub(crate) prohibited: bool,
+    pub(crate) levels: u8,
+    pub(crate) rule: &'static str,
+}
+
 pub(crate) const fn em(units: i32) -> i32 {
     units
 }
 
 pub(crate) const OPENING_BRACKET: u8 = 1;
 pub(crate) const CLOSING_BRACKET: u8 = 2;
-pub(crate) const DIVIDING_PUNCTUATION: u8 = 4;
 pub(crate) const MIDDLE_DOT: u8 = 5;
 pub(crate) const FULL_STOP: u8 = 6;
 pub(crate) const COMMA: u8 = 7;
@@ -111,6 +119,13 @@ pub(crate) fn table_one_space(
         };
         space.saturating_add(scale_spec_units(size, term.amount))
     })
+}
+
+pub(crate) fn table_two_cell(before: u8, after: u8) -> Option<RawBreakCell> {
+    crate::generated::table2::CELLS
+        .iter()
+        .copied()
+        .find(|cell| cell.before == before && cell.after == after)
 }
 
 const fn class_bit(class: u8) -> u32 {

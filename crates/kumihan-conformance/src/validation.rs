@@ -195,6 +195,7 @@ fn validate_shaped_text(shaped: &Map<String, Value>, name: &str) -> Result<(), S
                     "digit-group-separator",
                     "grouped-numeral",
                     "unit-symbol",
+                    "quantity-symbol",
                     "formula",
                     "warichu-bracket",
                 ],
