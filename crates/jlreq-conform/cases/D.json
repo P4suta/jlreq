@@ -1,0 +1,50 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "D",
+  "heading_en": "Opportunities for Inter-character Space Reduction during Line Adjustment",
+  "heading_ja": "行の調整処理で詰める処理が可能な箇所",
+  "cases": [
+    {
+      "id": "D/two-differently-sized-middle-dots/a-lower-numbered-stage-drains-to-its-own-floor-before-a-higher-one-is-touched-at-all",
+      "rules": ["D"],
+      "standing": "normative",
+      "quote": "In the process of line adjustment by inter-character spacing reduction, the first place to look (the first stage of inter-character spacing reduction in priority order) is for Western word spaces (cl-26), each of which is reducible equally, to leave a minimum of a quarter em spacing (or a one fifth em spacing) with respect to the corresponding character size. The tables are for the second and subsequent stages of inter-character spacing reduction in priority order, assuming the first stage of the reduction for Western word spaces (cl-26) is already done.",
+      "rationale": "This bare address is Appendix D's own preamble, cited by nothing more specific whenever what is at stake is the shape of the *procedure* the three tables share rather than any one cell's own note — Tables 3, 4 and 5's ordinary cells cite `D.1`'s legend, and `D.2`'s notes cite themselves, so the preamble is what a report names for the fact this case is about: reduction runs in numbered priority order, stage by stage, and a later stage is not touched while an earlier one still has floor room left. `crates/jlreq-line/src/ladder.rs`'s own `reduce` implements exactly this reading — its outer loop runs `for stage_number in 2..=6`, draining each stage to the floor before moving to the next — and this case is the first to compose a real line whose shortfall spans two stages rather than sitting inside one, which is what makes the ordering observable rather than assumed. Two middle dots (・・) at two sizes, the first 1000 units to the em and the second 500, carry three reducible terms once composed as a whole line and not a boundary in isolation: the interior boundary's own two quarter ems (§D.2 note 1, fourth priority under Table 3, 250 and 125 units) and the second dot's own line-end quarter em (§D.2 note 5, third priority under Table 3, 125 units at its own 500-unit em) — a sibling fixture of `3.8.3/two-differently-sized-middle-dots`'s own (that case separates its two same-stage sites onto different boundaries instead, which is what makes their individual shares, not merely their sum, observable; this one does not need to, because *which stage* runs first is what is at stake here, and the two interior sites' combined, unsplit total is enough to show that). At `measure = 1150` the shortfall is exactly 100 units, inside the third stage's own 125-unit floor room and nowhere near the fourth stage's combined 375: `reduce` closes the whole 100 out of the line-end term alone, and the interior pair — real, reducible, and unused — is left exactly where it started. `Line::placements()` is what tells the two orderings apart: a flat pass draining every reducible site at once regardless of its own stage, rather than the lowest stage first, would spend at least part of that 100 on the interior pair's own two sites and move the second dot's own placement; the ordered pass this case asserts never touches it. §D's own first sentence excludes the Western word space (cl-26) from every stage this case or Tables 3 through 5 can state at all — cl-26's own first-stage reduction is outside the tables by the preamble's own words, is not read by `jlreq_spacing::evaluate::boundary` (confirmed against its own generated cells: no `ReductionStage` this crate ever produces is stage 1, `jlreq_spacing::ReductionStage`'s own doc), and consequently has no `Site` this crate's own ladder can ever drain — which is why this case's own fixture carries no cl-26 occurrence to assert against, rather than asserting a stage 1 this milestone cannot reach.",
+      "input": {
+        "kind": "compose",
+        "text": "・・",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 250, "frame": "half-em", "scale": 1 }
+        ],
+        "candidates": [],
+        "measure": 1150
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §D's own preamble, read against `ladder::reduce`'s stage-ordered loop",
+          "expect": {
+            "lines": [
+              { "placements": [0, 875], "extent": 1150, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [{ "placements": [0, 800] }]
+          },
+          "why": "800 is what the second dot's own placement would be if the 100-unit shortfall were drawn from every reducible site on the line at once, proportionally by character size across all three terms (weights 1000, 500, 500, giving the interior pair 50 and 25 units — 75 in all, shifting the second dot's own placement from 875 to 800 — before the line-end term's own 25 closes the rest) rather than from the third stage's own 125-unit floor room alone. §D's own preamble states the tables are read \"in priority order\"; a flat draw across stages answers a line adjusted with no priority order at all, which is a different procedure than the one this address states."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

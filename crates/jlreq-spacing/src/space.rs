@@ -6,10 +6,11 @@
 //!
 //! §B.2 note 3 makes the space between two middle dots "the sum of a quarter em of the
 //! preceding middle dots and a quarter em of the trailing middle dots" — two quantities,
-//! taken from two different characters' ems, in one printed cell. §D.2 note 3 then gives
-//! those two quantities different reduction priorities in the same table. A type that held
-//! one number per cell could not state either sentence; [`ConditionalSpace`] holds one
-//! number per *referent*, and a boundary carries at most two of them (`xtask attest`'s
+//! taken from two different characters' ems, in one printed cell. §D.2 note 1 then makes
+//! both of those quarter ems reducible to nothing, at the fourth priority in Table 3 and the
+//! second in Table 4. A cell holding one number cannot state the sum, because its two halves
+//! are fractions of two different characters' ems; [`ConditionalSpace`] holds one number per
+//! *referent*, and a boundary carries at most two of them (`xtask attest`'s
 //! `at-most-one-space-per-referent` invariant is what proves the captured data never needs
 //! a third).
 
@@ -141,18 +142,26 @@ pub enum Expansion {
 ///
 /// This and not the cell is the unit of spacing data (ADR-0014). §B.2 note 3 makes the
 /// space between two middle dots "the sum of a quarter em of the preceding middle dots and
-/// a quarter em of the trailing middle dots", and §D.2 note 3 then gives those two
-/// components different reduction priorities in the same table. A cell holding one number
-/// cannot state that.
+/// a quarter em of the trailing middle dots", and §D.2 note 1 then makes both of those
+/// quarter ems reducible to nothing, at the fourth priority in Table 3 and the second in
+/// Table 4. A cell holding one number cannot state the sum, because its two halves are
+/// fractions of two different characters' ems.
 ///
-/// JLReq: §B.1, §B.2#3, §B.2#5, §D.2#3
+/// Does *not* carry an [`Expansion`] (ADR-0021 amends ADR-0014 on this point): Table 6
+/// states one opportunity per class pair, not one per referent the way Appendix B's amounts
+/// are, so it is [`crate::Boundary::expansion`]'s fact rather than this type's — the
+/// identical move ADR-0014's own Decision already made for ruby overhang, whose "two
+/// structurally different permissions" argument applies here without change: a solid
+/// boundary has no conditional space to attach an opportunity to, and §3.8.4 step (c) names
+/// no owner among `be`/`af` for the quarter em it opens either.
+///
+/// JLReq: §B.1, §B.2#3, §B.2#5, §D.2#1
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ConditionalSpace {
     amount: Em,
     referent: Referent,
     reduction: Reduction,
-    expansion: Expansion,
     rule: RuleId,
 }
 
@@ -164,14 +173,12 @@ impl ConditionalSpace {
         amount: Em,
         referent: Referent,
         reduction: Reduction,
-        expansion: Expansion,
         rule: RuleId,
     ) -> Self {
         Self {
             amount,
             referent,
             reduction,
-            expansion,
             rule,
         }
     }
@@ -199,14 +206,6 @@ impl ConditionalSpace {
     #[must_use]
     pub const fn reduction(self) -> Reduction {
         self.reduction
-    }
-
-    /// How far this space may be expanded during line adjustment.
-    ///
-    /// JLReq: §E.1
-    #[must_use]
-    pub const fn expansion(self) -> Expansion {
-        self.expansion
     }
 
     /// The rule that states this space.
@@ -245,7 +244,7 @@ mod tests {
     use jlreq_spec::RuleId;
     use jlreq_unit::{Carry, Em, Scale, ScaleId, Size};
 
-    use super::{ConditionalSpace, Expansion, Reduction, ReductionStage, Referent};
+    use super::{ConditionalSpace, Reduction, ReductionStage, Referent};
 
     fn size(units: i32) -> Size {
         let em = jlreq_unit::Advance::new(units).expect("a positive advance");
@@ -261,7 +260,6 @@ mod tests {
                 floor: Em::ZERO,
                 stage: ReductionStage::new(5),
             },
-            Expansion::None,
             RuleId::ALL[0],
         );
         assert_eq!(space.amount(), Em::HALF);
@@ -273,7 +271,6 @@ mod tests {
                 stage: ReductionStage::new(5)
             }
         );
-        assert_eq!(space.expansion(), Expansion::None);
     }
 
     #[test]
@@ -283,14 +280,12 @@ mod tests {
             Em::HALF,
             Referent::Preceding,
             Reduction::Rigid,
-            Expansion::None,
             RuleId::ALL[0],
         );
         let trailing = ConditionalSpace::new(
             Em::HALF,
             Referent::Trailing,
             Reduction::Rigid,
-            Expansion::None,
             RuleId::ALL[0],
         );
         let before = size(1000);

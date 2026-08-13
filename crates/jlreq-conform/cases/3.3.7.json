@@ -1,0 +1,233 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.3.7",
+  "heading_en": "Positioning of Jukugo-ruby with Respect to Base Characters",
+  "heading_ja": "熟語ルビの親文字に対する配置位置",
+  "cases": [
+    {
+      "id": "3.3.7/jukugo-ruby-placement/paragraph-one-per-base-mono-delegation",
+      "rules": ["3.3.7"],
+      "standing": "alternative",
+      "quote": "If the number of ruby characters are two or less for each ideographic characters (cl-19) which participates in a kanji compound word (or jukugo), then for each run of ruby text associated with each base character, compose ruby characters as described in § 3.3.5 Positioning of Mono-ruby with Respect to Base Characters (see Figure 129).",
+      "rationale": "§3.3.7 paragraph 1's own discriminator is a ruby-character *count* per base character, not an extent comparison the way §3.3.5(a)-through-(c)'s own three cases reduce to (`crates/jlreq-inline/src/place.rs`'s own doc, 'What this round implements: §3.3.7 (jukugo-ruby)', states why the usual reduction does not transfer here): 'the number of ruby characters are two or less for each ideographic characters (cl-19)... for each run of ruby text associated with each base character, compose ruby characters as described in §3.3.5.' This case and its sibling (`3.3.7/jukugo-ruby-placement/paragraph-two-whole-compound-attachment`) declare the identical base stream and the identical four-character reading, differing in exactly one field — how `runs` partitions the reading across the two base characters — the same 'differs in exactly one declared field and the answer flips' standard `C.2/two-base-characters-in-one-jukugo-ruby-complex/break-permitted`'s own rationale already sets for this file's own sibling section, and it is what isolates the count discriminator rather than an extent one: both fixtures share the identical 1440-unit base extent and the identical 1200-unit reading extent, and only the per-base distribution of that reading decides which paragraph governs. Base: two cl-19 items ('亜', '亜', 720 units each — `A.19/cjk-ideograph/absent-from-the-table`'s own classify case already asserts 亜's class independently of this file, against §A.19's first sentence and §3.9.2), the identical fixture `3.3.6/group-ruby-placement/jis-versus-flush-distribution`, `3.5.1.json` and `3.8.1.json` already use for the identical reason: cl-19 against cl-19 is `blank` in Table 1 (`spec/captured/table1.en.tsv`, line 485, read directly rather than inferred from this evaluator's own answer), so the interior boundary this two-item fixture's own derived layout depends on (`crates/jlreq-conform/src/kumihan.rs`'s own `Compose::place` doc states the honesty requirement a multi-item fixture carries) is faithful when treated as solid; and `crate::lower::lower_jukugo` emits no `Separation` at all for a jukugo compound's own boundary, unlike the mono-ruby path's own §3.3.8 rule 1 collector, which it never calls (`crates/jlreq-inline/src/lower.rs`'s own `lower_jukugo` doc, 'Produces no `Separation`'). Either fact alone already forces the boundary's own contribution to zero; both hold here. `placements[0] = 0` and `placements[1] = 720`, the sum of item 0's own advance and nothing else. `runs` here partitions the four-character reading ('かかかか', 300 units each) 2 and 2: run 0 covers item 0 with annotation characters 0 and 1 (600 units), run 1 covers item 1 with annotation characters 2 and 3 (600 units) — every run covers exactly one base item, §3.3.7¶1's own words ('for each run of ruby text associated with each base character') and `place_mono_run`'s own single-base-item resolution both require this, so a run spanning two base items is not a fixture this paragraph describes. Neither run's own width exceeds two, so `place_jukugo`'s own `paragraph_one` predicate (every run's annotation width at most 2) holds and both runs delegate to `place_mono_run` unmodified — the identical function `RubyStyle::MonoRuby` itself calls (`crates/jlreq-inline/src/place.rs`'s own doc, 'Paragraph 1 delegates to `place_mono_run` unmodified'). Nakatsuki: for each run, the base's own 720-unit extent and the run's own 600-unit extent differ by 120, `distribute` splits it evenly across the two-site weight `[1, 1]` into two 60-unit shares (exact, so `Policy::JLREQ`'s own remainder rule never engages), and the leading share shifts the run's own start from the base's own placement — run 0 starts at 0 + 60 = 60, its own second character at 60 + 300 = 360; run 1 starts at 720 + 60 = 780, its own second character at 780 + 300 = 1080. Katatsuki: each run's own 600-unit extent does not exceed its own base's 720-unit extent, so §3.3.5(b)'s own start-alignment applies with no distribution at all — run 0 starts at the base's own placement, 0, its own second character at 0 + 300 = 300; run 1 starts at 720, its own second character at 720 + 300 = 1020. This fixture is deliberately sized so that two 300-unit ruby characters (600 units) stay under a 720-unit base with room to spare, rather than genuinely outrunning it: had the reading been longer, a katatsuki run here would instead reach §3.3.5(c)'s own unresolved katatsuki-with-overflow choice and decline (task #81, deliberately untouched by this round), which is a different fact than the one this fixture exists to publish — paragraph 1's own *delegation*, not paragraph 1's interaction with a choice this workspace has not yet given a `Question`. Both entries are needed, not one: §3.3.7¶1's own text delegates to §3.3.5's own *method*, and a fixture measuring only nakatsuki would leave that delegation half-observed, the identical argument `3.3.5/ruby-alignment/policy-selects-nakatsuki-or-katatsuki`'s own two entries already make for mono-ruby directly. Neither entry names `ruby.jukugo_layout`: `place_jukugo`'s own paragraph-1 branch returns before `place_jukugo_compound` — the only function that ever reads `Question::JUKUGO_RUBY_LAYOUT` — is called at all, so a compound that never leaves paragraph 1 has no `phonetic`-naming reading to publish; this is a derived fact of the delegation's own control flow, not an omission this case leaves unstated. `declined` is `[]` throughout: nothing here reaches either of the two extent-comparison declines `place_mono_run` can produce.",
+      "input": {
+        "kind": "place",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 720, "block_em": 720 }],
+        "items": [
+          { "start": 0, "advance": 720, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 720, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "かかかか",
+            "scales": [{ "inline_em": 300, "block_em": 300 }],
+            "items": [
+              { "start": 0, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 300, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "jukugo",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 2] },
+                { "base": [1, 2], "annotation": [2, 4] }
+              ]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `ruby.alignment` (nakatsuki), centered under §3.3.5(b)'s own method exactly as §3.3.7¶1 delegates to it, per base character",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 60, "item": 0 },
+                { "inline": 360, "item": 1 },
+                { "inline": 780, "item": 2 },
+                { "inline": 1080, "item": 3 }
+              ],
+              "declined": []
+            }
+          }
+        },
+        {
+          "policy": { "ruby.alignment": "katatsuki" },
+          "source": "§3.3.5(b)'s own second method, katatsuki, start-aligned with no distribution — a statement to an implementation that declares this alternative; this workspace's own default run does not select it, and `section_3_3_7_is_also_measured_under_katatsuki` (`crates/jlreq-conform/tests/suite.rs`) is what selects it for a real, checked agreement rather than a published-only reading",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 0, "item": 0 },
+                { "inline": 300, "item": 1 },
+                { "inline": 720, "item": 2 },
+                { "inline": 1020, "item": 3 }
+              ],
+              "declined": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.7/jukugo-ruby-placement/paragraph-two-whole-compound-attachment",
+      "rules": ["3.3.7"],
+      "standing": "alternative",
+      "quote": "If there is any ideographic character (cl-19) in a given kanji compound word which needs three or more ruby characters, the jukugo-ruby layout cannot be used. In this case, attach the ruby text to the kanji compound word as a whole. The available methods include the layout as specified in JIS X 4051, which is similar to the group-ruby method described in § 3.3.6 Positioning of Group-ruby with Respect to Base Characters (see Figure 130), and layout decided by the phonetic structure of the kanji compound word and the type of script of the adjacent characters (see Figure 131). The latter method can be used unless a run of ruby text for the base character hangs over another base character more than a full character width (or one and a half times the full-width) of a ruby character. (The detail of this method is described in § F. Positioning of Jukugo-ruby.)",
+      "rationale": "§3.3.7 paragraph 2's own condition — 'any ideographic character (cl-19)... which needs three or more ruby characters' — is met here by the identical base and the identical four-character reading fixture A declares (`3.3.7/jukugo-ruby-placement/paragraph-one-per-base-mono-delegation`'s own rationale states the pairing and the non-vacuity argument it makes possible in full), differing only in how `runs` partitions the reading: 1 and 3, rather than 2 and 2. Base item 1 ('亜', the second) now carries three ruby characters, so `place_jukugo`'s own `paragraph_one` predicate is false (run 1's own annotation width, 3, exceeds 2) and `place_jukugo_compound` governs instead of per-run delegation — the identical base extent (1440 units) and the identical reading extent (1200 units) as fixture A's own pair of runs, landing in the other paragraph solely because of how the count is distributed across the two base characters, which is exactly what makes the discriminator a count and not an extent (this file's own sibling rationale states the argument once, in full). The interior boundary between the two base items is the identical one fixture A's own rationale verifies blank in Table 1 (`spec/captured/table1.en.tsv`, line 485, cl-19 against cl-19) and unforced by `crate::lower::lower_jukugo`, which emits no `Separation` regardless of style (`crates/jlreq-inline/src/lower.rs`'s own `lower_jukugo` doc); either fact alone already forces its own contribution to zero, and both hold here as they do there, so `placements[0] = 0` and `placements[1] = 720` again. `place_jukugo_compound` builds one compound-wide synthetic run over the whole declared base range (`[0, 2)`, both items) and the whole declared reading (`[0, 4)`, all four characters — the first declared run's own annotation start through the last's own end, which `Ruby::new`'s own `check_runs` validation guarantees is contiguous, `crates/jlreq-inline/src/place.rs`'s own doc states in full) and hands it to `place_group_run`, forced to `jis` regardless of `Question::GROUP_RUBY_DISTRIBUTION`'s own answer (`decision:jukugo-group-layout-distribution`'s own published reading of a genuinely unstated question). `Compose::place`'s own adapter always derives `items` as the whole declared base stream, so this compound's own base range (`[0, 2)`) never straddles it — the decline this module's own doc names for a compound a real composed line has split in half is consequently unreachable by any case published here, exactly as it is by every other `crates/jlreq-conform` case (`crates/jlreq-inline/src/place.rs`'s own doc, 'No `crates/jlreq-conform` case can ever exercise this decline'), so this fixture does not attempt to be the one that does. The base run's own extent is read from `placements`, not re-derived from a fresh sum of item advances (§3.3.6's own doc states why the two coincide for a solid base run and why the placements-derived reading is the honest one in general): `extent_between(placements[0], placements[1] + item 1's own 720-unit advance)` = `extent_between(0, 1440)` = 1440. The reading's own extent is 4 × 300 = 1200, 240 short of the base. `count` is 4 (the compound-wide run's own declared annotation width), so `jis`'s own weights are `[1, 2, 2, 2, 1]` over five sites, summing to `2n = 8` (`group_jis_weights`'s own doc) — the identical weight shape `3.3.6/group-ruby-placement/jis-versus-flush-distribution`'s own rationale already works through in full, over the identical numbers, because this fixture was deliberately sized to match it: a genuine surplus (240, not zero) over at least two ruby characters (four), so `jis` and `flush` would visibly diverge here, which is what makes the forcing this case exists to publish assertable at all rather than vacuous. 240 divided across eight unit-weighted sites is 30 per unit, exact, so `Policy::JLREQ`'s own remainder rule never engages: the leading share (30) shifts the run's own start from the base's own start (0) to 30; each following character begins at the previous one's own start, plus its own 300-unit advance, plus the interior gap (60): 30 + 300 + 60 = 390 for the second, 390 + 300 + 60 = 750 for the third, 750 + 300 + 60 = 1110 for the fourth; the trailing share (30) is never applied to any character's own offset, and 30 + 300 + 60 + 300 + 60 + 300 + 60 + 300 + 30 = 1440 confirms the partition is exact — the identical arithmetic `3.3.6/group-ruby-placement/jis-versus-flush-distribution`'s own rationale already derives independently from §3.3.6's own words, reused here as §3.3.7¶2's own forced reading of a jukugo compound rather than as §3.3.6's own direct case. This compound reaches neither katatsuki nor `ruby.alignment` at all: `place_jukugo_compound` never reads `Contribution::alignment_of`, only `place_jukugo`'s own paragraph-1 branch does, through `place_mono_run`, so a compound governed by paragraph 2 has no alignment axis to publish either, the identical derived-absence fact fixture A's own rationale states for `ruby.jukugo_layout`. Three `permitted` entries publish three genuinely different readings under three totally-ordered key sets (`{}` a subset of `{ruby.jukugo_layout}` a subset of `{ruby.jukugo_layout, ruby.group_distribution}`, `xtask/src/conform.rs`'s own `check_selection`, ~line 2065): entry 0 (naming nothing) is the jis geometry just derived, selected under `Kumihan::default()`. Entry 1 (naming `ruby.jukugo_layout: phonetic`) is a decline: `place_jukugo_compound` reads `Question::JUKUGO_RUBY_LAYOUT` before computing any base or ruby extent at all, and a `phonetic` answer declines outright, unconditionally, because §F's own phonetic-structure distribution is not implemented this round (`crates/jlreq-inline/src/place.rs`'s own doc, 'What this round declines: §3.3.7 paragraph 2's own `phonetic` answer, and §F entire'); this entry's own `source` records this workspace's own decline of an unimplemented §F, not a geometry §3.3.7 itself states — §3.3.7¶2's own words name `phonetic` as an available method, not a mandatory decline, and this workspace has simply not built it yet. Entry 2 (naming `ruby.jukugo_layout: group` and `ruby.group_distribution: flush`) asserts the *identical* jis geometry as entry 0, not the flush geometry (which would place the four characters at 0, 380, 760 and 1140 instead — `3.3.6/group-ruby-placement/jis-versus-flush-distribution`'s own second entry, over the identical numbers, is what those offsets would be for an ordinary group-ruby run at this ratio): `place_group_run` is called with its own `jis` parameter hard-coded to `true` from `place_jukugo_compound`, never read from `ctx.policy` at all for this call site, so declaring `ruby.group_distribution: flush` changes nothing about this compound's own geometry. This is not the shape `3.3.6/group-ruby-placement/equal-length-both-methods-agree`'s own rationale argues against for a second, redundantly-naming entry: there the two methods' numbers coincide by arithmetic alone, at a ratio (zero surplus) where they agree regardless of whether a second entry ever names the axis, so publishing one would 'not assert a second reading, only restate the first under a label that invites a reader to expect one.' Here the surplus is genuinely non-zero (240, the identical ratio `3.3.6/group-ruby-placement/jis-versus-flush-distribution`'s own sibling case already shows `jis` and `flush` visibly diverging at, for an *ordinary* group-ruby run), so a reader who sees `ruby.group_distribution: flush` declared has every reason to expect the offsets to move — entry 2 exists to name that expectation and contradict it on the record, a substantive claim this suite's own selection rule cannot derive from entry 0 alone, because entry 0 never mentions the axis a reader would otherwise wonder about. This entry's own `source` records a forcing this workspace published (`decision:jukugo-group-layout-distribution`), not something §3.3.7 itself states. Selection traced against the runner's own rule (`crates/jlreq-conform/src/run.rs`'s own module doc): under `Kumihan::default()` (`ruby.jukugo_layout: group`, `ruby.group_distribution: jis`) only entry 0 applies; under a `Kumihan` declaring `ruby.group_distribution: flush`, entries 0 and 2 both apply and entry 2 wins (two named questions against zero) — though entry 0 alone, being unconditional, would already have asserted the identical numbers under that same policy, so `section_3_3_7_is_also_measured_under_flush`'s own green run is not itself evidence that entry 2 specifically was selected, unlike `section_3_3_7_is_also_measured_under_phonetic`'s own run, where entry 0 and entry 1 genuinely disagree and a green run is possible only if entry 1 was picked; under a `Kumihan` declaring `ruby.jukugo_layout: phonetic`, entries 0 and 1 both apply and entry 1 wins, asserting the decline (`section_3_3_7_is_also_measured_under_phonetic` is the second run that checks it, self-evidencing in exactly the way the flush run is not). `declined` names the specific construct ordinal, 0 — the only declared `constructs.ruby` entry — under entry 1, rather than merely being non-empty, the identical standard `3.3.5/mono-ruby-placement/three-characters-longer-than-the-base`'s own rationale already states in full.",
+      "input": {
+        "kind": "place",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 720, "block_em": 720 }],
+        "items": [
+          { "start": 0, "advance": 720, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 720, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "かかかか",
+            "scales": [{ "inline_em": 300, "block_em": 300 }],
+            "items": [
+              { "start": 0, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 300, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "jukugo",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 1] },
+                { "base": [1, 2], "annotation": [1, 4] }
+              ]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§3.3.7¶2's own `group` answer (`decision:jukugo-group-layout-distribution`'s own forced `jis` reading of it), `Policy::JLREQ`'s own default for `ruby.jukugo_layout`",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 30, "item": 0 },
+                { "inline": 390, "item": 1 },
+                { "inline": 750, "item": 2 },
+                { "inline": 1110, "item": 3 }
+              ],
+              "declined": []
+            }
+          }
+        },
+        {
+          "policy": { "ruby.jukugo_layout": "phonetic" },
+          "source": "§3.3.7¶2's own `phonetic` answer, declined outright: §F's own phonetic-structure distribution is not implemented this round (`crates/jlreq-inline/src/place.rs`'s own doc) — this entry records this workspace's own decline of an unimplemented §F, not a geometry §3.3.7 itself states",
+          "expect": {
+            "place": {
+              "attachments": [],
+              "declined": [0]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.jukugo_layout": "group", "ruby.group_distribution": "flush" },
+          "source": "`ruby.group_distribution: flush`, declared and overridden by `place_jukugo_compound`'s own forced `jis` call regardless (`decision:jukugo-group-layout-distribution`) — this entry records a forcing this workspace published, not something §3.3.7 itself states, and publishes it as a named, contradicted expectation for any reader or implementation who assumes declaring `flush` would move these offsets the way it would for an ordinary group-ruby run at this same surplus",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 30, "item": 0 },
+                { "inline": 390, "item": 1 },
+                { "inline": 750, "item": 2 },
+                { "inline": 1110, "item": 3 }
+              ],
+              "declined": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.7/jukugo-ruby-alignment/katatsuki-discouraged-carries-through-the-delegation",
+      "rules": ["3.3.7"],
+      "standing": "normative",
+      "quote": "If the number of ruby characters are two or less for each ideographic characters (cl-19) which participates in a kanji compound word (or jukugo), then for each run of ruby text associated with each base character, compose ruby characters as described in § 3.3.5 Positioning of Mono-ruby with Respect to Base Characters (see Figure 129).",
+      "rationale": "§3.3.7¶1's own delegation — 'compose ruby characters as described in §3.3.5' — is to that section's own *method*, recommendation included, on the settled reading `Contribution::alignment_discouraged`'s own doc states in full (`crates/jlreq-inline/src/lower.rs`): §F's own assumption of a katatsuki-distributed baseline governs a different, unimplemented method (paragraph 2's own `phonetic` answer) and has nothing to unsettle for a paragraph-1 construct, which never reaches it. This case quotes the identical paragraph-1 sentence `3.3.7/jukugo-ruby-placement/paragraph-one-per-base-mono-delegation` does, but carries `standing: \"normative\"` rather than that case's own `\"alternative\"`, for a reason narrower than the quote itself: that case's own two entries diverge because `Question::RUBY_ALIGNMENT` genuinely selects between two computed offsets, a real choice the specification states; this case's own two entries diverge only because their own fixtures declare different alignments to demonstrate ADR-0011's single, unconditional fact — a recommendation is honored and reported, never refused — which holds identically under either alignment rather than choosing between two permitted geometries. This is the one fact no `place` case can observe: `crates/jlreq-conform/cases.schema.json`'s own `place` `$def` has no `alignment_discouraged` field at all — the fact lives only in `expect.lower` — and `3.3.7/jukugo-ruby-placement/paragraph-one-per-base-mono-delegation`'s own two `place` entries already force the round-7 alignment hoist to run (with no resolved alignment, `place_mono_run`'s own bounds-and-alignment guard would place nothing at all, silently) without ever surfacing whether the resolved alignment was the discouraged one. Base: two cl-19 items ('鬼', '鬼', 1000 units each, the identical text and unit convention `3.3.5/katatsuki-in-horizontal-writing/discouraged-but-honored`'s own single-item fixture already uses), reading 'きき' (500 units each), `runs` partitioned one character per base item — genuinely paragraph-1-shaped, though which paragraph governs is entirely `place`'s own question and irrelevant to this case: `lower_jukugo`'s own doc states plainly that this function 'only ever allocates run/group identity and block demand,' never deciding between paragraph 1 and paragraph 2 at all (`crates/jlreq-inline/src/lower.rs`'s own `lower_jukugo` doc, 'Not `RuleId::POSITIONING_OF_JUKUGO_RUBY_WITH_RESPECT_TO_BASE_CHARACTERS` (§3.3.7): that rule's own content... entirely `crate::place`'s to compute'). `direction: \"horizontal\"` is declared explicitly, the one axis this fact turns on. The first entry is `Kumihan::default()`'s own committed reading: nakatsuki is never the discouraged combination in either writing direction, so `alignment_discouraged` reads `false`. The second is the fact this case exists to publish: katatsuki, resolved in this case's own declared horizontal writing, is `alignment_discouraged: true` and *still* `alignment: \"katatsuki\"` — honored, never silently substituted for the undiscouraged reading (ADR-0011) — for a `RubyStyle::JukugoRuby` construct exactly as `3.3.5/katatsuki-in-horizontal-writing/discouraged-but-honored`'s own case already states it for `RubyStyle::MonoRuby`. Both entries assert `rules: [\"3.3.4\"]` — the one citation a `RubyStyle::JukugoRuby` construct's own `lower` answer genuinely publishes, verified against `crates/jlreq-inline/src/lower.rs`'s own source rather than inferred from this field's own pass alone: `check_rules`'s own subset comparison (`crates/jlreq-conform/src/run.rs`) proves only that §3.3.4 appears among the fired rules, never that §3.3.5 or §3.3.7 do not — `lower_mono` records §3.3.4 too, so this identical expectation would pass unchanged for a mono-ruby construct, and the field alone cannot discriminate the two styles on this axis. What the source shows, independently of what this field checks: `lower`'s own alignment-hoist block pushes the `(resolved, discouraged)` tuple for `RubyStyle::MonoRuby` and `RubyStyle::JukugoRuby` alike, but records `RuleId::POSITIONING_OF_MONO_RUBY_WITH_RESPECT_TO_BASE_CHARACTERS` (§3.3.5) only under an explicit style guard restricted to `RubyStyle::MonoRuby` (`crates/jlreq-inline/src/lower.rs`, the alignment-hoist block, 'The §3.3.5 rule citation stays mono-only, below'); a `RubyStyle::JukugoRuby` construct's own `lower_jukugo` call records only `RuleId::CHOICE_OF_SIDES_FOR_RUBY_WITH_RESPECT_TO_BASE_CHARACTERS` (§3.3.4), because §3.3.7's own citation belongs to `place`, once it has actually decided which paragraph governs — a decision `lower` never makes. Asserting `[\"3.3.5\"]` here would genuinely fail this construct's own answer, and asserting `[\"3.3.7\"]` would too, for the identical reason; this case's own top-level `rules: [\"3.3.7\"]` states which specification address this *case* exercises, not which address `Contribution::rules_fired()` itself names for this construct at the `lower` layer, and the two are deliberately different facts. The katatsuki-selecting entry is attempted by `section_3_3_7_is_also_measured_under_katatsuki` (`crates/jlreq-conform/tests/suite.rs`), the second run that selects it for a real, checked agreement rather than a published-only reading, the identical role `section_3_3_5_is_also_measured_under_katatsuki` already plays for its own sibling case.",
+      "input": {
+        "kind": "lower",
+        "text": "鬼鬼",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "きき",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "jukugo",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 1] },
+                { "base": [1, 2], "annotation": [1, 2] }
+              ]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `ruby.alignment` (nakatsuki) — never the discouraged combination in either writing direction, for a jukugo construct exactly as for a mono-ruby one",
+          "expect": {
+            "lower": {
+              "construct": 0,
+              "alignment": "nakatsuki",
+              "alignment_discouraged": false,
+              "rules": ["3.3.4"]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.alignment": "katatsuki" },
+          "source": "§3.3.5(b)'s own second method, katatsuki, resolved in this case's own declared horizontal writing — discouraged by §3.3.5's own quoted sentence but honored, never refused (ADR-0011), transferred here by §3.3.7¶1's own wholesale delegation — a statement to an implementation that declares this alternative; this workspace's own default run does not select it",
+          "expect": {
+            "lower": {
+              "construct": 0,
+              "alignment": "katatsuki",
+              "alignment_discouraged": true,
+              "rules": ["3.3.4"]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

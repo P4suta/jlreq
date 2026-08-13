@@ -1,0 +1,803 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "C.2",
+  "heading_en": "Notes",
+  "heading_ja": "注記",
+  "cases": [
+    {
+      "id": "C.2/dividing-punctuation-then-ideographic-space/the-substitute-character-does-not-forbid-a-break",
+      "rules": ["C.2#4"],
+      "standing": "normative",
+      "quote": "For the default one em spacing after dividing punctuation marks (cl-04) at the end of a sentence, full-width ideographic space (cl-14) can be used. See § 3.1.6 Positioning of Dividing Punctuation Marks (Question Mark and Exclamation Mark) and Hyphens for more detail on how to deal with this case.",
+      "rationale": "§3.1.6 requires a full em of space after a sentence-final question or exclamation mark, and this note names the second of two ways to supply it: rather than a conditional space, the caller may set an actual U+3000 IDEOGRAPHIC SPACE (cl-14) in the stream. Table 1 carries no conditional term between the two — the em is already spent on a real character rather than owed as an adjustment — which is why this case asks the boundary question over Table 2 rather than over spacing: an implementation that answered this note only by not inventing a space it does not have would still have to say whether a line may end between the punctuation and its substitute space, and Table 2's own cell for cl-04 against cl-14 answers yes at every kinsoku level, citing this note and no other.",
+      "input": {
+        "kind": "boundary",
+        "text": "？　",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 4, Table 2",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          },
+          "why": "The note grants the ideographic-space substitute no narrower a line-breaking permission than the conditional space it replaces would have; Table 2's own cell for this pair carries no restriction bit at any kinsoku level, so forbidding the break here answers a stricter question than the one this note and its table ask."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-western-characters/no-break-without-a-supplied-hyphen",
+      "rules": ["C.2#12"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive Western characters (cl-27). In order to break a line in the middle of a Western word, it needs to be divided into two syllables first. Then a line can be broken between the two by adding HYPHEN \"-\" at the line end.",
+      "rationale": "Table 2's own cell for two consecutive Western characters (cl-27) prints `not`, unconditioned on kinsoku strictness, and cites this note by name — `feasible.rs`'s own kinsoku pass reads the identical citation when it refuses a break candidate the caller supplied inside such a run (`jlreq-line`'s own `# Status`), so the prohibition holds at both the boundary layer this case asks about and the line-breaking layer built over it. The note's second half is a statement about what a caller must supply, not one this evaluator answers: hyphenating a Western word and inserting HYPHEN \"-\" produces two new occurrences with a different pair of neighbors on either side of the inserted mark, not a break inside the original cl-27 run this cell forbids — `cases.schema.json`'s own `candidate` shape has no field for an inserted glyph's advance, which is why no case asks that question yet (this crate's own module doc).",
+      "input": {
+        "kind": "boundary",
+        "text": "AB",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 700, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 700, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 12, Table 2",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "The note's own first sentence is unconditional — \"There is no line break opportunity between two consecutive Western characters\" — and Table 2's cl-27 row against itself prints `not` at every kinsoku level rather than a level-dependent bitmask; a caller-supplied candidate inside the run changes nothing about what this one adjacency answers."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-em-dashes/consecutive-identical-marks-forbid-a-break",
+      "rules": ["C.2#5"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between following couple of consecutive inseparable characters (cl-08) as follows: EM DASH \"―\", EM DASH \"―\" HORIZONTAL ELLIPSIS \"…\", HORIZONTAL ELLIPSIS \"…\" TWO DOT LEADER \"‥\", TWO DOT LEADER \"‥\" VERTICAL KANA REPEAT MARK UPPER HALF \"〳\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" VERTICAL KANA REPEAT WITH VOICED SOUND MARK UPPER HALF \"〴\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" When the combination of preceding inseparable characters (cl-08) and the trailing inseparable characters (cl-08) is different each other, the two characters are separable. For example, when two EM DASH \"―\" appears consecutively, these two characters are inseparable, and consecutive EM DASH \"―\" and HORIZONTAL ELLIPSIS \"…\" are separable.",
+      "rationale": "§A.8 is the enumeration that settles which code point \"EM DASH\" names for cl-08 membership: U+2014, not the glyph this note's own English quotes it with, U+2015 — a locale divergence `A.8/horizontal-bar/ideographic-frame`'s own rationale already records directly (U+2015 is listed by no Appendix A table at all, so an occurrence of it never reaches this note's coordinate, cl-08 against cl-08, under any policy). Two consecutive U+2014, each declared the ideographic frame that disambiguates cl-08 from §A.27's proportional listing of the identical key (`A.8/em-dash/ideographic-frame`), is therefore the input the note's own first sentence is about: an identical member on both sides of the boundary, the first of the five pairs it lists by name. Table 2's own `(before: 8, after: 8)` cell carries `prohibited: false` and an empty `levels` bitmask — the shape a note-governed cell takes when no kinsoku strictness level decides it, rather than the shape a coordinate no note touches at all takes — citing this note directly, so an evaluator that reads only the bitmask, as every other cl-08 coordinate correctly does, answers breakable at every level: the wrong half of the note, citing the very note that forbids it. `jlreq_spacing::evaluate::inseparable_member_pair` closes that gap by reading the two items' own Appendix A key rather than the class number alone, and this case is the one that first exposed the defect: a probe built exactly this way, with U+2015 in place of U+2014 by a momentary mistyping, answered breakable for the wrong reason entirely before the input itself was corrected — the same confusable pair the note's own English quotes and this case's own rationale both have to name explicitly rather than risk again silently.",
+      "input": {
+        "kind": "boundary",
+        "text": "——",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 5's own worked example",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "The note's own worked example states plainly that two consecutive EM DASH are inseparable; answering breakable here is the defect this round fixes — Table 2's empty `levels` bitmask at this coordinate read alone, with the note's own condition never consulted."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/em-dash-then-horizontal-ellipsis/different-inseparable-characters-permit-a-break",
+      "rules": ["C.2#5"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between following couple of consecutive inseparable characters (cl-08) as follows: EM DASH \"―\", EM DASH \"―\" HORIZONTAL ELLIPSIS \"…\", HORIZONTAL ELLIPSIS \"…\" TWO DOT LEADER \"‥\", TWO DOT LEADER \"‥\" VERTICAL KANA REPEAT MARK UPPER HALF \"〳\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" VERTICAL KANA REPEAT WITH VOICED SOUND MARK UPPER HALF \"〴\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" When the combination of preceding inseparable characters (cl-08) and the trailing inseparable characters (cl-08) is different each other, the two characters are separable. For example, when two EM DASH \"―\" appears consecutively, these two characters are inseparable, and consecutive EM DASH \"―\" and HORIZONTAL ELLIPSIS \"…\" are separable.",
+      "rationale": "The permissive half of the note's own worked example, at the identical coordinate — cl-08 against cl-08 — as `C.2/two-em-dashes/consecutive-identical-marks-forbid-a-break`: \"consecutive EM DASH and HORIZONTAL ELLIPSIS are separable\" names two different cl-08 members (U+2014 then U+2026), which is not one of the five pairs the note lists. Publishing this beside the identical-mark case is what keeps the refusal from over-reaching: an evaluator that read `before == after` as the rule, rather than the note's own closed five-pair enumeration, would answer this input's real coordinate correctly by accident only if it happened to treat every cl-08 pair alike — it does not, because §A.8 also lists the vertical kana repeat mark lower half (U+3035) on its own, which the note never pairs with itself, so a general identical-mark rule would both under- and over-reach at once. Asserting both halves of the same worked example over the same Table 2 cell is what a single case testing only the refusal cannot show.",
+      "input": {
+        "kind": "boundary",
+        "text": "—…",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 5's own worked example",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          },
+          "why": "The note's own second sentence states that a combination outside its five named pairs is separable, and gives EM DASH followed by HORIZONTAL ELLIPSIS as its own example of one; forbidding the break here reads `before == after` as the note's rule where the note itself states a closed enumeration instead."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/kunojiten-crossing/the-two-different-marks-the-note-also-names-forbid-a-break",
+      "rules": ["C.2#5"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between following couple of consecutive inseparable characters (cl-08) as follows: EM DASH \"―\", EM DASH \"―\" HORIZONTAL ELLIPSIS \"…\", HORIZONTAL ELLIPSIS \"…\" TWO DOT LEADER \"‥\", TWO DOT LEADER \"‥\" VERTICAL KANA REPEAT MARK UPPER HALF \"〳\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" VERTICAL KANA REPEAT WITH VOICED SOUND MARK UPPER HALF \"〴\", VERTICAL KANA REPEAT MARK LOWER HALF \"〵\" When the combination of preceding inseparable characters (cl-08) and the trailing inseparable characters (cl-08) is different each other, the two characters are separable. For example, when two EM DASH \"―\" appears consecutively, these two characters are inseparable, and consecutive EM DASH \"―\" and HORIZONTAL ELLIPSIS \"…\" are separable.",
+      "rationale": "The fourth of the note's five named pairs, and the reason a same-member rule alone cannot answer this note: VERTICAL KANA REPEAT MARK UPPER HALF (U+3033) and VERTICAL KANA REPEAT MARK LOWER HALF (U+3035) are two different Appendix A keys — §A.8's fourth and sixth rows — so a rule that only forbade identical members on both sides of the boundary would miss this pair and answer breakable where the note forbids it. §A.8's own Remarks cell on U+3033 states \"used in vertical composition\\nU+3035 follows this\", which both restricts the writing direction and states the successor constraint this input satisfies; this case follows `A.1/reversed-double-prime-quotation-mark/vertical-composition`'s own precedent of declaring `direction: \"vertical\"` for a mark Appendix A restricts to that writing mode, rather than leaving the restriction unstated. Neither key needs a declared frame: §A.8 is the only table that lists either one (`A.8/kunojiten/upper-half-vertical`'s own rationale states the same for the classification question this case's boundary sits beside).",
+      "input": {
+        "kind": "boundary",
+        "text": "〳〵",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "scale": 0 },
+          { "start": 3, "advance": 1000, "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 5, fourth named pair",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "The note names this crossing explicitly, as its fourth of five pairs; answering breakable here is the same defect `C.2/two-em-dashes/consecutive-identical-marks-forbid-a-break` names, reached through a different one of the note's five pairs — one a same-member check alone would never catch, since the two marks are not identical."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/grouped-numeral-then-western/two-readings-of-the-same-boundary",
+      "rules": ["C.2#10"],
+      "standing": "alternative",
+      "quote": "There are two approaches: one is to allow a line to break between preceding grouped numerals (cl-24) and trailing Western characters (cl-27), and the other is not to.",
+      "rationale": "The note states two approaches without preferring either, and `Question::GROUPED_NUMERAL_BEFORE_WESTERN` (`kinsoku.grouped_numeral_before_western`, §C.2#10, `spec/derived/questions.tsv`) is the switch: `Policy::JLREQ` selects `breakable`, and `unbreakable` is the named alternative. §C.3's Very strict level excludes every §C.2 alternate rule, this one included — `Policy::with` refuses outright to build a `Policy` naming both Very strict and `breakable` here, which `crates/jlreq-spec/src/policy.rs`'s own `the_strictest_kinsoku_level_excludes_a_c_2_alternate_rule_over_generated_data` test proves directly from both ends (setting the level first, and setting the alternate first) — so every `Policy` a caller can actually construct at Very strict already carries `unbreakable`, and the `unbreakable` entry below already covers it without a third, more specific entry naming the level: `conform --check`'s own selection-order invariant (`crates/jlreq-conform/src/run.rs`'s module doc) requires every pair of a case's permitted entries to be ordered by inclusion of the questions they name, and a `kinsoku.level` entry alongside a `kinsoku.grouped_numeral_before_western` entry would name two unrelated singleton sets that satisfy no such order. Only the default entry is measured by a run of this suite: `Kumihan::default()` declares `Policy::JLREQ`, whose own answer here is `breakable`, so the `{}` entry is what `applicable()`'s selection rule picks, and the `unbreakable` entry, though published, is never the applicable one a run of this suite measures — it is a statement to an implementation that declares that alternative, the same honesty the `3.8.2` owned ledger entry already states for a different question.",
+      "input": {
+        "kind": "boundary",
+        "text": "1A",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 700, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 10, `Policy::JLREQ`'s own default (`kinsoku.grouped_numeral_before_western` = breakable)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true,
+              "permitted": true
+            }
+          }
+        },
+        {
+          "policy": { "kinsoku.grouped_numeral_before_western": "unbreakable" },
+          "source": "JLReq §C.2 note 10's other approach",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "permitted": false
+            }
+          },
+          "why": "Table 1's own cell at cl-24 against cl-27 carries no prohibition under either reading; only the breakability differs between the two approaches the note names, and the boundary itself remains a place characters may stand adjacent under both."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/western-character-then-postfixed-abbreviation/an-ordinary-western-character-permits-a-break",
+      "rules": ["C.2#11"],
+      "standing": "normative",
+      "quote": "A line break opportunity generally exists between preceding Western characters (cl-27) and trailing postfixed abbreviations (cl-13), unless the preceding Western character (cl-27) is used as a symbol of a quantity or a European numeral, in which case a line break is not allowed between them.",
+      "rationale": "The note's own general rule, unqualified by either of its two named exceptions: an ordinary Western letter (cl-27) carrying no declared role and whose own Appendix A key is not one of the ten European numerals (`docs/decisions/european-numeral-by-code-point.md`) triggers neither \"used as a symbol of a quantity\" nor \"a European numeral\", so the break is permitted. The trailing occurrence is the full-width percent sign (％, cl-13, §A.13), declared the same way `A.13/grouped-numeral-percent/line-break`'s own case declares it, so this case and `C.2/quantity-symbol-then-postfixed-abbreviation/a-declared-role-forbids-a-break` differ only in the one declared field that changes the answer — the preceding item's `role` — the same minimal-difference shape `A.22/numeral-base-with-ruby/*`'s three frame cases already use elsewhere in this suite.",
+      "input": {
+        "kind": "boundary",
+        "text": "A％",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 700, "frame": "proportional", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 11's own general rule",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false
+            }
+          },
+          "why": "Neither of the note's two named exceptions applies to an ordinary Western letter with no declared role and no numeral key; forbidding the break here treats every cl-27 occurrence as though it were a quantity symbol or a European numeral, which is exactly the over-reach the note's own two named exceptions exist to bound."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/quantity-symbol-then-postfixed-abbreviation/a-declared-role-forbids-a-break",
+      "rules": ["C.2#11"],
+      "standing": "normative",
+      "quote": "A line break opportunity generally exists between preceding Western characters (cl-27) and trailing postfixed abbreviations (cl-13), unless the preceding Western character (cl-27) is used as a symbol of a quantity or a European numeral, in which case a line break is not allowed between them.",
+      "rationale": "The note's first named exception: a preceding Western character (cl-27) \"used as a symbol of a quantity\", which `Role::QuantitySymbol` is the caller's own declared way to state (`crates/jlreq-unit/src/item.rs`'s own doc on `Role`, which already cites this note by address). The input is byte-identical to `C.2/western-character-then-postfixed-abbreviation/an-ordinary-western-character-permits-a-break` except for the one field that changes the answer: the preceding item's `role`. An implementation that reads only the class pair at this Table 2 coordinate, ignoring the declared role entirely, answers this case exactly as it answers the unqualified one beside it — which is the failure this pair of cases exists to catch.",
+      "input": {
+        "kind": "boundary",
+        "text": "A％",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 700, "frame": "proportional", "role": "quantity-symbol", "scale": 0 },
+          { "start": 1, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 11, the quantity-symbol exception",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "The preceding item declares `Role::QuantitySymbol`, which is the note's own first named exception stated in the caller's own terms; permitting the break here ignores the declared role and answers as though the general rule alone applied."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-characters-in-one-tate-chu-yoko-run/no-break-inside",
+      "rules": ["C.2#13"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive characters belonging to the same set of characters in tate-chu-yoko (cl-30). If two consecutive characters belong to different sets of characters in tate-chu-yoko (cl-30), there a line break opportunity exists between them.",
+      "rationale": "The note's own first sentence, asked as the `feasible` kind rather than as `boundary`: two hiragana declared as one `constructs.tate_chu_yoko` run (§A.30's own sentence — 'any character may participate in tate-chu-yoko composition' — is unqualified, so a construct of ordinary hiragana rather than the usual two-digit or two-letter illustration is not a different reading of the note, only a plainer one), and the one candidate this case declares sits at the boundary inside that run. The coordinate is chosen and not merely convenient: cl-15 against cl-15 is `blank` in Table 1, Table 2, Table 3's own line-end row and Table 4's own line-head row alike (`spec/captured/table1.en.tsv`, `spec/captured/table2.en.tsv`, `spec/captured/table3.en.tsv`, `spec/captured/table4.en.tsv`, read directly rather than inferred from this evaluator's own answer), so nothing at this class pair could produce a refusal by accident — the only rule able to refuse this candidate is one that reads the declared run, which is `jlreq_line::feasible::same_run_refusal` alone, citing C.2#13. `jlreq_class::resolve` is construct-blind, so it never resolves either occurrence to cl-30 at all; the note's own subject is complex membership the caller declares, not a class pair a matrix could index (ADR 0015, `same_run_refusal`'s own doc). `Compose::feasible` is what makes the coordinate answerable in the first place: `overlay_of` converts the declared `tate_chu_yoko` entry into a `jlreq_unit::Runs` overlay and hands it to `jlreq_line::Feasible::compute` directly, which no case before this round's own sixth `kind` could reach (`docs/conformance-deferrals.toml`'s own former `C.2#13` entry named exactly this gap).",
+      "input": {
+        "kind": "feasible",
+        "text": "あい",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "tate_chu_yoko": [{ "items": [0, 2] }]
+        },
+        "candidates": [{ "at": 3 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 13's own first sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": false,
+              "rules": ["C.2#13"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": true }
+          },
+          "why": "Reading the bare class pair alone. Both items resolve to cl-15 (ordinary hiragana) through `jlreq_class::resolve`, and that resolution is construct-blind — it never learns the two occurrences share one declared tate-chu-yoko run. Table 2's own cl-15 against cl-15 cell is blank at every kinsoku level, so an implementation that stops at the class pair, never asking which run the caller declared, answers breakable here: exactly the coordinate this case was chosen to expose, since no table cell anywhere in this pair's own row or column could produce the refusal by coincidence."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-tate-chu-yoko-runs-adjacent/break-permitted",
+      "rules": ["C.2#13"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive characters belonging to the same set of characters in tate-chu-yoko (cl-30). If two consecutive characters belong to different sets of characters in tate-chu-yoko (cl-30), there a line break opportunity exists between them.",
+      "rationale": "The note's own second sentence, and the reason `same_run_refusal` needs a run identity rather than a class alone: two tate-chu-yoko groups abut with no occurrence between them — the identical configuration `A.30/two-adjacent-runs/second-run-member` already declares for the classification question, here asked as `feasible` instead, over the identical blank cl-15 coordinate `C.2/two-characters-in-one-tate-chu-yoko-run/no-break-inside` verifies above rather than a second, unrelated one. `constructs.tate_chu_yoko` declares two array entries, `[0, 2]` and `[2, 4]`, one per group; `crates/jlreq-conform/src/kumihan.rs`'s own `overlay_of` allocates a fresh `RunId` per declared entry in that array's own order, so the two groups convert to two distinct runs even though they sit immediately adjacent in the base stream with nothing between them. The single candidate this case declares sits exactly at that adjacency, and the note's own second sentence grants the break there unconditionally on which two members are on either side.",
+      "input": {
+        "kind": "feasible",
+        "text": "あいうえ",
+        "direction": "vertical",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "tate_chu_yoko": [{ "items": [0, 2] }, { "items": [2, 4] }]
+        },
+        "candidates": [{ "at": 6 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 13's own second sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": false }
+          },
+          "why": "Treating every item declared inside some tate-chu-yoko construct as one run rather than reading the run identity the construct's own array position carries. The note's own グループ (group) is the two declared entries here, not 'tate-chu-yoko' as a kind; refusing between them collapses two runs the case declares separately into one indivisible group the case never asked for — the breakability twin of the classification failure `A.30/two-adjacent-runs/second-run-member` already names for an implementation that maps a construct to only its first item."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-characters-in-one-ornamented-complex/no-break-inside",
+      "rules": ["C.2#6"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive characters belonging to the same ornamented character complex (cl-21).",
+      "rationale": "The note's own first sentence, asked as the `feasible` kind rather than as `boundary`: two ideographs declared as one `constructs.ornaments` run (§A.21's own sentence — 'Any character may participate in ornamented character complex.' — is unqualified, so a construct of ordinary ideographs rather than the usual base-and-superscript illustration is not a different reading of the class, only a plainer one — the identical move `C.2/two-characters-in-one-tate-chu-yoko-run/no-break-inside`'s own rationale makes for §A.30), and the one candidate this case declares sits at the boundary inside that run. The coordinate is chosen and not merely convenient: cl-19 against cl-19 is `blank` in Table 1, Table 2, Table 3's own line-end row and Table 4's own line-head row alike (`spec/captured/table1.en.tsv` through `table4.en.tsv`, read directly rather than inferred from this evaluator's own answer — Table 6's own cell at this coordinate, `0-1/4 stage 3`, is a third-order expansion opportunity and touches breakability not at all), so nothing at this class pair could produce a refusal by accident — the only rule able to refuse this candidate is one that reads the declared run, which is `jlreq_line::feasible::same_run_refusal` alone, citing C.2#6. `jlreq_class::resolve` is construct-blind, so it never resolves either occurrence to cl-21 at all; the note's own subject is complex membership the caller declares, not a class pair a matrix could index (ADR 0015, `same_run_refusal`'s own doc). `Compose::feasible` is what makes the coordinate answerable at all: `overlay_of` converts the declared `ornaments` entry into a `jlreq_unit::Runs` overlay and hands it to `jlreq_line::Feasible::compute` directly — the machinery M1 round 11 built, which no case asked the `feasible` question of an ornamented complex until this round (`docs/conformance-deferrals.toml`'s own former `C.2#6` entry named exactly this gap).",
+      "input": {
+        "kind": "feasible",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "ornaments": [{ "items": [0, 2] }]
+        },
+        "candidates": [{ "at": 3 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 6's own first sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": false,
+              "rules": ["C.2#6"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": true }
+          },
+          "why": "Reading the bare class pair alone. Both items resolve to cl-19 (ordinary ideographic characters) through `jlreq_class::resolve`, and that resolution is construct-blind — it never learns the two occurrences share one declared ornamented-complex run. Table 2's own cl-19 against cl-19 cell is blank at every kinsoku level, so an implementation that stops at the class pair, never asking which run the caller declared, answers breakable here: exactly the coordinate this case was chosen to expose, since no table cell anywhere in this pair's own row or column could produce the refusal by coincidence."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-ornamented-complexes-adjacent/break-permitted",
+      "rules": ["C.2#6"],
+      "standing": "normative",
+      "quote": "If two consecutive characters belong to different ornamented character complexes (cl-21), a line break opportunity exists between them.",
+      "rationale": "The note's own second sentence, and the reason `same_run_refusal` needs a run identity rather than a class alone: two ornamented complexes abut with no occurrence between them. `constructs.ornaments` declares two array entries, `[0, 2]` and `[2, 4]`, one per complex; `crates/jlreq-conform/src/kumihan.rs`'s own `overlay_of` allocates a fresh `RunId` per declared entry in that array's own order, so the two complexes convert to two distinct runs even though they sit immediately adjacent in the base stream with nothing between them. The single candidate this case declares sits exactly at that adjacency, at the identical blank cl-19 coordinate `C.2/two-characters-in-one-ornamented-complex/no-break-inside` verifies above rather than a second, unrelated one, and the note's own second sentence grants the break there unconditionally on which two members are on either side.",
+      "input": {
+        "kind": "feasible",
+        "text": "亜亜亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "constructs": {
+          "ornaments": [{ "items": [0, 2] }, { "items": [2, 4] }]
+        },
+        "candidates": [{ "at": 6 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 6's own second sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": false }
+          },
+          "why": "Treating every item declared inside some `ornaments` construct as one run rather than reading the run identity the construct's own array position carries. §C.2#6's own complex is the two declared entries here, not 'ornamented' as a kind; refusing between them collapses two runs the case declares separately into one indivisible complex the case never asked for — the breakability twin of the classification failure `A.21/between-two-complexes/break-opportunity` already names for the boundary question, asked here as `feasible` instead."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-base-characters-in-one-simple-ruby-complex/no-break-inside",
+      "rules": ["C.2#7"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive characters belonging to the same simple-ruby character complex (cl-22).",
+      "rationale": "The note's own first sentence, asked as `feasible`: `A.23/simple-ruby-complex/mono-ruby-twin`'s own input — 東西 with a とうざい annotation stream and one `constructs.ruby` entry declaring `style: \"mono\"` over both base characters — reused here verbatim with `kind` changed and one candidate declared at the interior boundary. §A.22's own sentence, 'Any character may participate in simple-ruby character complex,' is unqualified, so an ordinary kanji compound word standing in as the base is not a stretched reading of the class, only a plainer one — the identical move `C.2/two-characters-in-one-tate-chu-yoko-run/no-break-inside`'s own rationale makes for §A.30. `jlreq_class::resolve` is construct-blind, exactly as `C.2/two-characters-in-one-ornamented-complex/no-break-inside`'s own rationale states, so both base characters classify from their own code point and declared frame alone — cl-19, not cl-22 — and the coordinate this case measures is the identical cl-19 against cl-19 cell verified blank in Table 1 through Table 4 above. `cases.schema.json`'s own `ruby` `$def` requires `annotation` and `runs` of every declared entry, and this case states both — but `overlay_of` reads neither: only a construct's own kind and its declared range decide the run this evaluator sees. `crates/jlreq-conform/src/kumihan.rs`'s own `overlay_of` doc now states in full why — the only answer a declared `runs` pairing could ever change is `same_run_refusal`'s own equal-group branch of §C.2#8, which this note does not have — so this case, and the three other ruby-declaring cases beside it, state `annotation` and `runs` for the format's own completeness and for `jlreq-inline`'s own eventual reader (M4-a), not because either field moves the answer measured here. `overlay_of` converts the declared `ruby` entry (`style: \"mono\"` reads as `ConstructKind::NonJukugoRuby`) into a single run over both base characters and hands it to `jlreq_line::Feasible::compute`, which is what makes the refusal `same_run_refusal` cites here, C.2#7, observable at all — no case asked this question of a simple-ruby complex until this round (`docs/conformance-deferrals.toml`'s own former `C.2#7` entry named exactly this gap).",
+      "input": {
+        "kind": "feasible",
+        "text": "東西",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "とうざい",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 2] },
+                { "base": [1, 2], "annotation": [2, 4] }
+              ]
+            }
+          ]
+        },
+        "candidates": [{ "at": 3 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 7's own first sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": false,
+              "rules": ["C.2#7"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": true }
+          },
+          "why": "Reading the bare class pair alone, the identical failure `C.2/two-characters-in-one-ornamented-complex/no-break-inside` names for cl-21. Both base characters resolve to cl-19 through `jlreq_class::resolve`'s own construct-blind reading, and Table 2's own cl-19 against cl-19 cell is blank at every kinsoku level, so an implementation that never asks which run the caller declared answers breakable here — exactly the coordinate this case was chosen to expose."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-simple-ruby-complexes-adjacent/break-permitted",
+      "rules": ["C.2#7"],
+      "standing": "normative",
+      "quote": "If two consecutive characters belong to different simple-ruby character complexes (cl-22), a line break opportunity exists between them.",
+      "rationale": "The note's own second sentence: two mono-ruby base characters, each its own simple-ruby complex. Mono-ruby attaches one run of ruby text to each base character, so two adjacent mono-ruby occurrences are two complexes and not one — the identical fact `A.22/distinct-complexes/break-and-solid`'s own rationale states for the boundary question this case asks as `feasible` instead. `constructs.ruby` declares two array entries, one base character each, each with its own annotation stream (`はな` for 花, `とり` for 鳥) and its own single-pair `runs` entry; `overlay_of` allocates a fresh `RunId` per array entry, so the two mono-ruby base characters convert to two distinct runs despite standing immediately adjacent with nothing between them. The candidate sits at that adjacency, at the identical blank cl-19 coordinate `C.2/two-characters-in-one-ornamented-complex/no-break-inside` and `C.2/two-base-characters-in-one-simple-ruby-complex/no-break-inside` verify above, and the note's own second sentence grants the break there.",
+      "input": {
+        "kind": "feasible",
+        "text": "花鳥",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "はな",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          },
+          {
+            "text": "とり",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [{ "base": [0, 1], "annotation": [0, 2] }]
+            },
+            {
+              "base": [1, 2],
+              "annotation": 1,
+              "style": "mono",
+              "runs": [{ "base": [1, 2], "annotation": [0, 2] }]
+            }
+          ]
+        },
+        "candidates": [{ "at": 3 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 7's own second sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": false }
+          },
+          "why": "Treating every base character carrying `style: \"mono\"` ruby as one run regardless of which `constructs.ruby` array entry declared it. §C.2#7's own complex is the declared entry, not the ruby style; two adjacent mono-ruby base characters, each its own array entry and each its own reading, are two simple-ruby complexes exactly as `A.22/distinct-complexes/break-and-solid`'s own rationale states for the identical configuration asked as a boundary question — refusing between them collapses two complexes the case declares separately into one the case never asked for."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-base-characters-in-one-jukugo-ruby-complex/break-permitted",
+      "rules": ["C.2#8"],
+      "standing": "normative",
+      "quote": "There is also a line break opportunity between two consecutive base characters belonging to the same jukugo-ruby character complex (cl-23) and between two runs of ruby text accompanying the corresponding base characters.",
+      "rationale": "The note's own second sentence, and the load-bearing case of this round: `A.23/jukugo-ruby-complex/first-base`'s own input — 東西 with a とうざい annotation stream and one `constructs.ruby` entry declaring `style: \"jukugo\"` over both base characters — reused here verbatim with `kind` changed and the identical candidate `C.2/two-base-characters-in-one-simple-ruby-complex/no-break-inside` declares. The two inputs differ in exactly one declared field: `style`, `\"mono\"` there against `\"jukugo\"` here — `A.23/simple-ruby-complex/mono-ruby-twin`'s own rationale states the identical byte-for-byte relationship for the classification question this pair asks at the run-level breakability layer instead — and the answers differ over that one field: `breakable: false` there, `breakable: true` here. That is the whole measurement: an implementation that read `same_run_refusal`'s `NonJukugoRuby` and `JukugoRuby` arms alike, refusing every same-run boundary a `ruby` construct declares regardless of style, would pass the case beside this one and fail this one. What makes `breakable: true` the right answer is the note's own words read plainly: the quoted sentence grants a break between two base characters of one complex without conditioning the permission on a group, and could not condition it on one here regardless — a base character is never its own ruby, and `jlreq_line::Feasible::compute` sees only the base item stream (`same_run_refusal`'s own doc: 'the crate graph gives jlreq-line no edge to jlreq-inline'), so every occurrence this evaluator can tag `ConstructKind::JukugoRuby` today is a base character, exactly the pairing the second sentence names without qualification. `overlay_of` never builds a `GroupId` for any slot (`overlay_of`'s own doc, above), so the concrete branch `same_run_refusal` takes here is its `_ => None` fallthrough over `(None, None)` — the identical branch `docs/decisions/jukugo-ruby-unset-group.md`'s own adjudicated reading reads as permissive, and this case is the conformance case that reading's own closing paragraph said none existed: an implementation that inverted that reading, refusing whenever a group is absent, would fail this case's own `permitted` entry. The two groundings do not compete: the note's own second sentence would grant this break even in a hypothetical future model where each base character carried its own distinct, declared group, since `same_run_refusal` permits two occurrences declared in different groups exactly as the note's own second sentence already requires regardless of group (`same_run_refusal`'s own doc) — so this case does not rest on the adjudicated reading being the only route to the right answer, only on the reading and the note's own broader permission agreeing, which they do.",
+      "input": {
+        "kind": "feasible",
+        "text": "東西",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "とうざい",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "jukugo",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 2] },
+                { "base": [1, 2], "annotation": [2, 4] }
+              ]
+            }
+          ]
+        },
+        "candidates": [{ "at": 3 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 8's own second sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": false }
+          },
+          "why": "Copying `C.2/two-base-characters-in-one-simple-ruby-complex/no-break-inside`'s own always-refuse answer onto a jukugo-ruby run. The two inputs differ in exactly one declared field — `style`, `\"mono\"` there against `\"jukugo\"` here — and an implementation that refuses every same-run boundary a `ruby` construct declares, without reading which style it declared, passes the mono case and fails this one: §C.2#7 denies a break anywhere inside a simple-ruby complex without exception, while §C.2#8's own second sentence grants one between two base characters of the *same* jukugo-ruby complex explicitly. Collapsing the two notes into one same-run rule is the asymmetry this pair of cases exists to catch."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "C.2/two-jukugo-ruby-complexes-adjacent/break-permitted",
+      "rules": ["C.2#8"],
+      "standing": "normative",
+      "quote": "A line break opportunity exists between two consecutive base characters belonging to different jukugo-ruby character complexes (cl-23).",
+      "rationale": "The note's own first sentence: two jukugo-ruby complexes set side by side, reusing `A.23/two-complexes/second-complex-first-base`'s own input — 東西南北 with two annotation streams (`とうざい`, `なんぼく`) and two `constructs.ruby` entries, each declaring `style: \"jukugo\"` over one complex — with `kind` changed and one candidate declared at the seam between them. `overlay_of` allocates a fresh `RunId` per declared array entry, so the two complexes convert to two distinct runs despite sitting immediately adjacent with nothing between them, the identical mechanism `C.2/two-ornamented-complexes-adjacent/break-permitted` and `C.2/two-simple-ruby-complexes-adjacent/break-permitted` exercise for `ornaments` and simple-ruby above. The candidate sits at that adjacency, at the identical blank cl-19 coordinate every one of this round's own six cases measures, and the note's own first sentence grants the break there — the complement to `C.2/two-base-characters-in-one-jukugo-ruby-complex/break-permitted`'s own second sentence, the two together covering both of §C.2#8's own permissive halves. Only the note's third sentence, ruby-to-ruby indivisibility, is outside what a base-only item stream can measure — `same_run_refusal`'s own doc and `overlay_of`'s own doc above both state why, and no case in this file claims otherwise.",
+      "input": {
+        "kind": "feasible",
+        "text": "東西南北",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "とうざい",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          },
+          {
+            "text": "なんぼく",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "jukugo",
+              "runs": [
+                { "base": [0, 1], "annotation": [0, 2] },
+                { "base": [1, 2], "annotation": [2, 4] }
+              ]
+            },
+            {
+              "base": [2, 4],
+              "annotation": 1,
+              "style": "jukugo",
+              "runs": [
+                { "base": [2, 3], "annotation": [0, 2] },
+                { "base": [3, 4], "annotation": [2, 4] }
+              ]
+            }
+          ]
+        },
+        "candidates": [{ "at": 6 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C.2 note 8's own first sentence",
+          "expect": {
+            "feasible": {
+              "candidate": 0,
+              "breakable": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": false }
+          },
+          "why": "Treating every base character carrying `style: \"jukugo\"` ruby as one run regardless of which `constructs.ruby` array entry declared it — the identical failure the two adjacent-complex cases above name for `ornaments` and simple-ruby, reached here through jukugo-ruby instead. §C.2#8's own first sentence grants the break between two *different* jukugo-ruby complexes; refusing it here collapses the two declared array entries into one complex the case never asked for."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

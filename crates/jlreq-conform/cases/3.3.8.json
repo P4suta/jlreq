@@ -1,0 +1,143 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.3.8",
+  "heading_en": "Adjustments of Ruby with Length Longer than that of the Base Characters",
+  "heading_ja": "ルビが親文字よりはみ出した場合の処理",
+  "cases": [
+    {
+      "id": "3.3.8/forced-separation/only-beside-ideographic-neighbors",
+      "rules": ["3.3.8"],
+      "standing": "normative",
+      "quote": "Ruby text shall not hang over the ideographic characters (cl-19) adjacent to the base characters.",
+      "rationale": "Rule 1 states a prohibition and no amount: the base characters must be pushed apart by a mono-ruby reading's own excess before composition begins, wherever the neighbor the excess would otherwise overhang resolves to cl-19, and not otherwise (`docs/decisions/mono-ruby-separation-split.md`). Two mono-ruby constructs, each with a one-character reading wider than its own base's supplied advance by an identical 300 units (base 1000, reading 1300): construct 0 sits over item 0 (き), whose only real neighbor, item 1 (あ), is hiragana (cl-15) — no separation is forced. Construct 1 sits over item 3 (か), whose left neighbor, item 2 (鬼), is ideographic (cl-19) — a separation is forced at the boundary between them, item 3 having no right neighbor to force a second one. `lower.separations` is the *complete* list `Contribution::separations` reports across every construct the case declares, compared by count as well as content (`cases.schema.json`'s own `lower.separations` description), so the single declared entry below asserts both halves of the quoted sentence at once: that the boundary after item 2 carries a forced separation, and that the case's own equally oversized construct 0 forces none anywhere — an implementation that fired a separation beside construct 0's own hiragana neighbor, or omitted the one beside construct 1's cl-19 neighbor, fails this case either way. `least` is deliberately not stated: rule 1 states only the prohibition, never an amount, and the amount `lower` computes here is `docs/decisions/mono-ruby-separation-split.md`'s own reading of the arithmetic rather than a fact JLReq states (the companion `unstated`-standing case below is where that reading is asserted, under the standing that names it a reading rather than a requirement).",
+      "input": {
+        "kind": "lower",
+        "text": "きあ鬼か",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "も",
+            "scales": [{ "inline_em": 1300, "block_em": 1300 }],
+            "items": [{ "start": 0, "advance": 1300, "frame": "full-em", "scale": 0 }]
+          },
+          {
+            "text": "ほ",
+            "scales": [{ "inline_em": 1300, "block_em": 1300 }],
+            "items": [{ "start": 0, "advance": 1300, "frame": "full-em", "scale": 0 }]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [{ "base": [0, 1], "annotation": [0, 1] }]
+            },
+            {
+              "base": [3, 4],
+              "annotation": 1,
+              "style": "mono",
+              "runs": [{ "base": [3, 4], "annotation": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§3.3.8 rule 1, applied identically under every policy this workspace generates: the prohibition names no question",
+          "expect": {
+            "lower": {
+              "construct": 1,
+              "separations": [{ "after": 2 }],
+              "rules": ["3.3.8"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lower": { "construct": 1, "separations": [] }
+          },
+          "why": "Rule 1 forbids ruby from overhanging an adjacent cl-19 character; construct 1's reading is 300 units wider than its own base and its left neighbor (item 2, 鬼) is cl-19, so a boundary carrying no forced separation at all leaves that excess resting on the neighbor rule 1 forbids it from resting on. `construct` is stated explicitly and not left to default to 0: the case asks about construct 1 (the permitted entry's own first-stated `construct`), and an unstated `construct` here would silently forbid a different occurrence's answer, `check_ordinal`'s own mismatch making this entry inert rather than a check on the construct rule 1 actually governs."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.8/forced-separation/even-split-by-remainder-policy",
+      "rules": ["3.3.8"],
+      "standing": "unstated",
+      "quote": "Ruby text shall not hang over the ideographic characters (cl-19) adjacent to the base characters.",
+      "rationale": "Rule 1 states the prohibition; it states no amount and no side for the surplus a mono-ruby run's excess forces apart, which is exactly `docs/decisions/mono-ruby-separation-split.md`'s own silence — three narrower questions the rule's own wording leaves open. This case exercises question 1: how one run's own excess divides between its two boundaries when both neighbors are cl-19. One mono-ruby construct over item 1 (門) of 鬼門河 — 鬼 and 河, items 0 and 2, are both ideographic (cl-19) — carries a reading 3 units wider than its own 1000-unit base, an odd surplus `jlreq_unit::distribute(surplus, &[1, 1], policy.remainder())` cannot split evenly between the two boundaries, so which one carries the extra unit is exactly the tie-break `jlreq_spec::Question::ADJUSTMENT_REMAINDER` already answers for every other proportional split in this workspace, read here for the first time over this construct's own two forced separations. `Policy::JLREQ`'s own default, `RemainderRule::Leading`, gives the leading boundary (after item 0) the extra unit — 2 against 1 — which is the reading this workspace's own default run measures; `RemainderRule::Trailing` gives it to the trailing boundary instead — 1 against 2 — published as a statement to an implementation that declares that alternative, on `3.6.2/center-tab-alignment`'s own identical precedent for the same policy question over a different construct. Neither reading is JLReq's own requirement, which is exactly why this case's own standing is `unstated` and not `normative`: asserting one split as the rule's own requirement would be the §E.2#11 error, measuring kumihan's own bookkeeping choice rather than anything the quoted sentence decides.",
+      "input": {
+        "kind": "lower",
+        "text": "鬼門河",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "も",
+            "scales": [{ "inline_em": 1003, "block_em": 1003 }],
+            "items": [{ "start": 0, "advance": 1003, "frame": "full-em", "scale": 0 }]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [1, 2],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [{ "base": [1, 2], "annotation": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `adjustment.remainder` (leading), applied to `docs/decisions/mono-ruby-separation-split.md`'s own even split",
+          "expect": {
+            "lower": {
+              "construct": 0,
+              "separations": [
+                { "after": 0, "least": 2 },
+                { "after": 1, "least": 1 }
+              ],
+              "rules": ["3.3.8"]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.remainder": "trailing" },
+          "source": "the trailing reading `jlreq_unit::RemainderRule::Trailing` permits — a statement to an implementation that declares this alternative; this workspace's own default run does not select it",
+          "expect": {
+            "lower": {
+              "construct": 0,
+              "separations": [
+                { "after": 0, "least": 1 },
+                { "after": 1, "least": 2 }
+              ],
+              "rules": ["3.3.8"]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

@@ -1,7 +1,15 @@
 # ADR-0014: the unit of spacing data is the conditional space, not the table cell
 
-- Status: accepted
+- Status: accepted, amended in part by [ADR 0021](0021-table-6s-expansion-belongs-to-the-boundary.md)
 - Date: 2026-08-05
+
+ADR 0021 corrects one clause below: `Expansion` is not a field of `ConditionalSpace`.
+Table 6 states one opportunity per class pair, not per referent, so a solid Table 1 cell —
+no term of either referent's, cl-19 against cl-19 among 296 measured coordinates — could
+never carry the `Expansion` this document's own Decision put on the space, which left
+§3.8.4's own procedure unreachable at every one of them. The carrier is
+`jlreq_spacing::Boundary` now, by the identical reasoning this Decision already gives ruby
+overhang two paragraphs later in the same section.
 
 ## Context
 

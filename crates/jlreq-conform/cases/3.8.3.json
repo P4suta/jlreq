@@ -1,0 +1,51 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.8.3",
+  "heading_en": "Procedures for Inter-character Spacing Reduction",
+  "heading_ja": "字間の詰める処理の手順",
+  "cases": [
+    {
+      "id": "3.8.3/middle-dot-ideograph-middle-dot/the-fourth-stage-splits-by-character-size-not-by-site-count",
+      "rules": ["3.8.3"],
+      "standing": "normative",
+      "quote": "If the required amount of reduction is more than the total amount of inter-character spacing that can be reduced within the priority group, that priority group's inter-character spacing is set to solid, and reduction moves to the target of the next priority group. This process is repeated for as many priority groups as necessary until the required amount of reduction is achieved. ... reduce the inter-character spacing of the pertinent conditional spacing in question, in proportion to the character size, up to the necessary amount required.",
+      "rationale": "§3.8.3's own text carries a recorded defect this crate follows the Japanese side of rather than silently picks a reading for: its steps for the fourth through sixth priority groups say the amount is reduced 文字サイズ比で均等に — \"equally, in the ratio of the character size\" — matching the English of those same steps, \"reduced equally in proportion to the character size\"; but step 1's own English, \"the same width reduction is applied to all spaces on the target line at the same time\", reads as a *flat, absolute* amount per site rather than one weighted by each site's own em, which is not what the Japanese of that same step 1 states either. `crates/jlreq-line/src/ladder.rs`'s own `# Status` records this as an unresolved English/Japanese divergence in the specification's own wording and adjudicates it to the Japanese reading throughout — every stage, not only 4 through 6 — which is what `ladder::reduce` implements (`jlreq_unit::distribute`, weighted by each site's own referent's character size) and what this case is written to match; the flat-amount reading step 1's English alone would suggest is excluded below rather than silently unpicked. The fixture puts the two same-stage sites the split competes over on two different boundaries, with the character between them, which is what makes each site's own individual share observable rather than only their sum: a middle dot, an ideograph, then a second middle dot, the first dot at a 1000-unit em and the second at half that, 500 units. Table 3's own ordinary, single-term cells give each boundary one quarter-em term at the fourth priority stage (`D.1`'s generic citation, not §D.2's own two-term notes, because neither boundary here is a middle dot facing another middle dot) — the first, before the ideograph, accompanies the first dot at its own 1000-unit em (250 units); the second, after the ideograph, accompanies the second dot at its own 500-unit em (125 units). At `measure = 1945` the natural extent is 2250, a 305-unit shortfall to close: the second dot's own line-end quarter em (§D.2 note 5, third priority, 125 units at its own 500-unit em) is the deepest floor room available below the fourth stage and drains first and fully, leaving 180 for the fourth stage's own two sites. Weighted by character size (1000:500), 180 splits 120 to the first site and 60 to the second — never 90 and 90, the equal-per-site split step 1's English alone would give if it meant what it literally says. Because the first site's own delta alone moves the ideograph's own placement (nothing shifts the second dot's own placement it does not also shift), while the second site's delta only ever arrives already added to the first's, the ideograph's own placement is where the two readings part: 630 under the proportional reading this case asserts, 660 under the flat one, a 30-unit difference `permitted` and `forbidden` below are written to catch. The second dot's own placement and the line's own extent agree between the two readings regardless — both move the same 180 units in total, only their split between two sites differs — which is why neither is what this case's own forbidden entry states.",
+      "input": {
+        "kind": "compose",
+        "text": "・亜・",
+        "scales": [
+          { "inline_em": 1000, "block_em": 1000 },
+          { "inline_em": 500, "block_em": 500 }
+        ],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 250, "frame": "half-em", "scale": 1 }
+        ],
+        "candidates": [],
+        "measure": 1945
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.8.3, the Japanese reading of step 1 and the agreeing English and Japanese of steps 4 through 6 — `ladder::reduce`'s own adjudication, `crates/jlreq-line/src/ladder.rs`",
+          "expect": {
+            "lines": [
+              { "placements": [0, 630, 1695], "extent": 1945, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [{ "placements": [0, 660, 1695] }]
+          },
+          "why": "660 is where the ideograph's own placement would land if the fourth stage's 180-unit remainder were split flat — 90 to each site regardless of the em each accompanies — the reading step 1's English alone states literally (\"the same width reduction... to all spaces... at the same time\") and which steps 4 through 6 exclude in both languages by requiring the split to follow \"the ratio of the character size\". No permitted entry above answers this placement; `ladder::reduce` never takes the flat-amount reading at any stage, fourth included."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

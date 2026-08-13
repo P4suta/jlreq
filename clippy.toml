@@ -10,6 +10,13 @@ type-complexity-threshold = 250
 too-many-lines-threshold = 100
 trivial-copy-size-limit = 128
 pass-by-value-size-limit = 256
+# `jlreq_inline::RubyStyle` names JLReq's own three attachment styles — mono-ruby,
+# group-ruby, jukugo-ruby — and the shared "Ruby" postfix is `docs/design/api-spine.md`'s
+# own pinned vocabulary, not a naming accident this lint exists to catch. The default
+# threshold (3) fires on any three-variant enum sharing an affix; raising it by one exempts
+# only enums this small, which is the whole of what this crate's own construct-style
+# enumerations are.
+enum-variant-name-threshold = 4
 
 # Domain vocabulary that `clippy::doc_markdown` would otherwise ask us to wrap in
 # backticks. These are proper nouns in prose, not code identifiers. `..` extends

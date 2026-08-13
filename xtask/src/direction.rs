@@ -2504,8 +2504,10 @@ mod tests {
         assert!(problems.is_empty(), "found {problems:?}");
     }
 
-    #[test]
-    fn the_allowlist_this_repository_ships_parses() {
+    /// Read and parse the allowlist this repository ships, for the two tests below that
+    /// each assert one half of its own content — split out so that neither grows past
+    /// `clippy::too_many_lines` over a parse both halves need in common.
+    fn shipped_allowlist() -> Allowlist {
         let text = std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("..")
@@ -2514,6 +2516,214 @@ mod tests {
         .expect("the allowlist is readable");
         let (allowlist, problems) = parse_allowlist(&text);
         assert!(problems.is_empty(), "found {problems:?}");
+        allowlist
+    }
+
+    /// The golden list [`the_allowlist_this_repository_ships_parses_its_sites`] checks
+    /// against — pulled out of that test's own body, alongside `shipped_allowlist`'s own
+    /// identical reason, so the assertion itself stays under `clippy::too_many_lines`.
+    /// The full shipped site list, split across two functions purely for
+    /// `clippy::too_many_lines`: one literal `vec![]` naming every site would run past the
+    /// 100-line limit once this round's own six `Search::Optimal` entries joined the
+    /// existing thirty, and there is no other seam in a flat list of tuples to split on.
+    fn expected_shipped_sites() -> Vec<(&'static str, &'static str, &'static str)> {
+        let mut sites = expected_shipped_compose_sites();
+        sites.extend(expected_shipped_tab_sites());
+        sites.extend(expected_shipped_inline_sites());
+        sites
+    }
+
+    /// M4-a round 1's own five `jlreq-inline` sites: `lower` genuinely resolving §3.3.5's
+    /// alignment question, `TateChuYoko::new` genuinely refusing §3.2.5's horizontal case,
+    /// the two test-fixture helpers `crate::lower` and `crate::tcy` each need to build a
+    /// concrete `Direction` without naming a variant at every call site, and one further
+    /// `crate::lower` regression test that names both variants directly because its own
+    /// point is §3.3.5's discouraged combination differing by direction.
+    fn expected_shipped_inline_sites() -> Vec<(&'static str, &'static str, &'static str)> {
+        vec![
+            ("jlreq-inline", "lower", "3.3.5"),
+            ("jlreq-inline", "TateChuYoko::new", "3.2.5"),
+            ("jlreq-inline", "horizontal", "3.1.3"),
+            ("jlreq-inline", "directions", "3.2.5"),
+            (
+                "jlreq-inline",
+                "katatsuki_is_honored_and_discouraged_only_in_horizontal_writing",
+                "3.3.5",
+            ),
+        ]
+    }
+
+    /// `jlreq-spacing`'s own two entries and `jlreq-line`'s `compose.rs` entries: the five
+    /// pre-existing regression tests, six `Search::Optimal` ones (M3 round 19), and seven
+    /// more for §3.5.4's widow adjustment (M3 round 21).
+    fn expected_shipped_compose_sites() -> Vec<(&'static str, &'static str, &'static str)> {
+        vec![
+            ("jlreq-spacing", "vertical_decimal_solid", "3.1.3"),
+            ("jlreq-spacing", "direction_of", "3.1.3"),
+            (
+                "jlreq-line",
+                "a_second_lines_placements_are_shifted_by_the_reduction_the_ladder_applied",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "geometry_of_reads_a_lines_own_head_as_the_line_head_not_the_previous_lines_close",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_hung_characters_overhang_is_excluded_from_the_lines_own_extent",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_underfull_line_of_ordinary_kanji_actually_expands",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "edges_end_false_suppresses_the_line_end_trailing_space",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "optimal_finds_the_hand_verified_two_two_split",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "least_adjustment_prefers_the_shallow_but_overfull_arrangement",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "even_texture_prefers_the_feasible_arrangement",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "tolerance_exhaustion_falls_back_to_the_full_search",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "first_line_indent_is_read_from_the_edge_not_loop_position",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "firstfit_and_optimal_disagree_about_whether_a_trailing_full_stop_hangs",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_zero_widow_threshold_changes_nothing_for_either_search",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "optimal_steers_toward_a_widow_free_last_line_even_when_every_other_component_is_worse",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "first_fit_reports_a_widow_but_never_moves_the_break_to_avoid_it",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_last_line_reports_both_an_overfull_violation_and_a_widow_in_that_order",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_single_line_paragraph_reports_a_widow_the_literal_reading_requires",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_unsatisfiable_threshold_still_composes_without_panicking_or_looping",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_zero_item_paragraph_never_grows_a_widow_violation",
+                "3.1.3",
+            ),
+        ]
+    }
+
+    /// `jlreq-line`'s `tab.rs` regression tests, `feasible.rs`'s own `feasible_over` helper
+    /// and its one direct `same_run_refusal` regression test.
+    fn expected_shipped_tab_sites() -> Vec<(&'static str, &'static str, &'static str)> {
+        vec![
+            (
+                "jlreq-line",
+                "an_interior_tabbed_run_is_not_treated_as_a_line_end",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_interior_tabbed_runs_leading_edge_does_not_cross_the_tab_gap",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "each_run_seats_at_its_own_nominal_stop_absent_overflow",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_overflowing_run_makes_the_search_skip_a_stop_too_early_to_use",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_end_aligned_runs_pulled_back_anchor_is_clamped_to_the_preceding_runs_end",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "a_run_with_no_remaining_stop_is_deferred_and_so_forth",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "fewer_stops_than_targets_is_refused_before_any_placement",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "character_alignment_seats_the_named_item_at_the_stop",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "character_alignment_naming_an_item_outside_the_run_is_refused",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "an_end_aligned_last_runs_anchor_accounts_for_its_own_trailing_space",
+                "3.1.3",
+            ),
+            (
+                "jlreq-line",
+                "the_last_runs_redone_clamp_reads_the_preceding_runs_own_floor",
+                "3.1.3",
+            ),
+            ("jlreq-line", "feasible_over", "3.1.3"),
+            (
+                "jlreq-line",
+                "text_with_no_declared_overlay_is_identical_to_todays_answer",
+                "3.1.3",
+            ),
+        ]
+    }
+
+    #[test]
+    fn the_allowlist_this_repository_ships_parses_its_sites() {
+        let allowlist = shipped_allowlist();
         assert_eq!(
             allowlist
                 .sites
@@ -2524,22 +2734,34 @@ mod tests {
                     site.rule.as_str()
                 ))
                 .collect::<Vec<_>>(),
-            vec![
-                ("jlreq-spacing", "vertical_decimal_solid", "3.1.3"),
-                ("jlreq-spacing", "direction_of", "3.1.3"),
-            ],
+            expected_shipped_sites(),
             "jlreq-spacing reads 3.1.3 as the vertical-writing withdrawal of the comma's and \
              the middle dot's own conditional space, and its own tests exercise both \
-             directions through one allowlisted helper"
+             directions through one allowlisted helper; jlreq-line's own four compose \
+             regression tests, one further compose regression test for this round's own \
+             `Edges` mechanism, six `Search::Optimal` regression tests for the M3 round that \
+             added the whole-paragraph DP (`run_dp`), seven more for M3 round 21's own §3.5.4 \
+             widow adjustment (`demerits_of`'s own widow term), eleven `crate::tab` \
+             regression tests for this round's own §3.6 tab-setting module (nine from the \
+             round itself, two more from a review-found anchor-versus-trailing-space fix), \
+             and this round's own `feasible_over` helper plus the one `same_run_refusal` \
+             regression test that calls `Feasible::compute` directly, each need a concrete \
+             direction to reach a real ConditionalSpace (or, for `crate::tab`, a well formed \
+             `tab_line` call, or, for `feasible_over`, a real `jlreq_spacing::boundary` \
+             answer, or, for `Search::Optimal` and the widow tests, `compose`'s own real \
+             path) at all and read none of the three rules, entered under 3.1.3 for lack of \
+             a fourth slot (each entry's own `why` states the gap)"
         );
-        assert_eq!(
-            allowlist
-                .pending
-                .iter()
-                .map(|entry| entry.rule.as_str())
-                .collect::<Vec<&str>>(),
-            vec!["3.2.5", "3.3.5"],
-            "3.1.3 is read now; 3.2.5 and 3.3.5 still await jlreq-inline"
+    }
+
+    #[test]
+    fn the_allowlist_this_repository_ships_parses_its_pending_table() {
+        let allowlist = shipped_allowlist();
+        assert!(
+            allowlist.pending.is_empty(),
+            "3.1.3, 3.2.5 and 3.3.5 are all read now: M4-a round 1 retired the last two \
+             `[[pending]]` entries, one by reading it and one honestly rather than leaving it \
+             to lapse unrepaired when `jlreq-inline` declared its first item"
         );
     }
 

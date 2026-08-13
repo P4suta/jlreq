@@ -1,0 +1,540 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.1.6",
+  "heading_en": "Positioning of Dividing Punctuation Marks (Question Mark and Exclamation Mark) and Hyphens",
+  "heading_ja": "区切り約物及びハイフン類の配置方法",
+  "cases": [
+    {
+      "id": "3.1.6/ideograph-then-sentence-terminator-mark/no-spacing-before-the-mark",
+      "rules": ["3.1.6"],
+      "standing": "normative",
+      "quote": "Basically, add no spacing before dividing punctuation marks (cl-04) at the end of a sentence and add one em spacing after them (see Figure 73). However when a closing bracket (cl-02) follows right after the dividing punctuation mark, add no spacing after the dividing punctuation mark and add half em spacing after the closing bracket (see Figure 73).",
+      "rationale": "The main body's first clause states the rule this case pins: no spacing precedes a sentence-final dividing punctuation mark. `crates/jlreq-spacing/src/generated/table1.rs`'s own cell at this coordinate — cl-19 (ideograph) before cl-04 (the mark), read directly rather than assumed — carries `terms: &[]`, the empty cell the clause's own words predict, and `role: \"sentence-terminator\"` on the mark selects the main body's own case rather than the third Note's: `sentence_medial_dividing_mark_spaces` fires only on `matches!(before_role, Some(Role::SentenceMedial))` or its trailing twin, never on `Role::SentenceTerminator`, so a sentence-final mark never reaches that function's own synthesis under any policy this workspace's `spec/derived/questions.tsv` can construct — the answer at this coordinate is the same whether `spacing.sentence_medial_dividing_mark` names `solid` or `quarter-em`, which is why one `permitted` entry already states the whole of what this case can measure. The rule's own second clause — one em of spacing appended after the mark — is deliberately not asserted here: this project's own reading of the first Note (`jlreq-spacing`'s own module doc, `docs/decisions/sentence-medial-dividing-mark.md`'s point 4) treats that em as an inserted cl-14 ideographic-space character rather than an inter-character spacing amount, a caller-level composition decision no crate in this workspace makes yet, and `docs/conformance-deferrals.toml`'s own rewritten entry states that scope limit rather than this case inventing a mechanism to measure it.",
+      "input": {
+        "kind": "boundary",
+        "text": "亜！",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "role": "sentence-terminator", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, main body, first clause",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/sentence-terminator-mark-then-closing-bracket/no-spacing-after-the-mark",
+      "rules": ["3.1.6"],
+      "standing": "normative",
+      "quote": "Basically, add no spacing before dividing punctuation marks (cl-04) at the end of a sentence and add one em spacing after them (see Figure 73). However when a closing bracket (cl-02) follows right after the dividing punctuation mark, add no spacing after the dividing punctuation mark and add half em spacing after the closing bracket (see Figure 73).",
+      "rationale": "The main body's own exception: a closing bracket immediately after a sentence-final mark withdraws the mark's own trailing em outright, rather than merely reducing it. `table1.rs`'s own cell at cl-04 before cl-02 — `(4, 2)` — carries `terms: &[]`, the empty cell this clause's own words predict, and the two entries below publish the whole of what this coordinate can measure: the first, under the declared policy's default `solid` answer, states that the exception's own emptiness needs nothing from the third Note to explain it, because the mark here is `role: \"sentence-terminator\"` and `sentence_medial_dividing_mark_spaces` never reads that role at all. The second entry declares `spacing.sentence_medial_dividing_mark: \"quarter-em\"` on the identical coordinate and the identical role and still answers `spaces: []` — the negative half of the assertion, proving the third Note's own override is gated on a declared `Role::SentenceMedial` and not on the coordinate alone, since `3.1.6/sentence-medial-mark-then-closing-bracket/no-bracket-exception-is-imported` below reads this exact coordinate with the mark declared medial instead and gets a real quarter em back. Nothing here asserts the bracket's own half em after itself — that is a different, already-owned boundary (`3.1.6/closing-bracket-then-ideograph/the-brackets-own-half-em` below reads `(2, 19)`, the cell this exception's own second half realizes) — because the two-item stream this case supplies has no third item for the bracket's own trailing space to land on.",
+      "input": {
+        "kind": "boundary",
+        "text": "！）",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-terminator", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, main body, second clause",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "JLReq §3.1.6, main body, second clause — unaffected by the third Note's own policy, since the mark declares the sentence-final role the Note does not govern",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/closing-bracket-then-ideograph/the-brackets-own-half-em",
+      "rules": ["3.1.6"],
+      "standing": "normative",
+      "quote": "Basically, add no spacing before dividing punctuation marks (cl-04) at the end of a sentence and add one em spacing after them (see Figure 73). However when a closing bracket (cl-02) follows right after the dividing punctuation mark, add no spacing after the dividing punctuation mark and add half em spacing after the closing bracket (see Figure 73).",
+      "rationale": "The exception's own second half, read at the coordinate it actually realizes: a closing bracket that has just absorbed a sentence-final mark's own withdrawn em carries a half em of its own after it. `table1.rs`'s cell at cl-02 before cl-19 — `(2, 19)` — carries one term, `trailing: false, amount: em(360)`, i.e. `Referent::Preceding` owned by the bracket, which is Table 1's own realization of this clause and is credited to this rule's own address rather than to Appendix B's bare opening sentence: §3.1.6's own fourth Note licenses that credit directly (\"The details of composition rules for dividing punctuation marks (cl-04) and hyphens (cl-03) are described in [§B] as a complete table, in accordance with the descriptions of character classes in §3.9\"), the same reading `3.1.4`'s own `[[owned]]` entry already states for its own plainest pair without a Note to cite for it (`docs/conformance-deferrals.toml`'s own words: \"credited to this rule's own address rather than to Appendix B's bare opening sentence because the coverage this suite counts is per address\"). The reduction is not rigid: `crates/jlreq-spacing/src/generated/table3.rs`'s own cell at this coordinate states `limit: Some(em(0)), two_valued: false, stage: 5` — a real, continuous drain to solid at the fifth priority under JLReq's own adopted table — read from the generated cell directly rather than assumed, which is the derivation this round's own brief demands before a single line of the evaluator is consulted. Only the Table 3 entry is published, because this case's own point is the shape of the amount and its owner, not which reduction table drains it, the identical scope `D.2/two-middle-dots`'s own third `permitted` entry declines to widen for the same stated reason.",
+      "input": {
+        "kind": "boundary",
+        "text": "）亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, main body, second clause, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 5 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/sentence-medial-mark-then-ideograph/quarter-em-after-the-mark",
+      "rules": ["3.1.6"],
+      "standing": "alternative",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "The third Note's own two named answers, read at one of the ordinary-running-text coordinates the Note is actually about: `table1.rs`'s cell at cl-04 before cl-19 — `(4, 19)` — carries `terms: &[]`, so `cell.terms.is_empty()` holds and `sentence_medial_dividing_mark_spaces` is free to fire (`docs/decisions/sentence-medial-dividing-mark.md`'s point 2). Both of `Question::SENTENCE_MEDIAL_DIVIDING_MARK`'s stated answers are published, `standing: \"alternative\"` because §3.1.6 states both directly rather than this project reading a silence: the default `{}` entry selects `solid`, the answer every published preset carries (`spec/derived/questions.tsv`'s own row), which needs no evaluator branch at all because it is the identical silence Table 1 already holds here — an evaluator that deleted `sentence_medial_dividing_mark_spaces` outright would still answer `spaces: []` at this coordinate. The second entry declares `quarter-em` and gets back one real space: `Referent::Preceding`, because at the boundary immediately after the mark the mark is this boundary's preceding item, so its own contribution is the mark's own em measured against its own referent (point 1's own reading of ADR-0014's `be`/`af` vocabulary, the inverse of what \"before and after the mark\" suggests read as textual position). `Reduction::Rigid` with no `stage`, because Appendix D states no reduction schedule for a coordinate Table 1 states nothing at (point 6) — there is no captured floor for a synthesized space to drain toward, so this case's own `ladder: \"reduction\"` with no `stage` key is the honest shape rather than a fabricated one.",
+      "input": {
+        "kind": "boundary",
+        "text": "？亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "JLReq §3.1.6, third Note, \"a quarter em spacing before and after\" reading",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/ideograph-then-sentence-medial-mark/quarter-em-before-the-mark",
+      "rules": ["3.1.6"],
+      "standing": "alternative",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "The mirror boundary of the case above, deliberately published as its own case rather than folded into it: the Note states one amount \"before and after\" the mark, and a case that exercised only the after-the-mark boundary would test half the Note and silently assume the other arm agrees. `table1.rs`'s cell at cl-19 before cl-04 — `(19, 4)` — is the coordinate's own distinct cell, not the same row read backwards, and it too carries `terms: &[]`. At the boundary immediately before the mark, the mark is this boundary's trailing item, so point 1's own reading gives it `Referent::Trailing` rather than `Referent::Preceding` — the two cases together are what pin that the referent flips with which side of the mark the boundary sits on, not with which policy answer is in force. `Reduction::Rigid` again, for the identical reason case four states: no captured Table 3, 4 or 5 cell exists for a coordinate Table 1 itself holds nothing at.",
+      "input": {
+        "kind": "boundary",
+        "text": "亜？",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "JLReq §3.1.6, third Note, \"a quarter em spacing before and after\" reading",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/hiragana-then-sentence-medial-mark/not-ideograph-specific",
+      "rules": ["3.1.6"],
+      "standing": "alternative",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "A second ordinary-running-text coordinate, read to pin that `sentence_medial_dividing_mark_spaces` fires on `cell.terms.is_empty()` and a declared role alone, with no dependence on which class sits on the far side of the boundary. `table1.rs`'s cell at cl-15 (hiragana) before cl-04 — `(15, 4)` — carries `terms: &[]`, exactly as `(19, 4)` above does, and the two cases' own quarter-em entries answer with the identical shape — `Referent::Trailing`, rigid, no stage — which is the point: an evaluator that special-cased the third Note to ideographs alone, rather than reading `cell.terms.is_empty()` generically, would pass the ideograph case above and fail this one silently.",
+      "input": {
+        "kind": "boundary",
+        "text": "あ！",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "JLReq §3.1.6, third Note, \"a quarter em spacing before and after\" reading",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/two-sentence-medial-marks/both-slots-fill-without-collision",
+      "rules": ["3.1.6"],
+      "standing": "alternative",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "Two sentence-medial marks meeting at one boundary — `？！`, both declared `role: \"sentence-medial\"` — is the coordinate this round's own brief names as the one most likely to catch a two-slot collision, because `spaces_of`'s own synthesis writes into `built: [Option<ConditionalSpace>; 2]` only where the per-term loop above it left a slot `None`, and `cell.terms.is_empty()` holds at `(4, 4)` (`table1.rs`'s own cell there carries `terms: &[]`) so both of `sentence_medial_dividing_mark_spaces`'s own two `if` arms are live at once: `before == mark && before_role == SentenceMedial` fills the first slot with the leading mark's own trailing quarter em (`Referent::Preceding`, point 1), and `after == mark && after_role == SentenceMedial` fills the second with the trailing mark's own leading quarter em (`Referent::Trailing`) — read directly from `evaluate.rs`'s own comment at line 992, which states this is exactly ADR-0014's own bound of two per boundary, one per referent, and not an accident of write order. The quarter-em entry below asserts both spaces in that order; the default entry asserts the empty pair Table 1's own blank cell already gives regardless of how many of the Note's own conditions are met.",
+      "input": {
+        "kind": "boundary",
+        "text": "？！",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "JLReq §3.1.6, third Note, \"a quarter em spacing before and after\" reading, both marks own",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/dividing-mark-then-ideograph/an-undeclared-role-does-not-fire-the-note",
+      "rules": ["3.1.6"],
+      "standing": "unstated",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "The identical coordinate `3.1.6/sentence-medial-mark-then-ideograph/quarter-em-after-the-mark` reads, with the mark's own `role` field omitted rather than declared `sentence-medial`. `crates/jlreq-conform/src/kumihan.rs`'s own `role_of` reads an absent role as `Role::Unstated`, not as `None`: `Adjacency::before_role` still answers `Some(Role::Unstated)` here, because there genuinely is a preceding item, so `sentence_medial_dividing_mark_spaces`'s own `matches!(before_role, Some(Role::SentenceMedial))` fails on a *declared-but-different* role in exactly the same way it fails on `Role::SentenceTerminator` in the first two cases above — the function draws no distinction between \"declared something else\" and \"declared nothing.\" This is not one of `docs/decisions/sentence-medial-dividing-mark.md`'s own six numbered silences, which all presuppose the mark's medial status is already established and ask what follows from it; it is the precondition underneath point 1's own referent argument, and it is kumihan's own published reading rather than JLReq's: §3.1.6's third Note says nothing about how a caller signals that an occurrence is \"used in the middle of a sentence, not at the end\" in the first place, and the case format's own `role` vocabulary — not a fact Appendix A states for cl-04 anywhere, its Remarks column being empty at every one of the class's six keys — is entirely this project's own answer to that silence (`A.4/question-exclamation-mark/sentence-medial-role`'s own case already establishes the mechanism at the classification layer). The reading published here is conservative: an unmarked occurrence gets no quarter em rather than being guessed medial by default, the same refusal-to-guess this file's own header states as this round's whole discipline.",
+      "input": {
+        "kind": "boundary",
+        "text": "？亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "kumihan published reading (docs/decisions/sentence-medial-dividing-mark.md, the precondition underneath point 1): an undeclared role does not license the Note's own quarter em",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/sentence-medial-mark-then-western-character/table-1s-own-term-is-not-doubled",
+      "rules": ["3.1.6"],
+      "standing": "unstated",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "One of the four coordinates where Table 1 already gives the mark itself a quarter em in its own referent: `table1.rs`'s cell at cl-04 before cl-27 — `(4, 27)` — carries one term, `trailing: false, amount: em(180)`, i.e. `Referent::Preceding`, owned by the mark. `cell.terms.is_empty()` is false here, so `sentence_medial_dividing_mark_spaces` returns `[None, None]` before either of its own `if` arms is even reached, regardless of the mark's own declared role — declared `sentence-medial` on this case's own item on purpose, to prove the short-circuit is the cell's own fullness and not an absent role standing in for it. `docs/decisions/sentence-medial-dividing-mark.md`'s points 2 and 3 read this as the strongest textual evidence for a cell-level scope rather than a referent-level one: Table 1 already answers the mark's own voice at this coordinate, so the Note's own \"add ... a quarter em\" is read as the silence's own filler, not as a second instance to sum, replace or take the maximum against. `standing: \"unstated\"` because this is this project's own scope choice among two the decision file's own \"Why\" section names as coherent; the `{}` and `quarter-em` entries below are published with byte-identical expectations on purpose, the same idiom `docs/conformance-deferrals.toml`'s own D.2#1 entry already uses for a table a run of this suite does not select — a run of `Kumihan::default()` measures only the first entry, and the second is a statement to an implementation that declares the alternative and would need to show it does *not* double this coordinate's own amount. Table 3's own cell at `(4, 27)` states `limit: Some(em(90)), stage: 6`, read directly rather than assumed, which is the floor and stage both entries below carry unchanged.",
+      "input": {
+        "kind": "boundary",
+        "text": "？A",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 },
+          { "start": 3, "advance": 660, "frame": "proportional", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B (Table 1's own cl-04-before-cl-27 cell), Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [1, 8], "floor_units": 90, "ladder": "reduction", "stage": 6 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "kumihan published reading (docs/decisions/sentence-medial-dividing-mark.md, points 2 and 3): the third Note's own override never reaches a coordinate Table 1 already answers, so this entry is unchanged from the default",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [1, 8], "floor_units": 90, "ladder": "reduction", "stage": 6 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/full-stop-then-sentence-medial-mark/the-full-stops-half-em-is-not-doubled",
+      "rules": ["3.1.6"],
+      "standing": "unstated",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "One of the two neighbor-owned coordinates on the *after*-the-mark side (mark declared medial regardless): `table1.rs`'s cell at cl-06 before cl-04 — `(6, 4)` — carries one term, `trailing: false, amount: em(360)`, owned by the full stop rather than by the mark. `cell.terms.is_empty()` is false, so the third Note's own override never reaches this boundary at all under either reading `docs/decisions/sentence-medial-dividing-mark.md`'s points 2 and 3 consider — the `{}` and `quarter-em` entries below are byte-identical for the same reason `3.1.6/sentence-medial-mark-then-western-character/table-1s-own-term-is-not-doubled` states. This case's own rationale flags something that case's does not: the decision file's own \"What would change it\" section names only `(4, 1)` and `(4, 5)` — the two neighbor-owned coordinates on the *before*-the-mark side — as the ones a referent-level alternative reading would move from declined to answered, and calls them \"the two coordinates whose existing term is owned by the neighbor,\" though the table two sections earlier lists six such coordinates in total: `(4, 1)`, `(4, 5)`, `(2, 4)`, `(5, 4)`, `(6, 4)` and `(7, 4)`. The same referent-level argument applies symmetrically to this coordinate — at `(6, 4)` the mark sits at the *after* position, so its own natural referent under that alternative reading would be `Referent::Trailing`, which Table 1 states nothing in at this cell (only `Referent::Preceding`, the full stop's own), exactly the same shape of gap `(4, 1)` and `(4, 5)` have in `Referent::Preceding` — so the decision file's own forward-looking section understates its own scope by naming two examples where six exist; this is flagged here rather than silently encoded, per this round's own brief. A further consequence for a future round to weigh, not this one's to build: if that alternative reading were ever adopted, `(4, 1)` and `(4, 5)` would each carry Table 1's own existing term (`Referent::Trailing`, owned by the neighbor) in `spaces_of`'s own first slot and a newly synthesized `Referent::Preceding` term in its second, the reverse of the preceding-then-trailing order `sentence_medial_dividing_mark_spaces`'s own two `if` arms fill today — a detail the cell-level scope this round implements never has to resolve, because it never reaches those two coordinates at all. Table 3, 4 and 5 all state `limit: None` at `(6, 4)` (checked directly against every one of the three generated files), so the amount is rigid under every reduction-table policy this workspace can construct, and no second reduction-table entry is needed to make that point.",
+      "input": {
+        "kind": "boundary",
+        "text": "。！",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B (Table 1's own cl-06-before-cl-04 cell)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "kumihan published reading (docs/decisions/sentence-medial-dividing-mark.md, points 2 and 3, cell-level scope): unchanged from the default, symmetrically with (4, 1) and (4, 5) even though the decision file's own forward-looking section names only those two",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/sentence-medial-mark-then-closing-bracket/no-bracket-exception-is-imported",
+      "rules": ["3.1.6"],
+      "standing": "unstated",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "The identical coordinate `3.1.6/sentence-terminator-mark-then-closing-bracket/no-spacing-after-the-mark` reads, with the mark declared `sentence-medial` instead of `sentence-terminator`. `table1.rs`'s cell at `(4, 2)` is unchanged — `terms: &[]` — but this case's own quarter-em entry now answers a real space, `Referent::Preceding`, quarter em, rigid: `before == mark && before_role == Some(Role::SentenceMedial)` is satisfied, and `sentence_medial_dividing_mark_spaces` carries no exception for a following closing bracket at all, by `docs/decisions/sentence-medial-dividing-mark.md`'s own point 4 — the main body's own cl-02 exception answers a different, unimplemented mechanism (the sentence-final \"one em\" as an inserted cl-14 character), so there is no operative rule at this coordinate for the medial case to inherit, and importing one would be inventing a rule the Note's own text does not state. The two sibling cases at this identical coordinate are deliberately contrasted in one place: `role: \"sentence-terminator\"` under `quarter-em` answers `[]` (the main-body case, which the third Note does not govern at all), and `role: \"sentence-medial\"` under the identical policy answers one real space (this case) — same coordinate, same policy, different declared role, different answer, which is the single fact `docs/decisions/sentence-medial-dividing-mark.md`'s point 4 exists to pin down.",
+      "input": {
+        "kind": "boundary",
+        "text": "？）",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "kumihan published reading (docs/decisions/sentence-medial-dividing-mark.md, point 4): no closing-bracket exception is carried over from the main body to the medial case",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/sentence-medial-mark-at-line-end/a-line-boundary-is-not-a-neighbor",
+      "rules": ["3.1.6"],
+      "standing": "unstated",
+      "quote": "There are some cases where dividing punctuation marks (cl-04) are used in the middle of a sentence, not at the end. In those cases, either add no spacing or a quarter em spacing before and after the dividing punctuation mark see Figure 74).",
+      "rationale": "A sentence-medial mark at the line end. `table1.rs`'s cell at cl-04 before the line-edge sentinel — `(4, 0)` — is real and non-prohibited (`prohibited: false, terms: &[]`), unlike `(0, 4)`, a mark at the line *head*, which `table1.rs` marks `prohibited: true` under §3.1.7's own line-start prohibition — that coordinate is structurally excluded regardless of this Note or its own policy, and no case is needed to pin it, since a prohibited coordinate never reaches `spaces_of` at all (`jlreq_spacing::evaluate::boundary`'s own `if cell.prohibited` branch short-circuits to `[None, None]` before `spaces_of` is called). `(4, 0)` carries no such structural exclusion, so `sentence_medial_dividing_mark_spaces` declines it explicitly instead: `before == raw::LINE_EDGE || after == raw::LINE_EDGE` returns `[None, None]` before either policy or role is even read, per `docs/decisions/sentence-medial-dividing-mark.md`'s point 5 — the Note's own two words, \"before and after,\" presuppose a neighboring character on both sides, and a line boundary is not one. The mark is declared `sentence-medial` here on purpose, the same way case nine and case ten above declare a role that would otherwise matter, so this case proves the decline is the line edge's own doing and not an absent role masquerading as one; both entries below answer `spaces: []` regardless of the declared policy, because the decline happens before `policy.get(Question::SENTENCE_MEDIAL_DIVIDING_MARK)` is ever read.",
+      "input": {
+        "kind": "boundary",
+        "text": "！",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "role": "sentence-medial", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, third Note, \"add no spacing\" reading (every published preset's own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.sentence_medial_dividing_mark": "quarter-em" },
+          "source": "kumihan published reading (docs/decisions/sentence-medial-dividing-mark.md, point 5): a line boundary is not the neighboring character either side of \"before and after\" presupposes, so the Note's own override declines outright regardless of policy",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/hyphen-then-opening-bracket/the-brackets-own-half-em",
+      "rules": ["3.1.6"],
+      "standing": "normative",
+      "quote": "The character width of hyphens (cl-03) varies according to the type of hyphen. HYPHEN \"‐\" should be quarter em width (i.e. one quarter of an em width), EN DASH \"–\" and KATAKANA-HIRAGANA DOUBLE HYPHEN \"゠\" should be half-width (a half em width), WAVE DASH \"〜\" should be full-width. Basically there should be no spacing before and after hyphens (cl-03). However, half em spacing should be appended, in principle, when opening brackets (cl-01) follow right after a hyphen (cl-03) and quarter em spacing when middle dots (cl-05) follow a hyphen (cl-03).",
+      "rationale": "§3.1.6 is one rule address covering the whole section the inventory names (`spec/derived/rules.tsv`'s own single row for `3.1.6`), and the section's own title names hyphens (cl-03) beside the dividing punctuation marks; a `[[owned]]` entry that answered only the mark's own half of the title would be exactly the kind of overstatement this round was told not to repeat. This paragraph's own final sentence is Table 1's own cl-03 row read in prose, and this case pins its first clause: `table1.rs`'s cell at cl-03 before cl-01 — `(3, 1)` — carries one term, `trailing: true, amount: em(360)`, i.e. `Referent::Trailing`, owned by the opening bracket that follows the hyphen rather than by the hyphen itself, exactly as the quoted sentence's own word order states it (\"half em spacing... when opening brackets... follow right after a hyphen\" names the bracket's own trailing contribution, not the hyphen's). §3.1.6's own fourth Note (not quoted above, quoted in full by `3.1.6/closing-bracket-then-ideograph/the-brackets-own-half-em`'s own rationale) is what licenses crediting this rule's own address for a cell Appendix B's bare opening sentence also states. `table3.rs`'s own cell at this coordinate states `limit: Some(em(0)), stage: 5` — the identical fifth-priority drain-to-solid the closing-bracket case above reads at a different pair, read directly from the generated cell rather than assumed. The hyphen's own declared frame — quarter em, `advance: 250` on this case's 1000-unit scale — follows the paragraph's own first sentence and matches `A.3/hyphen/on-the-quarter-em-frame`'s own classify case, though classifying the hyphen is that case's province and not reasserted here; this case's own assertion is the amount at the boundary, not the class of either item.",
+      "input": {
+        "kind": "boundary",
+        "text": "‐（",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 250, "frame": "quarter-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, hyphen paragraph, second exception clause; §3.1.6 fourth Note (Table 1's own realization); Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 5 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.6/hyphen-then-middle-dot/the-middle-dots-own-quarter-em",
+      "rules": ["3.1.6"],
+      "standing": "normative",
+      "quote": "The character width of hyphens (cl-03) varies according to the type of hyphen. HYPHEN \"‐\" should be quarter em width (i.e. one quarter of an em width), EN DASH \"–\" and KATAKANA-HIRAGANA DOUBLE HYPHEN \"゠\" should be half-width (a half em width), WAVE DASH \"〜\" should be full-width. Basically there should be no spacing before and after hyphens (cl-03). However, half em spacing should be appended, in principle, when opening brackets (cl-01) follow right after a hyphen (cl-03) and quarter em spacing when middle dots (cl-05) follow a hyphen (cl-03).",
+      "rationale": "The paragraph's own second clause, at the coordinate it states: `table1.rs`'s cell at cl-03 before cl-05 — `(3, 5)` — carries one term, `trailing: true, amount: em(180)`, `Referent::Trailing`, owned by the middle dot rather than the hyphen, the same ownership direction `3.1.6/hyphen-then-opening-bracket/the-brackets-own-half-em`'s own rationale reads for the bracket's half em beside it — the quoted sentence names both exceptions in one breath and Table 1 answers both the same way, the trailing neighbor's own contribution rather than the hyphen's. `table3.rs`'s own cell at this coordinate states `limit: Some(em(0)), stage: 4`, one priority earlier than the bracket's own fifth — read directly from the generated cell, not assumed, and not the same stage as the bracket case beside it on purpose, so a reader checking only one of the two paragraph's clauses does not silently assume the other shares its stage. Together with `3.1.6/closing-bracket-then-ideograph/the-brackets-own-half-em` and `3.1.6/hyphen-then-opening-bracket/the-brackets-own-half-em` elsewhere in this file, this is the third of §3.1.6's three real Table 1 cells this suite now credits to this rule's own address under its own fourth Note — the other cases in this file read cells Table 1 states nothing at, so they carry no term to credit under that Note in the first place. This coordinate is separate from the six the decision file's own reading names as neighbor-owned for cl-04 alone, since a hyphen (cl-03) is a different class from the dividing punctuation mark that reading is about; cl-03's own two cells (this one and the bracket's) are additional to that count, not part of it.",
+      "input": {
+        "kind": "boundary",
+        "text": "‐・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 250, "frame": "quarter-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.6, hyphen paragraph, third exception clause; §3.1.6 fourth Note (Table 1's own realization); Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

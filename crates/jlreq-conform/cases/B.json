@@ -1,0 +1,51 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "B",
+  "heading_en": "Spacing between Characters",
+  "heading_ja": "文字間の空き量",
+  "cases": [
+    {
+      "id": "B/opening-bracket-then-middle-dot/an-unnoted-cell-cites-appendix-bs-own-sentence",
+      "rules": ["B"],
+      "cells": [{ "table": 1, "before": "cl-01", "after": "cl-05" }],
+      "standing": "normative",
+      "quote": "The amount of spacing between two adjacent characters of given character classes explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning is determined by Table 1. For methods to determine the amounts of spacing reduction and addition by line adjustments, see § D. Opportunities for Inter-character Space Reduction during Line Adjustment and § E. Opportunities for Inter-character Space Expansion during Line Adjustment .",
+      "rationale": "Table 1's own row for an opening bracket (cl-01) followed by a middle dot (cl-05) reads `1/4 af` with no note attached at all (`spec/captured/table1.en.tsv`'s own row for `cl-01`/`cl-05`, sitting among a run of `blank` neighbors with nothing else beside it) — the identical shape `D.1.json`'s own rationale reads at the closing-bracket-at-line-end coordinate before Table 4's silence complicates it, and the shape `E.json`'s own bare case already used for Appendix E's generic citation: a term Table 1 states outright, with none of the forty-seven appendix notes qualifying it. §B's own opening sentence — quoted above — is what a report names for such a cell, because there is nothing more specific to cite: the sentence states that Table 1 itself is the answer for every pair of classes it covers, and this coordinate is one of them. The amount is a quarter em carried by the trailing item (`af`, the middle dot's own component in Appendix B's own `be`/`af` vocabulary), not by the opening bracket — the exact referent `crates/jlreq-spacing/src/evaluate.rs`'s own `a_plain_table1_lookup_reads_the_captured_amount` test already exercises at this identical coordinate, which is independent confirmation that `(` declared on the half em frame and a middle dot are read as cl-01 and cl-05 here rather than as some other pair. Reduction is deliberately out of this rule's own scope: §D states which tables drain a term and by how much, §B only that Table 1 states it, so this case publishes the one reading `adjustment.reduction_table`'s own default (Table 3, `spec/captured/table3.en.tsv`'s own `1/4-0 stage 4` at this coordinate) gives it, rather than enumerating all three tables the way a future case over §D at this coordinate would own.",
+      "input": {
+        "kind": "boundary",
+        "text": "(・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B (Table 1), the unnoted cell at cl-01 x cl-05, under Table 3 (JLReq's own adopted default, §D preamble) for the reduction axis §B itself does not state",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          },
+          "why": "A boundary this workspace answers with a real amount is not the same fact as one it answers with none. Table 1 carries a term here — `1/4 af`, with no note qualifying it — and §B's own sentence is precisely the citation that states something for every term Table 1 carries, noted or not; a report that read the absence of a note as the absence of a space would mistake 'unnoted' for 'unstated', which §B's opening sentence forecloses by naming Table 1 as the whole answer before any note is ever reached."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

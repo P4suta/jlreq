@@ -1,0 +1,319 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "D.2",
+  "heading_en": "Notes",
+  "heading_ja": "注記",
+  "cases": [
+    {
+      "id": "D.2/two-middle-dots/quarter-em-each-side-reduces-at-a-different-stage-per-table",
+      "rules": ["D.2#1"],
+      "cells": [
+        { "table": 1, "before": "cl-05", "after": "cl-05" },
+        { "table": 3, "before": "cl-05", "after": "cl-05" },
+        { "table": 4, "before": "cl-05", "after": "cl-05" },
+        { "table": 5, "before": "cl-05", "after": "cl-05" }
+      ],
+      "standing": "normative",
+      "quote": "The default unadjusted spacing when a middle dot (cl-05) is followed by a middle dot (cl-05), is the sum of the conditional quarter em space accompanying the preceding middle dot (cl-05) and the conditional quarter em space accompanying the trailing middle dot (cl-05). Tables 3 and 4 allow these two instances of quarter em space to be reduced, to leave no space as a minimum. The priority order in space reduction is the fourth in Table 3, and it is the second priority in Table 4.",
+      "rationale": "§B.2 note 3 states the unadjusted amount at this boundary as two quarter ems, one carried by the preceding middle dot and one by the trailing one, and ADR 0014 is exactly this fact: a boundary expectation states the two conditional spaces separately rather than their sum, because the note goes on to give the two components different fates. Both quarter ems drain to nothing under Table 3 and under Table 4, but not at the same priority — fourth in Table 3, second in Table 4 — so an implementation that reduces this boundary correctly under one table and reads the stage number from the other produces the right total spacing at the wrong point in the ladder, which only matters once a paragraph has more than one reducible opportunity to choose between. Table 5 is not named by this note at all: §D.2 note 1 grants the opportunity to \"Tables 3 and 4\" and stops, so the boundary between two middle dots is rigid wherever Table 5 is the adopted convention, and the third permitted entry below records that silence as an answer rather than leaving it unstated. The amount itself — two quarter ems — does not move between the three entries; only whether, and at what priority, each of them may be drained does, which is what `adjustment.reduction_table` alone selects here.",
+      "input": {
+        "kind": "boundary",
+        "text": "・・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §D.2 note 1, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §D.2 note 1, Table 4 (JIS X 4051's alternative, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §D.2 note 1, by its own silence about Table 5",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "reduction": "discrete" },
+                { "em": [1, 4], "units": 180, "reduction": "discrete" }
+              ]
+            }
+          },
+          "why": "§D.2 note 1 says both quarter ems reduce \"to leave no space as a minimum\", continuously, under Table 3 and Table 4 alike; neither table gives this pair the two-valued, all-or-nothing shape §3.1.9 states for line-end punctuation. No adopted reduction table answers `discrete` for this boundary, so it is excluded under every one of the three permitted entries above rather than under only the one this case's default policy selects."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "D.2/full-stop-then-middle-dot/the-full-stops-half-em-never-reduces",
+      "rules": ["D.2#2"],
+      "cells": [
+        { "table": 1, "before": "cl-06", "after": "cl-05" },
+        { "table": 3, "before": "cl-06", "after": "cl-05" },
+        { "table": 4, "before": "cl-06", "after": "cl-05" },
+        { "table": 5, "before": "cl-06", "after": "cl-05" }
+      ],
+      "standing": "normative",
+      "quote": "The default unadjusted space when a full stop (cl-06) is followed by a middle dot (cl-05), is the sum of the conditional half em space accompanying the preceding full stop (cl-06) and the conditional quarter em space accompanying the trailing middle dot (cl-05). Tables 3 and 4 allow the quarter em space accompanying the trailing middle dot (cl-05) to be reduced, to leave no space as a minimum. The priority order in space reduction is the fourth in Table 3, and it is the second priority in Table 4.",
+      "rationale": "This is D.2 note 1's boundary with one of its two components replaced, and the replacement is the point: the note grants Tables 3 and 4 the opportunity to reduce only \"the quarter em space accompanying the trailing middle dot\", and says nothing about the full stop's own half em, which is why every one of this case's three permitted entries answers the preceding component the same way — rigid — regardless of which reduction table is in force. The trailing middle dot's own quarter em is exactly D.2 note 1's component under a different left neighbor: it drains to nothing at the fourth priority in Table 3 and the second in Table 4, and Table 5 is silent about it precisely as it is silent about the middle-dot pair, so the third entry answers rigid there too.",
+      "input": {
+        "kind": "boundary",
+        "text": "。・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §D.2 note 2, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §D.2 note 2, Table 4 (JIS X 4051's alternative, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §D.2 note 2, by its own silence about Table 5",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding", "reduction": "range" },
+                { "em": [1, 4], "units": 180, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          },
+          "why": "§D.2 note 2 names only \"the quarter em space accompanying the trailing middle dot\" as reducible; the preceding full stop's own half em is not one of the two instances the note grants Tables 3 and 4 an opportunity over, under any of the three tables. Answering it as reducible treats this boundary as though it were D.2 note 1's middle-dot pair rather than the different pair this note is about."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "D.2/comma-then-middle-dot/the-two-components-keep-independent-schedules",
+      "rules": ["D.2#3"],
+      "cells": [
+        { "table": 1, "before": "cl-07", "after": "cl-05" },
+        { "table": 3, "before": "cl-07", "after": "cl-05" },
+        { "table": 4, "before": "cl-07", "after": "cl-05" },
+        { "table": 5, "before": "cl-07", "after": "cl-05" }
+      ],
+      "standing": "normative",
+      "quote": "The default unadjusted space when a comma (cl-07) is followed by a middle dot (cl-05), is the sum of the conditional half em space accompanying the preceding comma (cl-07) and the conditional quarter em space accompanying the trailing middle dot (cl-05) (in Table 4, the conditional half space accompanying preceding comma (cl-07) and the conditional quarter space accompanying trailing middle dot (cl-05) can be reduced to solid setting). Table 5 allows the conditional half em space accompanying preceding comma (cl-07) to be reduced to a quarter space as a minimum. The priority order in space reduction for the conditional space accompanying middle dots (cl-05) is the fourth in Table 3 and the second in Table 4. The priority order in space reduction for the conditional space accompanying comma (cl-07) is the fifth in Table 3 and the third in Table 5.",
+      "rationale": "The richest of the three notes, because no two of its three tables treat the pair the same way. Table 3 reduces both components to nothing, but at different priorities — the comma's half em at the fifth stage, the middle dot's quarter em at the fourth — so an implementation that shares one stage number between them, as D.2 note 1's identical-class pair innocently permits, gets this boundary wrong the moment both notes are implemented from one code path. Table 4 reduces only the middle dot's component (at its second priority) and leaves the comma's half em rigid, which is the same asymmetry D.2 note 2 states for a full stop in the same position. Table 5 inverts which component is fixed: it is silent about the middle dot, which is therefore rigid exactly as it is under every Table 5 entry above, and instead reduces the comma's own half em — but only down to a quarter em floor, at the third priority, never to solid. Three tables, three different shapes of the same two-component boundary, all from one note; the case publishes all three because a reader who checked only Table 3 would reasonably expect the other two to be smaller variations of it, and they are not.",
+      "input": {
+        "kind": "boundary",
+        "text": "、・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §D.2 note 3, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 5 },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §D.2 note 3, Table 4 (JIS X 4051's alternative, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §D.2 note 3, Table 5 (a third method found in other publications, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "range", "floor": [1, 4], "floor_units": 180, "ladder": "reduction", "stage": 3 },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 },
+                { "em": [1, 4], "units": 180, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 5 }
+              ]
+            }
+          },
+          "why": "§D.2 note 3 gives the comma's own component the fifth priority in Table 3 and the middle dot's the fourth; swapping the two numbers — and, with it, letting the comma reduce to nothing rather than stopping short as no permitted table-3 reading does — answers a boundary the note does not state. None of the three tables above pairs a fully-reducible comma with a fourth-priority middle dot, so this combination is excluded under all three rather than under only the default policy."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "D.2/middle-dot-at-line-end/table-3-alone-drains-it-at-the-third-stage",
+      "rules": ["D.2#5"],
+      "cells": [
+        { "table": 1, "before": "cl-05", "after": "line-end" },
+        { "table": 3, "before": "cl-05", "after": "line-end" },
+        { "table": 4, "before": "cl-05", "after": "line-end" },
+        { "table": 5, "before": "cl-05", "after": "line-end" }
+      ],
+      "standing": "normative",
+      "quote": "Table 3, and only Table 3, allows the preceding and trailing conditional quarter em space accompanying middle dots (cl-05) to be reduced to leave no space. The priority order is the third.",
+      "rationale": "This is §B.2 note 4's own boundary — a middle dot at the line end, carrying the one quarter em Table 1 gives it there (the two-middle-dot interior boundary above carries two components; the line-end reading, reachable only through `boundary.edge: \"end\"`, carries the single one this note is about) — read for what Appendix D does with it rather than what Appendix B states. The note's own emphasis is the word \"only\": Table 3 alone opens a third opportunity to drain this quarter em to nothing, and neither Table 4 nor Table 5 is named at all, which is silence rather than a smaller number, so both leave the quarter em exactly where §B.2 note 4 put it. The amount itself never moves between the three permitted entries below; only whether an adopted table gives it a further stage to reduce at does, which is what `adjustment.reduction_table` alone selects here — the identical shape D.2 note 1's own case above already establishes for the interior middle-dot pair, now at the line's own edge.",
+      "input": {
+        "kind": "boundary",
+        "text": "・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §D.2 note 5, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 3 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §D.2 note 5, by its own silence about Table 4",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §D.2 note 5, by its own silence about Table 5",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "referent": "preceding", "reduction": "discrete", "floor": [0, 1], "floor_units": 0, "ladder": "reduction" }
+              ]
+            }
+          },
+          "why": "None of the three permitted entries above gives this quarter em §3.1.9's own two-valued shape: under Table 3 it drains continuously to a zero floor at the third stage, and under Table 4 or Table 5 it stays exactly where §B.2 note 4 put it. §D.2 note 5 grants \"Table 3, and only Table 3\" an opportunity here, which is a statement about which tables open it, not about the shape the opportunity takes once opened — reading it as the half-em-or-solid drain §3.1.9 states for a different boundary answers a question this note does not ask."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

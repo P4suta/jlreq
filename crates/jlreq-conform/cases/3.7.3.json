@@ -1,0 +1,58 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.7.3",
+  "heading_en": "Jidori Processing",
+  "heading_ja": "字取り処理",
+  "cases": [
+    {
+      "id": "3.7.3/three-ideographs/even-spacing-distributes-the-residual-across-both-interior-boundaries",
+      "rules": ["3.7.3"],
+      "standing": "normative",
+      "quote": "In cases such as lists of names of Japanese people, the length of some part of the text may be explicitly defined. In such cases, different numbers of characters are set, using adjustment of the inter-character spacing, so that they are all aligned to the same length. This is called jidori processing (see Figure 173).",
+      "rationale": "The rule fixes where the adjustment goes — between the characters, spread over the run's own interior spacing, rather than reserved to one side of it — which is what separates jidori (`jlreq_line::Alignment::EvenSpacing`) from the other three single-line methods §3.5.3 lists; the resulting `extent` reaching the target follows from ADR-0017's definition of realized geometry together with the fact that every eligible boundary consumed its own share, the same attribution 3.5.3's own case draws for `Centered`. Three ideographs (亜亜亜, cl-19, no inter-character spacing of their own — Table 1's cl-19-against-cl-19 cell is blank) placed unaligned reach a natural extent of 3000 (three 1000-unit items, no gap between any of them); against a 3600-unit target that leaves a 600-unit residual, spread across the run's own two interior boundaries — both eligible, since Table 2 permits a break between two ideographs at every kinsoku level, which is §3.7.3's own first stated exception (no spacing where a break is prohibited) finding nothing to exclude here. `jlreq_unit::distribute` over two equal weights splits the 600 units into two equal 300-unit shares, exact since 600 divides evenly by two, and each item after the boundary it crosses carries that boundary's own share onward: the first ideograph stays at 0, the second sits at 1300 (1000 plus the first boundary's 300), and the third at 2600 (2000 plus both boundaries' 300 each). Every eligible share is consumed by the time the last item is placed, so the composed extent reaches the full 3600.",
+      "input": {
+        "kind": "align",
+        "text": "亜亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "measure": 3600,
+        "alignment": "even-spacing"
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.7.3",
+          "expect": {
+            "lines": [
+              { "placements": [0, 1300, 2600], "extent": 3600 }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [
+              { "placements": [600, 1600, 2600], "extent": 3600 }
+            ]
+          },
+          "why": "This pushes the whole residual in front of the run as one uniform shift — `Alignment::LineEnd`'s own answer — rather than spreading it between the two eligible interior boundaries the way jidori does; it reaches the same 3600-unit extent as the case's own permitted answer, which is exactly why `placements` and not only `extent` has to be asserted to tell the two apart."
+        },
+        {
+          "expect": {
+            "lines": [
+              { "placements": [0, 1000, 2000], "extent": 3000 }
+            ]
+          },
+          "why": "This is the natural, unaligned placement with no residual distributed anywhere — the state jidori is in only when every interior boundary is kinsoku-prohibited or the run holds fewer than two items (§3.7.3's own two stated exceptions), and this fixture is neither: both interior boundaries are ordinary breakable ideograph pairs."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

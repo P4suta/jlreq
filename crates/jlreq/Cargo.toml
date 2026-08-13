@@ -18,6 +18,9 @@ homepage.workspace = true
 
 [dependencies]
 jlreq-class = { path = "../jlreq-class", version = "0.0.0" }
+jlreq-inline = { path = "../jlreq-inline", version = "0.0.0" }
+jlreq-line = { path = "../jlreq-line", version = "0.0.0" }
+jlreq-spacing = { path = "../jlreq-spacing", version = "0.0.0" }
 jlreq-spec = { path = "../jlreq-spec", version = "0.0.0" }
 jlreq-unit = { path = "../jlreq-unit", version = "0.0.0" }
 

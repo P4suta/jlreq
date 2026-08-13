@@ -1,0 +1,156 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.6.2",
+  "heading_en": "Types of Tab Settings",
+  "heading_ja": "タブ処理で指定する配置位置にそろえる形式",
+  "cases": [
+    {
+      "id": "3.6.2/start-alignment/the-runs-own-start-is-aligned-to-the-tab-position",
+      "rules": ["3.6.2"],
+      "standing": "normative",
+      "quote": "Start alignment tab setting: the start position of the text is aligned to the tab position (see Figure 162).",
+      "rationale": "The rule anchors the run's own start at the declared position, independent of the run's own width. Two ideographs (亜亜, cl-19, no inter-character spacing of their own — Table 1's cl-19-against-cl-19 cell is blank) form one target run of natural width 2000 (two 1000-unit items); a start-alignment stop at 500 seats the run's own first item there directly — the anchor is the declared position itself, 500, with no arithmetic over the run's own width — so the first item sits at 500 and the second at 500 plus 1000, 1500. The extent (2500) is the anchor plus the run's own natural width, 500 plus 2000, because start alignment never pulls the run's own end back toward the position; only `TabKind::End` and `TabKind::Centered` read the width at all.",
+      "input": {
+        "kind": "tab",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0],
+        "tab_stops": [{ "position": 500, "kind": "start" }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.2",
+          "expect": {
+            "lines": [{ "placements": [500, 1500], "extent": 2500, "trims": [] }],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "lines": [{ "placements": [-500, 500] }] },
+          "why": "This is `TabKind::Centered`'s own reading for this input (the run's own center, not its start, pulled to the declared position — the anchor 500 minus half the run's own 2000-unit width, 1000, is -500), not start alignment's; this case's own stop names `kind: \"start\"`."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.2/end-alignment/the-runs-own-end-is-pulled-back-to-the-tab-position",
+      "rules": ["3.6.2"],
+      "standing": "normative",
+      "quote": "End alignment tab setting: the end position of the text is aligned to the tab position (see Figure 163).",
+      "rationale": "The rule anchors the run's own end at the declared position, which `jlreq_line::TabKind::End` reads as the position minus the run's own natural width. The same two-ideograph run as the start-alignment case above (natural width 2000, no inter-character spacing of its own) against an end-alignment stop at 3000: the anchor is 3000 minus 2000, 1000, so the first item sits at 1000 and the second at 1000 plus 1000, 2000. The extent (3000) equals the declared stop exactly, because neither item is a punctuation mark subject to §B.2's own trailing rules and this run is both the tab line's own head and its own end (the only target declared), so no trailing space is added past the run's own natural width for the anchor to have accounted for — the run's own end, unpadded, is exactly what the kind's own name states is aligned to the position.",
+      "input": {
+        "kind": "tab",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0],
+        "tab_stops": [{ "position": 3000, "kind": "end" }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.2",
+          "expect": {
+            "lines": [{ "placements": [1000, 2000], "extent": 3000, "trims": [] }],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "lines": [{ "placements": [3000, 4000], "extent": 5000 }] },
+          "why": "This is `TabKind::Start`'s own reading for this input (the run's own start anchored directly at the declared position, with no width subtracted), not end alignment's; this case's own stop names `kind: \"end\"`."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.2/center-alignment/an-odd-residual-splits-by-the-declared-remainder-rule",
+      "rules": ["3.6.2"],
+      "standing": "unstated",
+      "quote": "Center alignment tab setting: the center of the text is aligned to the tab position (see Figure 164)．",
+      "rationale": "Quoted verbatim from `spec/snapshot/index.html`, including its own fullwidth period closing the sentence (．, U+FF0E) where every other tab-setting sentence in §3.6.2 and §3.6.3 closes with an ASCII one — a source-snapshot inconsistency, not this case's own transcription error. The rule itself anchors the run's own center at the declared position, which `jlreq_line::TabKind::Centered` reads by splitting the run's own natural width into two shares as equal as `jlreq_unit::distribute` can make them and pulling the anchor back by the leading (first) share. Two ideographs (亜位, cl-19, no inter-character spacing of their own) with advances 700 and 301 give a natural width of 1001 — odd — so the two shares cannot be equal, and which one is one unit larger than the other is exactly what §3.6.2 itself never states: `jlreq_unit::RemainderRule`'s own doc says so in as many words, \"JLReq states no rule; both readings are permitted,\" and `Policy::REMAINDER` (`adjustment.remainder`) is the question this project's own policy space carries for it. Under the leading reading (`Policy::JLREQ`'s own default, favoring the earliest site) `distribute` gives the first share 501 units and the second 500; the anchor is 2000 minus 501, 1499, so the first item sits at 1499 and the second at 1499 plus 700, 2199, and the extent is 1499 plus 1001, 2500. Under the trailing reading the same total splits the other way, 500 leading and 501 trailing, so the anchor is 2000 minus 500, 1500 — one unit later — the first item sits at 1500 and the second at 1500 plus 700, 2200, and the extent is 1500 plus 1001, 2501. Both readings are published rather than one guessed at, because nothing in §3.6.2's own text — or in Figure 164, an image this crate does not have — decides which side of an odd residual the extra unit falls on; `docs/decisions/README.md`'s own convention is what a reading of this exact silence is recorded under, and `jlreq_unit::RemainderRule`'s own doc is where it already lives.",
+      "input": {
+        "kind": "tab",
+        "text": "亜位",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 700, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 301, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0],
+        "tab_stops": [{ "position": 2000, "kind": "centered" }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `adjustment.remainder` (leading), the reading this workspace measures by default where §3.6.2 itself states no rule",
+          "expect": {
+            "lines": [{ "placements": [1499, 2199], "extent": 2500, "trims": [] }],
+            "violations": []
+          }
+        },
+        {
+          "policy": { "adjustment.remainder": "trailing" },
+          "source": "the trailing reading `jlreq_unit::RemainderRule::Trailing` permits, a statement to an implementation that declares this alternative",
+          "expect": {
+            "lines": [{ "placements": [1500, 2200], "extent": 2501, "trims": [] }],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "lines": [{ "placements": [2000, 2700], "extent": 3001 }] },
+          "why": "This is `TabKind::Start`'s own reading for this input (the run's own start anchored directly at the declared position 2000, with no width read at all), not center alignment's; this case's own stop names `kind: \"centered\"`, and neither permitted reading above anchors the run's own start at the bare declared position."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.2/specified-character-alignment/the-named-items-own-start-is-aligned-to-the-tab-position",
+      "rules": ["3.6.2"],
+      "standing": "normative",
+      "quote": "Alignment with a specified character tab setting: the start position of a specified character or sign (for example, a period) in the text is aligned to the tab position (see Figure 165).",
+      "rationale": "The rule anchors the run so that a caller-named occurrence inside it, not the run's own start, lands on the declared position — `jlreq_line::TabKind::Character`'s own `at`, an item ordinal rather than a bare code point (`docs/decisions/specified-character-tab-alignment.md`). Two ideographs (亜位, cl-19, no inter-character spacing of their own) stand in for the rule's own worked example of a period — this fixture keeps the point isolated to an item's own natural offset within the run, apart from §B.2's own trailing-space mechanics a punctuation mark would also bring in (a different case's own point, `3.6.3/an-end-aligned-last-run/its-anchor-accounts-for-its-own-trailing-space`'s). With advances 1000 and 600, naming item 1 (the second ideograph) as the specified character against a stop at 2500: the named item's own natural offset within the run, computed with the run's own start at zero, is 1000 (the first item's own advance); the anchor is the declared position minus that offset, 2500 minus 1000, 1500, so the first item sits at 1500 and the named second item at 1500 plus 1000, 2500 — exactly the declared position, which is the whole of what this kind states. The extent (3100) is the anchor plus the run's own natural width, 1500 plus 1600, since neither item earns a trailing addition of its own.",
+      "input": {
+        "kind": "tab",
+        "text": "亜位",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 600, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0],
+        "tab_stops": [{ "position": 2500, "kind": "character", "at": 1 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.2",
+          "expect": {
+            "lines": [{ "placements": [1500, 2500], "extent": 3100, "trims": [] }],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": { "lines": [{ "placements": [2500, 3500] }] },
+          "why": "This is `TabKind::Start`'s own reading for this input (the run's own start, not the named item, anchored directly at the declared position); this case's own stop names `kind: \"character\"` with `at: 1`, so the second item — not the first — is the one required to land on 2500."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

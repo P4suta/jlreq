@@ -7,6 +7,9 @@ name = "jlreq"
 version = "0.0.0"
 dependencies = [
  "jlreq-class",
+ "jlreq-inline",
+ "jlreq-line",
+ "jlreq-spacing",
  "jlreq-spec",
  "jlreq-unit",
 ]
@@ -30,10 +33,21 @@ dependencies = [
 [[package]]
 name = "jlreq-inline"
 version = "0.0.0"
+dependencies = [
+ "jlreq-class",
+ "jlreq-spec",
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-line"
 version = "0.0.0"
+dependencies = [
+ "jlreq-class",
+ "jlreq-spacing",
+ "jlreq-spec",
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-spacing"
@@ -47,6 +61,9 @@ dependencies = [
 [[package]]
 name = "jlreq-spec"
 version = "0.0.0"
+dependencies = [
+ "jlreq-unit",
+]
 
 [[package]]
 name = "jlreq-unit"

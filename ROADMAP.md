@@ -42,7 +42,18 @@ punctuation (ぶら下げ) as an adjustment option: a stage of the adjustment la
 the reduction stages and the expansion stages, which is where JLReq puts it. A line that
 fits without hanging does not hang (§2.5.1), and a line that would otherwise be expanded
 hangs first (§3.8.2) — so hanging is not a repair applied after a break has been chosen,
-and the greedy search and the optimal one cannot disagree about when a character hangs.
+and the greedy search and the optimal one cannot disagree about *whether a fixed range
+hangs* (both drain the identical ladder, in the identical order, once a line's own start and
+end are the same for each). They can and do disagree about *which ranges exist to ask the
+question of*: `FirstFit` picks a line's own end from unadjusted geometry alone, blind to
+what the choice costs the next line, so it can choose a different sequence of breaks than
+`Optimal`'s own paragraph-wide minimization does — and a character that hangs under one
+search's own chosen line need not even be that line's own last character under the other's.
+`jlreq_line::compose`'s own test suite carries a constructed pair of paragraphs that
+disagree exactly this way, one on which the two searches produce different line counts and
+different total demerits, and a second where a trailing full stop hangs under `Optimal` but
+sits comfortably mid-measure — never overfull, never offered to `ladder::hang` at all —
+under `FirstFit`.
 
 ## M4 — Inline constructs
 

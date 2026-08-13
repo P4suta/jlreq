@@ -1961,11 +1961,16 @@ pub enum After { Class(Class), LineEnd }
 ///
 /// This and not the cell is the unit of spacing data (ADR-0014). §B.2 note 3 makes the
 /// space between two middle dots "the sum of a quarter em of the preceding middle dots
-/// and a quarter em of the trailing middle dots", and §D.2 note 3 then gives those two
-/// components different reduction priorities in the same table. A cell holding one
-/// number cannot state that.
+/// and a quarter em of the trailing middle dots", and §D.2 note 1 then makes both of
+/// those quarter ems reducible to nothing, at the fourth priority in Table 3 and the
+/// second in Table 4. A cell holding one number cannot state the sum, because its two
+/// halves are fractions of two different characters' ems.
 ///
-/// JLReq: §B.1, §B.2#3, §B.2#5, §D.2#3
+/// Does *not* carry an `Expansion` (ADR-0021 amends ADR-0014): Table 6 states one
+/// opportunity per class pair, a boundary-level fact, so it lives on `Boundary::expansion`
+/// below instead.
+///
+/// JLReq: §B.1, §B.2#3, §B.2#5, §D.2#1
 pub struct ConditionalSpace { /* private */ }
 
 impl ConditionalSpace {
@@ -1976,7 +1981,6 @@ impl ConditionalSpace {
     /// writes these `be` and `af`. JLReq: §B.1
     pub const fn referent(self) -> Referent;
     pub const fn reduction(self) -> Reduction;
-    pub const fn expansion(self) -> Expansion;
     pub const fn rule(self) -> RuleId;
     /// Resolve to the caller's unit against the two neighbors' sizes. Selects the
     /// referent's [`Size`] and calls [`Em::resolve_inline`], which is the workspace's only
@@ -2062,6 +2066,11 @@ impl Boundary {
     pub const fn placement(self) -> Answer<Placement>;
     /// How far ruby may extend here, before line adjustment caps it.
     pub const fn ruby_overhang(self) -> RubyOverhang;
+    /// How far this boundary may be expanded during line adjustment, independent of
+    /// whether either neighbor carries a conditional space here (ADR-0021 amends
+    /// ADR-0014): Table 6 states one opportunity per class pair, so a solid Table 1 cell —
+    /// `spaces()` empty — can still answer a real `Expansion`. JLReq: §E, §E.1, §3.8.4
+    pub const fn expansion(self) -> Expansion;
     /// Where the same-run answer is a procedure rather than a value.
     pub const fn delegation(self) -> Option<Delegation>;
     /// Frozen projection (ADR-0012).
@@ -2195,6 +2204,7 @@ src/
   compose.rs    Paragraph, Composition, Line, Trim, Violation, Search, compose()
   segment.rs    the nested composition of a Segment  (§3.2.5, §3.4.2, §3.7.2, §3.7.3)
   align.rs      Alignment, align()    (§3.5.3, §3.7.3)
+  tab.rs        TabKind, TabStop, TabLine, tab_line()    (§3.6.1, §3.6.2, §3.6.3)
   generated/
     figures.rs  the arrangements §3.4.3 and §3.7.2 publish only as images
                 (captured → generated, M4)
@@ -2298,9 +2308,15 @@ pub struct FeasibleBreak {
 /// so a line that fits without hanging does not hang; §3.8.2's note says it is used "in
 /// order to avoid the addition of inter character spacing", so a line that would otherwise
 /// expand hangs first. Putting it here rather than in [`Feasible::compute`] is what makes
-/// conformance.md's cross-search agreement gate satisfiable rather than aspirational: the
-/// greedy and the optimal search share one ladder and one fit, so they cannot disagree
-/// about when a character hangs.
+/// conformance.md's cross-search agreement gate satisfiable rather than aspirational, for
+/// what that gate actually asserts: [`Search::FirstFit`] and [`Search::Optimal`] share one
+/// ladder and one fit, so neither can disagree with the other about whether a *given* range
+/// hangs. They do not agree on which ranges exist to ask that question of — `FirstFit`
+/// picks a line's own end from unadjusted geometry alone, `Optimal` compares whole
+/// arrangements, and the two can choose different breaks for the same paragraph
+/// ([`Search::Optimal`]'s own doc carries a constructed pair where a trailing full stop
+/// hangs under one search's own chosen line and never reaches this ladder's own `hang` stage
+/// under the other's).
 ///
 /// JLReq: §3.8.2, §3.8.3, §3.8.4, §2.5.1, §D, §E
 pub struct Ladder { /* private */ }
@@ -2381,7 +2397,7 @@ impl Badness {
 /// adjustment by inter-character spacing expansion applied" — and merging them would let
 /// a little expansion outrank more reduction.
 ///
-/// JLReq: §3.8.2, §3.8.3, §3.8.4, §C.3 closing paragraph
+/// JLReq: §3.8.2, §3.8.3, §3.8.4, §3.5.4, §C.3 closing paragraph, `decision:widow-threshold`
 pub struct Demerits {
     /// Widow adjustment (§3.5.4) and other structural penalties.
     pub structural: u32,
@@ -2475,7 +2491,9 @@ impl<'r> Paragraph<'r> {
     pub fn with_first_line_indent(self, amount: InlineExtent) -> Self;
     /// §3.5.2's line head and line end indents.
     pub fn with_indents(self, head: InlineExtent, end: InlineExtent) -> Self;
-    /// §3.5.4's widow threshold.
+    /// §3.5.4's widow threshold, read by `demerits_of`, the cost function `FirstFit` and
+    /// `Optimal` share: `Optimal` steers toward satisfying it, `FirstFit` only reports the
+    /// shortfall of whichever line it already chose.
     pub fn with_widow_threshold(self, characters: u16) -> Self;
     /// Everything the constructs contribute (ADR-0015). Omitting it composes plain text:
     /// the neutral value is [`Runs::none`] with no segments, no separations and no block
@@ -2498,11 +2516,25 @@ pub enum Search {
     /// feasible break is the pull-up (追い込み), taking an earlier one is the push-down
     /// (追い出し), and preferring the first is §3.8.2's "only when there is no spacing
     /// that can be reduced" applied greedily. [`Preference`] reaches the same answer by
-    /// comparison, which is why the two searches agree.
+    /// comparison *given the identical range* — both searches drain the identical ladder
+    /// in the identical order once a line's own start and end are fixed, so neither can
+    /// disagree about what happens on a range they both compose. **They do not agree in
+    /// general**, corrected here after M3's own search was built and actively tried
+    /// against this one: `FirstFit` picks a range from *unadjusted* geometry alone and
+    /// never learns what a different choice would have cost the next line, so it can
+    /// choose a different, worse-scoring range than `Optimal` does, and a character can
+    /// consequently hang under one search's own chosen line without ever sitting at a line
+    /// end under the other's — `jlreq_line::compose`'s own test suite carries a
+    /// constructed pair of paragraphs demonstrating both.
     FirstFit,
     /// Minimize total demerits over the paragraph, discarding any line worse than
     /// `tolerance`. M3 — a new variant of a `#[non_exhaustive]` enum, so M1 adopters are
-    /// not broken (ADR-0012).
+    /// not broken (ADR-0012). Real as of M3's own first round: the dynamic program is
+    /// `crate::compose::run_dp`, licensed by translation-invariance of lexicographic order
+    /// under `Demerits::add_sat` (that function's own doc states the argument and its
+    /// saturation bound). Tolerance exhaustion — no complete arrangement stays within a
+    /// caller's own `tolerance` — is answered by `docs/decisions/tolerance-exhaustion.md`
+    /// rather than left to panic or to invent a forbidden break.
     Optimal { tolerance: Badness },
 }
 
@@ -2698,7 +2730,10 @@ pub struct Trim { pub at: ItemIndex, pub amount: InlineExtent,
 pub struct Violation { pub line: u32, pub at: ItemIndex, pub rule: RuleId,
                        pub kind: ViolationKind }
 pub enum ViolationKind { Overfull(InlineExtent), ExpansionExhausted,
-                         NoFeasibleBreak, ForbiddenPlacement }
+                         NoFeasibleBreak, ForbiddenPlacement,
+                         /// §3.5.4: the last line falls short of
+                         /// `Paragraph::with_widow_threshold`'s own count.
+                         Widow { have: u32, want: u16 } }
 
 pub enum ComposeError {
     /// A length exceeded the range invariant.
@@ -2742,7 +2777,14 @@ rule, not a second code path.
 Every construct the specification defines over running text or beside it. Uses `alloc`.
 Lowers each of them into the four things `jlreq-line` speaks — run identity, segments,
 separations, and block demand — so `jlreq-line` can be read end to end without meeting the
-word "ruby", and places annotations afterwards against an allowance it is told.
+word "ruby", and places annotations afterwards. The sketch below still shows `place`
+reading a per-boundary overhang allowance `jlreq-line` would resolve and hand in, which was
+the design of record through M4-a round 2; round 3 (task #78) shipped `place` without one.
+`jlreq_inline::place`'s own module doc argues why none of the three of §3.3.5's four
+positioning cases this round implements needs it, and names task #81 as where a genuine
+consumer would first appear. This section is left showing the original sketch, annotated
+where it diverges, rather than silently narrowed, so a reader comparing this file to the
+shipped signature sees the same gap the code's own doc names.
 
 ```text
 src/
@@ -3074,9 +3116,15 @@ pub struct NotAvailable { pub rule: RuleId, pub direction: Direction }
 ```rust
 /// Everything the constructs contribute, in the vocabulary the line layer speaks.
 ///
-/// Exactly four things cross the seam, and [`Paragraph::with_contribution`] is what
-/// consumes them (ADR-0015). Accessors rather than public fields, so a field added later
-/// is detail (ADR-0012).
+/// Exactly four things cross the seam to `jlreq-line`, and [`Paragraph::with_contribution`]
+/// is what consumes them (ADR-0015): [`Contribution::runs`], [`Contribution::segments`],
+/// [`Contribution::separations`] and [`Contribution::block_demand`]. Four further accessors
+/// report facts the construct layer itself resolved but that reach no boundary answer and
+/// so cross no seam — [`Contribution::construct_of`], [`Contribution::rules_fired`],
+/// [`Contribution::alignment_of`] and [`Contribution::alignment_discouraged`] are those,
+/// read by a caller and by `jlreq::diagnose`, never by `jlreq-line`, which keeps ADR-0015's
+/// no-edge claim intact. Accessors rather than public fields, so a field added later is
+/// detail (ADR-0012).
 pub struct Contribution<'a> { /* private */ }
 
 impl<'a> Contribution<'a> {
@@ -3101,6 +3149,21 @@ impl<'a> Contribution<'a> {
     /// Every rule the construct layer applied — the whole of §3.3 lives here and reaches
     /// no boundary answer, so without this the exercised-coverage gate could never close.
     pub fn rules_fired(&self) -> impl Iterator<Item = RuleId> + '_;
+    /// The [`RubyAlignment`] resolved for one declared construct: the per-construct
+    /// [`Ruby::with_alignment`] override where the caller gave one,
+    /// [`Question::RUBY_ALIGNMENT`]'s policy answer otherwise (ADR-0019's precedence
+    /// rule). `None` for a construct no style governs an alignment for.
+    ///
+    /// §3.3.5 is one rule address for both nakatsuki and katatsuki, so
+    /// [`Contribution::rules_fired`] cannot distinguish which resolved; ADR-0019 states
+    /// that "every answer records which of the two applied", and this accessor is that
+    /// record, pending a caller-facing report from [`place`] or `jlreq::diagnose`.
+    pub fn alignment_of(&self, run: ConstructRef) -> Option<RubyAlignment>;
+    /// Whether [`Contribution::alignment_of`]'s answer for `run` is §3.3.5's own
+    /// discouraged combination — katatsuki resolved in horizontal writing, honored and
+    /// never refused (ADR-0011). `false` for an ordinary resolution and for a construct
+    /// [`Contribution::alignment_of`] answers `None` for.
+    pub fn alignment_discouraged(&self, run: ConstructRef) -> bool;
 }
 
 /// Lower the declared constructs. Does **not** remove break candidates: a candidate
@@ -3116,18 +3179,33 @@ impl<'a> Contribution<'a> {
 pub fn lower<'a>(constructs: &Constructs<'_>, policy: Policy, direction: Direction,
                  out: &'a mut Lowered) -> Result<Contribution<'a>, LowerError>;
 
-/// Place the annotations of one composed line against the allowances it reports.
+/// Place the annotations of one composed line against the placements it reports.
 ///
-/// The second half of the split that resolves the overhang fixpoint: `jlreq-line` owns
-/// both halves it needs and reports the allowance per boundary (§3.3.8 rule 3, and
-/// Appendix B's `hang` legend), and this places against an allowance it is told. There is
-/// no edge back, and every parameter is a `jlreq-unit` type, so this crate names nothing
-/// `jlreq-line` owns.
+/// Originally sketched as the second half of a split that resolves the overhang
+/// fixpoint — `jlreq-line` owning both halves it needs and reporting a per-boundary
+/// `overhang: &[RubyOverhang]` allowance (§3.3.8 rule 3, and Appendix B's `hang` legend)
+/// for this function to place against. Round 3 (task #78) shipped without that parameter:
+/// nothing this round's three-of-four §3.3.5 positioning cases reads a per-boundary
+/// allowance, and an accepted-and-unread parameter is the silent defect this crate already
+/// refuses to publish elsewhere. `jlreq_inline::place`'s own module doc argues this in
+/// full and names task #81 — §3.3.5(c)'s own katatsuki-with-overflow choice, which is
+/// where a genuine consumer would first appear — as when the parameter returns. There is
+/// still no edge back to `jlreq-line`, and every parameter that does remain is a
+/// `jlreq-unit` type, so this crate still names nothing `jlreq-line` owns.
+///
+/// The shipped citation is narrower than the one below: `jlreq_inline::place`'s own doc
+/// comment cites `JLReq: §3.3.5, §3.3.6`, because those are the two rule addresses this
+/// function's positioning cases and declines actually read — §3.3.5's three positioning
+/// cases and its own decline, plus §3.3.6 paragraphs 1–2 and its own paragraph-3 decline.
+/// The wider citation below names this function's eventual scope once the other eight
+/// constructs and the omitted parameter both land; the two are not in silent disagreement,
+/// because each names what it covers at the time it was written, and this paragraph is what
+/// keeps them so.
 ///
 /// JLReq: §3.3.4–§3.3.8, §3.3.9, §4.2.3, §4.5.1
 pub fn place<'a>(constructs: &Constructs<'_>, contribution: &Contribution<'_>,
                  items: Range<ItemIndex>, placements: &[InlineOffset],
-                 overhang: &[RubyOverhang], policy: Policy, out: &'a mut Lowered)
+                 policy: Policy, out: &'a mut Lowered)
     -> Attachments<'a>;
 
 /// One annotation, placed against its base. The caller draws it with the size and the
@@ -3311,8 +3389,24 @@ impl<'c> Constructs<'c> {
 /// paragraphs allocates once.
 pub struct Lowered { /* private */ }
 
-/// The iterator [`place`] returns.
-pub struct Attachments<'a> { /* Iterator<Item = Attachment> */ }
+/// What [`place`] returns. Not itself an `Iterator`: the shipped shape (task #78) is a
+/// slice accessor, `attachments(&self) -> &'a [Attachment]`, plus `declined(&self) ->
+/// impl Iterator<Item = ConstructRef> + '_` for one of four stated reasons a run was
+/// considered and not placed — §3.3.5(c)'s own katatsuki-with-overflow choice, reachable
+/// through a mono-ruby run or, as of task #88, a jukugo compound's own paragraph-1 run
+/// alike; §3.3.6 paragraph 3's own base-spreading method, which this crate cannot perform,
+/// reachable through a group-ruby run (task #84) or a jukugo compound's own paragraph-2
+/// `group` answer alike (task #88, `decision:jukugo-group-layout-distribution`); a jukugo
+/// compound answering `phonetic`, §F's own distribution being unimplemented; and a jukugo
+/// compound whose base range one `place` call's own line only partially covers — never for
+/// a construct style this crate simply has no placement code for yet, which no style is any
+/// longer, jukugo-ruby included. No `rules_fired`, because §3.3.5, §3.3.6 and §3.3.7 are
+/// each one rule address and [`lower`] already records the first the moment it resolves an
+/// alignment, while the other two's own geometry is observable through `attachments` and
+/// `declined` themselves (ADR-0019, one fact one carrier). `jlreq_inline::place`'s own
+/// module doc is the design of record for this type; this sketch is corrected to match
+/// rather than left naming a plain iterator nothing here implements.
+pub struct Attachments<'a> { /* attachments: &'a [Attachment], declined: &'a [ConstructRef] */ }
 
 pub enum LowerError {
     /// Two constructs claim overlapping items in a way the specification does not

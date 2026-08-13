@@ -1,0 +1,429 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "B.2",
+  "heading_en": "Notes",
+  "heading_ja": "注記",
+  "cases": [
+    {
+      "id": "B.2/closing-bracket-at-line-end/the-question-switches-between-half-em-and-solid",
+      "rules": ["B.2#2"],
+      "cells": [{ "table": 1, "before": "cl-02", "after": "line-end" }],
+      "standing": "normative",
+      "quote": "The preferred spacing between closing brackets (cl-02) and the line end is a half em. The alternative is to set solid (JIS X 4051 adopts solid setting method, see § 3.1.9 Positioning of Closing Brackets, Full Stops, Commas and Middle Dots at Line End ).",
+      "rationale": "Table 1's own cell for a closing bracket (cl-02) at the line end reads `1/2 be`, citing this note (`spec/captured/table1.en.tsv`'s own row for `cl-02`/`line-end`) — the identical coordinate `D.1.json`'s own case already publishes for a different axis. That case varies `adjustment.reduction_table` alone to show which tables drain the half em and by how much; this one varies a different, single axis instead — `spacing.line_end_punctuation`, the Question `spec/derived/questions.tsv` derives directly from this note's own two sentences (`permits` column: `half-em solid`) and `crates/jlreq-spacing/src/evaluate.rs`'s `line_end_punctuation_override` reads at `before == Class::ClosingBracket.number()`. `cases.schema.json`'s own selection rule requires a case's `permitted` key sets to be totally ordered by inclusion, so this case does not also vary the reduction table the way D.1 does — mixing the two axes as sibling entries would name two singleton, incomparable key sets and fail that ordering, which is why the two notes this coordinate answers stay in two separate cases rather than one. Under the preferred reading the half em is exactly what D.1's own default entry already reports: Table 3 (this workspace's declared default) still reduces it, discretely, to a zero floor at the second priority (`1/2=0 stage 2` in `spec/captured/table3.en.tsv`), matching D.1's own `{}` entry exactly, since both cases read the identical coordinate under the identical default policy. Under the JIS X 4051 alternative this note itself names, `line_end_punctuation_override` returns `true` and the space is withdrawn outright before the reduction table is ever consulted (`evaluate.rs`'s own `spaces_of`, whose `if let Some(withdrawn) = line_end_punctuation_override(...)` guard runs before the reduction-table lookup) — a withdrawal is a fact about which Question answers `solid`, not about which table has nothing left to drain, and the two axes are kept in two separate cases exactly so that distinction stays visible.",
+      "input": {
+        "kind": "boundary",
+        "text": "）",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 2's own preferred reading (`spacing.line_end_punctuation = half-em`); the reduction-table axis at this identical coordinate is D.1.json's own subject, not varied here",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "discrete", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_end_punctuation": "solid" },
+          "source": "JLReq §B.2 note 2's own JIS X 4051 alternative (`spacing.line_end_punctuation = solid`), withdrawing the space entirely rather than draining it",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          },
+          "why": "§3.1.9, which this note's own parenthetical cites by name, states twice that the closing-bracket line-end space is two-valued — \"the possibilities are only half em spacing or solid\" — and neither permitted entry above answers a continuously-shrinking amount: the preferred reading drains discretely to zero at one stage, and the JIS X 4051 alternative withdraws it outright with no reduction step at all. A `range` reading belongs to neither."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/two-middle-dots/the-boundary-is-two-quarter-ems-not-one-half-em",
+      "rules": ["B.2#3"],
+      "cells": [{ "table": 1, "before": "cl-05", "after": "cl-05" }],
+      "standing": "normative",
+      "quote": "Character spacing between two consecutive middle dots (cl-05) shall be the sum of a quarter em of the preceding middle dots and a quarter em of the trailing middle dots.",
+      "rationale": "Table 1's own cell at cl-05 x cl-05 reads `1/4 be + 1/4 af`, citing this note (`spec/captured/table1.en.tsv`'s own row), and ADR-0014 is exactly the reading this note forces: two conditional spaces, one per referent, rather than one number that happens to equal their sum. `D.2/two-middle-dots/quarter-em-each-side-reduces-at-a-different-stage-per-table` already reads this identical coordinate for §D.2 note 1's own subject — which table drains each quarter em and at what priority — publishing all three reduction tables for that reason; this case reads it for §B.2 note 3's own subject instead, the unadjusted amount before any ladder touches it, so it states one policy reading rather than three. Under the declared default (Table 3) both components are in fact reducible, at the fourth priority (`crates/jlreq-spacing/src/evaluate.rs`'s own `special_reduction` maps `(5, 5, _, \"table-3\")` to a zero floor at stage four, citing §D.2 note 1 rather than this note once the reduction, and not merely the sum, is what a report names) — which this case's own `permitted` entry states plainly, because the point this case exists to make is the shape of the amount (two components, one per referent), not whether either one moves.",
+      "input": {
+        "kind": "boundary",
+        "text": "・・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 3, the unadjusted sum of two quarter ems; the reduction-table axis at this identical coordinate is D.2 note 1's own subject, not varied here",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding" }
+              ]
+            }
+          },
+          "why": "This note states a sum of two named components, one per middle dot, and ADR-0014 records that a boundary states them as two conditional spaces rather than folding them into one number that happens to equal the total. A single half-em space, however that number was arrived at, is not a shape §D.2 note 1's own reduction schedule can even attach to: that note gives the preceding and the trailing quarter em two independent priorities, which one collapsed amount has no way to carry."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/middle-dot-at-line-end/the-preferred-quarter-em-and-a-withdrawal-no-question-can-select",
+      "rules": ["B.2#4"],
+      "cells": [
+        { "table": 1, "before": "cl-05", "after": "line-end" },
+        { "table": 3, "before": "cl-05", "after": "line-end" },
+        { "table": 4, "before": "cl-05", "after": "line-end" },
+        { "table": 5, "before": "cl-05", "after": "line-end" }
+      ],
+      "standing": "normative",
+      "quote": "The preferred spacing between middle dots (cl-05) and the line end is a quarter em. The alternative is to set solid (JIS X 4051 adopts solid setting method, see § 3.1.9 Positioning of Closing Brackets, Full Stops, Commas and Middle Dots at Line End ).",
+      "rationale": "Table 1's own cell for a middle dot (cl-05) at the line end reads `1/4 be`, citing this note — the identical coordinate `D.2/middle-dot-at-line-end/table-3-alone-drains-it-at-the-third-stage` already reads for §D.2 note 5's own subject, that Table 3 alone opens a third reduction stage here. This case reads the same coordinate for what this note itself states: the preferred quarter em, and a JIS X 4051 alternative that withdraws it to solid. `spec/derived/questions.tsv` carries no question at this coordinate at all — `Question::LINE_END_PUNCTUATION` (§B.2 note 2) names cl-02 alone and `Question::LINE_END_FULL_STOP_COMMA` (§B.2 note 6) names cl-06 and cl-07 alone, and `crates/jlreq-spacing/src/evaluate.rs`'s own `line_end_punctuation_override` matches exactly those three classes and no others — so the note's own alternative is real prose with no policy key that can select it. What is expressible at this coordinate is the adjacent, different fact §D.1's own legend states: Table 4 and Table 5 are both blank for cl-05 at the line end (`spec/captured/table4.en.tsv` and `table5.en.tsv`'s own rows), so the quarter em is `Reduction::Rigid` under both — it stays exactly where this note's own preferred reading put it — while Table 3 drains it continuously to zero at the third priority (`1/4-0 stage 3`, matching D.2 note 5's own case). A reduction table offering no opportunity to shrink a term is one fact; this note's own outright withdrawal to solid is a different one, and the second is not a reading any declared policy in this workspace can produce at this coordinate — the forbidden entry below states that limit as a testable exclusion rather than only as prose.",
+      "input": {
+        "kind": "boundary",
+        "text": "・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 4, the preferred quarter em, under Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 3 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §B.2 note 4, the preferred quarter em, under Table 4 (JIS X 4051's alternative, §D preamble) — no reduction opportunity, which is a different fact from the note's own withdrawal",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §B.2 note 4, the preferred quarter em, under Table 5 (a third method found in other publications, §D preamble) — likewise no reduction opportunity",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": []
+            }
+          },
+          "why": "This note's own JIS X 4051 alternative is to set the middle dot solid at the line end, but that withdrawal depends on a policy question at this coordinate, and none exists: `Question::LINE_END_PUNCTUATION` and `Question::LINE_END_FULL_STOP_COMMA` name cl-02, cl-06 and cl-07 only, never cl-05. No permitted entry above, under any of the three reduction tables, ever answers zero spaces here — Table 3 drains the quarter em but does not withdraw it, and Table 4 and Table 5 leave it exactly where the preferred reading put it — so asserting `spaces: []` states a reading this workspace's policy space has no way to select, which is the scope limit this case's own rationale states rather than papers over."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/full-stop-then-middle-dot/the-unadjusted-sum-of-a-half-em-and-a-quarter-em",
+      "rules": ["B.2#5"],
+      "cells": [{ "table": 1, "before": "cl-06", "after": "cl-05" }],
+      "standing": "normative",
+      "quote": "In this document, character spacing between a full stop (cl-06) or comma (cl-07) and a following middle dot (cl-05) is the sum of the half em spacing of the full stop or comma and the quarter em spacing of the middle dot. On the other hand, JIS X 4051 classifies commas (cl-07) as a subset of closing brackets (cl-02), and, therefore, where a comma (cl-07) is followed by a middle dot (cl-05) in JIS X 4051 the character spacing between them is just the quarter em spacing of the following middle dot (cl-05).",
+      "rationale": "Table 1's own cell at cl-06 x cl-05 reads `1/2 be + 1/4 af`, citing this note, and this case reads the coordinate the note's own first sentence states — a full stop (cl-06) followed by a middle dot (cl-05) — the same boundary `D.2/full-stop-then-middle-dot/the-full-stops-half-em-never-reduces` already reads for §D.2 note 2's own subject, that Table 3 and Table 4 open a reduction opportunity for the middle dot's quarter em alone while the full stop's own half em never moves. This case reads the identical pair for what this note itself states: the unadjusted amount is the sum of two named components carried by two different characters, which ADR-0014 records as two conditional spaces rather than one summed number, exactly as §B.2 note 3's own sibling case above states for two middle dots. Under the declared default the shape already established by D.2 note 2 holds — the full stop's half em is rigid under every table this note's first sentence describes, and the middle dot's own quarter em reduces at the fourth priority under Table 3 — so this case's one `permitted` entry states that reading rather than re-publishing the three-table enumeration D.2 note 2 already owns. The note's own second sentence is a different fact at a different coordinate: JIS X 4051 reclassifies a comma (cl-07), not a full stop (cl-06), as a subset of closing brackets, and only then collapses the comma-then-middle-dot boundary to the trailing quarter em alone. Nothing in `spec/derived/questions.tsv` reclassifies a comma this way — `spacing.line_end_punctuation` and `spacing.line_end_full_stop_comma` both govern a line-end boundary, not this interior one — so that reading is neither modeled here nor at the coordinate it actually names; it is recorded as a scope limit in prose, per ADR-0006, rather than forced into `disagreements`, which records other implementations' measured behavior and not a divergence internal to the specification's own two conventions.",
+      "input": {
+        "kind": "boundary",
+        "text": "。・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 5's own first sentence, the unadjusted sum of a half em and a quarter em; the reduction-table axis at this identical coordinate is D.2 note 2's own subject, not varied here",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" },
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [3, 4], "units": 540, "referent": "preceding" }
+              ]
+            }
+          },
+          "why": "This note states a sum of two named components carried by two different characters — the full stop's own half em and the middle dot's own quarter em — and ADR-0014 records that a boundary states them as two conditional spaces rather than one collapsed amount. A single three-quarter-em space, however that number was reached, discards exactly the fact this note exists to state: that the two components belong to different characters and, per §D.2 note 2, answer to different reduction schedules."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/comma-at-line-end/the-question-withdraws-only-the-comma",
+      "rules": ["B.2#6"],
+      "cells": [{ "table": 1, "before": "cl-07", "after": "line-end" }],
+      "standing": "normative",
+      "quote": "The preferred spacing between full stops (cl-06) or commas (cl-07) and the line end is a half em. The alternative is to set solid (JIS X 4051 specifies that the spacing after full stop (cl-06) is a half em and the spacing after comma (cl-07) is solid, see § 3.1.9 Positioning of Closing Brackets, Full Stops, Commas and Middle Dots at Line End ).",
+      "rationale": "Table 1 states `1/2 be` for both cl-06 and cl-07 at the line end, each citing this note, and this note's own parenthetical is careful to say the two classes do not share one alternative: JIS X 4051 keeps the full stop's half em and withdraws only the comma's. `spec/derived/questions.tsv` derives `spacing.line_end_full_stop_comma` (`permits`: `preferred jis`) from exactly this note, and `crates/jlreq-spacing/src/evaluate.rs`'s own `line_end_punctuation_override` encodes the asymmetry explicitly: the `Class::Comma` arm reads the question and may withdraw the space, while the `Class::FullStop` arm returns `Some(false)` unconditionally, with a doc comment stating this is deliberate rather than an oversight. A case built at cl-06 would therefore publish two `permitted` entries with byte-identical `expect` bodies — a correct fact, but not one that demonstrates the question does anything — so this single-input case reads cl-07 instead, the coordinate where `{}` and `spacing.line_end_full_stop_comma = jis` produce genuinely different answers, and states the cl-06 half of the note's own asymmetry here in prose: at cl-06 the `jis` reading is real (it is the answer `Policy::JIS_READING` and JLReq's own book preset can select) but is not observable through this coordinate's own boundary, because the comma is what the alternative withdraws. Under `{}` the half em is subject to Table 3's own default reduction — `1/2=0 stage 2` at cl-07 x line-end in `spec/captured/table3.en.tsv`, discrete rather than continuous — before the JIS reading is ever considered; under `jis`, `line_end_punctuation_override` withdraws the space outright, before the reduction table is consulted at all, exactly as it does for §B.2 note 2's closing bracket.",
+      "input": {
+        "kind": "boundary",
+        "text": "、",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 6's own preferred reading (`spacing.line_end_full_stop_comma = preferred`)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "discrete", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_end_full_stop_comma": "jis" },
+          "source": "JLReq §B.2 note 6's own JIS X 4051 alternative (`spacing.line_end_full_stop_comma = jis`), which withdraws the comma's space and, per this note's own text, leaves the full stop's half em untouched at its own coordinate",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          },
+          "why": "§3.1.9, which this note's own parenthetical cites by name, states twice that this line-end space is two-valued — \"the possibilities are only half em spacing or solid\" — and neither permitted entry above answers a continuously-shrinking amount: the preferred reading drains discretely to zero at one stage, and the JIS X 4051 alternative withdraws the comma's space outright with no reduction step at all."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/unit-symbol-then-middle-dot/the-trailing-middle-dots-own-quarter-em",
+      "rules": ["B.2#12"],
+      "cells": [{ "table": 1, "before": "cl-25", "after": "cl-05" }],
+      "standing": "normative",
+      "quote": "Character spacing between a preceding unit symbol (cl-25) and a trailing middle dot (cl-05) shall be a quarter em of the trailing character. Note that KATAKANA MIDDLE DOT \"・\" can be used either as a unit symbol (cl-25) or as a middle dot. When it is used as a unit symbol (cl-25), both preceding and trailing spacing of KATAKANA MIDDLE DOT \"・\" shall be zero.",
+      "rationale": "Table 1's own cell at cl-25 x cl-05 reads `1/4 af`, citing this note, and shares its own three-table reduction shape exactly with `B.json`'s own case at cl-01 x cl-05 (`spec/captured/table3.en.tsv`'s `1/4-0 stage 4`, `table4.en.tsv`'s `1/4-0 stage 2`, `table5.en.tsv`'s bare `1/4`) — Table 3 and Table 4 both drain the quarter em to zero, at the fourth and second priority respectively, and Table 5 leaves it rigid. §A.25's own table gives a unit symbol no code point of its own — `A.25/latin-unit-symbol/proportional-frame`'s own rationale states that every one of its sixty-six keys is also listed under another class, and that only the caller's declared `role: \"unit-symbol\"` (read from §3.1.10's own Note and this note's own opening sentence) puts an occurrence in cl-25 at all — so this case declares a Western letter that way, on the proportional frame `A.25.json`'s own case already establishes as the class's own frame. The note's own second and third sentences are a different, sharper fact about a different occurrence: KATAKANA MIDDLE DOT set as a unit symbol carries zero space on both sides, which is not what this case's own middle dot is — this case's trailing item is an ordinary middle dot (cl-05) following a unit symbol, not a middle dot classified as cl-25 itself — so the forbidden entry below states that the zero-space reading belongs to a different declared role and does not apply here.",
+      "input": {
+        "kind": "boundary",
+        "text": "m・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 700, "frame": "proportional", "role": "unit-symbol", "scale": 0 },
+          { "start": 1, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 12, the trailing middle dot's own quarter em, under Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 4 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §B.2 note 12, the trailing middle dot's own quarter em, under Table 4 (JIS X 4051's alternative, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §B.2 note 12, the trailing middle dot's own quarter em, under Table 5 (a third method found in other publications, §D preamble) — no reduction opportunity",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": [
+                { "em": [1, 4], "units": 180, "resolved": 250, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          },
+          "why": "This note's own second and third sentences give KATAKANA MIDDLE DOT a zero-space reading only when it is itself declared as a unit symbol (cl-25), not when an ordinary middle dot merely follows one, which is what this case's trailing item declares. No permitted entry above — under Table 3, Table 4 or Table 5 — ever answers zero here; asserting `spaces: []` conflates the two distinct occurrences this note is careful to separate."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "B.2/opening-bracket-at-line-head/the-preferred-zero-and-the-retained-half-em",
+      "rules": ["B.2#17"],
+      "cells": [{ "table": 1, "before": "line-head", "after": "cl-01" }],
+      "standing": "normative",
+      "quote": "The preferred character spacing between the line head and opening opening brackets (cl-01) is zero. An alternative way is not to remove a conditional half em spacing accompanying the characters (see § 3.1.5 Positioning of Opening Brackets at Line Head including methods of positioning of opening brackets at the beginning of paragraphs).",
+      "rationale": "Table 1's own cell for the line head against an opening bracket (cl-01) — `spec/captured/table1.en.tsv:817`, `line-head` × `cl-01`, blank, citing this note — states the preferred zero as the coordinate's own silence, and this note's own second sentence is Figure 71's own alternative restated in Appendix B's vocabulary, identified by its own cross-reference to §3.1.5 by section title rather than by inference ('see § 3.1.5 Positioning of Opening Brackets at Line Head'): `docs/decisions/line-head-opening-bracket.md` records that identification in full. `3.1.5/opening-bracket-at-the-wrapped-line-head/pattern-2-synthesizes-the-half-em`'s own rationale states what this case does not repeat — that §3.1.5's own citation is observable at this coordinate only under `pattern-2`, an overlay `Policy::JLREQ` cannot select, so the `rules: [\"B.2#17\"]` assertion below is what every ordinary suite run actually checks. This case's own subject, left to it rather than to §3.1.5's, is the *amount* this note itself states, and the two things about it this round settles rather than assumes. Whose half em it is: the note's English calls the alternative 'not to remove a conditional half em spacing accompanying the characters' — a retention read against an existing amount, not an instruction to add a new one — while the Japanese states only a plain amount, 二分アキとする方式もある ('there is also a method of making it a half em'), with no verb of removal or retention at all; the two locales frame the identical choice differently, and this case reads the English's own retention framing as the coherent one, because cl-01 genuinely has an 'accompanying' half em to retain — `spec/captured/table1.en.tsv`'s own cl-01 column (the `after` class) reads `1/2 af` at twenty-one of the twenty-nine `before` classes this workspace checked directly, and every one of the eight exceptions is displaced on other, nameable grounds rather than silently absent: cl-01 itself, the line head, cl-14 (the full-width ideographic space) and cl-28 (warichu opening brackets) are blank with no competing term at all, while cl-02, cl-05, cl-06 and cl-07 each carry a real cell of their own instead — `1/2 be`, `1/4 be`, `1/2 be` and `1/2 be`, the closing bracket's, the middle dot's, the full stop's and the comma's own competing terms respectively — so cl-01's own trailing half em is a class-level property of the bracket at every coordinate no other class has already claimed, not an amount peculiar to one neighbor pair. §3.1.5's own Note independently names the same owner for the reason `docs/decisions/line-head-opening-bracket.md`'s point 1 already gives the synthesized space: pattern ② 'assume[s] that opening brackets should be always accompanied by the preceding half em spacing as if they were full-width' states the half em as the bracket's own assumed width, not a fact about whatever precedes it. `Referent::Trailing` is consequently not this case's own discriminator; it is settled the identical way round 15 already settled it, independently confirmed here from the class-level pattern above rather than from the single coordinate round 15's own doc checked. Whether the retained half em is reducible is the discriminator this round exists to settle, and it does not follow from the retention reading alone: cl-01's own interior half em genuinely does carry a real, captured reduction schedule at nearly every coordinate Table 1 states it — `spec/captured/table3.en.tsv`'s own cl-01 column reads `1/2-0 stage 5` at all twenty-one of the `before` classes that carry cl-01's own `1/2 af` term above, with no exception (for instance row 575, `cl-19` × `cl-01`), and `table4.en.tsv`'s and `table5.en.tsv`'s own cl-01 columns agree at twenty of the twenty-one, reading `1/2-0 stage 3` (row 492) and `1/2-1/4 stage 3` (row 531, a quarter-em floor rather than zero) — the sole exception this round found by direct inspection is cl-26, the Western word space, whose own cl-01 cell is blank rather than dashed in both Table 4 (row 695) and Table 5 (row 734), an irregularity this round records rather than smooths over, though it touches neither the referent argument above, which rests on Table 1 alone, nor the line-head argument below, which rests on the line-head row rather than on every table agreeing at every coordinate of this one column. Importing that schedule to the line head is nonetheless wrong, though not for the categorical reason a first pass at this argument reached for. Appendix D's own preamble states its whole subject as an opportunity 'for inter-character spacing reduction during line adjustment between two adjacent characters' (`spec/derived/rules.tsv`'s own row for rule `D`), and a line head, like a line end, has only one real neighbor rather than two (`crates/jlreq-conform/src/kumihan.rs`'s own `boundary` doc: 'there is no preceding item to name' at the line head) — but that symmetry is exactly why 'a line edge is definitionally not a pair of two adjacent characters, so Appendix D never reaches it' cannot be the ground: it proves too much. §D.1's own legend narrates genuine, non-boilerplate line-*end* reductions inside this same appendix — 'Table 3 and 5 allow the removal of the default half em spacing after closing brackets (cl-02), full stops (cl-06) and commas (cl-07) ... at the line end for line adjustment' (`spec/derived/rules.tsv`'s own row for rule `D.1`) — and `spec/captured/table3.en.tsv`'s own cl-02×line-end cell reads a real, dashed `1/2=0 stage 2` (row 168), not a blank; this workspace's own pre-existing `[[owned]]` cases already measure exactly that mechanism at the line end rather than merely cite it (`3.1.9`'s own case, and `B.2#2`'s, `B.2#4`'s and `B.2#6`'s above). A line edge is consequently not excluded from Appendix D's reduction mechanism by definition. What actually holds — the fact round 15's own doc was already gesturing at with its narrower 'absent-term boilerplate row' argument, not a categorical exclusion this round substitutes for it — is specific to the line-*head* row rather than to line edges generally: `docs/design/generation.md`'s own cross-table invariant 4, 'No reduction opportunity in the `line-head` row of any of Tables 3, 4 and 5' (§D.1), is mechanically checked by `xtask/src/attest.rs`'s own `no_reduction_at_the_line_head` — a `Check::Whole`, run over the full transcription on every `attest` invocation, zero violations reported by the `just attest` run this round's own gate battery includes — over every class in the line-head row of all three tables, not only cl-01's, with no line-end counterpart making the identical claim because none holds there. That empirical regularity, confirmed rather than assumed, is the corrected ground. The retained half em therefore stays exactly where §3.1.5 pattern ② and this note's own alternative put it regardless of which reading of 'conditional' or of the two locales' own framing is adopted: `Reduction::Rigid`, the identical value round 15's own `line_head_opening_bracket_space` already states, but for the structural reason above rather than the narrower one that function's own doc gives — that `(0, 1)`'s own row in Tables 3 through 5 is the tables' total-grid boilerplate for an absent term, a true fact about that one cell but not the reason the amount cannot move, since the same boilerplate row sits under every blank Table 1 cell in the grid and plenty of those are reducible once a note gives them a term to reduce. This round does not disagree with round 15's answer, only with the ground it was reached on, and the correction belongs here and in this rule's own `[[owned]]` entry rather than in `docs/decisions/line-head-opening-bracket.md`, which ADR 0006 leaves to the phase that wrote it. The third `permitted` entry below states the corrected ground positively rather than leaving it implied: Table 5, the one table whose own interior schedule for cl-01 never drains fully to zero (the `1/2-1/4 stage 3` floor above), still offers no opportunity whatsoever at the line head — the discriminating fact a same-table comparison against `3.1.5/opening-bracket-at-the-wrapped-line-head/pattern-2-synthesizes-the-half-em`'s own single Table-3-only entry cannot make on its own, which is the axis the two files vary against each other rather than duplicating, the same shape `D.1/closing-bracket-at-line-end` and `B.2/closing-bracket-at-line-end` already draw at one shared coordinate.",
+      "input": {
+        "kind": "boundary",
+        "text": "（",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §B.2 note 17's own preferred reading (`spacing.line_head_opening_bracket = pattern-1`, `Policy::JLREQ`'s own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [],
+              "rules": ["B.2#17"]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_head_opening_bracket": "pattern-2" },
+          "source": "JLReq §B.2 note 17's own alternative — retaining the bracket's own conditional half em rather than removing it — under Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ],
+              "rules": ["B.2#17", "3.1.5"]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_head_opening_bracket": "pattern-2", "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §B.2 note 17's own alternative under Table 5 (a third method found in other publications, §D preamble) — the one table whose own interior schedule for cl-01 never drains fully to zero, still rigid at the line head",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ],
+              "rules": ["B.2#17", "3.1.5"]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "trailing", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 5 }
+              ]
+            }
+          },
+          "why": "This is the amount cl-01's own interior half em carries under Table 3 wherever an ordinary neighbor precedes it (`spec/captured/table3.en.tsv`'s own cl-01 column, `1/2-0 stage 5`), and it is what a retention reading would predict if the retained half em imported its owner's interior reduction schedule wholesale into the line head. The line-head row of Tables 3, 4 and 5 is uniformly rigid instead — `xtask/src/attest.rs`'s own `no_reduction_at_the_line_head` invariant confirms this holds without exception across every class in that row, not only at cl-01's own coordinate — and that empirical fact, not a general claim that a line edge with only one real neighbor falls outside Appendix D's reduction mechanism by definition, is what fixes the amount here: the line-*end* row is not similarly rigid (`spec/captured/table3.en.tsv`'s own cl-02×line-end cell drains to zero, row 168, exactly the kind of genuine reduction `3.1.9`'s and `B.2#2`'s own cases above already measure), so having only one real neighbor cannot by itself be read as excluding reduction. No permitted entry above, under any reduction table this workspace can declare, ever answers a reducible reading at the line head; the amount is `Reduction::Rigid` under every one of them, on the line-head row's own uniform evidence rather than on that broader, false generalization."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

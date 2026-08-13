@@ -333,7 +333,21 @@ redundancy is published rather than private.
     an earlier revision of this document asserted the contradiction and pre-committed the
     rule to [`Standing::Adjudicated`], which would have published an alternative JLReq does
     not permit.
-16. Every cell any conformance case exercises agrees with that case.
+16. Every cell any conformance case exercises agrees with that case. A boundary case may
+    declare which coordinates it exercises through `cells`, a case-level, optional,
+    list-valued field of `{table, before, after}` objects — spelled the way
+    `spec/captured/table<N>.<locale>.tsv` and this file's own `MATRIX_COLUMNS` key a cell,
+    not through the `address` grammar's `@` suffix, which cannot name one cell where a
+    legend section covers several tables (§D.1 is the legend of Tables 3, 4 and 5 at once).
+    The checker asserts existence, at every table a case names, and — for Table 1 alone —
+    that a case's default-policy (`policy: {}`) boundary answer agrees in units with the
+    captured cell. 21 of the suite's 72 boundary cases declare a coordinate this way today
+    (`{B,B.2,D.1,D.2,E,E.2}.json`, 43 coordinates in all); the remaining 51 — every `A.*` and
+    `3.x` boundary case, and `C.json`'s and `C.2.json`'s own Table 2 coordinates, which carry
+    no amount to compare — are the invariant's own named remainder, because turning a case's
+    `text` into the class pair a cell is keyed on would re-derive Appendix A's classification
+    inside a gate that has no dependencies, a second implementation of a fact `jlreq-class`
+    owns (ADR 0019).
 17. Every amount in every table, note and ladder is an exact multiple of 1/720 em. 720 was
     chosen for exactly that property ([ADR 0007](../adr/0007-two-scalars-and-the-fixed-point-unit.md)),
     and nothing checked it: an appendix note naming a thirty-second would otherwise have rounded
@@ -343,6 +357,15 @@ redundancy is published rather than private.
     against the capture rather than asserted in prose. §B.2 notes 3 and 5 are the only cells
     that produce two, and both produce one per side; a transcription that read a three-term
     sum out of the legend fails here rather than losing a term at the far end.
+19. No Table 6 coordinate that offers a real expansion opportunity is also a Table 1
+    coordinate that carries two conditional spaces, so [ADR 0021](../adr/0021-table-6s-expansion-belongs-to-the-boundary.md)'s
+    amendment — Table 6's opportunity is read once per boundary, independent of how many
+    terms Table 1 gives that same coordinate — never has to choose which of two terms an
+    independent expansion belongs to. Measured over the whole capture: of Table 6's 494
+    non-blank, non-`×` cells, zero sit at a Table 1 coordinate with two terms; a future
+    revision of either table that broke that fact fails here rather than leaving
+    `jlreq_line::ladder::Site` asked to carry more expansion room than ADR-0014's own
+    at-most-two-spaces bound gives it anywhere to put.
 
 Invariant 2 is the strongest, because §E.1's legend explains a Table 6 value by reference to
 Table 2 — the specification itself asserts a redundancy across two documents captured

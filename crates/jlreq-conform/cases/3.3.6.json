@@ -1,0 +1,219 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.3.6",
+  "heading_en": "Positioning of Group-ruby with Respect to Base Characters",
+  "heading_ja": "グループルビの親文字に対する配置位置",
+  "cases": [
+    {
+      "id": "3.3.6/group-ruby-placement/equal-length-both-methods-agree",
+      "rules": ["3.3.6"],
+      "standing": "normative",
+      "quote": "When the length of a sequence of base characters (number of characters * advance-width of each character) and that of the ruby text are the same, each text is set solid and the center of both texts are aligned with each other (see Figure 123).",
+      "rationale": "§3.3.6's own first paragraph states one method only — no alternative — for the ratio at which a group-ruby reading exactly fills its base. One base item ('鬼', 1000 units), so `placements[0] = 0`, the sum of nothing before it, and there is no interior boundary for this case to ask about at all — the question is vacuous rather than needing a Table 1 citation, the identical reading `3.3.5/mono-ruby-placement/one-character-nakatsuki-vs-katatsuki`'s own rationale gives a single-base-item fixture. No neighbor exists in this fixture's declared stream at all — the base text is exactly the one declared item — so §3.3.8 rule 1 cannot fire here regardless of class, and `jlreq_inline::lower::lower_group` emits no `Separation` for a group-ruby run against any neighbor in any case (`crates/jlreq-inline/src/lower.rs`'s own `lower_group` doc), so this fact does not even depend on the absent neighbor. The reading ('きき', two 500-unit characters) sums to 1000, exactly the base's own extent, so the surplus §3.3.6's own second paragraph would otherwise distribute is zero. Both of `Question::GROUP_RUBY_DISTRIBUTION`'s answers are derivable at this ratio from paragraph 2's own ratio sentence alone (this case's own sibling, `3.3.6/group-ruby-placement/jis-versus-flush-distribution`, derives the weights in full), without appeal to paragraph 1 at all: under `jis`, a zero surplus divided across any set of positive weights gives every site a zero share regardless of shape, so the run begins exactly where the base begins; under `flush`, 'first align the leading characters for both the base text and ruby text' fixes the leading offset at zero directly, needing no surplus to distribute, and the interior sites carry the identical zero surplus. Both methods therefore place the reading's own first character at the base's own start (0) and, laid out solid at zero interior spacing, its second character at the first's own 500-unit advance past it (500). The reading's own extent (0 to 1000) shares the base's own center (500) exactly — which *is* paragraph 1's own 'center of both texts are aligned with each other' rule, worked from §3.3.6's own words at this one ratio rather than assumed from a coincidence of two branches. A second `permitted` entry naming `ruby.group_distribution: flush` would repeat these identical two numbers under a different policy key, which would not assert a second reading, only restate the first under a label that invites a reader to expect one — `3.3.5/mono-ruby-placement/two-characters-exactly-filling-the-base`'s own rationale states the identical point for its own sibling rule. This is the deleted `3.3.5/group-ruby-placement/produces-no-attachment-and-is-not-declined` case's own fixture (`docs/conformance-deferrals.toml`'s own §3.3.5 entry and `crates/jlreq-inline/src/place.rs`'s own module doc both record its deletion), reused here as §3.3.6's own affirmative case rather than §3.3.5's own negative one; its two offsets were worked independently above from §3.3.6's own words, not read out of that module doc's own printed '0 and 500.'",
+      "input": {
+        "kind": "place",
+        "text": "鬼",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }],
+        "annotations": [
+          {
+            "text": "きき",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "group",
+              "runs": [{ "base": [0, 1], "annotation": [0, 2] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§3.3.6's own first paragraph, the only method it states for this ratio — see this case's own rationale for why a second, `flush`-naming entry would not be a second reading",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 0, "item": 0 },
+                { "inline": 500, "item": 1 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.6/group-ruby-placement/jis-versus-flush-distribution",
+      "rules": ["3.3.6"],
+      "standing": "alternative",
+      "quote": "When the length of the ruby text is shorter than that of its base characters, set the base text solid and attached ruby character, so that both texts balance each other. To be more specific, where 2 units of inter-character spacing are used between ruby characters, add 1 unit of spacing between the start of the base text and the start of the ruby text, and between the end of the ruby text and the end of the base text. This will give a balanced appearance, and is the method specified in JIS X 4051 (see Figure 124). Another way is to first align the leading characters for both the base text and ruby text and the ends of both trailing characters, and then add the same amount of inter-character spacing between the rest of the ruby characters (see Figure 125).",
+      "rationale": "§3.3.6's own second paragraph states two methods for a group-ruby reading shorter than its base, with no preference between them, and this case's own fixture makes both readings' arithmetic land at every one of a four-character run's own four offsets, not merely a subset — the load-bearing pair this file exists to publish. Two base items ('亜', '亜', 720 units each, 1440 total), both cl-19 (ideographic — `A.19/cjk-ideograph/absent-from-the-table`'s own classify case already asserts 亜's class this way, against §A.19's first sentence and §3.9.2, independently of this file), so unlike this file's own single-item cases the interior boundary between them needs its own verified-blank Table 1 coordinate before `Compose::place`'s own derivation (`crates/jlreq-conform/src/kumihan.rs`'s own module doc) can be trusted: cl-19 against cl-19 is `blank` in Table 1 (`spec/captured/table1.en.tsv`, line 485, `table_en2.pdf`, read directly rather than inferred from this evaluator's own answer), the identical coordinate `3.5.1.json`'s and `3.8.1.json`'s own '亜亜亜' fixtures already establish blank, so the derived solid layout is faithful at this boundary: `placements[0] = 0` and `placements[1] = 720`, the sum of item 0's own advance and nothing else. No separation arises at this boundary for a second, independent reason beyond the blank cell: `collect_mono_separation`, §3.3.8 rule 1's own forced-separation collector, is reached only from the mono-ruby lowering path and never from `lower_group` at all (`crates/jlreq-inline/src/lower.rs`), and `lower_group`'s own doc states plainly that it 'still produces no `Separation`' for a group-ruby run against any neighbor, regardless of class — so this boundary would carry no forced separation even were the cl-19/cl-19 cell not blank. Both facts are load-bearing, not one: `derived_placements` sums declared advances plus every such separation, and either fact alone already forces that sum to zero here. The reading ('かかかか', four 300-unit characters — each advance identical to its own declared `inline_em`, so 'one ruby character' and the full-width size of a ruby character name the same 300-unit quantity throughout this rationale) sums to 1200, 240 units short of the base's own 1440. §3.3.6's own ratio sentence — 'where 2 units of inter-character spacing are used between ruby characters, add 1 unit of spacing between the start of the base text and the start of the ruby text, and between the end of the ruby text and the end of the base text' — states a leading:interior:trailing ratio of 1:2:1 for the run's own four characters: one leading site, three interior gaps (one fewer than the character count), one trailing site, each interior gap twice a leading or trailing one — five sites in total (`n + 1` for `n = 4`), summing to 1 + 2 + 2 + 2 + 1 = 8 (`2n`). 240 is exactly divisible by 8, so `jlreq_unit::distribute`'s own proportional split (`crates/jlreq-unit/src/arith.rs`'s own doc: 'split `total` across `weights` so the parts sum to `total` exactly') gives every site an exact integer share — 30 units per unit-weighted site, 60 per doubly-weighted one — and `Policy::JLREQ`'s own remainder rule never has to break a tie. The leading share (30) shifts the run's own start from the base's own placement (0): the reading's first character begins at 30. Each following character begins at the previous one's own start, plus its own 300-unit advance, plus the interior gap between them (60): 30 + 300 + 60 = 390 for the second, 390 + 300 + 60 = 750 for the third, 750 + 300 + 60 = 1110 for the fourth. The trailing share (30) is never applied to any character's own offset — nothing follows the run's own last character to receive it — and is instead the implicit gap between where the fourth character's own advance ends (1110 + 300 = 1410) and the base's own end (1440); 30 + 300 + 60 + 300 + 60 + 300 + 60 + 300 + 30 = 1440 confirms the whole partition is exact. Each of the leading and trailing shares (30) is a tenth of one ruby character's own 300-unit em, comfortably under either of the Note's own two stated thresholds (one to one-and-a-half ruby ems) — this fixture stays clear of the Note's own unimplemented cap by a wide margin, not by a hair. §3.3.6's own second method states a different ratio: 'first align the leading characters for both the base text and ruby text and the ends of both trailing characters, and then add the same amount of inter-character spacing between the rest of the ruby characters.' The leading and trailing alignments fix the run's own first character exactly at the base's own start (0) and its own last character's own end exactly at the base's own end (1440), independent of any distribute call at all; 'the rest' is the run's own three interior gaps alone, equally weighted, summing the whole 240-unit surplus between them rather than sharing it with two alignment sites that are fixed rather than shared. 240 divided across three equal sites is 80 each, again exact, so the remainder rule never engages here either. The reading's first character begins at 0; each following character begins at the previous one's own start, plus 300, plus 80: 0 + 300 + 80 = 380 for the second, 380 + 300 + 80 = 760 for the third, 760 + 300 + 80 = 1140 for the fourth — and the fourth character's own end, 1140 + 300 = 1440, is exactly the base's own end, which *is* the method's own trailing alignment rather than a coincidence of the arithmetic. Every one of the four offsets differs between the two methods (30 vs. 0, 390 vs. 380, 750 vs. 760, 1110 vs. 1140): this is the same fixture, genuinely read two ways, not a restatement of one reading under two policy keys.",
+      "input": {
+        "kind": "place",
+        "text": "亜亜",
+        "scales": [{ "inline_em": 720, "block_em": 720 }],
+        "items": [
+          { "start": 0, "advance": 720, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 720, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "かかかか",
+            "scales": [{ "inline_em": 300, "block_em": 300 }],
+            "items": [
+              { "start": 0, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 300, "frame": "full-em", "scale": 0 },
+              { "start": 9, "advance": 300, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "group",
+              "runs": [{ "base": [0, 2], "annotation": [0, 4] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `ruby.group_distribution` (`jis`), the reading this workspace measures by default where §3.3.6 paragraph 2 states two permitted methods",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 30, "item": 0 },
+                { "inline": 390, "item": 1 },
+                { "inline": 750, "item": 2 },
+                { "inline": 1110, "item": 3 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "ruby.group_distribution": "flush" },
+          "source": "§3.3.6's own second method, `flush` — a statement to an implementation that declares this alternative; this workspace's own default run does not select it",
+          "expect": {
+            "place": {
+              "attachments": [
+                { "inline": 0, "item": 0 },
+                { "inline": 380, "item": 1 },
+                { "inline": 760, "item": 2 },
+                { "inline": 1140, "item": 3 }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.6/group-ruby-placement/single-ruby-character-jis-vs-flush",
+      "rules": ["3.3.6"],
+      "standing": "unstated",
+      "quote": "When the length of the ruby text is shorter than that of its base characters, set the base text solid and attached ruby character, so that both texts balance each other. To be more specific, where 2 units of inter-character spacing are used between ruby characters, add 1 unit of spacing between the start of the base text and the start of the ruby text, and between the end of the ruby text and the end of the base text. This will give a balanced appearance, and is the method specified in JIS X 4051 (see Figure 124). Another way is to first align the leading characters for both the base text and ruby text and the ends of both trailing characters, and then add the same amount of inter-character spacing between the rest of the ruby characters (see Figure 125).",
+      "rationale": "§3.3.6's own second paragraph, at the ratio its own text does not itself resolve: a group-ruby reading of exactly one character, so the paragraph's own 'leading characters' and 'trailing characters' name the same single character at once and its own 'rest of the ruby characters' names nothing at all. One base item ('鬼', 1000 units) and one annotation item ('き', 600 units), so there is no interior boundary to verify blank — the question is vacuous for the identical reason `3.3.6/group-ruby-placement/equal-length-both-methods-agree`'s own rationale gives its own single-item fixture — and, as in every other case of this file, no neighbor exists in the declared stream for §3.3.8 rule 1 to act on, and `lower_group` emits no `Separation` for a group-ruby run regardless (`crates/jlreq-inline/src/lower.rs`'s own doc). The reading (600 units, exactly its own declared `inline_em`) is 400 units shorter than the base (1000). `jis`'s own reading of this ratio is directly derivable from §3.3.6's own ratio sentence, with no silence to fill: at `n = 1` the leading:interior:trailing split degenerates to two sites, `[1, 1]`, because there is no interior character pair left to carry a doubly-weighted site at all — the leading and trailing sites alone, summing to `2n = 2`. 400 divided across two equal sites is 200 each, exact, so the remainder rule never engages. The leading share (200) shifts the run's own single character from the base's own start (0) to 200 — the identical centering arithmetic §3.3.5(b)'s own nakatsuki alignment states for a single mono-ruby character, worked out here from §3.3.6's own words at this one ratio rather than borrowed from that section. 200 units is a third of the ruby character's own 600-unit em, comfortably clear of the Note's own one-to-one-and-a-half-em cap. `flush`'s own reading of this ratio is not derivable from §3.3.6's own words at all, which is what standing `unstated` records rather than `alternative`: the method's own text names a leading character to align, a trailing character to align, and 'the rest' to space between them, and at one character the first two name the identical character at once while the third names nothing, so JLReq's own text does not say which of the two alignments controls, or what becomes of the surplus neither alignment nor an absent interior gap can hold. `docs/decisions/group-ruby-flush-single-character.md` (`decision:group-ruby-flush-single-character`) is this workspace's own published reading of that silence: the run is placed at the base's own start (0) with the whole 400-unit surplus left unapplied, honoring the leading clause literally and treating the trailing and interior clauses as inapplicable rather than overridden, argued at length there against the alternative of falling back to `jis`'s own centering — which the decision's own 'Why' section shows would erase the very divergence between the two methods paragraph 2 states them for, at the one ratio (equal length, zero surplus) where the two methods already and separately agree by construction, this file's own first case. The two entries genuinely diverge (200 vs. 0), the same load-bearing pair `3.3.6/group-ruby-placement/jis-versus-flush-distribution`'s own rationale draws at four characters, here at the one ratio where JLReq's own text stops giving `flush` an answer of its own.",
+      "input": {
+        "kind": "place",
+        "text": "鬼",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }],
+        "annotations": [
+          {
+            "text": "き",
+            "scales": [{ "inline_em": 600, "block_em": 600 }],
+            "items": [{ "start": 0, "advance": 600, "frame": "full-em", "scale": 0 }]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "group",
+              "runs": [{ "base": [0, 1], "annotation": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "`Policy::JLREQ`'s own default answer to `ruby.group_distribution` (`jis`), directly derivable from §3.3.6's own ratio sentence at `n = 1` with no silence to fill",
+          "expect": {
+            "place": { "attachments": [{ "inline": 200, "item": 0 }] }
+          }
+        },
+        {
+          "policy": { "ruby.group_distribution": "flush" },
+          "source": "§3.3.6's own second method, `flush`, at the one ratio its own text does not itself resolve — `docs/decisions/group-ruby-flush-single-character.md` (`decision:group-ruby-flush-single-character`) is this workspace's own published reading of that silence, and this workspace's own default run does not select it",
+          "expect": {
+            "place": { "attachments": [{ "inline": 0, "item": 0 }] }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.3.6/group-ruby-placement/ruby-longer-than-the-base-declines",
+      "rules": ["3.3.6"],
+      "standing": "normative",
+      "quote": "When the length of the ruby text is longer than that of the base characters, balance the base characters with the ruby text by setting the ruby text solid and adding a certain amount of inter-character spacing between each adjacent base character. To be more specific, for 2 units of inter-character spacing, add 1 unit of spacing between the start of the ruby text and the start of the base text, and between the end of the base text and the end of the ruby text, as specified in JIS X 4051 (see Figure 127). Another way is to first align the start of both the leading characters and the end of the trailing characters, and then add a certain amount of inter-character spacing between each adjacent base character (see Figure 128).",
+      "rationale": "§3.3.6's own third paragraph states two methods for a group-ruby reading genuinely longer than its base, and both work by spreading the *base* characters apart, never by moving the ruby: 'adding a certain amount of inter-character spacing between each adjacent base character,' stated once for the JIS X 4051 method and again, differently distributed ('align the start of both the leading characters and the end of the trailing characters, and then add a certain amount of inter-character spacing between each adjacent base character'), for its own alternative. This case's own claim is `normative`, not `alternative`, for a reason narrower than how many entries it happens to carry: `jlreq_spec::Standing::Alternative`'s own definition (`crates/jlreq-spec/src/rule.rs`) is 'JLReq permits several answers here; the choice is a `Question`' — and no `Question` exists for paragraph 3's own choice between its two base-spreading methods, because neither is implemented at all. `3.3.5/mono-ruby-placement/three-characters-longer-than-the-base`'s own `alternative` standing is anchored on a real axis this case has no counterpart for: `ruby.alignment` is a `Question` that genuinely selects between a computed nakatsuki reading and a declined katatsuki one, so recording both readings is recording what the policy actually chooses between. Here, `place_group_run`'s own extent comparison runs before `Question::GROUP_RUBY_DISTRIBUTION` is ever read, so there is no policy axis for a second `permitted` entry to record a different outcome under — every reading declines identically. §3.3.6's own third paragraph does state one normative requirement even though it states it two ways: 'balance the base characters with the ruby text' by spreading the base characters apart is common to both of its own stated methods, and `place()` performs neither, which is the single, unconditional fact this case records once — the identical shape `3.3.6/group-ruby-placement/equal-length-both-methods-agree`'s own rationale already argues for its own single entry despite paragraph 2's own two-method text. One base item ('鬼', 1000 units), so there is no interior boundary for this case to ask about and no Table 1 coordinate to verify blank — and even were there a second base item for the paragraph's own base-spreading methods to widen, `jlreq_inline::place` has no channel to do so: `placements` is `jlreq_line::Line::placements`, an answer already fixed by the time `place` runs, and `place` emits `Attachment`s for annotation items only, never for the base stream (`crates/jlreq-inline/src/place.rs`'s own module doc, 'What this round declines: §3.3.6 paragraph 3'). The reading ('かかか', three 400-unit characters, 1200 total) is 200 units longer than the base (1000), so `place_group_run`'s own extent comparison — the identical `base_extent.max(ruby_extent) != base_extent` test §3.3.5(c)'s own katatsuki-with-overflow decline already makes for mono-ruby — finds the ruby longer and the run is reported through `Attachments::declined` rather than placed. The comparison is made before `Question::GROUP_RUBY_DISTRIBUTION` is ever read, so `jis` and `flush` decline identically here and a single `permitted` entry (`policy: {}`) covers both this run's own default measurement and its `flush`-declaring one alike. `declined` names the specific construct ordinal, 0 — the only declared `constructs.ruby` entry — rather than merely being non-empty, because 'nothing was placed' is satisfiable by an implementation that never placed anything at all; naming the ordinal is satisfiable only by one that reached this branch and declined there — the verbatim standard `3.3.5/mono-ruby-placement/three-characters-longer-than-the-base`'s own rationale already states.",
+      "input": {
+        "kind": "place",
+        "text": "鬼",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }],
+        "annotations": [
+          {
+            "text": "かかか",
+            "scales": [{ "inline_em": 400, "block_em": 400 }],
+            "items": [
+              { "start": 0, "advance": 400, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 400, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 400, "frame": "full-em", "scale": 0 }
+            ]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "group",
+              "runs": [{ "base": [0, 1], "annotation": [0, 3] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§3.3.6's own third paragraph, stated as two base-spreading methods with no preference between them and no channel `jlreq_inline::place` has to perform either; `place()` declines rather than picking on its own authority, for either of `Question::GROUP_RUBY_DISTRIBUTION`'s answers alike",
+          "expect": {
+            "place": {
+              "attachments": [],
+              "declined": [0]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

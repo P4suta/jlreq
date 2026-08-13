@@ -56,7 +56,11 @@
 //! that have them. Those two carry a hyphen because that is how the address space spells
 //! them, and ADR 0013's one mechanical claim is that a rule has one spelling in the
 //! capture, in the generated inventory, in a doc comment and in a case file — so there is
-//! nothing between this file and `B.1@cl-02,line-end` for anyone to translate. `token` is the legend token; an empty cell is written `blank`, because a
+//! nothing between this file and `B@cl-05,cl-05` for anyone to translate (a bare appendix
+//! letter names one table's own cell when that appendix has exactly one, which §B does; a
+//! multi-table legend such as §D.1 is a different case, and
+//! `conformance-cases-agree-with-the-cells`'s own registration comment below states why in
+//! full). `token` is the legend token; an empty cell is written `blank`, because a
 //! trailing empty field cannot be told from a truncated row. `note` is the appendix note
 //! that qualifies the cell, written `B.2#3` and drawn from that appendix's own note list —
 //! §B.2 for Table 1, §C.2 for Table 2, §D.2 for Tables 3 through 5, §E.2 for Table 6. It is
@@ -112,6 +116,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::conform;
 use crate::shared::{self, Gate};
 
 /// The `attest` gate, as the dispatcher sees it.
@@ -206,7 +211,12 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 
     check_confinement(&root, &mut findings)?;
     let capture = read_capture(&spec, &mut findings, &mut census)?;
-    run_invariants(&capture, &mut findings, &mut census);
+    let cases = read_case_cells(&root, &mut census)?;
+    let evidence = Evidence {
+        capture: &capture,
+        cases: &cases,
+    };
+    run_invariants(&evidence, &mut findings, &mut census);
     check_catalogue(&spec, &mut findings, &mut census)?;
     check_defects(&spec, &mut findings, &mut census)?;
     check_provenance(&spec, digests, &mut findings, &mut census)?;
@@ -639,6 +649,30 @@ struct Capture {
     tables: BTreeMap<u8, BTreeMap<Coordinate, Cell>>,
 }
 
+/// What a checker reads: the agreed transcription, and every published conformance case's
+/// own declared matrix coordinates.
+///
+/// `conformance-cases-agree-with-the-cells` is the one invariant below that needs the
+/// second half; the other fifteen never read `cases` at all. It is threaded through
+/// [`Check::Whole`] and [`Check::Partial`] uniformly rather than bolted onto [`Capture`] —
+/// whose own doc is exactly "the transcription, reduced to the cells both renderings
+/// agree on," a sentence a second input folded in here would falsify for every check that
+/// never asked for one — and rather than carried by a nineteenth `Check` variant, which
+/// would mean the enum's own stated meaning ("how much of an invariant can run today")
+/// started encoding a second, unrelated axis ("what it reads") for exactly one entry.
+/// Fifteen functions that use only `.capture` and one that also uses `.cases` consequently
+/// share one `run` signature, at the cost of an unused field in fifteen call sites — the
+/// same trade [`Findings::push`]'s own `&'static str` kind makes at every one of its own
+/// call sites that could have been a dedicated type instead.
+#[derive(Debug)]
+struct Evidence<'a> {
+    /// The agreed transcription.
+    capture: &'a Capture,
+    /// Every case's own declared matrix coordinates, read from `crates/jlreq-conform/cases/`
+    /// independent of whether `conform --check` has validated them this run.
+    cases: &'a [CaseCells],
+}
+
 /// A tab-separated file, split but not interpreted.
 ///
 /// Named for the file format rather than for JLReq's tables, which are [`Matrix`] here.
@@ -976,6 +1010,146 @@ fn read_capture(
     Ok(capture)
 }
 
+/// One published conformance case's own declared matrix coordinates.
+///
+/// Read directly from `crates/jlreq-conform/cases/*.json` with `crate::conform`'s own JSON
+/// reader — `xtask`'s own manifest states why it has no dependencies to reach for instead —
+/// rather than through `crate::conform::Suite`, whose rule inventory, deferral ledger and
+/// policy question space this checker needs none of: it reads one field (`cells`) and one
+/// entry (`permitted` at `policy: {}`) of each case, and nothing else a case states is this
+/// invariant's business.
+#[derive(Debug)]
+struct CaseCells {
+    /// The file it was read from, relative to the workspace root, named in a finding.
+    file: String,
+    /// The case's own `id`, named in a finding.
+    id: String,
+    /// Every `(table, before, after)` this case declares under `cells`.
+    cells: Vec<(u8, Axis, Axis)>,
+    /// The units the case's own `{}`-policy `permitted` entry's `expect.boundary.spaces`
+    /// sum to, when that entry exists and states a `boundary`. `None` when it does not — a
+    /// case that declares no Table 1 cell has no need of one, and this checker never
+    /// invents the comparison.
+    default_boundary_units: Option<i32>,
+}
+
+/// Read every published case's own declared matrix coordinates.
+///
+/// A case file that is not the JSON `conform --check` requires is that gate's own violation
+/// to report, not this one's: reading it twice would either duplicate that check or,
+/// worse, disagree with it about what a case file is, so a file this reads skips it rather
+/// than raising a second complaint about it.
+fn read_case_cells(root: &Path, census: &mut Vec<String>) -> io::Result<Vec<CaseCells>> {
+    let directory = root.join(conform::CASES_DIR);
+    if !directory.is_dir() {
+        census.push(format!(
+            "{dir} does not exist yet, so no case's declared matrix coordinate was read",
+            dir = conform::CASES_DIR
+        ));
+        return Ok(Vec::new());
+    }
+    let mut cases = Vec::new();
+    let mut unparsed = 0usize;
+    for path in conform::case_files(&directory)? {
+        let name = shared::relative_name(&path, root).replace('\\', "/");
+        let source = fs::read_to_string(&path)?;
+        let Ok(file) = conform::Json::parse(&source) else {
+            unparsed = unparsed.saturating_add(1);
+            continue;
+        };
+        let entries = file
+            .get("cases")
+            .and_then(conform::Json::as_array)
+            .unwrap_or_default();
+        for entry in entries {
+            let id = entry
+                .get("id")
+                .and_then(conform::Json::as_text)
+                .unwrap_or_default();
+            cases.push(CaseCells {
+                file: name.clone(),
+                id: id.to_owned(),
+                cells: read_declared_cells(entry),
+                default_boundary_units: read_default_boundary_units(entry),
+            });
+        }
+    }
+    let declaring = cases.iter().filter(|case| !case.cells.is_empty()).count();
+    let declared: usize = cases.iter().map(|case| case.cells.len()).sum();
+    census.push(format!(
+        "{declaring} case(s) under {dir} declare {declared} matrix coordinate(s), checked \
+         against the transcription by conformance-cases-agree-with-the-cells{unparsed}",
+        dir = conform::CASES_DIR,
+        unparsed = if unparsed == 0 {
+            String::new()
+        } else {
+            format!(
+                "; {unparsed} case file(s) did not parse as JSON (conform --check's own \
+                      violation to report)"
+            )
+        }
+    ));
+    Ok(cases)
+}
+
+/// The `cells` field of one case, as `(table, before, after)` tuples.
+///
+/// A malformed entry — an out-of-range table, an axis `parse_axis` refuses — is
+/// `conform --check`'s own violation to report (its `check_cells` validates this field's
+/// shape); this reader skips what it cannot parse rather than raising a second complaint
+/// about it, the same division of labor the file-level parse failure above keeps.
+fn read_declared_cells(case: &conform::Json) -> Vec<(u8, Axis, Axis)> {
+    let Some(entries) = case.get("cells").and_then(conform::Json::as_array) else {
+        return Vec::new();
+    };
+    let mut cells = Vec::new();
+    for entry in entries {
+        let table = entry
+            .get("table")
+            .and_then(conform::Json::as_integer)
+            .and_then(|number| u8::try_from(number).ok());
+        let before = entry
+            .get("before")
+            .and_then(conform::Json::as_text)
+            .and_then(|label| parse_axis(label).ok());
+        let after = entry
+            .get("after")
+            .and_then(conform::Json::as_text)
+            .and_then(|label| parse_axis(label).ok());
+        if let (Some(table), Some(before), Some(after)) = (table, before, after) {
+            cells.push((table, before, after));
+        }
+    }
+    cells
+}
+
+/// The units a case's own `{}`-policy `permitted` entry's `expect.boundary.spaces` sum to.
+///
+/// `permitted` entries are ordered by nothing in particular, so every one is checked for
+/// the empty overlay rather than assuming it is the first: `docs/design/conformance.md`'s
+/// own selection rule is about which entry an *implementation's declared policy* selects,
+/// not about file order.
+fn read_default_boundary_units(case: &conform::Json) -> Option<i32> {
+    let permitted = case.get("permitted").and_then(conform::Json::as_array)?;
+    let entry = permitted.iter().find(|entry| {
+        entry
+            .get("policy")
+            .and_then(conform::Json::as_object)
+            .is_some_and(<[(String, conform::Json)]>::is_empty)
+    })?;
+    let boundary = entry.get("expect")?.get("boundary")?;
+    let spaces = boundary
+        .get("spaces")
+        .and_then(conform::Json::as_array)
+        .unwrap_or_default();
+    let mut total: i32 = 0;
+    for space in spaces {
+        let units = space.get("units").and_then(conform::Json::as_integer)?;
+        total = total.checked_add(i32::try_from(units).ok()?)?;
+    }
+    Some(total)
+}
+
 /// The `.tsv` files of the captured directory, in a stable order.
 fn captured_names(directory: &Path) -> io::Result<Vec<String>> {
     let mut names = Vec::new();
@@ -1125,12 +1299,12 @@ enum Check {
     /// Runs in full over the transcription.
     Whole {
         /// The check.
-        run: fn(&Capture, &mut Findings),
+        run: fn(&Evidence<'_>, &mut Findings),
     },
     /// Runs as far as the transcription alone can settle it.
     Partial {
         /// The part that runs today.
-        run: fn(&Capture, &mut Findings),
+        run: fn(&Evidence<'_>, &mut Findings),
         /// The input the rest waits for.
         awaiting: &'static str,
         /// What that input will add.
@@ -1156,9 +1330,10 @@ struct Invariant {
     check: Check,
 }
 
-/// The seventeen invariants of `docs/design/generation.md`, in that document's order.
+/// The eighteen invariants of `docs/design/generation.md`, in that document's order.
 ///
-/// An eighteenth, `bracket-classes-mirror-their-originals`, was retired here: §3.9.2's own
+/// One of the document's own nineteen numbered items, `bracket-classes-mirror-their-originals`,
+/// was retired here: §3.9.2's own
 /// note on cl-28 and cl-29 ("they differ from normal brackets with regard to their
 /// processing") is class-level and unqualified, so item 12's citation of that note licenses
 /// the whole class pair rather than an enumerable set of cells, and a check that requires a
@@ -1295,16 +1470,64 @@ const INVARIANTS: &[Invariant] = &[
     Invariant {
         id: "conformance-cases-agree-with-the-cells",
         citation: "ADR 0006",
-        // `crates/jlreq-conform/cases/` exists (389 cases), but every one is an Appendix A
-        // classification case (`A.*.json`); no case format yet exercises a Table 1 through
-        // 6 coordinate the way this invariant would check. M1-b pairs jlreq-line's
-        // implementer with an independent case author the way M0-b did for
-        // classification, and jlreq-spacing's own conformance cases are this pass's own
-        // acknowledged shortfall (this milestone stands up the mutation-testing gate as
-        // the interim control, per the milestone brief).
-        check: Check::Awaiting {
-            input: "spacing/reduction conformance cases (none published yet)",
-            remainder: "every cell a published case exercises against that case",
+        // `crates/jlreq-conform/cases/` holds 466 cases (`conform --check`'s own count)
+        // across 56 files, 72 of them `kind: "boundary"`. A boundary case is the one kind
+        // that can name a Table 1 through 6 coordinate at all, and 21 of the 72 now do,
+        // through `cells` — a case-level, optional, list-valued field of `{table, before,
+        // after}` objects (`crates/jlreq-conform/cases.schema.json`'s own `matrix_cell`) —
+        // rather than through the `address` grammar's `@` suffix. The grammar was the
+        // first design tried and does not suffice: §D.1 is the legend of *three* matrices
+        // (its own heading is "Legend of Tables 3, 4 and 5"; `spec/derived/defects.tsv`'s
+        // own `legend-anchor-and-filename-off-by-one` row quotes it), so
+        // `D.1@cl-02,line-end` never named one captured cell to begin with, and
+        // `spec/derived/rules.tsv` does not even inventory the natural per-table
+        // alternative: it has `B`, `C`, `C.3`, `D`, `D.1` and `E`, never `B.1`, `C.1` or
+        // `E.1`. A bare appendix letter fares better where it names exactly one table —
+        // `B@cl-05,cl-05` is valid, inventoried and unambiguous
+        // (`docs/design/address-corpus.tsv`'s own row) — but that is §B's own accident of
+        // having one table under it, not a property `@` gives every legend, and a field
+        // that worked for Appendix B by accident and silently broke on Appendix D is worse
+        // than one that never claimed the grammar sufficed. `cells` instead spells the
+        // coordinate the way the transcription itself is keyed — `MATRIX_COLUMNS` above is
+        // literally `table`, `before`, `after` among its six — so reading it back is a
+        // lookup, never a second parser, and it cannot be `rules`: `conform`'s dynamic half
+        // asserts the rules an evaluator *fires* equal the ones a case names, and no
+        // evaluator ever fires a bare cell address.
+        //
+        // The checker below asserts two things. Existence: every declared coordinate is
+        // one the agreed transcription actually has, at every table alike — a case pointed
+        // at a mistyped coordinate, the wrong table, or a cell the two renderings
+        // disagreed on is a finding here. Amount agreement, Table 1 only, which is the
+        // invariant's real substance: where a case declares a Table 1 cell and publishes a
+        // default-policy (`{}`) answer for that boundary, the units that answer's
+        // `boundary.spaces` sum to must equal `table1_units` of the captured cell exactly.
+        // `table1_candidate_units` — the two-valued reading `unadjusted_amount_is_table1`
+        // needs to credit Tables 3 through 5 for draining one term of a two-term cell
+        // rather than only the sum — is not a second tier here: a case publishes the
+        // boundary's whole answer, never one table's share of it, and every Table 1 token
+        // `table1_units` refuses (only `×`; every other one parses as `Value::Spacing`) is
+        // one `table1_candidate_units` refuses identically, so reaching for it here would
+        // have been dead code, which an earlier revision of the checker wrote anyway before
+        // this round's own reading caught it. `×` is the one Table 1 token this checker
+        // declines to compare a published amount against; no comparison is invented for it.
+        // What it does not do, and could not do without duplicating `jlreq-class`: turn a
+        // case's own `text` into the `(before, after)`
+        // class pair a cell is keyed on for the 51 boundary cases that declare no
+        // coordinate — every `A.*` and `3.x` boundary case (42 of the 51), which a checker
+        // here would have to classify itself, a second implementation of a fact
+        // `jlreq-class` owns (ADR 0019 forbids it), plus `C.json`'s and `C.2.json`'s own 9
+        // Table 2 coordinates, which carry no amount to compare in the first place. Naming
+        // that as the registration's own `awaiting`/`remainder` below, rather than a stale
+        // "the field does not exist yet" guard, is the honest statement of what remains.
+        check: Check::Partial {
+            run: conformance_cases_agree_with_the_cells,
+            awaiting: "a `cells` declaration on the 51 other boundary cases (the 42 A.* and \
+                       3.x cases, whose own coordinate this gate would have to derive by \
+                       classifying `text` — a second implementation of Appendix A, which \
+                       ADR 0019 forbids — and the 9 C.json/C.2.json cases, over Table 2, \
+                       which has no amount to compare)",
+            remainder: "existence and, for Table 1, amount agreement at every coordinate \
+                        those 51 cases would declare",
         },
     },
     Invariant {
@@ -1323,16 +1546,23 @@ const INVARIANTS: &[Invariant] = &[
             remainder: "the overrides the appendix notes produce, as well as the cells",
         },
     },
+    Invariant {
+        id: "expansion-needs-no-referent",
+        citation: "ADR 0014, ADR 0021",
+        check: Check::Whole {
+            run: expansion_needs_no_referent,
+        },
+    },
 ];
 
 /// Run every invariant that has something to run over, and say which did not.
-fn run_invariants(capture: &Capture, findings: &mut Findings, census: &mut Vec<String>) {
+fn run_invariants(evidence: &Evidence<'_>, findings: &mut Findings, census: &mut Vec<String>) {
     let mut ran = 0usize;
     let mut waiting = Vec::new();
     for invariant in INVARIANTS {
         match &invariant.check {
             Check::Whole { run } => {
-                run(capture, findings);
+                run(evidence, findings);
                 ran = ran.saturating_add(1);
             },
             Check::Partial {
@@ -1340,7 +1570,7 @@ fn run_invariants(capture: &Capture, findings: &mut Findings, census: &mut Vec<S
                 awaiting,
                 remainder,
             } => {
-                run(capture, findings);
+                run(evidence, findings);
                 ran = ran.saturating_add(1);
                 waiting.push(format!(
                     "  {id} still awaits {awaiting} for {remainder}",
@@ -1370,9 +1600,9 @@ fn run_invariants(capture: &Capture, findings: &mut Findings, census: &mut Vec<S
 /// noted tables are silent on breakability rather than contradicting it. This exemption is
 /// deliberately narrow — a cell with *some other* note is not exempted by this check, on
 /// the same reasoning `table6_blank_faces_table2_not`'s own narrow exemption states.
-fn prohibition_agrees_across_tables(capture: &Capture, findings: &mut Findings) {
+fn prohibition_agrees_across_tables(evidence: &Evidence<'_>, findings: &mut Findings) {
     let mut seen: BTreeMap<Coordinate, (Vec<u8>, Vec<u8>)> = BTreeMap::new();
-    for (number, cells) in &capture.tables {
+    for (number, cells) in &evidence.capture.tables {
         for (coordinate, cell) in cells {
             if cell.note == "B.2#13" || cell.note == "D.2#4" {
                 continue;
@@ -1412,8 +1642,11 @@ fn prohibition_agrees_across_tables(capture: &Capture, findings: &mut Findings) 
 /// (`spec/captured/table2.en.tsv`'s own preamble records the adjudication). The exemption
 /// is narrowed to this one coordinate rather than to every noted cell, so a future capture
 /// error at some other noted coordinate is not silently absorbed here.
-fn table6_blank_faces_table2_not(capture: &Capture, findings: &mut Findings) {
-    let (Some(expansion), Some(breaks)) = (capture.tables.get(&6), capture.tables.get(&2)) else {
+fn table6_blank_faces_table2_not(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let (Some(expansion), Some(breaks)) = (
+        evidence.capture.tables.get(&6),
+        evidence.capture.tables.get(&2),
+    ) else {
         return;
     };
     for (coordinate, cell) in expansion {
@@ -1489,12 +1722,12 @@ fn table1_candidate_units(value: &Value) -> Option<Vec<i32>> {
 
 /// §D.1: the unadjusted amounts of Tables 3, 4 and 5 are Appendix B's, and a cell that may
 /// be reduced has something to reduce.
-fn unadjusted_amount_is_table1(capture: &Capture, findings: &mut Findings) {
-    let Some(spacing) = capture.tables.get(&1) else {
+fn unadjusted_amount_is_table1(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(spacing) = evidence.capture.tables.get(&1) else {
         return;
     };
     for number in [3u8, 4, 5] {
-        let Some(cells) = capture.tables.get(&number) else {
+        let Some(cells) = evidence.capture.tables.get(&number) else {
             continue;
         };
         for (coordinate, cell) in cells {
@@ -1534,9 +1767,9 @@ fn unadjusted_amount_is_table1(capture: &Capture, findings: &mut Findings) {
 }
 
 /// §D.1: no reduction opportunity in the line head row of Tables 3, 4 and 5.
-fn no_reduction_at_the_line_head(capture: &Capture, findings: &mut Findings) {
+fn no_reduction_at_the_line_head(evidence: &Evidence<'_>, findings: &mut Findings) {
     for number in [3u8, 4, 5] {
-        let Some(cells) = capture.tables.get(&number) else {
+        let Some(cells) = evidence.capture.tables.get(&number) else {
             continue;
         };
         for ((before, after), cell) in cells {
@@ -1558,8 +1791,8 @@ fn no_reduction_at_the_line_head(capture: &Capture, findings: &mut Findings) {
 }
 
 /// §D.1: Table 4 additionally has no reduction opportunity in the line end column.
-fn table4_no_reduction_at_the_line_end(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = capture.tables.get(&4) else {
+fn table4_no_reduction_at_the_line_end(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = evidence.capture.tables.get(&4) else {
         return;
     };
     for ((before, after), cell) in cells {
@@ -1579,8 +1812,8 @@ fn table4_no_reduction_at_the_line_end(capture: &Capture, findings: &mut Finding
 }
 
 /// §C.1 and §E.1: Tables 2 and 6 have no line-edge axes at all.
-fn line_edge_axes_only_where_they_exist(capture: &Capture, findings: &mut Findings) {
-    for (number, cells) in &capture.tables {
+fn line_edge_axes_only_where_they_exist(evidence: &Evidence<'_>, findings: &mut Findings) {
+    for (number, cells) in &evidence.capture.tables {
         if has_line_edge_axes(*number) {
             continue;
         }
@@ -1599,8 +1832,8 @@ fn line_edge_axes_only_where_they_exist(capture: &Capture, findings: &mut Findin
 }
 
 /// §C.3: cl-01 as a row and cl-02, cl-06 and cl-07 as columns are prohibited at all levels.
-fn table2_prohibited_at_all_levels(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = capture.tables.get(&2) else {
+fn table2_prohibited_at_all_levels(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = evidence.capture.tables.get(&2) else {
         return;
     };
     for ((before, after), cell) in cells {
@@ -1667,8 +1900,8 @@ fn table2_is_complete(capture: &Capture) -> Option<&BTreeMap<Coordinate, Cell>> 
 }
 
 /// §3.1.7: ten classes may not start a line.
-fn line_start_prohibited_classes(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = table2_is_complete(capture) else {
+fn line_start_prohibited_classes(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = table2_is_complete(evidence.capture) else {
         return;
     };
     let found = prohibited_throughout(cells, VERY_STRICT, |(_, after)| after);
@@ -1685,8 +1918,8 @@ fn line_start_prohibited_classes(capture: &Capture, findings: &mut Findings) {
 }
 
 /// §3.1.8: two classes may not end a line.
-fn line_end_prohibited_classes(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = table2_is_complete(capture) else {
+fn line_end_prohibited_classes(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = table2_is_complete(evidence.capture) else {
         return;
     };
     let found = prohibited_throughout(cells, VERY_STRICT, |(before, _)| before);
@@ -1703,8 +1936,8 @@ fn line_end_prohibited_classes(capture: &Capture, findings: &mut Findings) {
 }
 
 /// §B.1: `hang` sits on a half or quarter em, and `ruby hang` on a solid cell.
-fn hang_sits_on_a_space(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = capture.tables.get(&1) else {
+fn hang_sits_on_a_space(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = evidence.capture.tables.get(&1) else {
         return;
     };
     for ((before, after), cell) in cells {
@@ -1734,8 +1967,8 @@ fn hang_sits_on_a_space(capture: &Capture, findings: &mut Findings) {
 }
 
 /// §3.1.9: a half em after cl-06 at the line end, and solid after cl-02, cl-05 and cl-07.
-fn table4_line_end_follows_the_jis_reading(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = capture.tables.get(&4) else {
+fn table4_line_end_follows_the_jis_reading(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = evidence.capture.tables.get(&4) else {
         return;
     };
     for (class, expected) in [(6u8, HALF_EM), (2, SOLID), (5, SOLID), (7, SOLID)] {
@@ -1761,9 +1994,9 @@ fn table4_line_end_follows_the_jis_reading(capture: &Capture, findings: &mut Fin
 }
 
 /// The ladders have six and four steps, and a table uses a contiguous run of them.
-fn stage_ordinals_are_contiguous(capture: &Capture, findings: &mut Findings) {
+fn stage_ordinals_are_contiguous(evidence: &Evidence<'_>, findings: &mut Findings) {
     for (number, steps) in [(3u8, 6u8), (4, 6), (5, 6), (6, 4)] {
-        let Some(cells) = capture.tables.get(&number) else {
+        let Some(cells) = evidence.capture.tables.get(&number) else {
             continue;
         };
         let mut stages = BTreeSet::new();
@@ -1813,8 +2046,8 @@ fn amounts_of(value: &Value) -> Vec<Amount> {
 }
 
 /// ADR 0007: every amount is an exact multiple of 1/720 em.
-fn amounts_are_multiples_of_the_unit(capture: &Capture, findings: &mut Findings) {
-    for (number, cells) in &capture.tables {
+fn amounts_are_multiples_of_the_unit(evidence: &Evidence<'_>, findings: &mut Findings) {
+    for (number, cells) in &evidence.capture.tables {
         for ((before, after), cell) in cells {
             for amount in amounts_of(&cell.value) {
                 if amount.units().is_none() {
@@ -1832,8 +2065,8 @@ fn amounts_are_multiples_of_the_unit(capture: &Capture, findings: &mut Findings)
 }
 
 /// ADR 0014: a boundary yields at most one conditional space per referent.
-fn at_most_one_space_per_referent(capture: &Capture, findings: &mut Findings) {
-    let Some(cells) = capture.tables.get(&1) else {
+fn at_most_one_space_per_referent(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let Some(cells) = evidence.capture.tables.get(&1) else {
         return;
     };
     for ((before, after), cell) in cells {
@@ -1851,6 +2084,136 @@ fn at_most_one_space_per_referent(capture: &Capture, findings: &mut Findings) {
                     format!(
                         "row {before}, column {after} reads `{token}`, which is {count} \
                          contributions from one neighbor; a space has two owners and no more",
+                        token = cell.token
+                    ),
+                );
+            }
+        }
+    }
+}
+
+/// ADR 0014, amended by ADR 0021: Table 6's own opportunity is safe to read independent of
+/// Table 1's own terms — `jlreq_spacing::Boundary::expansion`, not attached to any one
+/// `jlreq_spacing::ConditionalSpace` — only because no coordinate ever needs both a
+/// two-referent Table 1 cell *and* an independent Table 6 opportunity at once. A coordinate
+/// that violated this would leave `crates/jlreq-line/src/ladder.rs`'s own `Site` asked to
+/// carry more expansion room than its one-slot shape (ADR-0014's own at-most-two-spaces
+/// bound) has anywhere to put, or force `crate::compose::boundary_spaces` to choose which of
+/// two term-carrying sites the boundary's own `expansion` belongs to — a choice §3.8.4 (c)
+/// gives no basis for. Checked here rather than trusted, the same discipline ADR 0009 gives
+/// `at-most-one-space-per-referent` immediately above.
+fn expansion_needs_no_referent(evidence: &Evidence<'_>, findings: &mut Findings) {
+    let (Some(spacing), Some(expansion)) = (
+        evidence.capture.tables.get(&1),
+        evidence.capture.tables.get(&6),
+    ) else {
+        return;
+    };
+    for (coordinate, cell) in expansion {
+        let movable = matches!(&cell.value, Value::Ranged(ranged) if ranged.movable());
+        if !movable {
+            continue;
+        }
+        let Some(spacing_cell) = spacing.get(coordinate) else {
+            continue;
+        };
+        let Value::Spacing { terms, .. } = &spacing_cell.value else {
+            continue;
+        };
+        if terms.len() >= 2 {
+            let (before, after) = *coordinate;
+            findings.push(
+                "expansion-needs-no-referent",
+                format!(
+                    "row {before}, column {after} is a real Table 6 opportunity (`{token}`) at \
+                     a Table 1 coordinate carrying two terms (`{spacing_token}`); ADR 0021 \
+                     assumes a boundary never needs both a two-referent conditional space and \
+                     an independent expansion opportunity at once",
+                    token = cell.token,
+                    spacing_token = spacing_cell.token
+                ),
+            );
+        }
+    }
+}
+
+/// ADR 0006: a published conformance case that declares a matrix coordinate under `cells`
+/// must agree with the cell the independently double-entered transcription actually has
+/// there.
+///
+/// Two claims, and no more. **Existence**: every `(table, before, after)` a case declares
+/// is a coordinate the agreed transcription has — a case naming a mistyped coordinate, the
+/// wrong table, or a cell the two renderings disagreed on (and which therefore never made
+/// it into [`Capture`]) is a finding, at every table alike. **Amount agreement**, Table 1
+/// only, which is this invariant's actual substance: where a case declares a Table 1 cell
+/// and publishes a default-policy (`{}`) answer for that boundary, the units that answer's
+/// `boundary.spaces` sum to must equal [`table1_units`] of the captured cell exactly.
+/// [`table1_candidate_units`] is not this checker's tool — it exists so
+/// `unadjusted_amount_is_table1` can credit Tables 3 through 5 for draining one term of a
+/// two-term Table 1 cell rather than only the sum, a question that does not arise here
+/// because a case publishes the boundary's whole answer, not one table's share of it, and
+/// on every input where [`table1_units`] returns `None` (only `Value::Prohibited`, since
+/// every other Table 1 cell parses as `Value::Spacing` and both functions walk that
+/// variant's terms through the identical `term.amount.units()` fallible step) so does
+/// [`table1_candidate_units`], which an earlier revision of this function called anyway
+/// under the belief that it added a second tier — dead code this round's own reading
+/// found and removed, the exact kind of stale claim this round exists to repair. `×` is
+/// therefore the only Table 1 token this checker declines to compare a published amount
+/// against; no comparison is invented for it, and none is silently skipped either.
+///
+/// A case may declare several tables at one coordinate — Appendix D's own worked case
+/// drains a term across Tables 3, 4 and 5 at once — so this walks every declared cell of
+/// every case rather than stopping at the first: a checker that verified only one entry of
+/// the list is a checker that cannot fail on the cases that matter most.
+///
+/// Guarded on an empty transcription, the same discipline every other check here has: a
+/// case published before the matrices are transcribed has nothing to be measured against
+/// yet, and reporting every declared coordinate as missing would answer the schedule
+/// rather than a defect.
+fn conformance_cases_agree_with_the_cells(evidence: &Evidence<'_>, findings: &mut Findings) {
+    if evidence.capture.tables.is_empty() {
+        return;
+    }
+    for case in evidence.cases {
+        for &(table, before, after) in &case.cells {
+            let cell = evidence
+                .capture
+                .tables
+                .get(&table)
+                .and_then(|cells| cells.get(&(before, after)));
+            let Some(cell) = cell else {
+                findings.push(
+                    "conformance-cases-agree-with-the-cells",
+                    format!(
+                        "{file}: {id} declares table {table} row {before}, column {after}, \
+                         which the agreed transcription does not have (the wrong table, a \
+                         typo, or a cell the two renderings disagreed on)",
+                        file = case.file,
+                        id = case.id
+                    ),
+                );
+                continue;
+            };
+            if table != 1 {
+                continue;
+            }
+            let Some(published) = case.default_boundary_units else {
+                continue;
+            };
+            let Some(expected) = table1_units(&cell.value) else {
+                // `×` (prohibited), or an amount `amounts-are-multiples-of-the-unit`
+                // has already flagged; either way, not this checker's comparison to
+                // invent (its own doc comment states why in full).
+                continue;
+            };
+            if expected != published {
+                findings.push(
+                    "conformance-cases-agree-with-the-cells",
+                    format!(
+                        "{file}: {id} publishes {published}/720 em for row {before}, column \
+                         {after}, where Table 1 reads `{token}`",
+                        file = case.file,
+                        id = case.id,
                         token = cell.token
                     ),
                 );
@@ -2408,17 +2771,19 @@ fn hexadecimal(state: [u32; 8]) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Amount, Axis, CATALOGUE_COLUMNS, Capture, Cell, Check, DEFECT_COLUMNS, Findings,
-        INVARIANTS, LEVELS, RECORDED_DEFECTS, amounts_are_multiples_of_the_unit,
-        at_most_one_space_per_referent, check_id_column, double_entry, full_size,
-        hang_sits_on_a_space, is_transcription, line_edge_axes_only_where_they_exist,
-        line_end_prohibited_classes, line_start_prohibited_classes, no_reduction_at_the_line_head,
-        parse_axis, parse_matrix, parse_value, prohibition_agrees_across_tables, published_file,
-        read_provenance, sha256_hex, split_locale, stage_ordinals_are_contiguous,
-        table2_prohibited_at_all_levels, table4_line_end_follows_the_jis_reading,
-        table4_no_reduction_at_the_line_end, table6_blank_faces_table2_not,
-        unadjusted_amount_is_table1, wants_digests,
+        Amount, Axis, CATALOGUE_COLUMNS, Capture, CaseCells, Cell, Check, DEFECT_COLUMNS, Evidence,
+        Findings, INVARIANTS, LEVELS, RECORDED_DEFECTS, amounts_are_multiples_of_the_unit,
+        at_most_one_space_per_referent, check_id_column, conformance_cases_agree_with_the_cells,
+        double_entry, full_size, hang_sits_on_a_space, is_transcription,
+        line_edge_axes_only_where_they_exist, line_end_prohibited_classes,
+        line_start_prohibited_classes, no_reduction_at_the_line_head, parse_axis, parse_matrix,
+        parse_value, prohibition_agrees_across_tables, published_file, read_declared_cells,
+        read_default_boundary_units, read_provenance, sha256_hex, split_locale,
+        stage_ordinals_are_contiguous, table2_prohibited_at_all_levels,
+        table4_line_end_follows_the_jis_reading, table4_no_reduction_at_the_line_end,
+        table6_blank_faces_table2_not, unadjusted_amount_is_table1, wants_digests,
     };
+    use crate::conform;
     use crate::shared;
     use std::fs;
 
@@ -2447,10 +2812,54 @@ mod tests {
         capture
     }
 
+    /// Wrap a capture as evidence with no case declared, for a check that never reads
+    /// `.cases`.
+    fn evidence(capture: &Capture) -> Evidence<'_> {
+        Evidence {
+            capture,
+            cases: &[],
+        }
+    }
+
+    /// Wrap a capture and a set of case declarations as evidence.
+    fn evidence_with_cases<'a>(capture: &'a Capture, cases: &'a [CaseCells]) -> Evidence<'a> {
+        Evidence { capture, cases }
+    }
+
+    /// One `cases_declaring` fixture: a file, an id, its declared `(table, before, after)`
+    /// coordinates and its default-policy boundary units, in the source spelling.
+    type CaseCellsFixture<'a> = (&'a str, &'a str, &'a [(u8, &'a str, &'a str)], Option<i32>);
+
+    /// Build `CaseCells` fixtures from `(file, id, cells, default_units)` tuples, the same
+    /// shape [`read_case_cells`] produces from a real case file.
+    fn cases_declaring(fixtures: &[CaseCellsFixture<'_>]) -> Vec<CaseCells> {
+        fixtures
+            .iter()
+            .map(|(file, id, cells, default_boundary_units)| CaseCells {
+                file: (*file).to_owned(),
+                id: (*id).to_owned(),
+                cells: cells
+                    .iter()
+                    .map(|(table, before, after)| {
+                        (
+                            *table,
+                            parse_axis(before).expect("the fixture row label parses"),
+                            parse_axis(after).expect("the fixture column label parses"),
+                        )
+                    })
+                    .collect(),
+                default_boundary_units: *default_boundary_units,
+            })
+            .collect()
+    }
+
     /// Run one check over a capture and return what it reported.
-    fn run_over(check: fn(&Capture, &mut Findings), cells: &[(u8, &str, &str, &str)]) -> String {
+    fn run_over(
+        check: fn(&Evidence<'_>, &mut Findings),
+        cells: &[(u8, &str, &str, &str)],
+    ) -> String {
         let mut findings = Findings::default();
-        check(&capture(cells), &mut findings);
+        check(&evidence(&capture(cells)), &mut findings);
         reported(findings)
     }
 
@@ -2714,7 +3123,7 @@ mod tests {
             },
         );
         let mut findings = Findings::default();
-        prohibition_agrees_across_tables(&capture, &mut findings);
+        prohibition_agrees_across_tables(&evidence(&capture), &mut findings);
         assert_eq!(reported(findings), "");
     }
 
@@ -2741,7 +3150,7 @@ mod tests {
             },
         );
         let mut findings = Findings::default();
-        prohibition_agrees_across_tables(&capture, &mut findings);
+        prohibition_agrees_across_tables(&evidence(&capture), &mut findings);
         let report = reported(findings);
         assert!(report.contains("define `×` identically"), "{report}");
     }
@@ -2790,7 +3199,7 @@ mod tests {
             },
         );
         let mut findings = Findings::default();
-        table6_blank_faces_table2_not(&capture, &mut findings);
+        table6_blank_faces_table2_not(&evidence(&capture), &mut findings);
         assert_eq!(reported(findings), "");
     }
 
@@ -2821,7 +3230,7 @@ mod tests {
             },
         );
         let mut findings = Findings::default();
-        table6_blank_faces_table2_not(&capture, &mut findings);
+        table6_blank_faces_table2_not(&evidence(&capture), &mut findings);
         assert_eq!(
             reported(findings),
             "table6-blank-faces-table2-not: row cl-24, column cl-13 is blank in Table 6, \
@@ -2932,19 +3341,25 @@ mod tests {
     fn the_line_edge_prohibitions_are_counted_over_a_complete_table() {
         let mut findings = Findings::default();
         let ten = [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        line_start_prohibited_classes(&full_table2(&ten, &[11, 12]), &mut findings);
-        line_end_prohibited_classes(&full_table2(&ten, &[11, 12]), &mut findings);
+        line_start_prohibited_classes(&evidence(&full_table2(&ten, &[11, 12])), &mut findings);
+        line_end_prohibited_classes(&evidence(&full_table2(&ten, &[11, 12])), &mut findings);
         assert_eq!(reported(findings), "");
 
         let mut findings = Findings::default();
-        line_start_prohibited_classes(&full_table2(&[1, 2, 3], &[11, 12]), &mut findings);
-        line_end_prohibited_classes(&full_table2(&ten, &[11]), &mut findings);
+        line_start_prohibited_classes(
+            &evidence(&full_table2(&[1, 2, 3], &[11, 12])),
+            &mut findings,
+        );
+        line_end_prohibited_classes(&evidence(&full_table2(&ten, &[11])), &mut findings);
         let report = reported(findings);
         assert!(report.contains("§3.1.7 names ten"), "{report}");
         assert!(report.contains("§3.1.8 names two"), "{report}");
 
         let mut findings = Findings::default();
-        line_start_prohibited_classes(&capture(&[(2, "cl-05", "cl-06", "not")]), &mut findings);
+        line_start_prohibited_classes(
+            &evidence(&capture(&[(2, "cl-05", "cl-06", "not")])),
+            &mut findings,
+        );
         assert_eq!(
             reported(findings),
             "",
@@ -3253,8 +3668,8 @@ mod tests {
         );
         assert_eq!(
             INVARIANTS.len(),
-            17,
-            "generation.md states seventeen (bracket-classes-mirror-their-originals retired)"
+            18,
+            "generation.md states nineteen (bracket-classes-mirror-their-originals retired)"
         );
         assert_eq!(LEVELS.len(), 4, "§C.3 states four");
     }
@@ -3262,10 +3677,22 @@ mod tests {
     #[test]
     fn an_empty_capture_is_examined_and_reports_nothing() {
         let capture = Capture::default();
+        // A case already declaring a coordinate, so the check below is a real exercise of
+        // `conformance-cases-agree-with-the-cells`'s own empty-transcription guard and not
+        // just of the fifteen checks that never read `.cases` at all: without that guard, a
+        // milestone published before the matrices are transcribed would report every
+        // declared coordinate as missing, which is the schedule and not a defect.
+        let cases = cases_declaring(&[(
+            "cases/fixture.json",
+            "fixture/before-the-transcription-lands/one-cell",
+            &[(1, "cl-05", "cl-06")],
+            Some(360),
+        )]);
+        let evidence = evidence_with_cases(&capture, &cases);
         let mut findings = Findings::default();
         for invariant in INVARIANTS {
             if let Check::Whole { run } | Check::Partial { run, .. } = &invariant.check {
-                run(&capture, &mut findings);
+                run(&evidence, &mut findings);
             }
         }
         assert_eq!(
@@ -3286,15 +3713,209 @@ mod tests {
     /// A silenced check is the one failure mode a gate must not have.
     #[test]
     fn every_registered_invariant_that_runs_can_fail() {
-        let unfailable = capture(&[(1, "cl-05", "cl-06", "1/2 be")]);
+        let unfailable_capture = capture(&[(1, "cl-05", "cl-06", "1/2 be")]);
         let mut findings = Findings::default();
-        prohibition_agrees_across_tables(&unfailable, &mut findings);
+        prohibition_agrees_across_tables(&evidence(&unfailable_capture), &mut findings);
         assert_eq!(reported(findings), "");
+        let failing_capture =
+            capture(&[(1, "cl-05", "cl-06", "×"), (6, "cl-05", "cl-06", "blank")]);
         let mut findings = Findings::default();
-        prohibition_agrees_across_tables(
-            &capture(&[(1, "cl-05", "cl-06", "×"), (6, "cl-05", "cl-06", "blank")]),
+        prohibition_agrees_across_tables(&evidence(&failing_capture), &mut findings);
+        assert_ne!(reported(findings), "");
+    }
+
+    #[test]
+    fn a_case_reading_a_default_policy_entry_sums_its_boundary_spaces() {
+        let one_space = json_object(
+            r#"{ "permitted": [
+                { "policy": {}, "expect": { "boundary": { "before": 0, "spaces": [
+                    { "units": 180 }
+                ] } } }
+            ] }"#,
+        );
+        assert_eq!(read_default_boundary_units(&one_space), Some(180));
+
+        let two_spaces = json_object(
+            r#"{ "permitted": [
+                { "policy": {}, "expect": { "boundary": { "before": 0, "spaces": [
+                    { "units": 180 }, { "units": 180 }
+                ] } } }
+            ] }"#,
+        );
+        assert_eq!(read_default_boundary_units(&two_spaces), Some(360));
+
+        let solid = json_object(
+            r#"{ "permitted": [
+                { "policy": {}, "expect": { "boundary": { "before": 0, "spaces": [] } } }
+            ] }"#,
+        );
+        assert_eq!(read_default_boundary_units(&solid), Some(0));
+
+        // The empty-overlay entry is not always first: this reads whichever `permitted`
+        // entry's own `policy` is `{}`, not the first entry in the array.
+        let overlay_first = json_object(
+            r#"{ "permitted": [
+                { "policy": { "adjustment.reduction_table": "table-4" },
+                  "expect": { "boundary": { "before": 0, "spaces": [{ "units": 999 }] } } },
+                { "policy": {},
+                  "expect": { "boundary": { "before": 0, "spaces": [{ "units": 180 }] } } }
+            ] }"#,
+        );
+        assert_eq!(read_default_boundary_units(&overlay_first), Some(180));
+
+        let no_default_entry = json_object(
+            r#"{ "permitted": [
+                { "policy": { "adjustment.reduction_table": "table-4" },
+                  "expect": { "boundary": { "before": 0, "spaces": [] } } }
+            ] }"#,
+        );
+        assert_eq!(read_default_boundary_units(&no_default_entry), None);
+
+        let classify_case = json_object(r#"{ "permitted": [{ "policy": {}, "expect": {} }] }"#);
+        assert_eq!(read_default_boundary_units(&classify_case), None);
+    }
+
+    #[test]
+    fn a_cells_field_reads_as_table_before_after_tuples() {
+        let case = json_object(
+            r#"{ "cells": [
+                { "table": 1, "before": "cl-02", "after": "line-end" },
+                { "table": 4, "before": "line-head", "after": "cl-30" }
+            ] }"#,
+        );
+        assert_eq!(
+            read_declared_cells(&case),
+            vec![
+                (1, Axis::Class(2), Axis::LineEnd),
+                (4, Axis::LineHead, Axis::Class(30)),
+            ]
+        );
+        assert_eq!(read_declared_cells(&json_object("{}")), Vec::new());
+    }
+
+    /// Parse a JSON fragment through `conform`'s own reader, for a fixture that is an
+    /// object by construction.
+    fn json_object(source: &str) -> conform::Json {
+        conform::Json::parse(source).expect("the fixture is JSON")
+    }
+
+    /// A checker that verifies only the first entry of a case's `cells` cannot fail on the
+    /// cases that matter most, so this fixture's second entry is deliberately the wrong
+    /// one in each scenario, never the first.
+    #[test]
+    fn conformance_cases_agree_with_the_cells_checks_every_declared_cell() {
+        let transcription = capture(&[
+            (1, "cl-05", "cl-06", "1/2 be"),
+            (3, "cl-05", "cl-06", "1/2-0 stage 4"),
+            (1, "cl-01", "cl-02", "×"),
+        ]);
+
+        let agreeing = cases_declaring(&[(
+            "cases/fixture.json",
+            "fixture/agreeing/two-cells",
+            &[(1, "cl-05", "cl-06"), (3, "cl-05", "cl-06")],
+            Some(360),
+        )]);
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&transcription, &agreeing),
             &mut findings,
         );
-        assert_ne!(reported(findings), "");
+        assert_eq!(
+            reported(findings),
+            "",
+            "a real, agreeing declaration reports nothing"
+        );
+
+        // The first declared cell is real; the second names a table the transcription
+        // holds but not this coordinate.
+        let second_cell_does_not_exist = cases_declaring(&[(
+            "cases/fixture.json",
+            "fixture/second-cell-does-not-exist/two-cells",
+            &[(1, "cl-05", "cl-06"), (3, "cl-06", "cl-05")],
+            Some(360),
+        )]);
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&transcription, &second_cell_does_not_exist),
+            &mut findings,
+        );
+        let report = reported(findings);
+        assert!(
+            report.contains("table 3 row cl-06, column cl-05"),
+            "a checker that stopped at the first entry could not report this: {report}"
+        );
+
+        // The first declared cell is real; the second is a Table 1 cell whose published
+        // amount disagrees with the captured one.
+        let second_cell_wrong_amount = cases_declaring(&[
+            (
+                "cases/fixture.json",
+                "fixture/first-cell-agrees/one-cell",
+                &[(3, "cl-05", "cl-06")],
+                Some(360),
+            ),
+            (
+                "cases/fixture.json",
+                "fixture/second-cell-wrong-amount/one-cell",
+                &[(1, "cl-05", "cl-06")],
+                Some(180),
+            ),
+        ]);
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&transcription, &second_cell_wrong_amount),
+            &mut findings,
+        );
+        let report = reported(findings);
+        assert!(
+            report.contains("publishes 180/720"),
+            "a checker that stopped at the first case could not report this: {report}"
+        );
+
+        // A declared cell in a table the transcription has not captured at all.
+        let no_such_table = cases_declaring(&[(
+            "cases/fixture.json",
+            "fixture/no-such-table/one-cell",
+            &[(5, "cl-05", "cl-06")],
+            None,
+        )]);
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&transcription, &no_such_table),
+            &mut findings,
+        );
+        assert!(reported(findings).contains("table 5 row cl-05, column cl-06"));
+
+        // A declared Table 1 cell reading `×` carries no amount to compare, even when the
+        // case itself publishes one: `table1_units` returns `None` only for `Value::
+        // Prohibited`, and this checker declines the comparison rather than inventing one
+        // (an earlier revision reached for `table1_candidate_units` as a fallback here,
+        // which this round's own reading found to be dead code — see the function's own
+        // doc comment for why — and removed).
+        let prohibited_cell = cases_declaring(&[(
+            "cases/fixture.json",
+            "fixture/prohibited-cell/one-cell",
+            &[(1, "cl-01", "cl-02")],
+            Some(180),
+        )]);
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&transcription, &prohibited_cell),
+            &mut findings,
+        );
+        assert_eq!(
+            reported(findings),
+            "",
+            "a `×` cell has no amount for any published units to disagree with"
+        );
+
+        // An empty transcription is nothing to measure a declared cell against yet.
+        let mut findings = Findings::default();
+        conformance_cases_agree_with_the_cells(
+            &evidence_with_cases(&Capture::default(), &agreeing),
+            &mut findings,
+        );
+        assert_eq!(reported(findings), "");
     }
 }

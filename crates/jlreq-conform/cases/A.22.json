@@ -639,6 +639,83 @@
           "evidence": "spec/derived/questions.tsv"
         }
       ]
+    },
+    {
+      "id": "A.22/run-identity/group-ruby-shares-a-run-mono-ruby-does-not",
+      "rules": ["B.2#10", "C.2#7"],
+      "standing": "normative",
+      "quote": "When two adjacent characters belong to the same simple-ruby character complex (cl-22) run, set them according to the method explained in § 3.3.5 Positioning of Mono-ruby with Respect to Base Characters or § 3.3.6 Positioning of Group-ruby with Respect to Base Characters. When two adjacent characters belong to two distinct simple-ruby character complex runs, set them solid.",
+      "rationale": "The falsifiable `same_run` case task #80 names: `cases.schema.json`'s own `lower.same_run` field, its reader and `crates/jlreq-conform/src/run.rs`'s own `check_same_run` have all been live since M4-a round 2 (task #74) and exercised by nothing but `C.2.json`'s own prose, which only ever mentions the field by name — a schema, a reader and a checker with no case reaching any of the three measures nothing (§D.2#4's own standard). The quoted note is the honest address: it is the one place in the document that names run identity for cl-22 in so many words, in both directions at once — 'the same... run' against 'two distinct... runs' — and cl-22 is simple-ruby in full, mono-ruby together with group-ruby (§3.3.7's own closing Note, the same routing `A.22/mono-ruby-base/is-in-the-complex`'s and `A.22/group-ruby-base/is-in-the-complex`'s own rationales already read this file's own two classification cases through). One input carries both halves of the note at once, because `same_run` is a whole-stream fact `Contribution::runs` resolves once per call, not a fact scoped to whichever `construct` a `lower` case happens to ask about (`ExpectLower::construct`'s own default of 0 is left unstated below on purpose: neither pair either half of this note asks about is anchored to it). Four base items, three declared constructs, none overlapping: items 0–1 (硝子) are one declared `group`-ruby construct reading がらす — `RubyStyle::GroupRuby` allocates one `RunId` over its own whole base range (`crates/jlreq-inline/src/lower.rs`'s own `lower_group`), so the two base characters genuinely share a run, and `same_run` names the pair `true`. Items 2 and 3 (漢, 字) are two *separate* declared `mono`-ruby constructs, one base character each, reading か and じ. This is deliberately not one mono-ruby construct split into two runs, though that would answer identically: `RubyStyle::MonoRuby`'s own definition is 'one run of ruby text... attached to each base character' — §3.3.1's own note names the pair this produces directly, reporting that between 鬼 and 門, two adjacent mono-ruby-annotated base characters of Figure 107, 'the inter-character spacing... can be expanded' (§E.2 note 6's own quarter-em opportunity, reachable only between two *different* runs) — so two adjacent mono-ruby base characters are never the same run, declared as one JSON `ruby` object with two `runs` entries or as two separate objects alike; `lower_mono` allocates a fresh `RunId` per declared `RubyRun`, one per base character, regardless of which JSON shape declared it. Two separate objects are used here anyway, matching `A.22/distinct-complexes/break-and-solid`'s own precedent one address up, so the case is unambiguous at the JSON level too and not only at the `RunId` level a reader would otherwise have to already know. `same_run` names the pair `[2, 3]` `false`. Neither rule address moves off `[[owned]]` on the strength of this one case — both were already `[[owned]]` before it (M1), for the boundary-kind measurement `A.22/distinct-complexes/break-and-solid` and `A.22/same-complex/no-break-inside` already give each; this case adds a `lower`-kind measurement of the identical run-identity fact alongside those, not a new claim about either entry's own scope.",
+      "input": {
+        "kind": "lower",
+        "text": "硝子漢字",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 9, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "annotations": [
+          {
+            "text": "ガラス",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [
+              { "start": 0, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 3, "advance": 500, "frame": "full-em", "scale": 0 },
+              { "start": 6, "advance": 500, "frame": "full-em", "scale": 0 }
+            ]
+          },
+          {
+            "text": "か",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [{ "start": 0, "advance": 500, "frame": "full-em", "scale": 0 }]
+          },
+          {
+            "text": "じ",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [{ "start": 0, "advance": 500, "frame": "full-em", "scale": 0 }]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 2],
+              "annotation": 0,
+              "style": "group",
+              "runs": [{ "base": [0, 2], "annotation": [0, 3] }]
+            },
+            {
+              "base": [2, 3],
+              "annotation": 1,
+              "style": "mono",
+              "runs": [{ "base": [2, 3], "annotation": [0, 1] }]
+            },
+            {
+              "base": [3, 4],
+              "annotation": 2,
+              "style": "mono",
+              "runs": [{ "base": [3, 4], "annotation": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "§B.2 note 10, both sentences, applied identically under every policy this workspace generates: run identity names no question",
+          "expect": {
+            "lower": {
+              "construct": 0,
+              "same_run": [
+                { "items": [0, 1], "same": true },
+                { "items": [2, 3], "same": false }
+              ]
+            }
+          }
+        }
+      ],
+      "disagreements": []
     }
   ]
 }

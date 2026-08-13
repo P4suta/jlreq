@@ -428,9 +428,13 @@ without reading our source.
 ```rust
 /// What an implementation supplies to be measured.
 ///
-/// Three methods, each taking data and returning data. `None` means "this implementation
+/// Eight methods, each taking data and returning data. `None` means "this implementation
 /// does not attempt this layer" and is reported as skipped, never as a failure: an engine
-/// that exposes only line composition scores honestly on line composition.
+/// that exposes only line composition scores honestly on line composition. `align`, `tab`,
+/// `feasible`, `lower` and `place` are required rather than defaulted to `None`, matching the
+/// other three: every question here is declined per-input by the method itself returning
+/// `None`, never by the method being absent, so a default impl would be a second, silent way
+/// to decline that no other method here has.
 pub trait Compose {
     fn name(&self) -> &str;
 
@@ -443,14 +447,55 @@ pub trait Compose {
     /// The class number, 1 through 30, of one item. JLReq: §3.9.2, §A
     fn classify(&self, input: &CaseInput, item: usize) -> Option<CaseClass>;
 
-    /// The spacing, breakability and placement at one boundary. JLReq: §B, §C
-    fn boundary(&self, input: &CaseInput, before: usize) -> Option<CaseBoundary>;
+    /// The spacing, breakability and placement at one boundary — interior when `edge` is
+    /// `None`, at the line edge it names otherwise. JLReq: §B, §C
+    fn boundary(&self, input: &CaseInput, before: usize, edge: Option<Edge>) -> Option<CaseBoundary>;
 
     /// The composed lines. JLReq: §3.8, §D, §E
     fn compose(&self, input: &CaseInput) -> Option<CaseOutput>;
+
+    /// The single line produced by aligning a run shorter than a caller-stated target.
+    /// Reuses `CaseOutput`/`CaseLine`: one `Line` is a one-element `lines` array, and every
+    /// existing field already means the right thing for it. JLReq: §3.5.3, §3.7.3
+    fn align(&self, input: &CaseInput) -> Option<CaseOutput>;
+
+    /// The runs placed for one caller-declared tab line, one `CaseLine` per placed run in
+    /// `tab_starts` order. Reuses `CaseOutput`/`CaseLine` the same way `align` does; a `tab`
+    /// case supplies neither `candidates` nor `measure`, only `tab_starts` and `tab_stops`.
+    /// JLReq: §3.6.1, §3.6.2, §3.6.3
+    fn tab(&self, input: &CaseInput) -> Option<CaseOutput>;
+
+    /// Which of one caller-declared break candidate kinsoku leaves standing, and which rule
+    /// refused it when it does not — `candidate` is the ordinal into `input.candidates`, not
+    /// a byte offset. Not `boundary`'s question restated: a `boundary` answer is Tables 1
+    /// and 2 at one adjacency, while a candidate's own survival additionally reads the
+    /// same-run refusals of §C.2 notes 6 through 8 and 13, which need a construct overlay
+    /// no table cell can express (`constructs` is load-bearing for this kind and for `lower`
+    /// and `place`; every other kind either declines outright or per item wherever a case
+    /// declares one). JLReq: §C.2#6, §C.2#7, §C.2#8, §C.2#13
+    fn feasible(&self, input: &CaseInput, candidate: usize) -> Option<CaseFeasible>;
+
+    /// What `jlreq_inline::lower` resolved for one declared ruby construct: its run identity
+    /// against its neighbors, the forced boundary spacing §3.3.8 rule 1 computes, and, for
+    /// mono-ruby, the resolved `RubyAlignment` and whether it is §3.3.5's own discouraged
+    /// combination. `construct` is the ordinal into `input.constructs.ruby`. Not a further
+    /// `feasible` or `boundary` question: it reaches `jlreq_inline::lower` directly, and
+    /// every fact it answers is the inline-construct layer's own, resolved before a boundary
+    /// or a line ever enters the picture. JLReq: §3.3.5, §3.3.8
+    fn lower(&self, input: &CaseInput, construct: usize) -> Option<CaseLower>;
+
+    /// What `jlreq_inline::place` computed for the case's own whole declared `Constructs`:
+    /// every annotation it placed and every mono-ruby run it declined to place —
+    /// §3.3.5(c)'s own katatsuki-with-overflow choice, unresolved for want of a policy
+    /// `Question`. No ordinal parameter, unlike `boundary`, `feasible` and `lower`: `place`
+    /// answers the whole call rather than one occurrence of it — `jlreq_inline::place::
+    /// Attachments` has no per-construct selector for a case to name — so this method takes
+    /// only `input`, `align`'s, `tab`'s and `compose`'s own shape rather than the three
+    /// per-occurrence methods'. JLReq: §3.3.5
+    fn place(&self, input: &CaseInput) -> Option<CasePlace>;
 }
 
-/// One case's `input` object, deserialized. The three trait methods share it because a
+/// One case's `input` object, deserialized. The eight trait methods share it because a
 /// case is one input and several questions about it, which is what lets an implementation
 /// answer only the layer it has.
 pub struct CaseInput {
@@ -464,8 +509,42 @@ pub struct CaseInput {
     pub constructs: CaseConstructs,
     pub candidates: Vec<CaseCandidate>,
     pub measure: i64,
+    /// Which of `Search`'s two variants a `compose` case is measured under. `None` reads
+    /// as `Search::FirstFit`, so every case published before this field existed keeps
+    /// answering exactly what it always answered.
+    pub search: Option<CaseSearch>,
     pub direction: String,
     pub first_line_indent: Option<i64>,
+    /// Narrows every line's own measure, first line included — distinct from
+    /// `first_line_indent`, which applies once.
+    pub head_indent: Option<i64>,
+    /// Narrows every line's own composition target from the line end side.
+    pub end_indent: Option<i64>,
+    /// §3.5.4's own widow threshold, in items rather than a length. `None` reads as `0`,
+    /// `Paragraph::new`'s own default and a no-op by construction.
+    pub widow_threshold: Option<i64>,
+    /// Which of `Alignment`'s four methods an `align` case asks for. Required of `align`,
+    /// ignored elsewhere.
+    pub alignment: Option<String>,
+    /// For a `tab` case: `starts[k]` is the item ordinal where the run after the `k`-th
+    /// tab sign begins. Required of `tab`, ignored elsewhere.
+    pub tab_starts: Vec<usize>,
+    /// For a `tab` case: the caller's own declared pool of tab positions and their
+    /// alignment kinds, in declaration order. Required of `tab`, ignored elsewhere.
+    pub tab_stops: Vec<CaseTabStop>,
+}
+
+/// `tolerance` is required alongside `kind: "optimal"` and absent for `"first-fit"`, which
+/// reads no tolerance at all — `Search::Optimal`'s own field.
+pub struct CaseSearch { pub kind: String, pub tolerance: Option<i64> }
+
+/// One declared tab stop: a position and a kind (`start`, `end`, `centered` or
+/// `character`), with `at` present only for `kind: "character"` — the same flattening
+/// `CaseSpace` already gives a reducible space's own `floor`/`stage`.
+pub struct CaseTabStop {
+    pub position: i64,
+    pub kind: String,
+    pub at: Option<usize>,
 }
 
 pub struct CaseScale { pub inline_em: i64, pub block_em: i64 }
@@ -487,7 +566,63 @@ pub struct CaseStream { pub text: String, pub scales: Vec<CaseScale>,
 /// would be the hostile artifact ADR 0006 exists to avoid. The `rules` an implementation
 /// does report are unioned into `Report::rules_exercised`, where they drive the
 /// exercised-coverage gate rather than the pass.
+///
+/// `CaseExpansion::rule` below is not a reversal of that decision: it compares one
+/// provenance field conditionally rather than every classification answer's whole chain,
+/// passes over (never fails) an expectation the answer meets with no citation at all, and
+/// exists because three deferrals named the prior *inability* to state that citation as
+/// their own blocker, which no deferral names for classification's own provenance.
+///
+/// Nor is `CaseBoundary::rules` below, compared under the identical logic (task #44, round
+/// 16): the whole array is read as a *subset*, never an equality and never an order — every
+/// address a case declares must appear somewhere among the answered rules — and a declared
+/// address met by an empty answered list is passed over rather than failed, the same third
+/// state `CaseExpansion::rule`'s own conditional comparison already gives one provenance
+/// field. Two comparisons in this module now read a provenance field; zero read
+/// classification's own.
 pub struct CaseClass { pub class: u8, pub rules: Vec<String> }
+
+/// A feasible-break answer for one of the caller's own candidates: whether kinsoku left it
+/// standing (`Feasible::breaks()`) or refused it (`Feasible::rejected()`), and the rules
+/// that decided it. Not `CaseBoundary`: spaces, placement, ruby overhang and expansion say
+/// nothing about a candidate's own survival. `rules` is compared the identical subset way
+/// `CaseBoundary::rules` is — presence among the answer's own citations, never equality and
+/// never order — for the identical reason: `Feasible::compute`'s own citation for one
+/// candidate is the same fixed-shape provenance chain ADR-0006 already keeps this suite
+/// from demanding a foreign implementation reproduce exactly.
+pub struct CaseFeasible { pub breakable: bool, pub rules: Vec<String> }
+
+/// A `jlreq_inline::lower` answer for one declared ruby construct: per-item run identity
+/// (opaque, scoped to this one answer — two items share a run when both resolve `Some` and
+/// equal), the forced boundary spacing `Contribution::separations` reports across every
+/// construct the answer resolved, the `RubyAlignment` resolved for the identified
+/// construct (real only for `RubyStyle::MonoRuby`), and whether it is §3.3.5's own
+/// discouraged combination. Not `CaseBoundary` or `CaseFeasible`: none of spacing-at-a-
+/// boundary, placement or a candidate's own survival is this answer's subject.
+pub struct CaseLower {
+    pub runs: Vec<Option<u32>>,
+    pub separations: Vec<(usize, i64)>,
+    pub alignment: Option<String>,
+    pub alignment_discouraged: bool,
+    pub rules: Vec<String>,
+}
+
+/// A `jlreq_inline::place` answer for the case's own whole declared `Constructs`: every
+/// annotation it placed and every mono-ruby run it declined to place. Not `CaseLower`: this
+/// is the whole call's own answer rather than one construct's, so it carries no `construct`
+/// ordinal, and no `rules` either — `Attachments` publishes none, because §3.3.5 is one rule
+/// address and `lower` already records it the moment it resolves an alignment (ADR-0019).
+pub struct CasePlace {
+    pub attachments: Vec<CaseAttachment>,
+    pub declined: Vec<usize>,
+}
+
+/// One placed annotation character, narrowed to the two facts the cased examples turn on —
+/// `size`, `side`, `run` and `construct` are real `Attachment` accessors this shape omits.
+pub struct CaseAttachment {
+    pub inline: i64,
+    pub item: Option<usize>,
+}
 
 /// A boundary answer. The conditional spaces, never their sum (ADR-0014).
 pub struct CaseBoundary {
@@ -495,6 +630,10 @@ pub struct CaseBoundary {
     pub breakable: bool,
     pub permitted: bool,
     pub ruby_overhang: Option<CaseOverhang>,
+    /// The boundary's own Table 6 opportunity, independent of `spaces`: a fact about the
+    /// class pair, not about either neighbor's own contribution (ADR-0014, amended by
+    /// ADR-0021 to say so explicitly — Table 6 has no `be`/`af` column at all).
+    pub expansion: CaseExpansion,
     pub rules: Vec<String>,
 }
 
@@ -505,11 +644,35 @@ pub struct CaseSpace {
     /// "rigid", "range", or "discrete" — §3.1.9's two-valued case is not a range.
     pub reduction: String,
     pub floor_units: i32,
-    /// "reduction" or "expansion". Appendix D's six steps and Appendix E's four are two
-    /// orderings of two different things and §3.8.2 orders the ladders themselves, so a
-    /// bare `stage` would mean two things in one field (ADR-0014).
+    /// Which ladder the stage below belongs to. Appendix D's six steps and Appendix E's
+    /// four are two orderings of two different things and §3.8.2 orders the ladders
+    /// themselves, so a bare `stage` would mean two things in one field (ADR-0014) — the
+    /// reason this disambiguator exists at all, though a `CaseSpace` can now only ever
+    /// answer `"reduction"` here: ADR-0021 moved Appendix E's own stage off the
+    /// conditional space entirely, onto `CaseExpansion::stage` below.
     pub ladder: String,
     pub stage: u8,
+}
+
+/// One boundary's own expansion opportunity (ADR-0014, amended by ADR-0021, and again by
+/// ADR-0021's own 2026-08-09 amendment for `rule` below).
+pub struct CaseExpansion {
+    /// "none", "range", or "residual" — §3.8.4 step (d)'s own unbounded fourth stage.
+    pub kind: String,
+    /// The ceiling, in kumihan's own unit. `None` outside `kind: "range"`.
+    pub ceiling_units: Option<i32>,
+    /// The priority stage (2 or 3 — Appendix E's own first stage, the Western word space,
+    /// is outside Table 6 and never appears here). `None` outside `kind: "range"`.
+    pub stage: Option<u8>,
+    /// Which rule states this coordinate's Table 6 row, by address —
+    /// `jlreq_spacing::Boundary::expansion_rule`'s own answer. `None` both for an
+    /// implementation that publishes no specification address and for a coordinate Table 6
+    /// carries no row for at all: the runner cannot and does not tell the two apart, only
+    /// an implementation that knows which one it meant can. Present here even when `kind`
+    /// is `"none"` — a row can state that the opportunity does not exist, and that denial
+    /// is still a citable fact the row's own address states, not the same absence as a
+    /// coordinate carrying no row.
+    pub rule: Option<String>,
 }
 
 pub struct CaseOutput { pub lines: Vec<CaseLine>, pub violations: Vec<CaseViolation> }
@@ -538,10 +701,18 @@ pub struct CaseLine {
     /// segment, which is most of them.
     pub parts: Vec<CasePart>,
     pub hanging: Option<i64>,
+    /// §3.1.12 ⑤'s repair as `Search::Optimal` applied it to this line. `None` asserts
+    /// that `Line::pull_up` answers `None` — a positive claim, not "unchecked" — which
+    /// is safe retroactively because `Search::FirstFit` never answers anything else.
+    pub pull_up: Option<CasePullUp>,
 }
 
 pub struct CaseTrim { pub item: usize, pub units: i32, pub resolved: i64,
                       pub referent: String, pub rule: String }
+
+/// `PullUp::pulls` is the item the nearer, un-taken candidate would have ended this line
+/// at — the boundary where the next line would otherwise have started.
+pub struct CasePullUp { pub amount: i64, pub pulls: usize, pub rule: Option<String> }
 
 /// One sub-line of one segment. `inline` and `block` are its origin relative to the line's;
 /// `across` is one block offset per interior item and is non-empty only for §3.2.5.
@@ -586,11 +757,11 @@ pub fn judge(suite: &Suite, answers: &Path) -> Result<Report, LoadError>;
 
 Every type above is `#[non_exhaustive]`, which [ADR
 0012](../adr/0012-outcome-and-detail-compatibility.md) requires of the whole published
-surface, so the four an implementation *constructs* — `CaseClass`, `CaseBoundary`,
-`CaseSpace`, `CaseOutput`, `CaseLine`, `CaseTrim`, `CasePart` — carry a `new` naming the
-fields that exist. A field added to one of them then leaves an implementation that already
-compiles compiling, which is the whole of that decision applied to an artifact other people
-build against.
+surface, so every answer type an implementation *constructs* — `CaseClass`, `CaseBoundary`,
+`CaseFeasible`, `CaseLower`, `CaseSpace`, `CaseExpansion`, `CaseOutput`, `CaseLine`,
+`CaseTrim`, `CasePart` — carries a `new` naming the fields that exist. A field added to one of them then leaves an
+implementation that already compiles compiling, which is the whole of that decision applied
+to an artifact other people build against.
 
 `judge` and the binary are what the crate owes the ecosystem and are the part of this
 document the code has not caught up with, as the top of this document says: `run` and
@@ -684,11 +855,24 @@ has to *exercise* each cell it claims under the dynamic half.
 
 The tense matters, because the arithmetic in this section is written against a number that
 does not exist yet. `spec/derived/rules.tsv` inventories 106 rules — every section of §3 and
-every appendix note — and no table cell, because the six matrices are transcribed rather
-than derived and `spec/captured/` is empty until the milestone that transcribes them
+every appendix note — and no table cell, because `derive` has never been extended to walk
+the six matrices into rule addresses; that is independent of whether the matrices
+themselves are transcribed, which they now are
 ([generation.md](generation.md)). So `covers` has no user today and the coverage gate runs
 over sections and notes alone; both facts are visible in the `conform` census, which prints
 the inventory's size on every run.
+
+A case may still name a matrix coordinate today, outside the coverage arithmetic entirely:
+`cells`, a case-level, optional, list-valued field of `{table, before, after}` objects,
+naming the table number and the two axis labels the way `spec/captured/` and
+`xtask::attest` key a cell — not through the `address` grammar's `@` suffix, which a
+multi-table legend such as §D.1 (Tables 3, 4 and 5 at once) cannot spell unambiguously.
+`xtask attest`'s `conformance-cases-agree-with-the-cells` invariant (ADR 0006) is this
+field's only reader: it asserts existence, at every declared table, and, for Table 1 alone,
+that a case's default-policy (`policy: {}`) boundary answer agrees in units with the
+captured cell. Neither `conform`'s declared-coverage gate nor `jlreq-conform`'s own case
+reader ever looks at `cells` — a boundary case that omits it declares nothing about the
+transcription either way, the same asymmetry `covers` has before the cell inventory exists.
 
 ## Two further gates the format makes free
 
@@ -699,20 +883,32 @@ three direction-conditional rules; a fourth shows up here as a failing case over
 corpus rather than as a code review that has to notice it. This is what turns ADR 0004 from
 an aspiration checked at M5 into a property proved from M1.
 
-**Cross-search agreement**, from M3. Every case runs under both `Search::FirstFit` and
-`Search::Optimal`, which must agree on every single-line case and on the first break of
-every paragraph whose first line has a unique feasible answer.
+**Cross-search agreement** is not a gate this suite runs, and the tense matters here the
+same way it does above: this section once described it in the present tense, alongside
+direction parity, before a case existed that could name `Search::Optimal` at all. No runner
+in `jlreq-conform` composes a case under both `Search::FirstFit` and `Search::Optimal` and
+compares the results — `ask` (`crates/jlreq-conform/src/run.rs`) calls `Compose::compose`
+exactly once per case, under whichever search `input.search` names (`Search::FirstFit` when
+it names none, `cases.schema.json`'s own field). What a later round added is the vocabulary
+for a case to *name* a search at all, not a runner that runs both and checks agreement.
+Building that gate is real, scoped, future work: it would have to run every existing case
+under `Search::Optimal` in addition to whatever its own `input.search` already asks for, and
+settle what "the first break of every paragraph whose first line has a unique feasible
+answer" means as a checkable predicate over the corpus rather than a sentence — neither of
+which is done by naming the field.
 
-That gate is satisfiable rather than aspirational because of where two things were put.
-Hanging punctuation is a stage of the shared `Ladder`, between reduction and expansion, not
-a repair the greedy path applies after choosing a break — §2.5.1 says it "is only necessary
-… when they would otherwise need to be wrapped to the line head" and that "if possible the
-full stops or commas are placed at the line end", which is a fit decision. And §3.1.12 ⑤ is
-not a mechanism at all: pulling up is taking the later of two feasible breaks and paying
-reduction, pushing down is taking the earlier one and paying expansion, and preferring the
-first is §3.8.2 — which `FirstFit` reaches greedily and `Optimal` reaches through
-`Preference`. Had either lived in one search and not the other, this gate would fail across
-the whole corpus and the fix would be a redesign after `Fit` and `Demerits` were frozen.
+The design reasoning below is kept because it survives the gate's own absence and would be
+what makes the gate satisfiable rather than aspirational, once built. Hanging punctuation is
+a stage of the shared `Ladder`, between reduction and expansion, not a repair the greedy path
+applies after choosing a break — §2.5.1 says it "is only necessary … when they would
+otherwise need to be wrapped to the line head" and that "if possible the full stops or commas
+are placed at the line end", which is a fit decision. And §3.1.12 ⑤ is not a mechanism at
+all: pulling up is taking the later of two feasible breaks and paying reduction, pushing down
+is taking the earlier one and paying expansion, and preferring the first is §3.8.2 — which
+`FirstFit` reaches greedily and `Optimal` reaches through `Preference`. Had either lived in
+one search and not the other, a cross-search gate built on this reasoning would fail across
+the whole corpus and the fix would be a redesign after `Fit` and `Demerits` were frozen —
+which is also why nothing here quietly widens the reasoning into a claim that the gate runs.
 
 **Cross-platform identity** is already free: `just test-ci` runs on Linux, Windows and
 macOS, and with integer arithmetic throughout a per-OS difference is a bug, never a

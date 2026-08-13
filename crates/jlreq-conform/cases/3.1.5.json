@@ -1,0 +1,131 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.1.5",
+  "heading_en": "Positioning of Opening Brackets at Line Head",
+  "heading_ja": "行頭の​始め括弧類の​配置方法",
+  "cases": [
+    {
+      "id": "3.1.5/opening-bracket-at-the-wrapped-line-head/pattern-2-synthesizes-the-half-em",
+      "rules": ["3.1.5"],
+      "standing": "normative",
+      "quote": "When starting a new line with opening brackets (cl-01) there are some patterns as shown in Figure 71. Note that the amount of line indent after the line feed (the first line indent of a new paragraph) is assumed to be a one em space across all the patterns.",
+      "rationale": "Figure 71 states three patterns over two positions — 改行行頭, the paragraph's own first-line indent after a line feed, and 折返し行頭, the indent an ordinary in-paragraph wrap gets — and this case reads the second alone, the only half `jlreq_spacing::evaluate::boundary` answers at all: `crates/jlreq-line/src/lib.rs`'s own \"Slots\" section names the first as still unfilled, because `Paragraph::with_first_line_indent` composes additively with the caller's own declared `head_indent` and cannot express pattern ③'s own half-em first line, which replaces the ordinary one-em indent rather than adding to it. At the wrapped line head, Figure 71's own Note (`spec/snapshot/index.html`, quoted in full by `docs/decisions/line-head-opening-bracket.md`) states the two readings this case's own two `permitted` entries publish: patterns ① and ③ both set the wrapped line 天付き — flush, no space at all, the result of 'the principle that any line should start with no spacing' — while pattern ② 'assume[s] that opening brackets should be always accompanied by the preceding half em spacing as if they were full-width' and then applies that same flush principle on top of the assumed width. `Question::LINE_HEAD_OPENING_BRACKET`'s own three named answers (`spec/derived/questions.tsv` row 50) map onto that pair two-to-one, and `Kumihan::default()` declares `Policy::JLREQ`, whose own answer is `pattern-1` (`crates/jlreq-spec/src/generated/policy.rs`'s own preset row, checked directly) — so the `{}` entry below is what every ordinary suite run actually measures, and it carries this round's own load-bearing assertion: `crates/jlreq-spacing/src/generated/table1.rs`'s own `(0, 1)` cell (`spec/captured/table1.en.tsv:817`, `line-head` × `cl-01`, blank, citing `B.2#17`) carries no term of its own under any pattern, so the citation `jlreq_spacing::evaluate::rules_fired` publishes at this coordinate is §B.2 note 17's own, `RuleId::B_2_NOTE_17`, regardless of which pattern is declared — pattern ② included, because `line_head_opening_bracket_space`'s own synthesis runs outside the per-term loop that reads this placement cell and never displaces it (`evaluate.rs`'s own `spaces_of`: the synthesis is appended to `built` after the loop, filling only the slot the loop left `None`). §3.1.5's own rule, `RuleId::POSITIONING_OF_OPENING_BRACKETS_AT_LINE_HEAD`, is a different fact: it is cited by no generated table cell anywhere in this workspace (checked directly; it appears nowhere under `crates/jlreq-spacing/src/generated/`), so the only place it is ever produced is that same synthesized space, which fires only under `pattern-2` — an overlay `Policy::JLREQ` cannot select, since `spacing.line_head_opening_bracket`'s declared value there is already `pattern-1` and `crates/jlreq-conform/src/run.rs`'s own `applicable()` selects the entry whose overlay's key-value pairs are all a submap of the declared policy's, excluding a mismatched value rather than reporting it (`unselectable()`'s own doc: a missing key is counted, a different value is not). The second `permitted` entry below states that fact plainly: it is a real, correct answer this workspace's own evaluator produces the moment an implementation declares `pattern-2`, published for that implementation to be measured against rather than for `cargo nextest`'s own `Kumihan::default()` run to select — the identical standing `docs/conformance-deferrals.toml`'s own `3.1.6` entry already states for its ten `quarter-em`-keyed siblings. `docs/decisions/line-head-opening-bracket.md`'s own point 3 argues the citation choice — §3.1.5's own rule rather than a second reading of §B.2 note 17's — from which of the two paired addresses `docs/design/api-spine.md`'s own frozen doc for this Question names (\"Spacing before cl-01 at the line head. JLReq: §B.2#17, §3.1.5\") had zero readers before that round; this case does not relitigate that argument. The half em's own amount, referent and reduction are `crates/jlreq-conform/cases/B.2.json`'s own `B.2/opening-bracket-at-line-head/the-preferred-zero-and-the-retained-half-em` case to state in full, including this round's own repair of the reduction argument's own ground — this case's own point is the *positioning method* Figure 71 names, the identical amount read for what §3.1.5 itself states about it (a wrapped-line-head pattern among three), not the amount §B.2 note 17 separately states it is (the alternative to a stated zero), which is the axis the two files vary against each other rather than duplicating, the same split `D.1/closing-bracket-at-line-end` and `B.2/closing-bracket-at-line-end` already draw at one shared coordinate.",
+      "input": {
+        "kind": "boundary",
+        "text": "（",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.5 Figure 71 patterns ① and ③ — the wrapped line head set flush (`spacing.line_head_opening_bracket = pattern-1`, `Policy::JLREQ`'s own default)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [],
+              "rules": ["B.2#17"]
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_head_opening_bracket": "pattern-2" },
+          "source": "JLReq §3.1.5 Figure 71 pattern ② — the wrapped line head accompanied by the bracket's own half em, as if it were full-width",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "trailing", "reduction": "rigid", "ladder": "reduction" }
+              ],
+              "rules": ["B.2#17", "3.1.5"]
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.5/line-head-before-an-ideograph/the-pattern-is-scoped-to-opening-brackets",
+      "rules": ["3.1.5"],
+      "standing": "normative",
+      "quote": "When starting a new line with opening brackets (cl-01) there are some patterns as shown in Figure 71. Note that the amount of line indent after the line feed (the first line indent of a new paragraph) is assumed to be a one em space across all the patterns.",
+      "rationale": "§3.1.5's own opening clause names one class, not the line head in general — 'starting a new line with opening brackets (cl-01)' — and this case reads the coordinate that word order excludes: a line head immediately before an ideograph (cl-19), the class round 15's own `line_head_opening_bracket_only_fires_at_the_line_head_before_cl_01` test already checked directly against the evaluator. This case re-derives the identical fact from the rule's own words, independently of that test, per ADR 0006. `line_head_opening_bracket_space`'s own guard reads `after != Class::OpeningBracket.number()` before it ever reads `policy` at all (`crates/jlreq-spacing/src/evaluate.rs`), so both entries below answer the identical `spaces: []` regardless of which of Figure 71's three patterns is declared — under `pattern-1` because no synthesis exists to fire in the first place, and under `pattern-2` because the class guard declines before the policy's own `pattern-2` answer is ever consulted, which is the discriminating fact this case's own second entry publishes rather than leaving pattern 2's own agreement here to be assumed from the pattern-1 reading alone. `spec/captured/table1.en.tsv`'s own cell at `line-head` × `cl-19` (row 833) is itself blank with no note attached, so the zero this case states is independently the identical fact an unrelated blank cell would give under any reading, matching Figure 71's own silence about any class but cl-01.",
+      "input": {
+        "kind": "boundary",
+        "text": "亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.5's own scope (`spacing.line_head_opening_bracket = pattern-1`, `Policy::JLREQ`'s own default), a class the rule's own text never names",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_head_opening_bracket": "pattern-2" },
+          "source": "kumihan published reading: the synthesis's own class guard declines before `pattern-2`'s own answer is ever read, so declaring the alternative changes nothing at a coordinate the rule's own words 'opening brackets (cl-01)' do not name",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "head",
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.1.5/opening-bracket-after-another-opening-bracket/the-pattern-is-scoped-to-the-line-head",
+      "rules": ["3.1.5"],
+      "standing": "normative",
+      "quote": "When starting a new line with opening brackets (cl-01) there are some patterns as shown in Figure 71. Note that the amount of line indent after the line feed (the first line indent of a new paragraph) is assumed to be a one em space across all the patterns.",
+      "rationale": "The rule's own title and body both name a line-head placement — 'starting a new line' — not an ordinary interior boundary, and this case reads the coordinate that phrase excludes on the axis the case above does not exercise: two opening brackets in a row, the second one an interior neighbor rather than the first item of a line. `line_head_opening_bracket_space`'s own guard reads `before != raw::LINE_EDGE` first (`evaluate.rs`), so this boundary declines the synthesis before either the neighbor's class or the policy's own answer is read — the complementary half of the guard the ideograph case above never reaches. `spec/captured/table1.en.tsv`'s own cell at `cl-01` × `cl-01` (row 5) is blank, so both entries below answer the identical zero Table 1 itself already states — under `pattern-1` because no synthesis exists, and under `pattern-2` because the line-edge guard declines before the class guard or the policy's own answer is ever consulted, exactly as `line_head_opening_bracket_only_fires_at_the_line_head_before_cl_01`'s own second sub-test already checks directly against the evaluator; this case re-derives the same fact from the rule's own scope to a line head, independently of that test, per ADR 0006.",
+      "input": {
+        "kind": "boundary",
+        "text": "（（",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.5's own scope (`spacing.line_head_opening_bracket = pattern-1`, `Policy::JLREQ`'s own default), an interior boundary rather than a line head",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        },
+        {
+          "policy": { "spacing.line_head_opening_bracket": "pattern-2" },
+          "source": "kumihan published reading: the synthesis's own line-edge guard declines before `pattern-2`'s own answer is ever read, so declaring the alternative changes nothing at an interior boundary the rule's own words 'starting a new line' do not name",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "spaces": []
+            }
+          }
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

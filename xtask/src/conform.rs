@@ -77,7 +77,11 @@ pub(crate) const GATE: Gate = Gate {
 };
 
 /// The published suite, relative to the workspace root.
-const CASES_DIR: &str = "crates/jlreq-conform/cases";
+///
+/// `pub(crate)` so `xtask::attest`'s own `conformance-cases-agree-with-the-cells` checker
+/// reads the identical path rather than a second copy of the string that could drift from
+/// this one.
+pub(crate) const CASES_DIR: &str = "crates/jlreq-conform/cases";
 /// The committed schema, published so nobody else has to use our reader.
 const SCHEMA_FILE: &str = "crates/jlreq-conform/cases.schema.json";
 /// The rule inventory `RuleId::ALL` is generated from.
@@ -275,7 +279,6 @@ impl Suite {
 
     /// What was examined, stated whether or not anything was found.
     fn census(&self, cases: &[Case]) -> Vec<String> {
-        let declared: BTreeSet<&str> = cases.iter().flat_map(Case::rules).collect();
         let mut lines = vec![
             if self.directory_exists {
                 format!(
@@ -285,24 +288,18 @@ impl Suite {
             } else {
                 format!("{CASES_DIR} does not exist yet, so the suite is the empty set")
             },
+            kind_census(cases),
             format!(
-                "{cases} case(s) naming {rules} distinct rule address(es): {classify} \
-                 classify, {boundary} boundary, {compose} compose, of which {pairs} form a \
-                 §3.1.2 frame pair",
-                cases = cases.len(),
-                rules = declared.len(),
-                classify = cases.iter().filter(|case| case.asks("classify")).count(),
-                boundary = cases.iter().filter(|case| case.asks("boundary")).count(),
-                compose = cases.iter().filter(|case| case.asks("compose")).count(),
-                pairs = cases
+                "{declaring} case(s) declare {total} matrix coordinate(s) under `cells`, \
+                 checked here for shape and by `xtask attest`'s own \
+                 `conformance-cases-agree-with-the-cells` invariant against the transcription",
+                declaring = cases
                     .iter()
-                    .filter(|case| case.asks("compose")
-                        && matches!(
-                            case.id.rsplit_once('/').map(|(_, variant)| variant),
-                            Some("half-em-frame" | "full-em-frame")
-                        ))
-                    .count()
+                    .filter(|case| case.declared_cells() > 0)
+                    .count(),
+                total = cases.iter().map(Case::declared_cells).sum::<usize>()
             ),
+            optimal_search_census(cases),
             match self.rules.as_ref() {
                 Some(rules) => format!(
                     "{RULES_INVENTORY} inventories {count} rule(s)",
@@ -365,6 +362,54 @@ impl Suite {
     }
 }
 
+/// The "`{cases}` case(s) naming `{rules}` distinct rule address(es): ..." line, as its own
+/// function so `Suite::census` stays under `clippy::too_many_lines` — the same reason
+/// `optimal_search_census` immediately below and `Ledger::census` are calls rather than
+/// inlined `format!`s there. `feasible`, `lower` and `place` are this round's and the two
+/// previous rounds' own additions to the count, alongside the five kinds already here
+/// (`Case::asks`'s own doc).
+fn kind_census(cases: &[Case]) -> String {
+    let declared: BTreeSet<&str> = cases.iter().flat_map(Case::rules).collect();
+    format!(
+        "{cases} case(s) naming {rules} distinct rule address(es): {classify} classify, \
+         {boundary} boundary, {compose} compose, {align} align, {tab} tab, {feasible} \
+         feasible, {lower} lower, {place} place, of which {pairs} form a §3.1.2 frame pair",
+        cases = cases.len(),
+        rules = declared.len(),
+        classify = cases.iter().filter(|case| case.asks("classify")).count(),
+        boundary = cases.iter().filter(|case| case.asks("boundary")).count(),
+        compose = cases.iter().filter(|case| case.asks("compose")).count(),
+        align = cases.iter().filter(|case| case.asks("align")).count(),
+        tab = cases.iter().filter(|case| case.asks("tab")).count(),
+        feasible = cases.iter().filter(|case| case.asks("feasible")).count(),
+        lower = cases.iter().filter(|case| case.asks("lower")).count(),
+        place = cases.iter().filter(|case| case.asks("place")).count(),
+        pairs = cases
+            .iter()
+            .filter(|case| case.asks("compose")
+                && matches!(
+                    case.id.rsplit_once('/').map(|(_, variant)| variant),
+                    Some("half-em-frame" | "full-em-frame")
+                ))
+            .count()
+    )
+}
+
+/// How many `compose` cases name `Search::Optimal` rather than leaving `search` absent
+/// (`Search::FirstFit`), as its own function so `Suite::census` stays under
+/// `clippy::too_many_lines` — the same reason `Ledger::census` is a call rather than an
+/// inlined `format!` there.
+fn optimal_search_census(cases: &[Case]) -> String {
+    format!(
+        "{count} compose case(s) name `Search::Optimal` rather than leaving `search` absent \
+         (`Search::FirstFit`)",
+        count = cases
+            .iter()
+            .filter(|case| case.asks("compose") && case.names_optimal_search())
+            .count()
+    )
+}
+
 /// How the inventory divides into the three states a rule can be in.
 ///
 /// A rule that is both covered and deferred counts as covered here, because it is: the
@@ -413,13 +458,25 @@ impl Case {
             .collect()
     }
 
-    /// Whether this case asks one of the three questions.
+    /// Whether this case asks one of the eight questions.
     fn asks(&self, kind: &str) -> bool {
         self.body
             .get("input")
             .and_then(|input| input.get("kind"))
             .and_then(Json::as_text)
             == Some(kind)
+    }
+
+    /// Whether this `compose` case names `Search::Optimal` rather than leaving `search`
+    /// absent (`Search::FirstFit`, the reading every case published before this field
+    /// existed already assumed).
+    fn names_optimal_search(&self) -> bool {
+        self.body
+            .get("input")
+            .and_then(|input| input.get("search"))
+            .and_then(|search| search.get("kind"))
+            .and_then(Json::as_text)
+            == Some("optimal")
     }
 
     /// Every address this case names inside an expectation, unparsed.
@@ -448,6 +505,18 @@ impl Case {
             .filter_map(Json::as_text)
             .collect()
     }
+
+    /// How many matrix coordinates this case declares under `cells`.
+    ///
+    /// A count and not the coordinates themselves: this gate's own job is the field's
+    /// shape, not the semantic cross-check against the transcription, which
+    /// `xtask::attest`'s own `conformance-cases-agree-with-the-cells` reads independently.
+    fn declared_cells(&self) -> usize {
+        self.body
+            .get("cells")
+            .and_then(Json::as_array)
+            .map_or(0, <[Json]>::len)
+    }
 }
 
 /// What the per-case checks need from outside the case.
@@ -469,7 +538,12 @@ struct Reference<'a> {
 ///
 /// One file per JLReq section, flat: anything else in the directory is left alone, because
 /// the suite is a published directory and a README beside the cases is not a case.
-fn case_files(directory: &Path) -> io::Result<Vec<PathBuf>> {
+///
+/// `pub(crate)` for the same reason [`CASES_DIR`] is: `xtask::attest`'s own
+/// `conformance-cases-agree-with-the-cells` checker walks the identical directory to read
+/// each case's own declared matrix coordinates, and a second directory walk here would be a
+/// second implementation of this one rather than a different one.
+pub(crate) fn case_files(directory: &Path) -> io::Result<Vec<PathBuf>> {
     if !directory.is_dir() {
         return Ok(Vec::new());
     }
@@ -673,19 +747,49 @@ const CASE_REQUIRED: &[&str] = &[
     "permitted",
 ];
 /// The fields a case may also carry.
-const CASE_OPTIONAL: &[&str] = &["covers", "forbidden", "disagreements"];
+const CASE_OPTIONAL: &[&str] = &["covers", "forbidden", "disagreements", "cells"];
+/// The fields of one `cells` entry: a captured matrix coordinate, named the way
+/// `spec/captured/table<N>.<locale>.tsv` and `xtask::attest` key it rather than through the
+/// `address` grammar, which a multi-table legend like §D.1 cannot spell unambiguously
+/// (`cases.schema.json`'s own `matrix_cell` description states why in full).
+const CELL_REQUIRED: &[&str] = &["table", "before", "after"];
 /// The fields of a case's `input`. `measure` and `candidates` are additionally required of
 /// a `compose` case, where a line cannot be composed without them.
 const INPUT_REQUIRED: &[&str] = &["kind", "text", "scales", "items"];
+/// The eight questions `input.kind` may name, `cases.schema.json`'s own enum. A value
+/// outside this list used to fall through `check_input`'s own `match` silently, requiring
+/// only the base fields every kind shares and asking `check_question`'s own wildcard arm to
+/// hold it to `compose`'s shape regardless of what it actually named — the identical hazard
+/// an unwired trait-dispatcher arm has, now closed on the reading side too.
+const INPUT_KINDS: &[&str] = &[
+    "classify", "boundary", "compose", "align", "tab", "feasible", "lower", "place",
+];
 /// The fields an `input` may also carry.
 const INPUT_OPTIONAL: &[&str] = &[
     "direction",
     "candidates",
     "measure",
+    "search",
     "annotations",
     "constructs",
     "first_line_indent",
+    "head_indent",
+    "end_indent",
+    "widow_threshold",
+    "alignment",
+    "tab_starts",
+    "tab_stops",
 ];
+/// The fields a `search` declaration may carry: `jlreq_line::Search` in the case format's
+/// own spelling.
+const SEARCH_REQUIRED: &[&str] = &["kind"];
+/// The one field a `search` may also carry, required alongside `kind: "optimal"` and
+/// ignored for `"first-fit"`.
+const SEARCH_OPTIONAL: &[&str] = &["tolerance"];
+/// `jlreq_line::Search`'s two variants, in the case format's own spelling.
+const SEARCHES: &[&str] = &["first-fit", "optimal"];
+/// `Badness::WORST`'s own cap: the highest `tolerance` a `search` may name.
+const BADNESS_WORST: i64 = 10_000;
 /// The fields of one stream: the base one, and every annotation (ADR 0016).
 const STREAM_REQUIRED: &[&str] = &["text", "scales", "items"];
 /// The fields of one item.
@@ -731,6 +835,18 @@ const FRAMES: &[&str] = &[
 /// The two writing directions of §2.3.1. A case naming neither is composed both ways by
 /// the direction-parity gate, so the field is optional rather than defaulted.
 const DIRECTIONS: &[&str] = &["horizontal", "vertical"];
+/// `jlreq_line::Alignment`'s four methods, in the case format's own spelling. Required of
+/// an `align` case (`check_input`'s own per-`kind` required-fields branch) and merely
+/// ignored elsewhere, the same reading `first_line_indent` already gets outside `compose`.
+const ALIGNMENTS: &[&str] = &["centered", "line-head", "line-end", "even-spacing"];
+/// The fields of one declared tab stop.
+const TAB_STOP_REQUIRED: &[&str] = &["position", "kind"];
+/// The one field a tab stop may also carry, present only for `kind: "character"`.
+const TAB_STOP_OPTIONAL: &[&str] = &["at"];
+/// `jlreq_line::TabKind`'s four variants, in the case format's own spelling. Required of a
+/// `tab_stop` entry (`check_tab_stops`'s own per-entry check) the same way `ALIGNMENTS` is
+/// required of an `align` case's own `alignment`.
+const TAB_KINDS: &[&str] = &["start", "end", "centered", "character"];
 /// Appendix B's `be` and `af`: the two owners a conditional space can have (ADR 0014).
 const REFERENTS: &[&str] = &["preceding", "trailing"];
 /// Every construct kind a caller can declare, named as `Constructs` names them. Only ruby
@@ -766,6 +882,8 @@ const REQUIRED_BY_SHAPE: &[(&str, &[&str])] = &[
     ("ruby", RUBY_REQUIRED),
     ("emphasis", EMPHASIS_REQUIRED),
     ("ruby run", RUN_REQUIRED),
+    ("tab stop", TAB_STOP_REQUIRED),
+    ("cells entry", CELL_REQUIRED),
 ];
 
 /// Check one case file and return the cases it holds.
@@ -869,6 +987,7 @@ fn check_case(case: &Json, section: &str, reference: Reference) -> Vec<String> {
     found.extend(check_id(case, section));
     found.extend(check_addresses(case, "rules", true));
     found.extend(check_addresses(case, "covers", false));
+    found.extend(check_cells(case));
     found.extend(check_standing(case));
     found.extend(check_input(case.get("input")));
     found.extend(check_permitted(case.get("permitted"), reference));
@@ -877,6 +996,114 @@ fn check_case(case: &Json, section: &str, reference: Reference) -> Vec<String> {
     found.extend(check_question(case));
     walk_amounts(case, "", false, reference, &mut found);
     found
+}
+
+/// The `cells` field: every declared coordinate a case exercises against the transcription.
+///
+/// Optional and list-valued: `docs/design/conformance.md`'s own worked example for
+/// `covers` already established a family as several cells credited by one entry, and a
+/// boundary case can equally exercise several tables at one coordinate — Appendix D's own
+/// worked legend example drains a term across Tables 3, 4 and 5 at once. Not the `address`
+/// grammar's `@` suffix: a multi-table legend such as §D.1 cannot spell one cell
+/// unambiguously through it (`cases.schema.json`'s own `matrix_cell` description states
+/// this in full, and `xtask::attest`'s own `conformance-cases-agree-with-the-cells`
+/// registration comment states why the natural per-table prefix is not even inventoried).
+/// This gate checks the field's own shape only; the semantic cross-check against
+/// `spec/captured/` is `xtask attest`'s job, read independently over the committed files
+/// rather than over whatever this run happened to validate.
+fn check_cells(case: &Json) -> Vec<String> {
+    let Some(value) = case.get("cells") else {
+        return Vec::new();
+    };
+    let Some(entries) = value.as_array() else {
+        return vec!["`cells` is not an array".to_owned()];
+    };
+    if entries.is_empty() {
+        return vec![
+            "`cells` is empty; a case that declares no coordinate omits the field rather \
+             than stating an empty list"
+                .to_owned(),
+        ];
+    }
+    let mut found = Vec::new();
+    for (index, entry) in entries.iter().enumerate() {
+        found.extend(prefix_all(&format!("cells[{index}]"), check_cell(entry)));
+    }
+    found
+}
+
+/// One `cells` entry: a table number and the two axis labels, checked against the parsers
+/// the transcription and the case format already share so a class out of range or an axis
+/// on the wrong side is refused identically everywhere.
+fn check_cell(entry: &Json) -> Vec<String> {
+    let Some(members) = entry.as_object() else {
+        return vec![format!("is {kind}, not an object", kind = entry.kind())];
+    };
+    let mut found = check_keys(members, CELL_REQUIRED, &[]);
+    let table = check_cell_table(entry, &mut found);
+    let before = check_cell_axis(
+        entry,
+        "before",
+        "line-head",
+        |label| shared::before(label).is_some(),
+        &mut found,
+    );
+    let after = check_cell_axis(
+        entry,
+        "after",
+        "line-end",
+        |label| shared::after(label).is_some(),
+        &mut found,
+    );
+    if let (Some(table), Some(before), Some(after)) = (table, before, after) {
+        if !matches!(table, 1 | 3 | 4 | 5) && (before == "line-head" || after == "line-end") {
+            found.push(format!(
+                "table {table} has no `line-head` row or `line-end` column; only Tables 1, 3, \
+                 4 and 5 do (§C.1, §E.1)"
+            ));
+        }
+    }
+    found
+}
+
+/// The `table` field: an integer from 1 through 6.
+fn check_cell_table(entry: &Json, found: &mut Vec<String>) -> Option<i64> {
+    match entry.get("table").map(Json::as_integer) {
+        None => None,
+        Some(Some(number)) if (1..=6).contains(&number) => Some(number),
+        Some(Some(number)) => {
+            found.push(format!("`table` is {number}; the matrices are 1 through 6"));
+            None
+        },
+        Some(None) => {
+            found.push("`table` is not an integer".to_owned());
+            None
+        },
+    }
+}
+
+/// One axis field of a `cells` entry, `before` or `after`.
+fn check_cell_axis<'a>(
+    entry: &'a Json,
+    field: &str,
+    edge: &str,
+    valid: fn(&str) -> bool,
+    found: &mut Vec<String>,
+) -> Option<&'a str> {
+    match entry.get(field).map(Json::as_text) {
+        None => None,
+        Some(None) => {
+            found.push(format!("`{field}` is not a string"));
+            None
+        },
+        Some(Some(label)) if !valid(label) => {
+            found.push(format!(
+                "`{field}` is `{label}`, which is not `cl-01` through `cl-30` or `{edge}`"
+            ));
+            None
+        },
+        Some(Some(label)) => Some(label),
+    }
 }
 
 /// Every expectation of one case is about the question the case asked, and about the same
@@ -894,6 +1121,14 @@ fn check_case(case: &Json, section: &str, reference: Reference) -> Vec<String> {
 /// A `forbidden` entry may still state a different *kind* — it states only the fields it
 /// forbids, and a line geometry says nothing about a classification — which is why the field
 /// requirement is `permitted`'s alone and the ordinal requirement is both's.
+///
+/// A boundary case's `edge` is the same fact one level finer, checked the identical way: the
+/// runner reads `before` and `edge` together from a case's first stated `boundary`
+/// expectation and measures the one answer they name against every entry
+/// (`jlreq_conform::run::ask`), so an entry naming a different `edge` at the same `before` is
+/// not a finer reading of that answer, it is a question about a different boundary — an
+/// interior adjacency and a line edge next to the same item are not the same one — and
+/// deserves the same refusal a mismatched ordinal already gets.
 fn check_question(case: &Json) -> Vec<String> {
     let Some(kind) = case
         .get("input")
@@ -902,13 +1137,34 @@ fn check_question(case: &Json) -> Vec<String> {
     else {
         return Vec::new();
     };
+    // `align` is named explicitly alongside the wildcard rather than left to fall into it
+    // silently: `jlreq_line::align` answers with the identical `CaseOutput`/`CaseLine` shape
+    // `jlreq_line::compose` does — one `Line` instead of several — so `lines` and
+    // `violations` are what an `align` case's own expectation is about too
+    // (`crates/jlreq-conform/src/run.rs`'s own `ask` reuses `Answer::Composed` for exactly
+    // this reason). Folding it into one arm with `_` — rather than a second arm with an
+    // identical body — is what a `compose`-shaped `align` case is, not a distinction this
+    // gate collapses by accident.
     let (field, ordinal, alternatives) = match kind {
         "classify" => ("class", "item", &["class"][..]),
         "boundary" => ("boundary", "before", &["boundary"][..]),
+        "feasible" => ("feasible", "candidate", &["feasible"][..]),
+        "lower" => ("lower", "construct", &["lower"][..]),
+        // "place" is named explicitly too, but with an empty `ordinal`, `align`'s, `tab`'s
+        // and `compose`'s own convention rather than `feasible`'s and `lower`'s: `place`
+        // answers the case's whole declared `Constructs`, not one occurrence of it, so it
+        // has no per-case ordinal for the loop below to hold consistent
+        // (`crates/jlreq-conform/src/run.rs`'s own `Compose::place` doc states why). Folding
+        // it into the wildcard below would hold a `place` case to `lines`/`violations`
+        // instead of `place`, silently accepting an expectation that never mentions the
+        // field the case is actually about.
+        "place" => ("place", "", &["place"][..]),
+        // "align" falls in here rather than into a row of its own: see the comment above.
         _ => ("lines", "", &["lines", "violations"][..]),
     };
     let mut found = Vec::new();
     let mut asked: Option<i64> = None;
+    let mut asked_edge: Option<&str> = None;
     for (side, entries) in [
         ("permitted", case.get("permitted")),
         ("forbidden", case.get("forbidden")),
@@ -936,19 +1192,31 @@ fn check_question(case: &Json) -> Vec<String> {
             if ordinal.is_empty() {
                 continue;
             }
-            let Some(stated) = expect
-                .get(field)
-                .and_then(|about| about.get(ordinal))
-                .and_then(Json::as_integer)
-            else {
+            let Some(about) = expect.get(field) else {
                 continue;
             };
-            match asked {
-                None => asked = Some(stated),
-                Some(first) if first != stated => found.push(format!(
-                    "`{at}.expect.{field}.{ordinal}` is {stated} and an earlier expectation \
-                     of this case names {first}; a case is one input and one question, and \
-                     the runner measures one answer against every entry"
+            if let Some(stated) = about.get(ordinal).and_then(Json::as_integer) {
+                match asked {
+                    None => asked = Some(stated),
+                    Some(first) if first != stated => found.push(format!(
+                        "`{at}.expect.{field}.{ordinal}` is {stated} and an earlier \
+                         expectation of this case names {first}; a case is one input and one \
+                         question, and the runner measures one answer against every entry"
+                    )),
+                    Some(_) => {},
+                }
+            }
+            if field != "boundary" {
+                continue;
+            }
+            let stated_edge = about.get("edge").and_then(Json::as_text).unwrap_or("");
+            match asked_edge {
+                None => asked_edge = Some(stated_edge),
+                Some(first) if first != stated_edge => found.push(format!(
+                    "`{at}.expect.boundary.edge` is {stated_edge:?} and an earlier \
+                     expectation of this case names {first:?}; an interior boundary and a \
+                     line edge next to the same item are two different questions, not two \
+                     readings of one"
                 )),
                 Some(_) => {},
             }
@@ -1099,12 +1367,47 @@ fn check_input(input: Option<&Json>) -> Vec<String> {
         )];
     };
     let mut required = INPUT_REQUIRED.to_vec();
-    if input.get("kind").and_then(Json::as_text) == Some("compose") {
-        required.extend(["measure", "candidates"]);
+    let kind = input.get("kind").and_then(Json::as_text);
+    match kind {
+        Some("compose") => required.extend(["measure", "candidates"]),
+        // `align` needs a target and a method, never `candidates`: `jlreq_line::align`
+        // never breaks, so a case asking this question supplies none.
+        Some("align") => required.extend(["measure", "alignment"]),
+        // `tab` needs neither a target nor break candidates: `jlreq_line::tab_line` places
+        // every run against its own declared `tab_stops`, not a caller-stated length, and
+        // it never breaks either. It needs the two fields §3.6.1 itself names instead.
+        Some("tab") => required.extend(["tab_starts", "tab_stops"]),
+        // `feasible` needs the candidates kinsoku is asked to adjudicate, but no `measure`:
+        // `jlreq_line::Feasible::compute` refuses or permits a candidate, it never composes
+        // a line, so this question has no line length to read.
+        Some("feasible") => required.extend(["candidates"]),
+        // `lower` needs the constructs it asks `jlreq_inline::lower` about, and reads
+        // neither `measure` nor `candidates`: it never composes a line and never breaks
+        // one, so neither field is this question's own. `place` needs the identical
+        // `constructs` `lower` is answered over — the case's own subject in full, not a
+        // further field alongside it — and reads neither `measure` nor `candidates`
+        // either, for the identical reason: `jlreq_inline::place` never composes a line
+        // and never breaks one either.
+        Some("lower" | "place") => required.extend(["constructs"]),
+        _ => {},
     }
     let mut found = check_keys(members, &required, INPUT_OPTIONAL);
+    if let Some(kind) = kind {
+        if !INPUT_KINDS.contains(&kind) {
+            found.push(format!(
+                "`input.kind` is {kind:?}, which is not one of {INPUT_KINDS:?}; an \
+                 unrecognized kind used to fall through to `compose`'s own requirements \
+                 silently, asking every case naming one the wrong question"
+            ));
+        }
+    }
     found.extend(check_direction(input));
+    found.extend(check_search(input));
+    found.extend(check_alignment(input));
+    found.extend(check_tab_starts(input));
+    found.extend(check_tab_stops(input));
     found.extend(check_positive(input, "measure"));
+    found.extend(check_widow_threshold(input));
     found.extend(check_stream(input, "input"));
     found.extend(check_candidates(input));
     for (index, annotation) in annotations_of(input).iter().enumerate() {
@@ -1131,12 +1434,192 @@ fn check_direction(input: &Json) -> Vec<String> {
     }
 }
 
+/// The `search` a `compose` case states, when it states one: `jlreq_line::Search`'s own
+/// shape, checked whether or not the case that states it is the `compose` case that reads
+/// it — the same reading `check_alignment` and `check_tab_starts` already give a field their
+/// own kind does not require. `kind` is one of `SEARCHES`, and `tolerance` is required
+/// alongside `kind: "optimal"` and bounded at `Badness::WORST`'s own cap whenever it is
+/// stated at all, `first-fit` included: a `tolerance` a caller cannot even construct
+/// (`Badness::new` clamps rather than refuses, but this format's own contract states the
+/// range it is a fraction of, not the clamped one) tests nothing about `Search::Optimal`
+/// either way.
+fn check_search(input: &Json) -> Vec<String> {
+    let Some(search) = input.get("search") else {
+        return Vec::new();
+    };
+    let Some(members) = search.as_object() else {
+        return vec![format!(
+            "`input.search` is {kind}, not an object",
+            kind = search.kind()
+        )];
+    };
+    let mut found = prefix_all(
+        "input.search",
+        check_keys(members, SEARCH_REQUIRED, SEARCH_OPTIONAL),
+    );
+    let kind = search.get("kind").and_then(Json::as_text);
+    match kind {
+        None => {},
+        Some(kind) if SEARCHES.contains(&kind) => {},
+        Some(_) => found.push(format!(
+            "`input.search.kind` is not one of {SEARCHES:?}, the two variants \
+             `jlreq_line::Search` has"
+        )),
+    }
+    let tolerance = search.get("tolerance");
+    if kind == Some("optimal") && tolerance.is_none() {
+        found.push(
+            "`input.search` names `kind: \"optimal\"` but states no `tolerance`, which that \
+             variant requires"
+                .to_owned(),
+        );
+    }
+    if let Some(tolerance) = tolerance {
+        match tolerance.as_integer() {
+            Some(value) if (0..=BADNESS_WORST).contains(&value) => {},
+            _ => found.push(format!(
+                "`input.search.tolerance` is not an integer between 0 and {BADNESS_WORST}, \
+                 `jlreq_line::Badness`'s own range"
+            )),
+        }
+    }
+    found
+}
+
+/// The alignment, when the case states one, is one of `jlreq_line::Alignment`'s four.
+///
+/// Checked regardless of `kind`, the same way `check_direction` is: `alignment` is required
+/// of an `align` case by `check_input`'s own per-`kind` branch, and this is the separate
+/// question of whether a *stated* value is one of the four the type has, asked whether or
+/// not the case that states it is the one that needs it.
+fn check_alignment(input: &Json) -> Vec<String> {
+    match input.get("alignment").map(Json::as_text) {
+        None => Vec::new(),
+        Some(Some(alignment)) if ALIGNMENTS.contains(&alignment) => Vec::new(),
+        Some(_) => vec![format!(
+            "`input.alignment` is not one of {ALIGNMENTS:?}, the four methods \
+             `jlreq_line::Alignment` has"
+        )],
+    }
+}
+
+/// The `tab_starts` a case declares: each entry the schema's own `minimum: 0` (unenforced by
+/// any JSON-schema validator — this hand-written check is what actually holds it, the same
+/// way every other shape this file states is held) and, since it is read as
+/// `jlreq_line::tab_line`'s own item ordinal into the base stream, no larger than the
+/// stream's own item count — the same bound `tab_line` itself refuses past
+/// (`ComposeError::OutOfRange`, which fires only when the ordinal exceeds the count, so an
+/// ordinal equal to the count is accepted and this check does not reject it either). Checked
+/// regardless of `kind`, the same way `check_tab_stops` is: `tab_starts` is required of a
+/// `tab` case by `check_input`'s own per-`kind` branch, and this is the separate question of
+/// whether a *stated* entry is well formed, asked whether or not the case that states it is
+/// the one that needs it.
+fn check_tab_starts(input: &Json) -> Vec<String> {
+    let Some(starts) = input.get("tab_starts") else {
+        return Vec::new();
+    };
+    let Some(starts) = starts.as_array() else {
+        return vec!["`input.tab_starts` is not an array".to_owned()];
+    };
+    let items = input
+        .get("items")
+        .and_then(Json::as_array)
+        .unwrap_or_default();
+    let item_count = i64::try_from(items.len()).unwrap_or(i64::MAX);
+    let mut found = Vec::new();
+    for (index, start) in starts.iter().enumerate() {
+        let at = format!("input.tab_starts[{index}]");
+        match start.as_integer() {
+            Some(value) if (0..=item_count).contains(&value) => {},
+            Some(_) => found.push(format!(
+                "`{at}` is not an item ordinal inside the {item_count}-item base stream"
+            )),
+            None => found.push(format!("`{at}` is not an integer")),
+        }
+    }
+    found
+}
+
+/// The `tab_stops` a case declares, each checked the way `check_candidates` already checks
+/// one candidate: its own shape (`TAB_STOP_REQUIRED`/`TAB_STOP_OPTIONAL`), and its own
+/// `kind` against `TAB_KINDS` the same way `check_alignment` checks `alignment` against
+/// `ALIGNMENTS`. Checked regardless of `kind`, the same way `check_alignment` is: `tab_stops`
+/// is required of a `tab` case by `check_input`'s own per-`kind` branch, and this is the
+/// separate question of whether a *stated* entry is well formed, asked whether or not the
+/// case that states it is the one that needs it.
+fn check_tab_stops(input: &Json) -> Vec<String> {
+    let Some(stops) = input.get("tab_stops") else {
+        return Vec::new();
+    };
+    let Some(stops) = stops.as_array() else {
+        return vec!["`input.tab_stops` is not an array".to_owned()];
+    };
+    let mut found = Vec::new();
+    for (index, stop) in stops.iter().enumerate() {
+        let at = format!("input.tab_stops[{index}]");
+        let Some(members) = stop.as_object() else {
+            found.push(format!(
+                "`{at}` is {kind}, not an object",
+                kind = stop.kind()
+            ));
+            continue;
+        };
+        found.extend(prefix_all(
+            &at,
+            check_keys(members, TAB_STOP_REQUIRED, TAB_STOP_OPTIONAL),
+        ));
+        let kind = stop.get("kind").and_then(Json::as_text);
+        match kind {
+            None => {},
+            Some(kind) if TAB_KINDS.contains(&kind) => {},
+            Some(_) => found.push(format!(
+                "`{at}.kind` is not one of {TAB_KINDS:?}, the four kinds \
+                 `jlreq_line::TabKind` has"
+            )),
+        }
+        let names_the_character_kind = kind == Some("character");
+        if names_the_character_kind && stop.get("at").is_none() {
+            found.push(format!(
+                "`{at}` names `kind: \"character\"` but states no `at`; that kind names the \
+                 occurrence its own anchor reads"
+            ));
+        }
+        if !names_the_character_kind && stop.get("at").is_some() {
+            found.push(format!(
+                "`{at}` states `at`, which only `kind: \"character\"` reads"
+            ));
+        }
+    }
+    found
+}
+
 /// One integer field that must be present and above zero when the case states it.
 fn check_positive(input: &Json, field: &str) -> Vec<String> {
     match input.get(field).map(Json::as_integer) {
         None => Vec::new(),
         Some(Some(value)) if value > 0 => Vec::new(),
         Some(_) => vec![format!("`input.{field}` is not a positive integer")],
+    }
+}
+
+/// `input.widow_threshold`, when the case states one, is an integer `Paragraph::
+/// with_widow_threshold` can hold as a `u16` — non-negative and no larger than `u16::MAX`.
+/// `check_positive` does not fit this field: `0` is `widow_threshold`'s own documented
+/// no-op reading (`cases.schema.json`'s own description), not a value to refuse the way an
+/// unusable `measure` is, so this is its own function rather than a second caller of that
+/// one. Mirrors `check_search`'s own bound on `tolerance`: a threshold this reader cannot
+/// even construct tests nothing about §3.5.4 either way, and `kumihan.rs`'s own
+/// `u16::try_from(threshold).ok()?` would decline the case silently rather than fail this
+/// gate, which is precisely the failure mode a shape check exists to close.
+fn check_widow_threshold(input: &Json) -> Vec<String> {
+    match input.get("widow_threshold").map(Json::as_integer) {
+        None => Vec::new(),
+        Some(Some(value)) if (0..=i64::from(u16::MAX)).contains(&value) => Vec::new(),
+        Some(_) => vec![format!(
+            "`input.widow_threshold` is not an integer between 0 and {max}, the range \
+             `Paragraph::with_widow_threshold`'s own `u16` can hold",
+            max = u16::MAX
+        )],
     }
 }
 
@@ -2328,8 +2811,16 @@ const MAX_DEPTH: u8 = 32;
 /// A number is an integer because ADR 0005 guarantees every number in a case is one, so a
 /// fraction or an exponent is a reading error naming that guarantee rather than a value
 /// this type can hold.
+///
+/// `pub(crate)`, along with [`JsonError`] and the reading methods below: `xtask` declares no
+/// dependencies (this module's own `EXACT_INTEGER_CEILING` doc states why), and
+/// `xtask::attest`'s own `conformance-cases-agree-with-the-cells` checker reads the
+/// published cases too, under the identical "a case file holds one object" grammar this
+/// reader already enforces. Reusing this type is what keeps that a fact checked once rather
+/// than a second hand-rolled reader that could disagree with the first about what a case
+/// file is.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Json {
+pub(crate) enum Json {
     /// `null`.
     Nothing,
     /// `true` or `false`.
@@ -2346,7 +2837,7 @@ enum Json {
 
 impl Json {
     /// Read one value, and nothing after it.
-    fn parse(source: &str) -> Result<Self, JsonError> {
+    pub(crate) fn parse(source: &str) -> Result<Self, JsonError> {
         let mut reader = Reader {
             bytes: source.as_bytes(),
             at: 0,
@@ -2361,7 +2852,7 @@ impl Json {
     }
 
     /// The value under `name`, when this is an object that has one.
-    fn get(&self, name: &str) -> Option<&Self> {
+    pub(crate) fn get(&self, name: &str) -> Option<&Self> {
         self.as_object()?
             .iter()
             .find(|(key, _)| key == name)
@@ -2369,7 +2860,7 @@ impl Json {
     }
 
     /// The members, when this is an object.
-    fn as_object(&self) -> Option<&[(String, Self)]> {
+    pub(crate) fn as_object(&self) -> Option<&[(String, Self)]> {
         match self {
             Self::Object(members) => Some(members),
             _ => None,
@@ -2377,7 +2868,7 @@ impl Json {
     }
 
     /// The entries, when this is an array.
-    fn as_array(&self) -> Option<&[Self]> {
+    pub(crate) fn as_array(&self) -> Option<&[Self]> {
         match self {
             Self::Array(entries) => Some(entries),
             _ => None,
@@ -2385,7 +2876,7 @@ impl Json {
     }
 
     /// The string, when this is one.
-    fn as_text(&self) -> Option<&str> {
+    pub(crate) fn as_text(&self) -> Option<&str> {
         match self {
             Self::Text(text) => Some(text),
             _ => None,
@@ -2393,7 +2884,7 @@ impl Json {
     }
 
     /// The integer, when this is one.
-    fn as_integer(&self) -> Option<i64> {
+    pub(crate) fn as_integer(&self) -> Option<i64> {
         match self {
             Self::Integer(value) => Some(*value),
             _ => None,
@@ -2414,8 +2905,12 @@ impl Json {
 }
 
 /// Why a file is not the JSON this format accepts, and where.
+///
+/// `pub(crate)` because [`Json::parse`] is: an error type less visible than the function
+/// that returns it is rejected by `private_interfaces` under `-D warnings`, not a choice
+/// this module makes freely.
 #[derive(Debug)]
-struct JsonError {
+pub(crate) struct JsonError {
     /// The line the reader stopped on, counted from one.
     line: usize,
     /// What was wrong there.
@@ -2718,9 +3213,9 @@ mod tests {
 
     use super::{
         Case, Json, Ledger, Milestones, REQUIRED_BY_SHAPE, RULES_INVENTORY, Reference, Suite,
-        accept_arguments, check_input, check_permitted, check_schema, check_trims,
-        declared_addresses, declared_units_per_em, deferral, examine_file, frame_pairs,
-        inventory_column, is_path, parse_address, unique_ids, unresolved_addresses,
+        accept_arguments, check_input, check_permitted, check_question, check_schema, check_trims,
+        check_widow_threshold, declared_addresses, declared_units_per_em, deferral, examine_file,
+        frame_pairs, inventory_column, is_path, parse_address, unique_ids, unresolved_addresses,
     };
     use crate::shared;
 
@@ -2896,6 +3391,76 @@ mod tests {
               }
             ],
             "violations": []
+          }
+        }
+      ]
+    }"#;
+
+    /// The smallest `feasible` case this gate accepts, so the census test below mutates
+    /// exactly one thing: `input.kind`.
+    const MINIMAL_FEASIBLE: &str = r#"{
+      "id": "3.1.9/minimal-feasible/one",
+      "rules": ["C.2#13"],
+      "standing": "normative",
+      "quote": "There is no line break opportunity between two consecutive characters belonging to the same set of characters in tate-chu-yoko (cl-30).",
+      "rationale": "The smallest well-formed feasible case, so the census test mutates exactly one thing.",
+      "input": {
+        "kind": "feasible",
+        "text": "あ",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }],
+        "candidates": [{ "at": 0 }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred",
+          "expect": {
+            "feasible": { "candidate": 0, "breakable": true }
+          }
+        }
+      ]
+    }"#;
+
+    /// The smallest `lower` case this gate accepts, so the census test below mutates
+    /// exactly one thing: `input.kind`.
+    const MINIMAL_LOWER: &str = r#"{
+      "id": "3.3.5/minimal-lower/one",
+      "rules": ["3.3.5"],
+      "standing": "normative",
+      "quote": "This positioning of a ruby character is called 'nakatsuki' (center-alignment).",
+      "rationale": "The smallest well-formed lower case, so the census test mutates exactly one thing.",
+      "input": {
+        "kind": "lower",
+        "text": "鬼",
+        "direction": "horizontal",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [{ "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 }],
+        "annotations": [
+          {
+            "text": "き",
+            "scales": [{ "inline_em": 500, "block_em": 500 }],
+            "items": [{ "start": 0, "advance": 500, "frame": "full-em", "scale": 0 }]
+          }
+        ],
+        "constructs": {
+          "ruby": [
+            {
+              "base": [0, 1],
+              "annotation": 0,
+              "style": "mono",
+              "runs": [{ "base": [0, 1], "annotation": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq preferred",
+          "expect": {
+            "lower": { "construct": 0, "alignment": "nakatsuki" }
           }
         }
       ]
@@ -3220,6 +3785,70 @@ mod tests {
     }
 
     #[test]
+    fn a_cells_entry_names_a_real_table_and_axis() {
+        let with_cells = |cells: &str| {
+            MINIMAL.replacen(
+                "\"rules\": [\"3.1.9\"],",
+                &format!("\"rules\": [\"3.1.9\"], \"cells\": {cells},"),
+                1,
+            )
+        };
+        assert!(
+            examine(&file_with(&with_cells(
+                r#"[{ "table": 1, "before": "cl-02", "after": "line-end" }]"#
+            )))
+            .is_empty(),
+            "a well-formed coordinate is not this gate's own business to reject"
+        );
+
+        let bad_table = examine(&file_with(&with_cells(
+            r#"[{ "table": 7, "before": "cl-02", "after": "line-end" }]"#,
+        )));
+        assert!(
+            bad_table
+                .iter()
+                .any(|line| line.contains("the matrices are 1 through 6")),
+            "{bad_table:#?}"
+        );
+
+        let bad_axis = examine(&file_with(&with_cells(
+            r#"[{ "table": 1, "before": "cl-99", "after": "line-end" }]"#,
+        )));
+        assert!(
+            bad_axis
+                .iter()
+                .any(|line| line.contains("`before` is `cl-99`")),
+            "{bad_axis:#?}"
+        );
+
+        let wrong_side = examine(&file_with(&with_cells(
+            r#"[{ "table": 1, "before": "line-end", "after": "cl-02" }]"#,
+        )));
+        assert!(
+            wrong_side
+                .iter()
+                .any(|line| line.contains("`before` is `line-end`")),
+            "line-end is the column axis's own label, not the row's: {wrong_side:#?}"
+        );
+
+        let no_line_edges = examine(&file_with(&with_cells(
+            r#"[{ "table": 2, "before": "line-head", "after": "cl-02" }]"#,
+        )));
+        assert!(
+            no_line_edges
+                .iter()
+                .any(|line| line.contains("has no `line-head` row")),
+            "Table 2 has no line-edge axis at all (§C.1): {no_line_edges:#?}"
+        );
+
+        let empty = examine(&file_with(&with_cells("[]")));
+        assert!(
+            empty.iter().any(|line| line.contains("`cells` is empty")),
+            "{empty:#?}"
+        );
+    }
+
+    #[test]
     fn an_item_off_a_character_boundary_is_rejected() {
         let broken = MINIMAL.replace("\"start\": 0", "\"start\": 1");
         let found = examine(&file_with(&broken));
@@ -3227,6 +3856,36 @@ mod tests {
             found
                 .iter()
                 .any(|message| message.contains("not a character boundary")),
+            "{found:#?}"
+        );
+    }
+
+    #[test]
+    fn a_boundary_case_must_name_the_same_edge_in_every_expectation() {
+        // The hole `check_question`'s own ordinal check already closes for `before`, opened
+        // a second time the moment `edge` existed: without this, an entry naming `edge:
+        // "end"` and a later one naming no edge at all would both be measured against the
+        // one answer the first entry's `before` and `edge` select, silently agreeing with a
+        // line-end reading its own text never asked about.
+        let consistent = json(
+            r#"{ "input": { "kind": "boundary" }, "permitted": [
+                { "expect": { "boundary": { "before": 0, "edge": "end" } } },
+                { "expect": { "boundary": { "before": 0, "edge": "end" } } }
+            ] }"#,
+        );
+        assert!(check_question(&consistent).is_empty(), "{consistent:?}");
+
+        let mismatched = json(
+            r#"{ "input": { "kind": "boundary" }, "permitted": [
+                { "expect": { "boundary": { "before": 0, "edge": "end" } } },
+                { "expect": { "boundary": { "before": 0 } } }
+            ] }"#,
+        );
+        let found = check_question(&mismatched);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("expect.boundary.edge")),
             "{found:#?}"
         );
     }
@@ -3243,6 +3902,48 @@ mod tests {
         assert!(
             found.iter().any(|message| message.contains("runs[0].base")),
             "{found:#?}"
+        );
+    }
+
+    #[test]
+    fn a_widow_threshold_is_bounded_at_a_u16() {
+        // Mirrors `check_search`'s own bound on `tolerance`: a threshold this reader cannot
+        // hold as a `u16` — negative, or past `u16::MAX` — is refused rather than silently
+        // declined by `kumihan.rs`'s own `u16::try_from(threshold).ok()?` at runtime, the
+        // failure mode this shape check exists to close (round 22's own brief).
+        let negative = json(r#"{ "widow_threshold": -1 }"#);
+        let found = check_widow_threshold(&negative);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("widow_threshold")),
+            "{found:#?}"
+        );
+        let past_u16 = json(r#"{ "widow_threshold": 65536 }"#);
+        let found = check_widow_threshold(&past_u16);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("widow_threshold")),
+            "{found:#?}"
+        );
+        // `0` is `widow_threshold`'s own documented no-op (`cases.schema.json`'s own
+        // description) and not a value this check refuses, unlike `check_positive`'s own
+        // bound on `measure`.
+        let zero = json(r#"{ "widow_threshold": 0 }"#);
+        assert!(
+            check_widow_threshold(&zero).is_empty(),
+            "0 is the documented no-op"
+        );
+        let max = json(r#"{ "widow_threshold": 65535 }"#);
+        assert!(
+            check_widow_threshold(&max).is_empty(),
+            "u16::MAX is the top of the range `Paragraph::with_widow_threshold` can hold"
+        );
+        let absent = json(r"{}");
+        assert!(
+            check_widow_threshold(&absent).is_empty(),
+            "a case stating no threshold at all asserts nothing to check"
         );
     }
 
@@ -3474,6 +4175,52 @@ mod tests {
                     && line.contains("3 inventoried rule(s)")),
             "and the run says which check it could not make, and over how many rules: \
              {census:#?}"
+        );
+    }
+
+    #[test]
+    fn the_kind_census_line_counts_a_feasible_case_by_its_own_kind() {
+        // Round 20's `optimal_search_census` precedent, applied to the kind this round adds:
+        // a case naming `"kind": "feasible"` is counted under `feasible` in the same line
+        // `classify`, `boundary`, `compose`, `align` and `tab` already are, not left silently
+        // uncounted the way an unrecognized kind used to be able to.
+        let cases = cases_of(&file_with(MINIMAL_FEASIBLE));
+        assert_eq!(cases.len(), 1, "the fixture is one case");
+        let census = bare_suite().census(&cases);
+        assert!(
+            census.iter().any(|line| line.contains("1 feasible")),
+            "{census:#?}"
+        );
+    }
+
+    #[test]
+    fn the_kind_census_line_counts_a_lower_case_by_its_own_kind() {
+        // The identical precedent applied to this round's own addition: a case naming
+        // `"kind": "lower"` is counted under `lower` in the same line, not left silently
+        // uncounted.
+        let cases = cases_of(&file_with(MINIMAL_LOWER));
+        assert_eq!(cases.len(), 1, "the fixture is one case");
+        let census = bare_suite().census(&cases);
+        assert!(
+            census.iter().any(|line| line.contains("1 lower")),
+            "{census:#?}"
+        );
+    }
+
+    #[test]
+    fn an_unrecognized_kind_is_a_violation_rather_than_a_silent_compose_reading() {
+        // The gap this round closes in `check_input`'s own `match`: before, a `kind` this
+        // format does not have fell through to the wildcard arm and was checked only
+        // against `compose`'s own required fields, exactly the failure mode `ask`'s own doc
+        // in `crates/jlreq-conform/src/run.rs` already names for a forgotten dispatcher arm,
+        // now closed on the reading side as well.
+        let mutated = MINIMAL.replace("\"kind\": \"compose\"", "\"kind\": \"composed\"");
+        let found = examine(&file_with(&mutated));
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("input.kind") && message.contains("composed")),
+            "{found:#?}"
         );
     }
 
@@ -3754,7 +4501,7 @@ mod tests {
         let suite = Suite::read(&root).expect("the suite and its inventories are readable");
         let (census, violations) = suite.examine();
         assert!(violations.is_empty(), "{violations:#?}");
-        assert_eq!(census.len(), 7, "{census:#?}");
+        assert_eq!(census.len(), 9, "{census:#?}");
         assert!(
             census
                 .iter()

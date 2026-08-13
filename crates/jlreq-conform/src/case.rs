@@ -221,7 +221,7 @@ impl Case {
         &self.rationale
     }
 
-    /// What the case supplies, which is what the three trait methods are asked about.
+    /// What the case supplies, which is what the eight trait methods are asked about.
     #[must_use]
     pub fn input(&self) -> &CaseInput {
         &self.input
@@ -267,7 +267,7 @@ pub struct Forbidden {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct CaseInput {
-    /// Which of the three questions this case asks.
+    /// Which of the eight questions this case asks.
     pub kind: String,
     /// The base running-text stream, in reading order.
     pub text: String,
@@ -283,10 +283,33 @@ pub struct CaseInput {
     pub candidates: Vec<usize>,
     /// The line length, in the caller's own unit.
     pub measure: Option<i64>,
+    /// Which of `jlreq_line::Search`'s two variants a `compose` case is measured under.
+    /// `None` reads as `Search::FirstFit`, the reading every case published before this
+    /// field existed already assumed (`cases.schema.json`'s own `search` description).
+    pub search: Option<CaseSearch>,
     /// The writing direction, when the case is specific to one.
     pub direction: Option<String>,
     /// The paragraph's first-line indent, in the caller's own unit.
     pub first_line_indent: Option<i64>,
+    /// The paragraph's line head indent, in the caller's own unit, narrowing every line's
+    /// own measure rather than only the first.
+    pub head_indent: Option<i64>,
+    /// The paragraph's line end indent, in the caller's own unit, narrowing every line's own
+    /// composition target from the line end side.
+    pub end_indent: Option<i64>,
+    /// §3.5.4's own widow threshold: the fewest items the paragraph's own last line must
+    /// carry, read in the caller's own unit-free item count rather than a length. `None`
+    /// reads as `0`, `Paragraph::new`'s own default and a no-op by construction
+    /// (`cases.schema.json`'s own `widow_threshold` description).
+    pub widow_threshold: Option<i64>,
+    /// Which of `jlreq_line::Alignment`'s four methods an `align` case asks for.
+    pub alignment: Option<String>,
+    /// For a `tab` case: `starts[k]` is the item ordinal where the run after the `k`-th
+    /// tab sign begins — `jlreq_line::tab_line`'s own `starts`. Empty for any other kind.
+    pub tab_starts: Vec<usize>,
+    /// For a `tab` case: the caller's own declared pool of tab positions and their
+    /// alignment kinds — `jlreq_line::tab_line`'s own `stops`. Empty for any other kind.
+    pub tab_stops: Vec<CaseTabStop>,
 }
 
 impl CaseInput {
@@ -331,6 +354,32 @@ pub struct CaseItem {
     pub role: Option<String>,
 }
 
+/// Which search a `compose` case is measured under: `jlreq_line::Search` in the case
+/// format's own spelling, `cases.schema.json`'s own `search` `$def`.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct CaseSearch {
+    /// `"first-fit"` or `"optimal"`.
+    pub kind: String,
+    /// `Search::Optimal`'s own `tolerance`. Required alongside `kind: "optimal"`, absent
+    /// for `"first-fit"`.
+    pub tolerance: Option<i64>,
+}
+
+/// One declared tab stop: `jlreq_line::TabStop` and `jlreq_line::TabKind` in the case
+/// format's own spelling. `at` is present only for `kind: "character"`, the same
+/// flattening `cases.schema.json`'s own `tab_stop` `$def` states in full.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct CaseTabStop {
+    /// Where this stop sits, in the caller's own unit.
+    pub position: i64,
+    /// `start`, `end`, `centered`, or `character`.
+    pub kind: String,
+    /// Which occurrence `kind: "character"` names, absent for the other three.
+    pub at: Option<usize>,
+}
+
 /// One annotation stream: the same shape as the base one (ADR 0016).
 #[derive(Debug)]
 #[non_exhaustive]
@@ -347,7 +396,10 @@ pub struct CaseStream {
 ///
 /// The interior shape differs by kind and only two of the nine are pinned by the schema, so
 /// what is read here is the part every kind states: the ranges of the base stream it runs
-/// over, which the format spells `base`, `items` or `mark`.
+/// over, which the format spells `base`, `items` or `mark`, plus `ruby`'s own `style`,
+/// `annotation` and `runs` — present on no other kind, read here rather than left for
+/// `Compose::feasible`'s or `Compose::lower`'s own adapter to reach into the raw JSON a
+/// second time.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct CaseConstruct {
@@ -357,6 +409,28 @@ pub struct CaseConstruct {
     pub index: usize,
     /// The half-open ranges of base-stream ordinals it runs over.
     pub ranges: Vec<(usize, usize)>,
+    /// `ruby`'s own `"mono"`, `"group"` or `"jukugo"`, when the entry states one. `None` for
+    /// every other kind, and for a `ruby` entry that leaves it unstated — the schema makes
+    /// it optional, and `crates/jlreq-conform/src/kumihan.rs`'s own construct-to-
+    /// `ConstructKind` map declines rather than guessing between `NonJukugoRuby` and
+    /// `JukugoRuby` when this is `None`.
+    pub style: Option<String>,
+    /// `ruby`'s own `annotation` stream ordinal, indexing `CaseInput::annotations`. `None`
+    /// for every other kind, and for a `ruby` entry that leaves it unstated.
+    pub annotation: Option<usize>,
+    /// `ruby`'s own `runs` pairing, in declaration order. Empty for every other kind.
+    pub runs: Vec<CaseRun>,
+}
+
+/// One run pairing inside a declared `ruby` construct: which base characters this reading
+/// belongs to (`cases.schema.json`'s own `run` `$def`).
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct CaseRun {
+    /// The half-open range of base-stream ordinals this run covers.
+    pub base: (usize, usize),
+    /// The half-open range of the ruby's own annotation stream this run reads.
+    pub annotation: (usize, usize),
 }
 
 impl CaseConstruct {
@@ -378,6 +452,12 @@ pub struct Expect {
     pub class: Option<ExpectClass>,
     /// A boundary answer.
     pub boundary: Option<ExpectBoundary>,
+    /// A feasible-break answer.
+    pub feasible: Option<ExpectFeasible>,
+    /// A `jlreq_inline::lower` answer for one declared ruby construct.
+    pub lower: Option<ExpectLower>,
+    /// A `jlreq_inline::place` answer for the case's own whole declared `Constructs`.
+    pub place: Option<ExpectPlace>,
     /// The composed lines.
     pub lines: Option<Vec<ExpectLine>>,
     /// Every rule the composition could not satisfy.
@@ -390,6 +470,9 @@ impl Expect {
     pub fn is_silent(&self) -> bool {
         self.class.is_none()
             && self.boundary.is_none()
+            && self.feasible.is_none()
+            && self.lower.is_none()
+            && self.place.is_none()
             && self.lines.is_none()
             && self.violations.is_none()
     }
@@ -411,8 +494,12 @@ pub struct ExpectClass {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct ExpectBoundary {
-    /// The boundary asked about: the ordinal of the item it precedes.
+    /// The boundary asked about: the ordinal of the one item on its real side — the item it
+    /// follows for an interior boundary or a line end, the item it precedes at a line head.
     pub before: usize,
+    /// Which line edge this boundary sits at (`"head"` or `"end"`), or `None` for an
+    /// ordinary interior boundary. `cases.schema.json`'s own `boundary.edge`.
+    pub edge: Option<String>,
     /// One conditional space per neighbor that contributes one.
     pub spaces: Option<Vec<ExpectSpace>>,
     /// Whether a line may break here.
@@ -421,8 +508,123 @@ pub struct ExpectBoundary {
     pub permitted: Option<bool>,
     /// How far ruby may overhang here.
     pub ruby_overhang: Option<CaseAmount>,
+    /// The boundary's own Table 6 opportunity, independent of `spaces` (ADR 0014, amended
+    /// by ADR 0021): `cases.schema.json`'s own `boundary.expansion`.
+    pub expansion: Option<ExpectExpansion>,
     /// The rules the case says decided it.
     pub rules: Option<Vec<String>>,
+}
+
+/// A feasible-break answer: which of the caller's own candidates kinsoku leaves standing,
+/// and which rule refused it when it does not. Every field optional and a missing one
+/// asserts nothing, `ExpectBoundary`'s own convention made uniform here.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct ExpectFeasible {
+    /// The ordinal into `input.candidates` this expectation is about, defaulting to the
+    /// first — `ExpectBoundary::before`'s own convention, so `ask` can select which
+    /// candidate a case asks about from its first stated expectation exactly the way it
+    /// already selects `before` and `edge`.
+    pub candidate: usize,
+    /// Whether kinsoku left this candidate standing.
+    pub breakable: Option<bool>,
+    /// The rules the case says decided it: a subset of the answer's own published rules,
+    /// compared the way `ExpectBoundary::rules` already is.
+    pub rules: Option<Vec<String>>,
+}
+
+/// A `jlreq_inline::lower` answer for one declared ruby construct: run identity against its
+/// neighbors, forced boundary spacing, and, for `RubyStyle::MonoRuby` and
+/// `RubyStyle::JukugoRuby` alike (§3.3.7¶1 delegates a jukugo compound's own ≤2-character
+/// runs to the identical method), the resolved
+/// `RubyAlignment`. Every field but `construct` is optional and a missing one asserts
+/// nothing, `ExpectFeasible`'s own convention made uniform here.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct ExpectLower {
+    /// The ordinal into `input.constructs.ruby` this expectation is about, defaulting to the
+    /// first — `ExpectBoundary::before`'s and `ExpectFeasible::candidate`'s own convention.
+    pub construct: usize,
+    /// Whether two items of the base stream share a run.
+    pub same_run: Option<Vec<ExpectSameRun>>,
+    /// The complete list of forced boundary spacing across every construct the case
+    /// declares, not only `construct` — compared by count and by position, `ExpectBoundary::
+    /// spaces`' own convention.
+    pub separations: Option<Vec<ExpectLowerSeparation>>,
+    /// The `RubyAlignment` resolved for `construct`: `"nakatsuki"` or `"katatsuki"`.
+    pub alignment: Option<String>,
+    /// Whether that alignment is §3.3.5's own discouraged combination.
+    pub alignment_discouraged: Option<bool>,
+    /// The rules the case says decided it: a subset of the answer's own published rules,
+    /// compared the way `ExpectBoundary::rules` and `ExpectFeasible::rules` already are.
+    pub rules: Option<Vec<String>>,
+}
+
+/// One same-run assertion: whether two items of the base stream share a run.
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpectSameRun {
+    /// The two item ordinals compared, into the base stream.
+    pub items: (usize, usize),
+    /// Whether the two items share a run.
+    pub same: bool,
+}
+
+/// One forced boundary spacing `lower` computed, in the case's own caller unit — never a
+/// `CaseAmount` fraction, because unlike Table 1's own terms this amount is not a fraction of
+/// an em JLReq states anywhere (`cases.schema.json`'s own `lower.separations` description).
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpectLowerSeparation {
+    /// The item this boundary follows.
+    pub after: usize,
+    /// The forced amount, in the case's own caller unit. Absent asserts only that the
+    /// boundary carries a forced separation, nothing about its amount.
+    pub least: Option<i64>,
+}
+
+/// A `jlreq_inline::place` answer for the case's own whole declared `Constructs`: every
+/// annotation it placed — mono-ruby's own, group-ruby's own and a jukugo compound's own
+/// alike — and every run it declined to place, for one of `Attachments::declined`'s own four
+/// stated reasons (`crates/jlreq-inline/src/place.rs`'s own module doc states all four in
+/// full). Not anchored to one ordinal the way `ExpectFeasible::candidate` and
+/// `ExpectLower::construct` are —
+/// `Attachments` answers the whole call, never one construct's own question, so forcing a
+/// per-construct selector onto this expectation would invent one `place()` does not have
+/// (`Compose::place`'s own doc states why in full).
+///
+/// Carries no `rules` field, on purpose: `Attachments` publishes no `rules_fired` of its own
+/// (`crates/jlreq-inline/src/place.rs`'s own module doc), so a `rules` field here would
+/// invite a case to assert a citation this kind never publishes. A reader who expects one and
+/// does not find it should read this doc comment, not assume the omission is an oversight.
+#[derive(Debug, Default)]
+#[non_exhaustive]
+pub struct ExpectPlace {
+    /// Every annotation the case expects `place` to have placed, in `Attachments::
+    /// attachments`'s own walk order. Absent asserts nothing about placement; `Some(vec![])`
+    /// asserts that nothing was placed.
+    pub attachments: Option<Vec<ExpectAttachment>>,
+    /// The declared `constructs.ruby` ordinal of every run the case expects `place` to have
+    /// declined — for one of `Attachments::declined`'s own four stated reasons alike —
+    /// `Attachments::declined` translated through `ConstructRef::ordinal` — a total list
+    /// compared by count and by position,
+    /// `ExpectLower::separations`' own convention: a case stating one entry asserts both that
+    /// it exists and that the answer declines no other. Absent asserts nothing about declines.
+    pub declined: Option<Vec<usize>>,
+}
+
+/// One placed annotation character a `place` case expects — `jlreq_inline::place::
+/// Attachment`, narrowed to the two facts these cases turn on (`cases.schema.json`'s own
+/// `attachment` description states why `size`, `side`, `run` and `construct` are not here).
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpectAttachment {
+    /// This attachment's own inline-axis origin, in the case's own caller unit. Absent
+    /// asserts only that this attachment exists, nothing about its own position.
+    pub inline: Option<i64>,
+    /// The annotation stream's own item ordinal this attachment draws. Absent asserts
+    /// nothing about which annotation item it is.
+    pub item: Option<usize>,
 }
 
 /// One conditional space: one neighbor's contribution to the space at a boundary.
@@ -439,11 +641,35 @@ pub struct ExpectSpace {
     pub floor: Option<(i64, i64)>,
     /// The same floor in units.
     pub floor_units: Option<i64>,
-    /// Which ladder the stage belongs to: `reduction` or `expansion`.
+    /// Which ladder the stage belongs to. Only ever `reduction` now (ADR 0021): Appendix
+    /// E's own stage lives on [`ExpectExpansion::stage`] instead.
     pub ladder: Option<String>,
     /// The stage of that ladder.
     pub stage: Option<u8>,
     /// The rule that states it.
+    pub rule: Option<String>,
+}
+
+/// One boundary's own expansion opportunity — `cases.schema.json`'s own
+/// `boundary_expansion`, ADR 0014's amendment (ADR 0021): a fact about the coordinate, not
+/// about either neighbor's own contribution, so it lives beside [`ExpectSpace`] rather than
+/// inside it.
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpectExpansion {
+    /// `none`, `range` or `residual`.
+    pub kind: Option<String>,
+    /// The highest this boundary may be expanded to. Present only for `kind: "range"`.
+    pub ceiling: Option<CaseAmount>,
+    /// The priority stage this opportunity expands at. Present only for `kind: "range"`.
+    pub stage: Option<u8>,
+    /// The rule that states it, present for `kind: "none"` exactly as for the other two —
+    /// a Table 6 row can deny an opportunity as citably as it can grant one. Compared by
+    /// `jlreq-conform`'s own `check_expansion` under conditional-equality semantics rather
+    /// than the plain presence check most fields here get: silent when this is `None`,
+    /// passed over when this is `Some` and the answer publishes none, and a real
+    /// disagreement only when both sides publish and differ (`run.rs`'s own doc on that
+    /// function states the reasoning).
     pub rule: Option<String>,
 }
 
@@ -476,6 +702,24 @@ pub struct ExpectLine {
     pub parts: Option<Vec<ExpectPart>>,
     /// How far hanging punctuation extends past the measure.
     pub hanging: Option<i64>,
+    /// §3.1.12 ⑤'s repair as `Search::Optimal` applied it to this line. `None` is a
+    /// positive assertion that `Line::pull_up` answers `None`, not "unchecked" —
+    /// `cases.schema.json`'s own `line.pull_up` description states why that reading is
+    /// safe retroactively and states it once rather than here too.
+    pub pull_up: Option<ExpectPullUp>,
+}
+
+/// §3.1.12 ⑤'s repair, as a case expects it: `jlreq_line::PullUp` in the case format's own
+/// spelling, `cases.schema.json`'s own `pull_up` `$def`.
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpectPullUp {
+    /// How much this line's own reduction reclaimed, in the caller's own unit.
+    pub amount: i64,
+    /// Which item moved up onto this line as a result.
+    pub pulls: usize,
+    /// The rule that states the repair, when the case names one.
+    pub rule: Option<String>,
 }
 
 /// One unit count taken out of one item's supplied advance, with the sentence that took it.
@@ -654,6 +898,9 @@ fn read_expect(value: &Json) -> Result<Expect, String> {
     Ok(Expect {
         class: value.get("class").map(read_class).transpose()?,
         boundary: value.get("boundary").map(read_boundary).transpose()?,
+        feasible: value.get("feasible").map(read_feasible),
+        lower: value.get("lower").map(read_lower).transpose()?,
+        place: value.get("place").map(read_place),
         lines,
         violations: value
             .get("violations")
@@ -692,13 +939,131 @@ fn read_boundary(value: &Json) -> Result<ExpectBoundary, String> {
     };
     Ok(ExpectBoundary {
         before: ordinal_of(value, "before").unwrap_or(0),
+        edge: owned(value, "edge"),
         spaces,
         breakable: value.get("breakable").and_then(Json::as_truth),
         permitted: value.get("permitted").and_then(Json::as_truth),
         ruby_overhang: value.get("ruby_overhang").map(read_amount).transpose()?,
+        expansion: value.get("expansion").map(read_expansion).transpose()?,
         rules: value
             .get("rules")
             .map(|entries| texts(entries.as_array().unwrap_or_default())),
+    })
+}
+
+/// Read a feasible-break expectation, on `read_boundary`'s own "every field optional"
+/// convention. Infallible — unlike `read_boundary`, nothing here reads a nested amount or
+/// expansion that could itself be malformed — so this returns the value directly rather
+/// than a `Result` with no `Err` arm.
+fn read_feasible(value: &Json) -> ExpectFeasible {
+    ExpectFeasible {
+        candidate: ordinal_of(value, "candidate").unwrap_or(0),
+        breakable: value.get("breakable").and_then(Json::as_truth),
+        rules: value
+            .get("rules")
+            .map(|entries| texts(entries.as_array().unwrap_or_default())),
+    }
+}
+
+/// Read a `lower` expectation, on `read_boundary`'s own "every field optional" convention.
+/// `same_run` and `separations` are the two nested arrays that can themselves be malformed,
+/// so this returns a `Result`, unlike `read_feasible`.
+fn read_lower(value: &Json) -> Result<ExpectLower, String> {
+    let same_run = match value.get("same_run").and_then(Json::as_array) {
+        Some(entries) => Some(
+            entries
+                .iter()
+                .map(read_same_run)
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
+        None => None,
+    };
+    let separations = match value.get("separations").and_then(Json::as_array) {
+        Some(entries) => Some(
+            entries
+                .iter()
+                .map(read_lower_separation)
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
+        None => None,
+    };
+    Ok(ExpectLower {
+        construct: ordinal_of(value, "construct").unwrap_or(0),
+        same_run,
+        separations,
+        alignment: owned(value, "alignment"),
+        alignment_discouraged: value.get("alignment_discouraged").and_then(Json::as_truth),
+        rules: value
+            .get("rules")
+            .map(|entries| texts(entries.as_array().unwrap_or_default())),
+    })
+}
+
+/// Read one same-run assertion.
+fn read_same_run(value: &Json) -> Result<ExpectSameRun, String> {
+    Ok(ExpectSameRun {
+        items: value
+            .get("items")
+            .and_then(read_range)
+            .ok_or("a `same_run` entry states no `[i, j]` item pair")?,
+        same: value
+            .get("same")
+            .and_then(Json::as_truth)
+            .ok_or("a `same_run` entry states no `same`")?,
+    })
+}
+
+/// Read one forced boundary spacing `lower` computed.
+fn read_lower_separation(value: &Json) -> Result<ExpectLowerSeparation, String> {
+    Ok(ExpectLowerSeparation {
+        after: ordinal_of(value, "after").ok_or("a `separations` entry states no `after`")?,
+        least: value.get("least").and_then(Json::as_integer),
+    })
+}
+
+/// Read a `place` expectation, on `read_boundary`'s own "every field optional" convention.
+/// Infallible — like `read_feasible`, and unlike `read_lower` — because neither of `place`'s
+/// own two nested arrays holds a field that can itself be malformed: an attachment reads two
+/// plain optional scalars and `declined` reads a bare integer array, both fallible only in
+/// the "not present" sense every other optional field here already reads permissively.
+fn read_place(value: &Json) -> ExpectPlace {
+    let attachments = value
+        .get("attachments")
+        .and_then(Json::as_array)
+        .map(|entries| entries.iter().map(read_attachment).collect());
+    let declined = value
+        .get("declined")
+        .and_then(Json::as_array)
+        .map(|entries| {
+            entries
+                .iter()
+                .filter_map(|entry| usize::try_from(entry.as_integer()?).ok())
+                .collect()
+        });
+    ExpectPlace {
+        attachments,
+        declined,
+    }
+}
+
+/// Read one placed-annotation expectation.
+fn read_attachment(value: &Json) -> ExpectAttachment {
+    ExpectAttachment {
+        inline: value.get("inline").and_then(Json::as_integer),
+        item: ordinal_of(value, "item"),
+    }
+}
+
+/// Read one boundary-level expansion opportunity.
+fn read_expansion(value: &Json) -> Result<ExpectExpansion, String> {
+    Ok(ExpectExpansion {
+        kind: owned(value, "kind"),
+        ceiling: value.get("ceiling").map(read_amount).transpose()?,
+        stage: value
+            .get("stage")
+            .and_then(Json::as_integer)
+            .map(|stage| u8::try_from(stage).unwrap_or(u8::MAX)),
+        rule: owned(value, "rule"),
     })
 }
 
@@ -746,6 +1111,19 @@ fn read_line(value: &Json) -> Result<ExpectLine, String> {
         trims,
         parts,
         hanging: value.get("hanging").and_then(Json::as_integer),
+        pull_up: value.get("pull_up").map(read_pull_up).transpose()?,
+    })
+}
+
+/// Read one `pull_up` expectation.
+fn read_pull_up(value: &Json) -> Result<ExpectPullUp, String> {
+    Ok(ExpectPullUp {
+        amount: value
+            .get("amount")
+            .and_then(Json::as_integer)
+            .ok_or("a `pull_up` states no `amount`")?,
+        pulls: ordinal_of(value, "pulls").ok_or("a `pull_up` states no `pulls`")?,
+        rule: owned(value, "rule"),
     })
 }
 
@@ -802,13 +1180,15 @@ fn read_fraction(value: &Json) -> Result<(i64, i64), String> {
     }
 }
 
-/// The three questions a case may ask, which is the schema's own `kind` enum.
+/// The eight questions a case may ask, which is the schema's own `kind` enum.
 ///
 /// Read here and refused here rather than defaulted by the runner. A `kind` the reader did
-/// not recognize used to reach the composition arm, so a case naming a fourth question — or
-/// misspelling one of the three — was quietly asked a different one, and the schema's enum
+/// not recognize used to reach the composition arm, so a case naming a ninth question — or
+/// misspelling one of the eight — was quietly asked a different one, and the schema's enum
 /// could not express that fallback for anyone reading the published contract.
-const KINDS: [&str; 3] = ["classify", "boundary", "compose"];
+const KINDS: [&str; 8] = [
+    "classify", "boundary", "compose", "align", "tab", "feasible", "lower", "place",
+];
 
 /// Read one input object.
 fn read_input(value: &Json) -> Result<CaseInput, String> {
@@ -821,7 +1201,7 @@ fn read_input(value: &Json) -> Result<CaseInput, String> {
             .filter(|kind| KINDS.contains(kind))
             .ok_or(
                 "an `input` states no `kind` this format has; it is one of `classify`, \
-                    `boundary` and `compose`",
+                    `boundary`, `compose`, `align`, `tab`, `feasible`, `lower` and `place`",
             )?
             .to_owned(),
         text: text_of(value, "text")
@@ -842,8 +1222,69 @@ fn read_input(value: &Json) -> Result<CaseInput, String> {
             .filter_map(|entry| ordinal_of(entry, "at"))
             .collect(),
         measure: value.get("measure").and_then(Json::as_integer),
+        search: value.get("search").map(read_search).transpose()?,
         direction: owned(value, "direction"),
         first_line_indent: value.get("first_line_indent").and_then(Json::as_integer),
+        head_indent: value.get("head_indent").and_then(Json::as_integer),
+        end_indent: value.get("end_indent").and_then(Json::as_integer),
+        widow_threshold: value.get("widow_threshold").and_then(Json::as_integer),
+        alignment: owned(value, "alignment"),
+        tab_starts: array_of(value, "tab_starts")
+            .iter()
+            .filter_map(ordinal_of_self)
+            .collect(),
+        tab_stops: array_of(value, "tab_stops")
+            .iter()
+            .map(read_tab_stop)
+            .collect::<Result<Vec<_>, _>>()?,
+    })
+}
+
+/// One bare integer of an array, as an ordinal — `tab_starts`' own shape, unlike
+/// `candidates`' array of `{ "at": N }` objects, is already the bare integer.
+fn ordinal_of_self(value: &Json) -> Option<usize> {
+    usize::try_from(value.as_integer()?).ok()
+}
+
+/// The two search kinds a `compose` case may name, which is the schema's own `search.kind`
+/// enum.
+const SEARCH_KINDS: [&str; 2] = ["first-fit", "optimal"];
+
+/// Read one `search` declaration.
+///
+/// Refuses a `kind` this format does not have, on the identical standard `read_input`'s own
+/// `kind` reader holds the eight questions to (`cases.schema.json`'s own `search`
+/// description): a case whose `search.kind` this reader did not recognize must not silently
+/// fall through to either variant. `kind: "optimal"` additionally requires `tolerance`,
+/// which JSON Schema's own `required` cannot state conditioned on a sibling field without a
+/// second `if`/`then` branch this format does not otherwise use, so it is enforced here
+/// instead, on the same "malformed case" standard `Kumihan::compose` already holds an
+/// absent `measure` to.
+fn read_search(value: &Json) -> Result<CaseSearch, String> {
+    let kind = text_of(value, "kind")
+        .filter(|kind| SEARCH_KINDS.contains(kind))
+        .ok_or(
+            "a `search` states no `kind` this format has; it is one of `first-fit` and `optimal`",
+        )?
+        .to_owned();
+    let tolerance = value.get("tolerance").and_then(Json::as_integer);
+    if kind == "optimal" && tolerance.is_none() {
+        return Err("a `search` naming `kind: \"optimal\"` states no `tolerance`".to_owned());
+    }
+    Ok(CaseSearch { kind, tolerance })
+}
+
+/// Read one declared tab stop.
+fn read_tab_stop(value: &Json) -> Result<CaseTabStop, String> {
+    Ok(CaseTabStop {
+        position: value
+            .get("position")
+            .and_then(Json::as_integer)
+            .ok_or("a `tab_stop` states no `position`")?,
+        kind: text_of(value, "kind")
+            .ok_or("a `tab_stop` states no `kind`")?
+            .to_owned(),
+        at: ordinal_of(value, "at"),
     })
 }
 
@@ -911,10 +1352,28 @@ fn read_constructs(value: Option<&Json>) -> Vec<CaseConstruct> {
                     .into_iter()
                     .filter_map(|name| entry.get(name).and_then(read_range))
                     .collect(),
+                style: owned(entry, "style"),
+                annotation: ordinal_of(entry, "annotation"),
+                runs: entry
+                    .get("runs")
+                    .and_then(Json::as_array)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(read_case_run)
+                    .collect(),
             });
         }
     }
     constructs
+}
+
+/// Read one `ruby` construct's own `runs` entry: a base range and the annotation range that
+/// reads it.
+fn read_case_run(value: &Json) -> Option<CaseRun> {
+    Some(CaseRun {
+        base: value.get("base").and_then(read_range)?,
+        annotation: value.get("annotation").and_then(read_range)?,
+    })
 }
 
 /// Read a half-open range of ordinals.

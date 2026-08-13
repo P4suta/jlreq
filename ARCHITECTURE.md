@@ -96,10 +96,16 @@ The two absent edges are load-bearing ([ADR 0015](docs/adr/0015-the-crate-graph-
 `jlreq-inline` does not reach `jlreq-line`, because §3.4.3 lets a warichu (割注) straddle
 two lines, so its interior's available measure is unknown until the outer break is chosen
 and every break selection in the workspace therefore happens in `jlreq-line`; and
-`jlreq-line` does not reach `jlreq-inline`, because the line layer resolves the ruby
-overhang allowance and the construct layer places against an allowance it is told.
-Everything crossing that seam lives in `jlreq-unit`, so neither crate names a type the
-other owns, and `just purity` checks this exact adjacency rather than mere core membership.
+`jlreq-line` does not reach `jlreq-inline` regardless of what a caller does with either
+crate's own output between them. The ruby overhang allowance was the design's own reason a
+caller, not an edge, would ever need to mediate between the two — `jlreq-line` computing
+the allowance and a caller passing it into `jlreq_inline::place` as a plain `jlreq-unit`
+value — but `place` does not read one yet (M4-a round 3, task #78; `jlreq_inline::place`'s
+own module doc argues why none of this round's three positioning cases needs it, and names
+task #81 as its first consumer). The edge stays absent regardless of whether that parameter
+is read this round or a later one. Everything that does cross this seam lives in
+`jlreq-unit`, so neither crate names a type the other owns, and `just purity` checks this
+exact adjacency rather than mere core membership.
 
 ## What lives where
 

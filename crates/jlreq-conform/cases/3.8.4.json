@@ -1,0 +1,82 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.8.4",
+  "heading_en": "Procedures for Inter-character Space Expansion",
+  "heading_ja": "字間の空ける処理の手順",
+  "cases": [
+    {
+      "id": "3.8.4/dividing-punctuation-then-western/the-second-stage-alone-closes-the-line",
+      "rules": ["3.8.4"],
+      "standing": "normative",
+      "quote": "The tables are for the second and subsequent stages of inter-character spacing expansion in priority order, assuming the first stage of the expansion for Western word spaces (cl-26) is already done.",
+      "rationale": "The dividing-punctuation/Western boundary `E/dividing-punctuation-then-western` already establishes as boundary data (quarter em, expandable to a half em at Table 6's second priority stage) is composed here as a real, non-last line, which is what makes `ladder::expand` the function actually under test rather than the boundary evaluator alone. `？A` (cl-04, cl-27) is short of `measure` by exactly this site's own headroom — a half em (500 units at the question mark's own 1000-unit em) less the quarter em Table 1 already grants it (250), 250 units of room — so `expand`'s second-stage loop drains it to that ceiling and no further: `remaining` reaches zero inside the second stage, the third stage's own loop iteration finds no site of its own to drain (this milestone's own gap, below) and does nothing, and the fourth-stage re-leveling pass this case's second entry exercises never runs. `Line::extent()` reaching `measure` exactly and `Line::placements()` shifting only the Western letter's own placement by the full 250 is what a second-stage-only expansion looks like from the outside; the sibling case below is the same site pushed past its own ceiling instead. Table 6's own third priority stage is not exercised by this case, or reachable by any case this milestone could write: of the 211 class-pair cells the generated Table 6 assigns to the third stage, 210 sit at a Table 1 coordinate that carries no term at all — `jlreq_spacing::evaluate::spaces_of` builds a `ConditionalSpace` (and so a `Site`) only for a coordinate Table 1 itself gives a term, `Ladder::of`'s own sites being drawn from exactly those — and the 211th, cl-21 (ornamented character complexes) before cl-28 (warichu opening brackets), still cannot compose: cl-21 is membership-in-a-construct with no enumerated key of its own (§A.21 states a heading and no table), so nothing resolves an occurrence to it while `jlreq_line::Paragraph` carries no construct at all (`jlreq-line`'s own `# Status`) — cl-28 is an ordinary, directly classifiable class (§A.28 enumerates its own keys; `appendix_a_28`'s own cases classify it from bare text), so the coordinate's *other* side is not the obstacle. This is a second, previously unstated gap alongside the first stage's own cl-26 exclusion this case's rationale already names, and it is stated here rather than claimed closed by a case that cannot exist against today's captured data.",
+      "input": {
+        "kind": "compose",
+        "text": "？A亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 700, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "candidates": [{ "at": 4 }],
+        "measure": 1950
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.8.4, Table 6's own second priority stage",
+          "expect": {
+            "lines": [
+              { "placements": [0, 1250], "extent": 1950 },
+              { "placements": [0], "extent": 1000, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.8.4/dividing-punctuation-then-western/the-fourth-stage-re-levels-past-the-second-stages-own-ceiling",
+      "rules": ["3.8.4"],
+      "standing": "normative",
+      "quote": "When the 4th step is needed, evenly add space to equalize the spacing of 1st, 2nd, 3rd and 4th steps.",
+      "rationale": "The same site as the sibling case above, asked for 50 units more than its own second-stage ceiling can supply. `ladder::expand`'s own second-stage loop still drains it to that ceiling first (250 units, exactly as before), but 50 units of `need` remain once the ordinary stages are exhausted, and §E.1's own fourth step is what `expand` reaches for next: the union of every site the second and third stages touched — here, the one site the second stage already drained — is topped up by the remainder with no ceiling of its own to stop at (`Expansion::Residual`'s own doc: \"no upper limit\"), which is the one place in this ladder a site's realized amount is allowed to exceed the amount its own `ConditionalSpace` states. The result is a site expanded by 300 units total against a stated ceiling of 250 — unreachable by the second stage alone, and the fact this case exists to publish: `Line::extent()` still reaches `measure` exactly, but `Line::placements()` shifts the Western letter's own placement 50 units further than the sibling case's own second-stage-only reading does, which is the one observable difference the fourth step's own re-leveling makes to a line's geometry from outside `crate::ladder`.",
+      "input": {
+        "kind": "compose",
+        "text": "？A亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 700, "frame": "proportional", "scale": 0 },
+          { "start": 4, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "candidates": [{ "at": 4 }],
+        "measure": 2000
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §E.1, the fourth priority step",
+          "expect": {
+            "lines": [
+              { "placements": [0, 1300], "extent": 2000 },
+              { "placements": [0], "extent": 1000, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [{ "extent": 1950 }]
+          },
+          "why": "1950 is the sibling case's own second-stage-only extent, 50 units short of this case's own `measure`. §E.1's own fourth step exists precisely so a line whose ordinary stages cannot fully close its own shortfall is not reported short of the measure it was composed against; answering the same extent as a line asked for 50 fewer units treats the fourth step as though it were not read at all."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

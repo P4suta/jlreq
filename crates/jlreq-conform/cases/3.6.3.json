@@ -1,0 +1,190 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.6.3",
+  "heading_en": "The Method of Setting the Target Text",
+  "heading_ja": "タブ処理を行う対象の文字列の配置方法",
+  "cases": [
+    {
+      "id": "3.6.3/two-runs-no-overflow/each-run-seats-at-its-own-nominal-stop",
+      "rules": ["3.6.3"],
+      "standing": "normative",
+      "quote": "If the target string is the first series of the line, the characters should be set in the first tab position from the start of the line, and so on, one after another (see Figure 166).",
+      "rationale": "The ordinary case: each target run, in order, consumes the next declared stop, absent any overflow. Two ideographs (亜位, cl-19, no inter-character spacing of their own), each its own one-item target run, against two start-alignment stops: the first run (item 0, 1000 units) seats at the first stop, declared at 0 — 'the first tab position from the start of the line' — so it sits at 0 and the floor the second run's own search reads becomes 0 plus 1000, 1000. The second run (item 1, 1500 units) then finds the second stop, declared at 1000, is the first one that does not fall short of that floor — it clears it exactly, 'and so on, one after another' — and seats there: it sits at 1000, and the extent of that line is 1000 plus 1500, 2500.",
+      "input": {
+        "kind": "tab",
+        "text": "亜位",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1500, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0, 1],
+        "tab_stops": [
+          { "position": 0, "kind": "start" },
+          { "position": 1000, "kind": "start" }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.3(a)",
+          "expect": {
+            "lines": [
+              { "placements": [0], "extent": 1000, "trims": [] },
+              { "placements": [1000], "extent": 2500, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [
+              { "placements": [0] },
+              { "placements": [0] }
+            ]
+          },
+          "why": "Both runs anchoring at the same declared position contradicts 'one after another': the second run's own search consumes the second declared stop (1000), the only one of the two that does not fall short of the floor the first run's own 1000-unit extent leaves."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.3/an-overflowing-run/the-search-skips-a-stop-too-early-to-use",
+      "rules": ["3.6.3"],
+      "standing": "normative",
+      "quote": "If the target string of text is too long to be set before the next tab position and overflows, the next string of text is aligned to the tag position after the end of the preceding string (see Figure 167).",
+      "rationale": "Quoted verbatim from `spec/snapshot/index.html`, including its own 'tag position' where the surrounding sentence and Figure 167 both make plain 'tab position' is meant — a source-snapshot typo, not this case's own transcription error. Two target runs and three declared stops, deliberately more than one apiece, is what lets the overflow this sentence states actually happen: the first run (item 0 alone, 1800 units, start-aligned to the first stop at 0) reaches a floor of 1800 — already past the second stop's own declared position, 1200, before the second run's search even starts. That search skips the 1200 stop entirely (it falls short of the 1800-unit floor) and finds the third, 2200, the first one that does not; the second run (item 1 alone, 400 units) seats there, 'aligned to the tab position after the end of the preceding string.' The second run's own extent is consequently 2200 plus 400, 2600, and the 1200 stop is spent for nothing — no run ever seats there, which is exactly what 'overflows' means for the stop a shorter run would otherwise have used.",
+      "input": {
+        "kind": "tab",
+        "text": "亜位",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1800, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 400, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0, 1],
+        "tab_stops": [
+          { "position": 0, "kind": "start" },
+          { "position": 1200, "kind": "start" },
+          { "position": 2200, "kind": "start" }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.3(b)",
+          "expect": {
+            "lines": [
+              { "placements": [0], "extent": 1800, "trims": [] },
+              { "placements": [2200], "extent": 2600, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [
+              { "placements": [0] },
+              { "placements": [1200] }
+            ]
+          },
+          "why": "1200 falls short of the floor the first run's own 1800-unit extent leaves; seating the second run there would overlap the first by 600 units, which 'overflows' explicitly excludes — the search moves past a stop that does not clear the floor rather than accepting it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.3/an-end-aligned-runs-pulled-back-anchor/clamped-to-the-preceding-runs-end",
+      "rules": ["3.6.3"],
+      "standing": "normative",
+      "quote": "If the beginning of the string overlaps with the end of the preceding string as the result of the tab setting indication, the following string is set just after the preceding string (see Figure 168).",
+      "rationale": "The search that finds a stop and the kind's own arithmetic that anchors the run there are two different questions, and this case is where they disagree. The first run (item 0 alone, 1000 units, start-aligned to a stop at 0) leaves a floor of 1000. The second run (item 1 alone, 200 units, end-aligned) searches the one remaining declared stop, 1050: that stop's own position, 1050, does clear the floor (1000), so the search finds it directly — but end alignment pulls the run's own anchor back by its own 200-unit width, to 1050 minus 200, 850, which is short of the floor by 150 units and would overlap the first run's own end. §3.6.3's own clamp catches exactly this and sets the second run 'just after the preceding string' instead — at the floor itself, 1000 — so it sits at 1000 and the line's extent is 1000 plus 200, 1200, rather than the 1050 end alignment's own unclamped arithmetic would have produced.",
+      "input": {
+        "kind": "tab",
+        "text": "亜位",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 200, "frame": "full-em", "scale": 0 }
+        ],
+        "tab_starts": [0, 1],
+        "tab_stops": [
+          { "position": 0, "kind": "start" },
+          { "position": 1050, "kind": "end" }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.3(c)",
+          "expect": {
+            "lines": [
+              { "placements": [0], "extent": 1000, "trims": [] },
+              { "placements": [1000], "extent": 1200, "trims": [] }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [
+              {},
+              { "placements": [850] }
+            ]
+          },
+          "why": "850 is end alignment's own unclamped arithmetic (1050 minus the run's own 200-unit width) and overlaps the first run's own end (1000) by 150 units — exactly what 'the beginning of the string overlaps with the end of the preceding string' names; the clamp exists to replace this reading with the solid one, not to leave it standing beside it."
+        }
+      ],
+      "disagreements": []
+    },
+    {
+      "id": "3.6.3/an-end-aligned-last-run/its-anchor-accounts-for-its-own-trailing-space",
+      "rules": ["3.6.3"],
+      "standing": "normative",
+      "quote": "Set the text from the line head to the position before the tab sign in the first tab position, set the text from the first tab sign to the next tab sign in the second tab position, and so on. The behavior of opening brackets (cl-01) and closing brackets (cl-02), etc. is same as for the main text.",
+      "rationale": "The second sentence's own 'etc.' is what makes this case a distinct instance rather than a restatement of the closing-bracket example the sentence names: main-text mojikumi is not only kinsoku, it is also §B.2's own trailing half em after a line-ending full stop (cl-06), and this run — the only target declared, so it is both the tab line's own head and its own genuine end — earns that half em exactly as an ordinary composed line's last item would. `jlreq_line::tab_line` computes it in two passes for exactly this reason: the provisional pass, before this run is known to be the line's own last placed one, reads the run's own narrower, pre-trailing natural width (900 for the ideograph plus 500 for the full stop's own half-em-frame advance, 1400) and would anchor end alignment at 2600 minus 1400, 1200 — discarded once the run is confirmed to close the line. The redone pass reads the run's own true natural width instead, trailing space included: 900 plus 500 plus the added §B.2 half em (500 more, at this case's own 1000-unit em), 1900. The anchor is consequently 2600 minus 1900, 700 — no clamp applies, since nothing precedes this sole run — so the ideograph sits at 700 and the full stop at 700 plus 900, 1600, and the line's own extent, trailing space included, is 700 plus 1900, 2600: exactly the declared stop, which is what 'the end position of the text is aligned to the tab position' means once the text's own true end already includes what main-text treatment adds to it. `extent` alone already proves this — it is 2600 only if the trailing half em was folded into the anchor, and 3100 (this case's own `forbidden` entry) otherwise — so this case does not additionally publish `expect.lines[].trailing` as its own field: `crates/jlreq-conform/src/run.rs`'s own `check_line` compares that field's `em` fraction through `units_of`, which converts at kumihan's fixed 720-unit-per-em basis regardless of a case's own declared `inline_em` (correct for a `boundary`-kind space, which `jlreq_spacing::ConditionalSpace::amount` never resolves against any caller scale at all), while `Line::trailing` on a `compose`/`align`/`tab`-kind case is already resolved against the case's own declared scale (`jlreq_line::compose::trailing_of`'s own `resolve` call) — 500 at this case's own 1000-unit em, not 360. No case anywhere in this suite has published a nonzero `trailing` or `trims` amount on a non-`boundary` case before this round (checked directly: no other file matches `\"trailing\": { \"em\"` under `crates/jlreq-conform/cases/`), so the mismatch between the two representations was never exercised until this one found it; it is a latent gap in the harness's own comparison, not in `tab_line`, and fixing `check_line` to read a `compose`/`align`/`tab`-kind amount's own `resolved` field instead is a round of its own rather than folded into this one.",
+      "input": {
+        "kind": "tab",
+        "text": "位。",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 900, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ],
+        "tab_starts": [0],
+        "tab_stops": [{ "position": 2600, "kind": "end" }]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.6.3, §B.2#6 (preferred half em)",
+          "expect": {
+            "lines": [
+              {
+                "placements": [700, 1600],
+                "extent": 2600,
+                "trims": []
+              }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [{ "placements": [1200, 2100], "extent": 3100 }]
+          },
+          "why": "Computed from the run's own narrower, pre-trailing natural width (1400) rather than its true one (1900, the §B.2 trailing half em included) — the anchor a redo that never accounts for the run's own eventual line-end status would leave standing. The run's own true end then overshoots the declared stop (2600) by exactly the trailing half em, 3100, rather than landing on it."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

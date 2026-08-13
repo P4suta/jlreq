@@ -7,7 +7,7 @@
 use jlreq_spec::{Answer, RuleId};
 use jlreq_unit::RubyOverhang;
 
-use crate::space::ConditionalSpace;
+use crate::space::{ConditionalSpace, Expansion};
 
 /// Whether a line may end between two items.
 ///
@@ -75,6 +75,8 @@ pub struct Delegation {
 #[non_exhaustive]
 pub struct Boundary {
     spaces: [Option<ConditionalSpace>; 2],
+    expansion: Expansion,
+    expansion_rule: Option<RuleId>,
     breakable: Answer<Breakable>,
     placement: Answer<Placement>,
     ruby_overhang: RubyOverhang,
@@ -87,6 +89,8 @@ impl Boundary {
     /// constructor exists because a caller cannot state a fact the six matrices did not.
     pub(crate) const fn new(
         spaces: [Option<ConditionalSpace>; 2],
+        expansion: Expansion,
+        expansion_rule: Option<RuleId>,
         breakable: Answer<Breakable>,
         placement: Answer<Placement>,
         ruby_overhang: RubyOverhang,
@@ -94,6 +98,8 @@ impl Boundary {
     ) -> Self {
         Self {
             spaces,
+            expansion,
+            expansion_rule,
             breakable,
             placement,
             ruby_overhang,
@@ -131,6 +137,46 @@ impl Boundary {
     #[must_use]
     pub const fn ruby_overhang(self) -> RubyOverhang {
         self.ruby_overhang
+    }
+
+    /// How far this boundary may be expanded during line adjustment, independent of
+    /// whether either neighbor carries a conditional space to attach the fact to.
+    ///
+    /// Table 6 states this opportunity as one cell per class pair (§E.1's own single
+    /// ceiling per coordinate), not one per referent the way Appendix B's amounts are — so
+    /// unlike [`Boundary::spaces`], this is a boundary-level fact rather than a per-neighbor
+    /// contribution. ADR-0021 amends ADR-0014 to say so explicitly, but the reasoning is
+    /// ADR-0014's own: it is the identical move that ADR already made for
+    /// [`Boundary::ruby_overhang`], whose own words apply here without change — "the second
+    /// has no space to attach to, so the permission belongs to the boundary". A solid Table
+    /// 1 cell (`spaces()` empty) can still answer a real [`Expansion`] here: cl-19 against
+    /// cl-19 (kanji beside kanji), whose Table 1 cell is blank but whose Table 6 cell is
+    /// `0-1/4 stage 3`, is the coordinate that makes the distinction observable at all.
+    ///
+    /// JLReq: §E, §E.1, §3.8.4
+    #[must_use]
+    pub const fn expansion(self) -> Expansion {
+        self.expansion
+    }
+
+    /// Which rule states this coordinate's Table 6 answer — `Some` when a row of Table 6, or
+    /// a note that governs one of its rows, decided [`Boundary::expansion`]'s value, `None`
+    /// when Table 6 carries no row here at all.
+    ///
+    /// The `Option` is the fact this accessor exists to carry, not an incidental wrapper: it
+    /// is what tells apart "Table 6 states no opportunity here, and names §E.2 note 8 while
+    /// doing so" from "this coordinate has no row" — two situations [`Boundary::expansion`]
+    /// alone answers identically, `Expansion::None`, because [`Expansion`] is a kind and not
+    /// a record (ADR-0010) and carries no citation of its own. A `Some` here is consequently
+    /// not a promise that the opportunity is real: at cl-24 against cl-13 (§E.2#8) the row
+    /// exists, cites `E.2#8`, and states `limit: None` — the note's own denial, not its
+    /// absence — so `expansion()` reads [`Expansion::None`] there while `expansion_rule()`
+    /// still reads `Some(RuleId::E_2_NOTE_8)`.
+    ///
+    /// JLReq: §E, §E.1, §E.2, §3.8.4
+    #[must_use]
+    pub const fn expansion_rule(self) -> Option<RuleId> {
+        self.expansion_rule
     }
 
     /// Where the same-run answer is a procedure rather than a value.
@@ -173,22 +219,12 @@ mod tests {
 
     #[test]
     fn a_boundary_reports_at_most_two_spaces_in_order() {
-        let one = ConditionalSpace::new(
-            Em::HALF,
-            Referent::Preceding,
-            Reduction::Rigid,
-            Expansion::None,
-            rule(),
-        );
-        let two = ConditionalSpace::new(
-            Em::QUARTER,
-            Referent::Trailing,
-            Reduction::Rigid,
-            Expansion::None,
-            rule(),
-        );
+        let one = ConditionalSpace::new(Em::HALF, Referent::Preceding, Reduction::Rigid, rule());
+        let two = ConditionalSpace::new(Em::QUARTER, Referent::Trailing, Reduction::Rigid, rule());
         let boundary = Boundary::new(
             [Some(one), Some(two)],
+            Expansion::None,
+            None,
             Answer::new(Breakable::Yes, Provenance::of(rule(), Standing::Normative)),
             Answer::new(
                 Placement::Permitted,
@@ -207,6 +243,8 @@ mod tests {
     fn the_frozen_projections_agree_with_the_open_answers() {
         let breakable = Boundary::new(
             [None, None],
+            Expansion::None,
+            None,
             Answer::new(Breakable::Yes, Provenance::of(rule(), Standing::Normative)),
             Answer::new(
                 Placement::Permitted,
@@ -220,6 +258,8 @@ mod tests {
 
         let forbidden = Boundary::new(
             [None, None],
+            Expansion::None,
+            None,
             Answer::new(
                 Breakable::No { rule: rule() },
                 Provenance::of(rule(), Standing::Normative),
@@ -233,5 +273,36 @@ mod tests {
         );
         assert!(!forbidden.is_breakable());
         assert!(!forbidden.is_permitted());
+    }
+
+    #[test]
+    fn a_boundary_can_answer_a_real_expansion_with_no_conditional_space_at_all() {
+        // The plumbing `expansion()` exists to expose: a boundary whose `spaces()` is
+        // empty (the shape a solid Table 1 cell answers) can still carry a real
+        // `Expansion` — cl-19 against cl-19 is `evaluate.rs`'s own end-to-end test of
+        // exactly this fact over real generated data; this is the constructor-level one.
+        let ceiling = Expansion::Range {
+            ceiling: Em::QUARTER,
+            stage: crate::space::ExpansionStage::new(3),
+        };
+        let boundary = Boundary::new(
+            [None, None],
+            ceiling,
+            Some(rule()),
+            Answer::new(Breakable::Yes, Provenance::of(rule(), Standing::Normative)),
+            Answer::new(
+                Placement::Permitted,
+                Provenance::of(rule(), Standing::Normative),
+            ),
+            RubyOverhang::None,
+            None,
+        );
+        assert_eq!(boundary.spaces().count(), 0);
+        assert_eq!(boundary.expansion(), ceiling);
+        assert_eq!(
+            boundary.expansion_rule(),
+            Some(rule()),
+            "the citation travels with the ceiling it states, even with no space to attach to"
+        );
     }
 }

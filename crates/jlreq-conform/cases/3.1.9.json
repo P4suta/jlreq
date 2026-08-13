@@ -1,0 +1,79 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.1.9",
+  "heading_en": "Positioning of Closing Brackets, Full Stops, Commas and Middle Dots at Line End",
+  "heading_ja": "行末に配置する終わり括弧類，句点類，読点類及び​中点類の​配置方法",
+  "cases": [
+    {
+      "id": "3.1.9/full-stop-at-line-end/table-4-alone-stays-rigid-among-the-three",
+      "rules": ["3.1.9"],
+      "standing": "normative",
+      "quote": "In principle, closing brackets (cl-02), commas (cl-07) or full stops (cl-06) at the line end have half em spacing after them (see Figure 76). This half em spacing can be removed for line adjustment (for more about line adjustment, see § 3.8 Line Adjustment ). However, the possibilities are only half em spacing or solid. Other spacing, such as quarter em spacing should not be used.",
+      "rationale": "§D.1's own legend already reads this rule at cl-02 (closing bracket) x line-end, where Table 4 stays rigid because JIS X 4051's own convention never pads that boundary in the first place (`D.1/closing-bracket-at-line-end/table-4-protects-what-table-3-and-5-drain`'s own rationale states that coordinate). §3.1.9's own text draws no distinction among its three named classes at all — its opening sentence treats \"closing brackets (cl-02), commas (cl-07) or full stops (cl-06)\" identically, every one of them carrying a half em that \"can be removed for line adjustment\" — so a case for this rule at the full stop's own coordinate needs no textual difference from D.1's own coordinate to earn its place: §D.1 and §3.1.9 are two different rule addresses, and the coverage this suite counts is per address, not per amount. What does distinguish cl-06 from the other two classes this rule names, worth stating because a reader moving from §B.2 note 2 and note 6 to this rule might otherwise expect an identical shape at every one of the three coordinates, is §B.2 note 6's own parenthetical: JIS X 4051 keeps the full stop's own half em and withdraws only the comma's, so cl-06 is the one class of this rule's three whose JIS X 4051 reading is never solid at all. Table 1 states `1/2 be` for cl-06 at the line end, citing that note; the three reduction tables read exactly as `D.1.json`'s own cl-02 entries do — `spec/captured/table3.en.tsv` reads `1/2=0 stage 2`, `table4.en.tsv` reads a bare `1/2` (rigid, no reduction opportunity at all), and `table5.en.tsv` reads `1/2=0 stage 2` again — but not for the identical reason D.1's own legend gives at cl-02. §D.1's own text contrasts the two explicitly (\"On the other hand\"): cl-02 and cl-07 stay rigid under Table 4 because JIS X 4051 never pads that boundary at all (`table4.en.tsv`'s cl-02×line-end cell reads blank), while cl-06 stays rigid because JIS X 4051 does pad it with a half em and its own convention simply refuses to let that padding reduce for line adjustment (`table4.en.tsv`'s cl-06×line-end cell reads a bare `1/2`, not blank). Table 4 alone stays rigid here, which is the fact worth a case of its own: an implementation that reduces this boundary under every table it recognizes, without checking whether the selected table is JIS X 4051's own, answers Table 4 wrong in the direction that discards a real, load-bearing rigidity. The `discrete` shape on the two reducible tables is this rule's own second half read directly: \"the possibilities are only half em spacing or solid\" states a two-valued drain rather than a continuous one, matching `crates/jlreq-spacing/src/evaluate.rs`'s own `cell_reduction`, which reads the `=` token as `Reduction::Discrete` and the `-` token as `Reduction::Range` — the same decoder `D.1.json`'s own `1/2=0 stage 2` cell and `D.2/middle-dot-at-line-end`'s own `1/4-0 stage 3` cell already pin from opposite sides of that distinction.",
+      "input": {
+        "kind": "boundary",
+        "text": "。",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.1.9, Table 3 (JLReq's own adopted method, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "discrete", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-4" },
+          "source": "JLReq §3.1.9, Table 4 (JIS X 4051's own convention, §D preamble) — rigid, but not for the same reason §D.1's own legend gives at cl-02: JIS X 4051 pads this boundary with a half em and then refuses to let that padding reduce for line adjustment (§D.1: \"which is not allowed to reduce this spacing\"), rather than never padding it at all",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "rigid", "ladder": "reduction" }
+              ]
+            }
+          }
+        },
+        {
+          "policy": { "adjustment.reduction_table": "table-5" },
+          "source": "JLReq §3.1.9, Table 5 (a third method found in other publications, §D preamble)",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "resolved": 500, "referent": "preceding", "reduction": "discrete", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "edge": "end",
+              "spaces": [
+                { "em": [1, 2], "units": 360, "referent": "preceding", "reduction": "range", "floor": [0, 1], "floor_units": 0, "ladder": "reduction", "stage": 2 }
+              ]
+            }
+          },
+          "why": "§3.1.9 states in so many words that \"the possibilities are only half em spacing or solid\" and that \"other spacing, such as quarter em spacing should not be used\" — a continuously-shrinking reading is exactly the intermediate value this sentence forbids, and none of the three permitted entries above answers `range`: Table 3 and Table 5 both drain this space discretely, all at once, and Table 4 does not drain it at all."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "3.5.1",
+  "heading_en": "Line Head Indent at the Beginning of Paragraphs",
+  "heading_ja": "段落先頭行の字下げ",
+  "cases": [
+    {
+      "id": "3.5.1/three-ideographs-two-lines/only-the-first-line-carries-the-em-indent",
+      "rules": ["3.5.1"],
+      "standing": "normative",
+      "quote": "A paragraph, a section of a document which consists of one or more sentences to indicate a distinct idea, usually begins on a new line. For the related line head indent at the beginning of paragraphs (in JIS 4051, this is called the \"paragraph line head indent\") the following methods are available. The amount of spacing used for the indentation is, in principle, one em spacing using the character size in the paragraph.",
+      "rationale": "The rule states two things a composed paragraph can be measured against: the indent is applied once, at the paragraph's own first line, and its amount is one em of the paragraph's own declared character size — 1000 units on this case's own 1000-unit-per-em scale, not a value the caller picks independently of it. `jlreq_line::Paragraph::with_first_line_indent` is real at M1 (this crate's own `# Status`) and does exactly this: it widens the first line's own head indent and leaves every other line's untouched, which `crates/jlreq-conform/src/kumihan.rs`'s `compose` wires straight from this case's own `input.first_line_indent`. Three ideographs (cl-19, no inter-character spacing of their own — Table 1's cl-19-against-cl-19 cell is blank) on a two-em measure force exactly two lines: the first line's own indent leaves room for one character before the second would overflow, and the second line, unindented, holds the remaining two. The first item's placement is the whole of the assertion — 1000 units on line 1, 0 units on line 2 — because that is the one quantity the rule's own \"in principle, one em\" fixes and an implementation that ignored `first_line_indent`, or applied it to every line rather than the first, would report differently.",
+      "input": {
+        "kind": "compose",
+        "text": "亜亜亜",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 3, "advance": 1000, "frame": "full-em", "scale": 0 },
+          { "start": 6, "advance": 1000, "frame": "full-em", "scale": 0 }
+        ],
+        "candidates": [{ "at": 0 }, { "at": 3 }, { "at": 6 }, { "at": 9 }],
+        "measure": 2000,
+        "first_line_indent": 1000
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §3.5.1",
+          "expect": {
+            "lines": [
+              { "placements": [1000], "extent": 2000 },
+              { "placements": [0, 1000], "extent": 2000 }
+            ],
+            "violations": []
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "lines": [
+              { "placements": [1000] },
+              { "placements": [1000, 2000] }
+            ]
+          },
+          "why": "§3.5.1 states the indent as a property of \"the beginning of paragraphs\" — its first line — and not of every line composition produces; carrying it into the second line answers §3.5.2's line head indent, a fixed margin every line shares, rather than the paragraph-initial indent this rule states."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}

@@ -255,17 +255,28 @@ impl Policy {
             .filter(move |(question, choice)| base.get(*question) != *choice)
     }
 
-    // `remainder` — the one function that derives `jlreq_unit::RemainderRule` from a
-    // policy, so that `distribute`'s parameter is a transport and not a second carrier
-    // (ADR-0019) — arrives with the policy space, beside the named `Question` constants.
-    // It reads `Question::REMAINDER`, which `spec/derived/questions.tsv` now records as
-    // `adjustment.remainder` — §3.8.3 says a reduction is applied "to all spaces on the
-    // target line at the same time" and says nothing about the units that do not divide —
-    // but until stage 2 emits that file there is no such constant, no answer in force at
-    // it, and therefore no rule to return; a function returning one anyway would be
-    // publishing a typographic decision nobody made. `crates/jlreq-spec/Cargo.toml` gains
-    // its `jlreq-unit` dependency in the same commit, which is why the crate graph permits
-    // an edge the manifest does not yet declare (ADR-0020).
+    /// Which side of a [`jlreq_unit::distribute`] split the units that do not divide evenly
+    /// land on.
+    ///
+    /// The single derivation of a [`jlreq_unit::RemainderRule`] from a policy (ADR-0019):
+    /// `distribute`'s parameter is a transport rather than a second carrier of the choice,
+    /// so every call site in the workspace reads it from here rather than naming
+    /// `RemainderRule::Leading` or `RemainderRule::Trailing` itself. §3.8.3 says a
+    /// reduction is applied "to all spaces on the target line at the same time" and says
+    /// nothing about the units a text-dependent divisor leaves over, so this reads
+    /// [`Question::REMAINDER`] by name, exactly as [`Question::ADJUSTMENT_PREFERENCE`] is
+    /// read by name elsewhere, rather than by an ordinal a future regeneration could
+    /// silently renumber.
+    ///
+    /// JLReq: §3.8.3, `decision:remainder`
+    #[must_use]
+    pub fn remainder(self) -> jlreq_unit::RemainderRule {
+        if self.get(Question::REMAINDER).name() == "trailing" {
+            jlreq_unit::RemainderRule::Trailing
+        } else {
+            jlreq_unit::RemainderRule::Leading
+        }
+    }
 
     /// One named practice, read out of the generated table's preset columns.
     const fn preset(which: Preset) -> Self {

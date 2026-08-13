@@ -1,0 +1,49 @@
+{
+  "$schema": "../cases.schema.json",
+  "section": "C",
+  "heading_en": "Possibilities for Line-breaking between Characters",
+  "heading_ja": "文字間での分割の可否",
+  "cases": [
+    {
+      "id": "C/opening-bracket-then-middle-dot/an-opening-bracket-never-precedes-a-break",
+      "rules": ["C"],
+      "standing": "normative",
+      "quote": "Line break opportunities between two adjacent characters of given character classes explained in § 3.9.2 Grouping of Characters and Symbols depending on their Positioning shall be determined by Table 2.",
+      "rationale": "Table 2's own cell for an opening bracket (cl-01) followed by a middle dot (cl-05) carries no note of its own — no citation among §C.2's thirteen or §C.3's addendum — so the sentence a report names for it is this bare address, exactly as an unnoted Table 1 cell is answered by §B's own opening sentence and an unnoted Table 3 cell by §D.1's legend. The prohibition itself follows from cl-01's own row: an opening bracket never precedes a break against any trailing class Table 2 lists, kinsoku strictness notwithstanding, which is why one policy-free entry is every reading this case needs — §C.1's four kinsoku levels have nothing left to disagree about once the cell's own token is `not` rather than a level bitmask.",
+      "input": {
+        "kind": "boundary",
+        "text": "‘・",
+        "scales": [{ "inline_em": 1000, "block_em": 1000 }],
+        "items": [
+          { "start": 0, "advance": 500, "frame": "half-em", "scale": 0 },
+          { "start": 3, "advance": 500, "frame": "half-em", "scale": 0 }
+        ]
+      },
+      "permitted": [
+        {
+          "policy": {},
+          "source": "JLReq §C, Table 2",
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": false,
+              "permitted": true
+            }
+          }
+        }
+      ],
+      "forbidden": [
+        {
+          "expect": {
+            "boundary": {
+              "before": 0,
+              "breakable": true
+            }
+          },
+          "why": "Table 2's own cl-01 row prints `not` against every trailing class it lists, unconditioned on the kinsoku strictness §C.1 otherwise selects between; reading this coordinate as breakable at any level ignores the row's own marking rather than reading a level bit it does not carry."
+        }
+      ],
+      "disagreements": []
+    }
+  ]
+}
