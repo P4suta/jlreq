@@ -4,6 +4,8 @@
 
 //! Versioned NDJSON black-box conformance runner.
 
+mod validation;
+
 use std::{
     env, fs,
     io::{self, Read, Write},
@@ -12,10 +14,13 @@ use std::{
 };
 
 use serde_json::{Map, Value};
+use validation::{validate_request, validate_response};
 
 const PROTOCOL: &str = "kumihan.conformance/1";
 const SPEC: &str = kumihan::SPECIFICATION;
 const BUILTIN_SUITE: &str = include_str!("../suite.ndjson");
+#[cfg(test)]
+const PROTOCOL_SCHEMA: &str = include_str!("../protocol.schema.json");
 
 fn main() -> ExitCode {
     let mut arguments = env::args().skip(1);
@@ -187,8 +192,25 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
         if !has_request || !object.get("expected").is_some_and(Value::is_object) {
             return Err("a suite case needs object-valued request and expected fields".to_owned());
         }
+        validate_request(
+            object
+                .get("request")
+                .ok_or_else(|| "validated suite case lost its request".to_owned())?,
+        )?;
+        validate_response(
+            object
+                .get("expected")
+                .ok_or_else(|| "validated suite case lost its expected response".to_owned())?,
+        )?;
     } else if has_request == has_response {
         return Err("a protocol message needs exactly one of request or response".to_owned());
+    } else if let Some(request) = object.get("request") {
+        validate_request(request)?;
+        if let Some(expected) = object.get("expected") {
+            validate_response(expected)?;
+        }
+    } else if let Some(response) = object.get("response") {
+        validate_response(response)?;
     }
     Ok(())
 }
@@ -289,7 +311,8 @@ fn run_engine(engine: &str, cases: &[Case]) -> Result<usize, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{BUILTIN_SUITE, parse_cases, parse_messages};
+    use super::{BUILTIN_SUITE, PROTOCOL_SCHEMA, parse_cases, parse_messages};
+    use serde_json::json;
 
     #[test]
     fn builtin_suite_is_a_valid_versioned_case_stream() {
@@ -302,5 +325,51 @@ mod tests {
         let message =
             r#"{"protocol":"old","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"x","request":{}}"#;
         assert!(parse_messages(message, false).is_err());
+    }
+
+    #[test]
+    fn request_body_is_validated_instead_of_treated_as_an_opaque_object() {
+        let message = json!({
+            "protocol": "kumihan.conformance/1",
+            "spec": "jlreq-2020-08-11+unicode-17.0.0",
+            "id": "missing-input",
+            "request": {}
+        });
+        assert!(parse_messages(&message.to_string(), false).is_err());
+    }
+
+    #[test]
+    fn response_body_is_validated_instead_of_treated_as_an_opaque_object() {
+        let message = json!({
+            "protocol": "kumihan.conformance/1",
+            "spec": "jlreq-2020-08-11+unicode-17.0.0",
+            "id": "bad-output",
+            "response": {"lines": "not-an-array", "diagnostics": []}
+        });
+        assert!(parse_messages(&message.to_string(), false).is_err());
+    }
+
+    #[test]
+    fn all_style_settings_belong_to_the_closed_typed_vocabulary() {
+        let mut case: serde_json::Value =
+            serde_json::from_str(BUILTIN_SUITE.trim()).expect("built-in case JSON");
+        case["request"]["style"] = json!({"made.up.setting": "anything"});
+        assert!(parse_messages(&case.to_string(), true).is_err());
+    }
+
+    #[test]
+    fn committed_schema_describes_bodies_and_all_twenty_two_style_settings() {
+        let schema: serde_json::Value =
+            serde_json::from_str(PROTOCOL_SCHEMA).expect("protocol schema JSON");
+        assert!(schema["$defs"]["request"].is_object());
+        assert!(schema["$defs"]["response"].is_object());
+        assert_eq!(
+            schema["$defs"]["styleSettings"]["properties"]
+                .as_object()
+                .expect("style properties")
+                .len(),
+            23,
+            "profile plus 22 typed settings"
+        );
     }
 }

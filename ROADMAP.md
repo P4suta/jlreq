@@ -1,90 +1,113 @@
-# Roadmap
+# Roadmap to 1.0
 
-Each milestone is independently useful. Nothing here needs hardware, a license, a font
-file, or a network: every milestone is verifiable by `cargo test` alone.
+The public architecture is in place, but publication remains disabled. Work proceeds
+test-first: add an observable failing case, verify Red, implement through the unified
+pipeline, verify Green against both the new API and retained regression assets, then remove
+the migrated legacy surface.
 
-## M0 — Character classes
+## Completed foundation
 
-`jlreq-class`: determine the JLReq class (cl-01 … cl-30) of an occurrence — a cluster of
-the caller's text, together with the character frame (字幅) its supplied advance covers
-and the role the document gives it — generated from the published tables rather than
-transcribed, plus the conformance cases for it.
+- dependency-free `no_std + alloc` `kumihan` candidate with no feature flags;
+- UTF-8/cluster validation and Appendix A pair normalization;
+- typed sizes, frames, roles, writing modes, paragraph builder, and infallible composition;
+- one whole-paragraph optimizer with mandatory/discretionary breaks, widow control, and
+  integrated tabs;
+- opaque constructors for all nine inline structures and renderer-ready horizontal/vertical
+  placements;
+- all 22 Style choices as dedicated enums plus five dated profiles;
+- binary-only protocol-v1 runner, JSON Schema, built-in case, and sample engine;
+- compile- and run-tested ICU4X byte-offset and HarfRust cluster adapters, kept as
+  conformance-product dev dependencies and verified on Rust 1.85;
+- exact public-name allowlist and typed Style/specification mapping;
+- all former crates marked `publish = false` and retained as migration assets.
 
-Of an occurrence and not of a code point: 473 of Appendix A's 1133 keys are named by more
-than one class, and five classes enumerate no character at all, so the total function from
-a code point to a class does not exist to be written
-([ADR 0008](docs/adr/0008-classification-is-a-function-of-an-occurrence.md)). Where the
-supplied facts do not separate the surviving candidates, the answer names the candidates
-and the axis that would separate them, rather than guessing.
+The deferral ledger retains the historical milestone identifiers below as stable schedule
+keys while their behavior is moved behind the unified API.
 
-Under it sit the two vocabulary crates every later milestone speaks through: `jlreq-unit`
-for quantities, axes, and items, and `jlreq-spec` for the specification addresses every
-answer cites.
+## M0 — Classification and specification data
 
-No other implementation exposes this as a callable library, so M0 stands on its own.
+Completed in the retained implementation. Migrate the generated Appendix A data,
+occurrence-sensitive classification behavior, provenance, and cases into `kumihan` without
+making classes or rule identifiers public.
 
-## M1 — Kinsoku and line adjustment
+## M1 — Line feasibility and adjustment
 
-`jlreq-line`: line-start and line-end prohibition, non-separation rules, oikomi (追い込み)
-and oidashi (追い出し). At this point Japanese text wraps correctly — `、` and `。` stop
-appearing at the start of a line.
+Migrate kinsoku boundaries, reduction/expansion ladders, indentation, tabs, widow handling,
+and Appendices C through E into the single paragraph optimizer. Every migrated rule gets a
+public or protocol-level regression before its legacy path is removed.
 
-## M2 — Mojikumi
+## M2 — Mojikumi spacing
 
-`jlreq-spacing`: spacing between punctuation, brackets, and ideographs. Equivalent to the
-CSS `text-spacing-trim` property, which JLReq specifies. This is the first milestone whose
-result is visible in a screenshot without explanation.
+Migrate the generated spacing matrices and Appendix B choices into private normalization
+and spacing stages. Finish exact spacing/classification parity for mixed frames, roles, and
+sizes through black-box expectations.
 
-## M3 — Paragraph optimization
+## M3 — Whole-paragraph composition
 
-Whole-paragraph line breaking rather than greedy, in the Knuth–Plass sense, with hanging
-punctuation (ぶら下げ) as an adjustment option: a stage of the adjustment ladder, between
-the reduction stages and the expansion stages, which is where JLReq puts it. A line that
-fits without hanging does not hang (§2.5.1), and a line that would otherwise be expanded
-hangs first (§3.8.2) — so hanging is not a repair applied after a break has been chosen,
-and the greedy search and the optimal one cannot disagree about *whether a fixed range
-hangs* (both drain the identical ladder, in the identical order, once a line's own start and
-end are the same for each). They can and do disagree about *which ranges exist to ask the
-question of*: `FirstFit` picks a line's own end from unadjusted geometry alone, blind to
-what the choice costs the next line, so it can choose a different sequence of breaks than
-`Optimal`'s own paragraph-wide minimization does — and a character that hangs under one
-search's own chosen line need not even be that line's own last character under the other's.
-`jlreq_line::compose`'s own test suite carries a constructed pair of paragraphs that
-disagree exactly this way, one on which the two searches produce different line counts and
-different total demerits, and a second where a trailing full stop hangs under `Optimal` but
-sits comfortably mid-measure — never overfull, never offered to `ladder::hang` at all —
-under `FirstFit`.
+Extend the existing dynamic program to all construct-aware contributions and physical line
+geometry, preserving checked integer behavior and deterministic results across targets.
 
-## M4 — Inline constructs
+## M4 — Inline constructs and Appendix F
 
-`jlreq-inline`: ruby (mono, group, and jukugo), tate-chu-yoko (縦中横), emphasis dots
-(圏点), warichu (割注), furiwake (振分け, §3.7.2), jidori (字取り, §3.7.3), reference
-marks (合印, §4.2.3), the ornamented character complex (cl-21, §3.7.1), and math and
-chemical formulae (§3.7.4), including their effect on line spacing.
+Complete ruby overhang fixpoints, long group ruby, phonetic jukugo, Appendix F, and the
+remaining eight structures, including construct-aware breaking, expansion, placement, and
+warichu straddling in both writing modes.
 
-Nine constructs rather than four, because
-[ADR 0013](docs/adr/0013-rules-are-addressed-by-specification-address.md)'s coverage gate
-is set subtraction over the rule inventory in both directions, and it cannot close on a
-milestone that leaves five normative processes unimplemented. The growth is cheap
-precisely because the nine share one mechanism: each is declared by the caller, lowered
-across the single seam between `jlreq-inline` and `jlreq-line`, and placed against the
-space that survived line adjustment. The ninth construct costs a declaration and its
-conformance cases rather than a code path.
+## M5 — Vertical composition
 
-## M5 — Vertical writing
+Complete the deferred vertical-only classification, spacing, transform, and physical
+placement rules, including local direction changes such as tate-chu-yoko.
 
-Vertical composition through the writing-direction abstraction established in
-[ADR 0004](docs/adr/0004-writing-mode-abstraction.md) — the same code path, not a parallel
-implementation.
+## Remaining conformance work
 
-## M6 — Adoption
+The legacy inventory currently reports 31 deferred rules. Highest-priority implementation
+groups are:
 
-An adapter for one downstream consumer, to prove the boundary holds in practice.
-Candidates: Typst (no vertical writing or ruby as of 0.14), Parley, cosmic-text.
+1. complete spacing/classification parity with generated Appendix tables in the unified
+   pipeline;
+2. ruby overhang fixpoint, long group ruby, phonetic jukugo, and Appendix F;
+3. full lowering, line interaction, and physical placement for warichu, furawake, jidori,
+   reference marks, scripts, formulae, tate-chu-yoko, and emphasis;
+4. construct-aware expansion/reduction and warichu straddling in paragraph search;
+5. remaining vertical-writing-specific rules and exact physical transforms;
+6. translate all applicable legacy cases to protocol-v1 black-box requests and responses;
+7. classify editorial and non-observable JLReq statements with evidence.
 
-## Non-goals
+Each group begins with a failing public or protocol test. The retained old implementation
+is an oracle only for behavior it already covers; specification-derived expected values
+remain authoritative.
 
-Font loading, shaping, rasterization, and file I/O are permanently out of scope
-([ADR 0001](docs/adr/0001-no-std-no-io-no-font-in-core.md)). Chinese (CLReq) and Korean
-support are plausible later extensions because the rule structure is shared, but they are
-not on this roadmap and will not be allowed to distort the Japanese model.
+## Integration and portability
+
+- extend the checked ICU4X and HarfRust adapters with more mixed-script and vertical cases
+  without adding either dependency or feature to `kumihan`;
+- require `thumbv7em-none-eabi`, `wasm32-unknown-unknown`, docs, and the one-screen doctest;
+- add property/fuzz coverage for invalid UTF-8 boundaries, duplicate/crossing ranges,
+  Appendix-key splits, bad frames, overflow, and construct-internal breaks;
+- keep integer results bit-identical across targets.
+
+## Migration cleanup
+
+Only after differential and protocol coverage is complete:
+
+- remove the eight old crates from the workspace and repository;
+- remove the legacy facade and `docs/api-frozen.toml` controls tied to it;
+- reduce the workspace product graph to `kumihan`, `kumihan-conformance`, and `xtask`;
+- generate the final public allowlist/baseline and enable post-1.0 semantic-version checks.
+
+## Release gates
+
+1. zero mechanically implementable deferrals;
+2. the public quick start fits on one screen;
+3. users never connect normalize/lower/feasible/place stages manually;
+4. no old-crate type appears in any public signature;
+5. an external process runs the complete suite using only protocol-v1 JSON.
+
+Until all five hold, every product manifest remains `publish = false` and the repository
+does not claim 1.0 conformance.
+
+## Permanent non-goals
+
+Font I/O, shaping, UAX #14 discovery, bidi resolution, rasterization, and drawing stay
+outside the library. The target is JLReq 2020-08-11 plus Unicode 17.0.0. Alternatives JLReq
+records from JIS are supported as choices; complete JIS X 4051 conformance is not claimed.

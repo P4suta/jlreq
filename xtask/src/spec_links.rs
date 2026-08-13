@@ -90,9 +90,9 @@ use crate::shared::{self, Address, CoreCrate, Detail, Gate, Section, address, nu
 pub(crate) const GATE: Gate = Gate {
     name: "spec-links",
     purpose: concat!(
-        "every public item of the layout core cites the specification, and every address ",
+        "every public item of the legacy rule-bearing core cites the specification, and every address ",
         "it names is well formed, resolved and either tested or deferred to a named ",
-        "milestone, as far as the generated inventory and the conformance cases exist"
+        "milestone; the unified transport surface is held by API and black-box gates"
     ),
     reference: concat!(
         "docs/adr/0013-rules-are-addressed-by-specification-address.md ",

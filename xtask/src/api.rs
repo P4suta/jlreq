@@ -4,9 +4,10 @@
 
 //! The `api` gate.
 //!
-//! Holds the workspace's published surface to the compatibility shape frozen in
-//! `docs/api-frozen.toml`. One rule governs both that file and this gate: kumihan may add
-//! detail, and may never add an outcome (`docs/adr/0012`).
+//! Holds the unified candidate surface exactly to `docs/api-1.0.toml`, including the
+//! bidirectional mapping from all 22 specification questions to dedicated Style enums.
+//! During migration it also keeps the retained legacy surface within the compatibility
+//! shape in `docs/api-frozen.toml`; that control disappears with the old crates.
 //!
 //! Four things are checked, each against the control file rather than against a list kept
 //! here, so that relaxing any of them is a reviewed edit to a code-owned file, and a fifth
@@ -106,8 +107,8 @@ use crate::shared::{self, Gate};
 pub(crate) const GATE: Gate = Gate {
     name: "api",
     purpose: concat!(
-        "the published surface holds the shape frozen in docs/api-frozen.toml; ",
-        "the listed items that do not exist yet are named above"
+        "kumihan matches docs/api-1.0.toml and its 22 typed Style mappings exactly; ",
+        "retained migration assets remain constrained by docs/api-frozen.toml"
     ),
     reference: concat!(
         "docs/adr/0012-outcome-and-detail-compatibility.md ",
@@ -157,6 +158,17 @@ struct AllowedModule {
     items: BTreeSet<String>,
 }
 
+/// One specification choice mapped onto its dedicated public Rust enum.
+#[derive(Debug)]
+struct StyleChoiceMapping {
+    /// Stable dotted path from `spec/derived/questions.tsv`.
+    question: String,
+    /// Public enum in `kumihan::style`.
+    rust_type: String,
+    /// Number of choices the dated specification records.
+    count: usize,
+}
+
 /// Read the explicit 1.0 surface and reject missing, extra, or duplicated module rows.
 fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
     let path = root.join("docs").join("api-1.0.toml");
@@ -190,6 +202,102 @@ fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
         ));
     }
     Ok(modules)
+}
+
+/// Read the complete mapping from specification questions to typed public enums.
+fn style_choice_mappings(root: &Path) -> io::Result<Vec<StyleChoiceMapping>> {
+    let path = root.join("docs").join("api-1.0.toml");
+    let text = fs::read_to_string(path)?;
+    let entries = entries_of(&text);
+    let mut mappings = Vec::new();
+    for entry in entries.iter().filter(|entry| entry.table == "style_choice") {
+        let question = entry
+            .single("question")
+            .ok_or_else(|| malformed("a `[[style_choice]]` entry has no `question`".to_owned()))?;
+        let rust_type = entry
+            .single("type")
+            .ok_or_else(|| malformed(format!("the style choice `{question}` has no `type`")))?;
+        let count = entry
+            .single("count")
+            .and_then(|value| value.parse().ok())
+            .or_else(|| entry.count("count"))
+            .ok_or_else(|| {
+                malformed(format!(
+                    "the style choice `{question}` has no integer `count`"
+                ))
+            })?;
+        mappings.push(StyleChoiceMapping {
+            question: question.to_owned(),
+            rust_type: rust_type.to_owned(),
+            count,
+        });
+    }
+    if mappings.is_empty() {
+        return Err(malformed(
+            "docs/api-1.0.toml has no `[[style_choice]]` entries".to_owned(),
+        ));
+    }
+    Ok(mappings)
+}
+
+/// Compare the typed public choices with generated specification data in both directions.
+fn check_style_choice_mappings(
+    mappings: &[StyleChoiceMapping],
+    derived: &[DerivedQuestion],
+    style_items: &BTreeSet<String>,
+) -> Vec<String> {
+    let mut violations = Vec::new();
+    let mut seen_questions = BTreeSet::new();
+    let mut seen_types = BTreeSet::new();
+    for mapping in mappings {
+        if !seen_questions.insert(&mapping.question) {
+            violations.push(format!(
+                "docs/api-1.0.toml maps `{}` more than once",
+                mapping.question
+            ));
+        }
+        if !seen_types.insert(&mapping.rust_type) {
+            violations.push(format!(
+                "docs/api-1.0.toml maps more than one question to `{}`",
+                mapping.rust_type
+            ));
+        }
+        if !style_items.contains(&mapping.rust_type) {
+            violations.push(format!(
+                "docs/api-1.0.toml maps `{}` to `{}`, which kumihan::style does not export",
+                mapping.question, mapping.rust_type
+            ));
+        }
+        let Some(question) = derived
+            .iter()
+            .find(|question| question.path == mapping.question)
+        else {
+            violations.push(format!(
+                "docs/api-1.0.toml maps `{}`, which {POLICY_SPACE} does not record",
+                mapping.question
+            ));
+            continue;
+        };
+        if mapping.count != question.answers {
+            violations.push(format!(
+                "`{rust_type}` records {mapped} choices for `{path}`, but {POLICY_SPACE} row `{constant}` records {derived}",
+                rust_type = mapping.rust_type,
+                mapped = mapping.count,
+                path = mapping.question,
+                constant = question.constant,
+                derived = question.answers
+            ));
+        }
+    }
+    for question in derived {
+        if !seen_questions.contains(&question.path) {
+            violations.push(format!(
+                "{POLICY_SPACE} records `{}`, but docs/api-1.0.toml maps it to no typed enum",
+                question.path
+            ));
+        }
+    }
+    violations
 }
 
 /// Compare one module source with its exact allowlist in both directions.
@@ -2497,9 +2605,7 @@ fn report(control: &Control, surface: &Surface) {
         println!("api:   {line}");
     }
     println!(
-        "api: a sealed input is held obtainable when any public item a caller can reach hands \
-         one over, which is wider than the API spine's \"named constructor\" sentence and is \
-         what `Policy`, `Question` and `Choice` are reached by."
+        "api: every sealed public input remains obtainable from an entry point a caller can reach."
     );
 }
 
@@ -2507,28 +2613,14 @@ fn report(control: &Control, surface: &Surface) {
 // The policy space
 // -------------------------------------------------------------------------------------
 
-/// The design document that publishes one `Question` constant per policy question.
-const SPINE: &str = "docs/design/api-spine.md";
-
 /// The derived policy space those constants are generated from.
 const POLICY_SPACE: &str = "spec/derived/questions.tsv";
 
-/// The `impl` block of the API spine that publishes the constants.
-const QUESTION_IMPL: &str = "impl Question {";
-
-/// How one of them is written there.
-const QUESTION_CONSTANT: (&str, &str) = ("pub const ", ": Self;");
-
-/// Hold the derived policy space equal to the `Question` constants the spine publishes.
+/// Hold the derived policy space equal to the dedicated typed enums 1.0 publishes.
 ///
-/// This is the one place the two halves of a policy question meet. `docs/design/api-spine.md`
-/// publishes the constant a caller writes — `Question::KINSOKU_LEVEL` — with the section it
-/// cites; `spec/derived/questions.tsv` records the same question's path, its permitted
-/// answers, and the sentence that permits them. Neither is derived from the other, so the
-/// subtraction runs in both directions: a constant nobody read the specification for, and a
-/// row no caller can name, are each a failure here. `crates/jlreq-spec/src/generated/policy.rs`
-/// is emitted from the file, so when it arrives all three agree by construction rather than
-/// by review.
+/// `docs/api-1.0.toml` maps every derived question path to one public enum and its closed
+/// choice count. The subtraction runs in both directions, so an unmapped specification row,
+/// an invented public setting, or a changed answer count is a failure.
 ///
 /// The `[[closed_choices]]` table is checked here too, because it is a claim about the same
 /// data: a question whose answer set the specification closes may not be derived with more
@@ -2543,62 +2635,30 @@ fn check_policy_space(
     control: &Control,
     violations: &mut Vec<String>,
 ) -> io::Result<()> {
-    let published = published_questions(root)?;
-    let derived = derived_questions(root)?;
-    check_policy_space_over(published, derived, control, violations);
-    Ok(())
-}
-
-/// The same over operands already read, so both states are exercised by a fixture rather
-/// than only by the committed documents.
-fn check_policy_space_over(
-    published: Published,
-    derived: Option<Vec<DerivedQuestion>>,
-    control: &Control,
-    violations: &mut Vec<String>,
-) {
-    if let Published::Unreadable = published {
-        violations.push(format!(
-            "{SPINE} exists and states no `{QUESTION_IMPL}` block that closes, so the derived \
-             policy space would have been checked against nothing and the closed answer sets \
-             of docs/api-frozen.toml with it. An unreadable left operand is a violation and \
-             not a census line: one extra space in that header used to take all three of \
-             these checks down and leave this gate at exit 0"
-        ));
-        return;
-    }
-    let read = (matches!(published, Published::Named(_)), derived.is_some());
-    let (Published::Named(published), Some(derived)) = (published, derived) else {
-        println!(
-            "api: {census}",
-            census = missing_side(read.0, read.1, control)
-        );
-        return;
-    };
-
-    let named: BTreeSet<&String> = published.iter().collect();
-    let recorded: BTreeSet<&String> = derived.iter().map(|question| &question.constant).collect();
-    for missing in named.iter().filter(|name| !recorded.contains(**name)) {
-        violations.push(format!(
-            "{SPINE} publishes `Question::{missing}` and {POLICY_SPACE} records no question \
-             for it, so the constant names a place nobody read the specification for"
-        ));
-    }
-    for extra in recorded.iter().filter(|name| !named.contains(**name)) {
-        violations.push(format!(
-            "{POLICY_SPACE} records `{extra}` and {SPINE} publishes no `Question::{extra}`, so \
-             the derived policy space holds a question no caller can name"
-        ));
-    }
+    let mappings = style_choice_mappings(root)?;
+    let modules = allowed_modules(root)?;
+    let style_items = modules
+        .iter()
+        .find(|module| module.path == "kumihan::style")
+        .map(|module| &module.items)
+        .ok_or_else(|| malformed("docs/api-1.0.toml has no `kumihan::style` module".to_owned()))?;
+    let derived = derived_questions(root)?.ok_or_else(|| {
+        malformed(format!(
+            "{POLICY_SPACE} does not exist, so the typed Style mapping cannot be checked"
+        ))
+    })?;
+    violations.extend(check_style_choice_mappings(
+        &mappings,
+        &derived,
+        style_items,
+    ));
     violations.extend(check_closed_choices(control, &derived));
-
     println!(
-        "api: {SPINE} publishes {count} `Question` constant(s) and {POLICY_SPACE} records \
-         {rows}; {closed} closed answer set(s) were checked against the derived counts.",
-        count = named.len(),
-        rows = recorded.len(),
-        closed = control.closed_choices.len()
+        "api: docs/api-1.0.toml maps {mappings} typed Style choice(s) onto {rows} generated JLReq question(s).",
+        mappings = mappings.len(),
+        rows = derived.len()
     );
+    Ok(())
 }
 
 /// One row of the derived policy space, in the two columns this gate reads.
@@ -2640,91 +2700,6 @@ fn check_closed_choices(control: &Control, derived: &[DerivedQuestion]) -> Vec<S
         }
     }
     found
-}
-
-/// Say which side of the subtraction was absent, and what went unchecked with it.
-fn missing_side(published: bool, derived: bool, control: &Control) -> String {
-    match (published, derived) {
-        (true, false) => format!(
-            "{POLICY_SPACE} has not been derived, so the `Question` constants {SPINE} \
-             publishes and the {count} closed answer set(s) of docs/api-frozen.toml were \
-             checked against nothing",
-            count = control.closed_choices.len()
-        ),
-        (false, true) => format!(
-            "{SPINE} states no `{QUESTION_IMPL}` block, so the derived policy space was \
-             checked against nothing"
-        ),
-        _ => format!(
-            "neither {SPINE}'s `{QUESTION_IMPL}` block nor {POLICY_SPACE} could be read, so \
-             the policy space was checked against nothing"
-        ),
-    }
-}
-
-/// The `Question` constants the API spine publishes, in the order it publishes them.
-///
-/// The spine writes them inside one `impl Question` block, one to a line, as
-/// `pub const NAME: Self;`. `ALL` and `COUNT` are not among them and need no exclusion list:
-/// their types are `&'static [Self]` and `usize`, and a question is the only member of that
-/// block whose type is `Self`.
-fn published_questions(root: &Path) -> io::Result<Published> {
-    let path = root.join(SPINE);
-    if !path.is_file() {
-        return Ok(Published::Absent);
-    }
-    Ok(question_constants(&fs::read_to_string(&path)?)
-        .map_or(Published::Unreadable, Published::Named))
-}
-
-/// What the API spine says about its `Question` block.
-///
-/// Three states and not two, because the difference between them is the difference between a
-/// check that has not started and a check that has stopped working. A document that is not
-/// there yet leaves the subtraction one operand short, which is honest and is reported as a
-/// census line; a document that is there and whose block this reader cannot find is a
-/// document that has changed under the gate, which is a violation.
-#[derive(Debug)]
-enum Published {
-    /// The spine is not written yet.
-    Absent,
-    /// It is written and states no `impl Question {` block that closes.
-    Unreadable,
-    /// The constants it publishes, in the order it publishes them.
-    Named(Vec<String>),
-}
-
-/// The same, over text that has already been read, so the block rule above is exercised by a
-/// fixture rather than only by the committed document.
-///
-/// `None` when the block is not there or never closes, which is the state in which the
-/// subtraction has no left operand rather than an empty one.
-fn question_constants(text: &str) -> Option<Vec<String>> {
-    let mut inside = false;
-    let mut found = Vec::new();
-    for line in text.lines() {
-        if line.trim() == QUESTION_IMPL {
-            inside = true;
-            continue;
-        }
-        if !inside {
-            continue;
-        }
-        if line == "}" {
-            return Some(found);
-        }
-        let trimmed = line.trim();
-        if trimmed.starts_with("//") {
-            continue;
-        }
-        if let Some(name) = trimmed
-            .strip_prefix(QUESTION_CONSTANT.0)
-            .and_then(|rest| rest.strip_suffix(QUESTION_CONSTANT.1))
-        {
-            found.push(name.to_owned());
-        }
-    }
-    None
 }
 
 /// The policy space `xtask derive` wrote, in the three columns this gate reads.
@@ -2805,13 +2780,12 @@ fn declared(surface: &Surface, path: &TypePath) -> bool {
 mod tests {
     use super::{
         AllowedModule, ClosedChoices, Construction, Control, DerivedQuestion, Kind, Openness,
-        Receiver, Surface, TypePath, Visibility, answers_a_closed_set, check_allowed_items,
-        check_closed_choices, check_construction, check_exhaustiveness, check_forbidden_names,
-        check_forbidden_signatures, check_projections, check_readability, code_only,
-        declarations_of, entries_of, obtainable_types, parse_signature_spec, question_constants,
-        reexported_names, results_in, tokenize,
+        Receiver, StyleChoiceMapping, Surface, TypePath, Visibility, answers_a_closed_set,
+        check_allowed_items, check_closed_choices, check_construction, check_exhaustiveness,
+        check_forbidden_names, check_forbidden_signatures, check_projections, check_readability,
+        check_style_choice_mappings, code_only, declarations_of, entries_of, obtainable_types,
+        parse_signature_spec, reexported_names, results_in, tokenize,
     };
-    use super::{Published, check_policy_space_over, derived_questions, published_questions};
     use std::collections::BTreeSet;
     use std::path::{Path, PathBuf};
 
@@ -2846,6 +2820,31 @@ mod tests {
         assert!(violations.iter().any(|line| line.contains("compose")));
         assert!(violations.iter().any(|line| line.contains("RuleId")));
         assert!(violations.iter().any(|line| line.contains("hidden_detail")));
+    }
+
+    #[test]
+    fn typed_style_mapping_replaces_the_public_question_vocabulary() {
+        let mappings = vec![StyleChoiceMapping {
+            question: "kinsoku.level".to_owned(),
+            rust_type: "KinsokuLevel".to_owned(),
+            count: 4,
+        }];
+        let recorded = vec![DerivedQuestion {
+            path: "kinsoku.level".to_owned(),
+            constant: "KINSOKU_LEVEL".to_owned(),
+            answers: 4,
+        }];
+        let style_items = ["KinsokuLevel".to_owned()].into_iter().collect();
+        assert!(check_style_choice_mappings(&mappings, &recorded, &style_items).is_empty());
+
+        let grown = vec![DerivedQuestion {
+            path: "kinsoku.level".to_owned(),
+            constant: "KINSOKU_LEVEL".to_owned(),
+            answers: 5,
+        }];
+        let violations = check_style_choice_mappings(&mappings, &grown, &style_items);
+        assert_eq!(violations.len(), 1, "found {violations:?}");
+        assert!(violations[0].contains("KinsokuLevel"));
     }
 
     /// One member holding exactly this fixture, published under this crate name.
@@ -3402,71 +3401,6 @@ mod tests {
         assert_eq!(parameters, ["char"]);
         assert_eq!(result, "Class");
         assert!(parse_signature_spec("nonsense").is_none());
-    }
-
-    /// The shape the API spine writes an `impl Question` block in.
-    const SPINE_FIXTURE: &str = "\
-Prose above the block, mentioning `pub const NOISE: Self;` in passing.
-
-```rust
-impl Question {
-    pub const ALL: &'static [Self];
-    pub const COUNT: usize;
-
-    /// The four strictness levels. JLReq: C.3
-    pub const KINSOKU_LEVEL: Self;
-    // There is deliberately no `RUBY_SIZE`.
-    /// Which of Tables 3, 4 and 5 governs reduction. JLReq: D
-    pub const REDUCTION_TABLE: Self;
-}
-```
-";
-
-    #[test]
-    fn the_question_constants_are_read_out_of_the_spine_block_and_nowhere_else() {
-        let found = question_constants(SPINE_FIXTURE).expect("the block closes");
-        assert_eq!(
-            found,
-            vec!["KINSOKU_LEVEL".to_owned(), "REDUCTION_TABLE".to_owned()],
-            "`ALL` and `COUNT` are not questions, a commented-out name is not one, and prose \
-             outside the block is not the block"
-        );
-        assert!(
-            question_constants("nothing here").is_none(),
-            "a spine with no block leaves the subtraction without its left operand, which is \
-             reported rather than read as the empty set"
-        );
-    }
-
-    #[test]
-    fn a_spine_whose_question_block_this_reader_cannot_find_fails_the_gate() {
-        // The state this assertion locks in used to be a census line at exit 0: one extra
-        // space in `impl Question {` and the equality with the derived policy space, and the
-        // closed answer sets with it, stopped running while `just design` still passed. The
-        // reader's `None` is only honest where the document is absent; where the document is
-        // there, it means the document has changed under the gate.
-        let root = test_root();
-        let control = Control::read(&root).expect("docs/api-frozen.toml is readable");
-        let mut violations = Vec::new();
-        check_policy_space_over(
-            Published::Unreadable,
-            derived_questions(&root).expect("the derived policy space is readable"),
-            &control,
-            &mut violations,
-        );
-        assert!(
-            violations
-                .iter()
-                .any(|message| message.contains("block that closes")),
-            "{violations:#?}"
-        );
-        assert!(
-            matches!(
-                published_questions(&root).expect("the spine is readable"),
-                Published::Named(_)
-            ),
-            "and the committed spine is readable, so this gate is running over it today"
-        );
     }
 
     #[test]

@@ -8,7 +8,7 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 export RUSTDOCFLAGS := "-D warnings"
 
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
-core_crates := "-p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
+core_crates := "-p kumihan -p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
 
 # The crates with real logic to mutate today: jlreq-line, jlreq-inline and jlreq are still
 # bootstrap stubs (ROADMAP.md M1/M3+), and xtask is repository tooling, not the product
@@ -85,7 +85,8 @@ ops:
 placeholder:
     cargo run --quiet -p xtask -- placeholder
 
-# Hold the published surface to the shape frozen in docs/api-frozen.toml (docs/adr/0012).
+# Hold kumihan to docs/api-1.0.toml and the retained migration API to its temporary frozen
+# control (docs/adr/0012).
 api:
     cargo run --quiet -p xtask -- api
 
@@ -158,6 +159,8 @@ zizmor:
 
 # Verify every workspace crate at the shared declared MSRV.
 msrv:
+    cargo msrv verify --path crates/kumihan
+    cargo msrv verify --path crates/kumihan-conformance
     cargo msrv verify --path crates/jlreq-unit
     cargo msrv verify --path crates/jlreq-spec
     cargo msrv verify --path crates/jlreq-class

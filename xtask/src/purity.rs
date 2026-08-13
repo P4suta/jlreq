@@ -161,7 +161,7 @@ const CRATE_GRAPH: &[Adjacency] = &[
     },
     Adjacency {
         crate_name: "kumihan-conformance",
-        may_depend_on: &["kumihan", "serde_json"],
+        may_depend_on: &["kumihan", "serde_json", "harfrust", "icu_segmenter"],
     },
 ];
 
@@ -1294,6 +1294,8 @@ mod tests {
             .expect("the binary-only conformance product has a graph row");
         assert!(runner.may_depend_on.contains(&"kumihan"));
         assert!(runner.may_depend_on.contains(&"serde_json"));
+        assert!(runner.may_depend_on.contains(&"harfrust"));
+        assert!(runner.may_depend_on.contains(&"icu_segmenter"));
     }
 
     #[test]

@@ -1,88 +1,132 @@
 # kumihan
 
-Japanese line composition (組版) as a library, following the W3C
-[Requirements for Japanese Text Layout (JLReq)][jlreq] and JIS X 4051.
+`kumihan` is a Japanese line-composition engine for already-shaped text. It accepts UTF-8
+source text, caller-unit cluster advances, break opportunities, and document structures;
+it returns lines, placements, attachments, and stable diagnostics.
 
-> **Status: foundation.** The design is frozen — twenty decision records and a published
-> API spine ([docs/design/api-spine.md](docs/design/api-spine.md)) — and the two crates
-> the rest of the workspace speaks through, `jlreq-unit` and `jlreq-spec`, are
-> implemented, alongside the quality gates that keep the design mechanical rather than
-> aspirational. No layout logic is implemented yet, and the generated specification tables
-> are not emitted yet. See [ROADMAP.md](ROADMAP.md).
+The public surface is deliberately limited to:
 
-## Why this exists
+- the dependency-free `kumihan` Rust library (`no_std + alloc`), and
+- the language-independent `kumihan-conformance` process protocol.
 
-Correct Japanese text layout is not a library anywhere. It exists as the `jlreq` LaTeX
-class, inside browser engines, and inside InDesign — three implementations, none of which
-you can call. Rust has crates for furigana dictionary lookup and kana conversion, and
-nothing for line composition.
+Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
+remain the caller's responsibility.
 
-The visible consequence: text laid out by a Rust application breaks lines wherever the
-Unicode line breaking algorithm (UAX #14) permits, which puts `、` and `。` at the start
-of a line. That is wrong in a way any Japanese reader notices immediately, and there is
-currently no crate to fix it.
+> **Release status:** the 1.0 architecture and candidate API are implemented, but every
+> product crate remains `publish = false`. The retained legacy conformance inventory still
+> reports 31 deferred JLReq rules. A release is blocked until every mechanically observable
+> deferral is implemented and editorial/non-observable statements are classified honestly.
 
-## What it does
+## Quick start
 
-Given text, a per-character advance, and the character frame (字幅) that advance covers,
-produce placement instructions:
+```rust
+use kumihan::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
-- **Character classes** — the 30 JLReq classes (cl-01 … cl-30) that drive every other
-  rule, determined for an occurrence rather than for a code point
-- **Kinsoku (禁則)** — characters prohibited from starting or ending a line
-- **Mojikumi (文字組み)** — spacing between punctuation, brackets, and ideographs
-  (equivalent to the CSS `text-spacing-trim` property, which JLReq specifies)
-- **Line adjustment** — oikomi (追い込み) and oidashi (追い出し), with hanging punctuation
-  (ぶら下げ) as a stage of the same ladder
-- **Inline constructs** — ruby, tate-chu-yoko (縦中横), emphasis dots, warichu (割注), and
-  five more that lower the same way
-- **Vertical writing** — as a writing direction, not a separate code path
+let source = "日本語組版";
+let clusters = source.char_indices().map(|(start, ch)| {
+    Cluster::new(start..start + ch.len_utf8(), 1_000)
+});
+let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters)?;
+let paragraph = Paragraph::builder(text, 4_000)
+    .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
+    .build()?;
+let layout = kumihan::compose(&paragraph, &Style::book_2020());
 
-## What it deliberately does not do
-
-It does not load fonts, shape glyphs, rasterize, or touch the filesystem. It sits between
-the text pipeline you already have and your renderer:
-
-```text
-   your application / Typst / Parley / PDF writer / game engine
-                            ▲
-                        kumihan          ← line composition only
-                            ▲
-     ICU4X (UAX #14 break opportunities) / HarfRust (shaping)
+for line in layout.lines() {
+    for placement in line.clusters() {
+        draw(placement);
+    }
+}
+# Ok::<(), kumihan::InputError>(())
 ```
 
-The caller supplies each character's advance; the library returns positions and spacing.
-That boundary is what makes the core `no_std`, free of floating point, and testable
-entirely in CI without a single font file. See [ARCHITECTURE.md](ARCHITECTURE.md) and the
-[decision records](docs/adr/).
+All input ranges are UTF-8 byte ranges. `ShapedText` owns the source and clusters;
+`ParagraphBuilder` validates ranges, breaks, tabs, writing mode, widow control, and inline
+constructs once. Composition is then infallible: an overfull or otherwise degraded result
+still contains placements and a stable diagnostic.
 
-## Crates
+Use `Composer` instead of the root `compose` function when composing repeatedly; it reuses
+its search scratch space without lending it to the returned `Layout`.
 
-| Crate | Responsibility |
+## Scope
+
+The candidate implements one paragraph pipeline:
+
+```text
+normalize → classify/space → lower constructs → optimize breaks → place
+```
+
+It accepts nine named inline constructs: ruby, tate-chu-yoko, emphasis dots, warichu,
+furawake, jidori, reference marks, script complexes, and formulae. Ruby has explicit mono,
+group, and jukugo runs. Horizontal and vertical paragraphs share the same logical inline
+model; placements include the local writing mode and transform needed by a renderer.
+
+The 22 alternative points derived from JLReq 2020 are dedicated enums in
+`kumihan::style`. There is no public generic question/choice vocabulary and no public rule
+identifier. `Style::default()` is permanently equal to `Style::jlreq_2020()`; dated book,
+magazine, newspaper, and JIS-reading profiles are also available.
+
+The specification identifier is
+`jlreq-2020-08-11+unicode-17.0.0`. This includes the alternatives JLReq records from JIS X
+4051; it is not a claim of complete JIS X 4051 conformance.
+
+## Language-independent conformance
+
+`kumihan-conformance` speaks NDJSON with an external engine process. Every message carries:
+
+```json
+{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"..."}
+```
+
+The fixed commands and exit codes are:
+
+```text
+kumihan-conformance list [SUITE.ndjson]
+kumihan-conformance validate [SUITE.ndjson|-]
+kumihan-conformance run ENGINE [SUITE.ndjson]
+
+0  all cases conform / input validates
+1  one or more result differences
+2  input, protocol, or engine error
+```
+
+The package contains no library target. Its committed JSON Schema, built-in suite, and
+`kumihan-sample-engine` executable form an end-to-end protocol example. See
+[`docs/design/conformance.md`](docs/design/conformance.md).
+
+[`crates/kumihan-conformance/tests/reference_integration.rs`](crates/kumihan-conformance/tests/reference_integration.rs)
+keeps direct ICU4X line-break-byte-offset and HarfRust glyph-cluster adapters compiling and
+running. Both dependencies are test-only; neither is a `kumihan` dependency or feature.
+
+## Repository layout
+
+| Path | Role |
 | --- | --- |
-| `jlreq-unit` | Quantities, axes, and the item vocabulary |
-| `jlreq-spec` | Specification addresses, provenance, and the policy space |
-| `jlreq-class` | JLReq character class of an occurrence (cl-01 … cl-30) |
-| `jlreq-spacing` | Inter-class spacing amounts (mojikumi) |
-| `jlreq-line` | Line composition: kinsoku, the adjustment ladder, hanging punctuation |
-| `jlreq-inline` | Ruby, tate-chu-yoko, emphasis dots, warichu, and the other constructs |
-| `jlreq` | Facade over the above |
-| `jlreq-conform` | Conformance suite, mapped one-to-one onto JLReq sections |
+| `crates/kumihan` | only public Rust library candidate |
+| `crates/kumihan-conformance` | binary-only black-box runner and sample engine |
+| `xtask` | specification generation and architectural gates |
+| `crates/jlreq-*`, `crates/jlreq` | unpublished migration and differential-test assets |
+| `spec/`, `data/` | vendored specification inputs, derived data, and provenance |
+
+The legacy crates are intentionally retained while their tested behavior and data are
+migrated. All are `publish = false`; none appears in a `kumihan` public signature.
 
 ## Development
 
+Development is test-first: write the observable failure, verify Red, implement the smallest
+coherent behavior, verify Green, then refactor under the gates.
+
 ```sh
-mise install        # toolchain and gate tooling
-mise run hooks      # install the git hooks
-just                # list the available commands
-just check          # fast inner-loop gates
-just ci             # every gate CI runs
+just check          # formatting, lint, architecture, provenance, and repository hygiene
+just test           # workspace tests plus doctests
+just ci             # all practical CI checks, including no_std and WASM
+cargo run -p kumihan-conformance -- list
 ```
+
+The exact candidate names are frozen in [`docs/api-1.0.toml`](docs/api-1.0.toml). The gate
+checks both missing and extra exports, as well as all 22 typed Style mappings.
 
 ## License
 
 Dual-licensed under [MIT](LICENSES/MIT.txt) or [Apache-2.0](LICENSES/Apache-2.0.txt), at
-your option. The repository is [REUSE][reuse]-compliant.
-
-[jlreq]: https://www.w3.org/TR/jlreq/
-[reuse]: https://reuse.software/
+your option. The repository is [REUSE](https://reuse.software/)-compliant.
