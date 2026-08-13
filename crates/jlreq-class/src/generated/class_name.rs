@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/classes.tsv`
-//! - Source SHA-256: `f19d929b3880d94fdbb6ccc7c6b60e98bd1523a7c830b5f3cdeebb5db6f495a9`
+//! - Source SHA-256: `afc8e57a011f4c096c9570d9437470ef1460fb881fd8033a22019bbb71d485a5`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `ff0107ad6c9dd9959bea3dd64cdebfee9aeb1a37a166c060c7216cdf525a4aeb`
+//! - Generator SHA-256: `4b9ee91056000031fce83c7745f05ec8b25f69e28a048a1e84d51548f66ab331`
 //! - Entries: 30
 
 /// One character class, as §3.9.2 names it.

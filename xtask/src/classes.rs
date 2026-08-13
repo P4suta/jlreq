@@ -1371,6 +1371,15 @@ pub(crate) const APPENDIX_A_TABLE: Unit = Unit {
     emit: emit_appendix_a,
 };
 
+/// The same Appendix A data, migrated behind the sole public library's private boundary.
+pub(crate) const KUMIHAN_APPENDIX_A_TABLE: Unit = Unit {
+    input: "spec/derived/appendix-a.tsv",
+    generator: &["xtask/src/classes.rs"],
+    output: "crates/kumihan/src/generated/appendix_a.rs",
+    summary: "Appendix A: every enumerated key, the classes naming it, and the Remarks cell.",
+    emit: emit_appendix_a,
+};
+
 /// The thirty class names §3.9.2 publishes.
 pub(crate) const CLASS_TABLE: Unit = Unit {
     input: "spec/derived/classes.tsv",
@@ -1390,6 +1399,15 @@ pub(crate) const IDEOGRAPH_TABLE: Unit = Unit {
     emit: emit_ideograph,
 };
 
+/// The cl-19 ideograph predicate behind the sole public library's private boundary.
+pub(crate) const KUMIHAN_IDEOGRAPH_TABLE: Unit = Unit {
+    input: "spec/derived/ideographs.tsv",
+    generator: &["xtask/src/classes.rs"],
+    output: "crates/kumihan/src/generated/ideograph.rs",
+    summary: "The members of cl-19 that §A.19's table deliberately does not list.",
+    emit: emit_ideograph,
+};
+
 /// The compatibility folding.
 pub(crate) const FOLDING_TABLE: Unit = Unit {
     input: "spec/derived/folding.tsv",
@@ -1399,11 +1417,29 @@ pub(crate) const FOLDING_TABLE: Unit = Unit {
     emit: emit_folding,
 };
 
+/// The compatibility folding behind the sole public library's private boundary.
+pub(crate) const KUMIHAN_FOLDING_TABLE: Unit = Unit {
+    input: "spec/derived/folding.tsv",
+    generator: &["xtask/src/classes.rs"],
+    output: "crates/kumihan/src/generated/folding.rs",
+    summary: "The Wide and Narrow decompositions: the only folding §A's preamble permits.",
+    emit: emit_folding,
+};
+
 /// The script property behind the small-kana fallback.
 pub(crate) const SCRIPT_TABLE: Unit = Unit {
     input: "spec/derived/scripts.tsv",
     generator: &["xtask/src/classes.rs"],
     output: "crates/jlreq-class/src/generated/script.rs",
+    summary: "The two kana scripts §C.2 note 3's small-kana fallback reads.",
+    emit: emit_script,
+};
+
+/// The kana scripts behind the sole public library's private boundary.
+pub(crate) const KUMIHAN_SCRIPT_TABLE: Unit = Unit {
+    input: "spec/derived/scripts.tsv",
+    generator: &["xtask/src/classes.rs"],
+    output: "crates/kumihan/src/generated/script.rs",
     summary: "The two kana scripts §C.2 note 3's small-kana fallback reads.",
     emit: emit_script,
 };

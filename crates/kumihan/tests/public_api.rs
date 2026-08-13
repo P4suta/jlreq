@@ -331,6 +331,25 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
 }
 
 #[test]
+fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
+    let text = shaped("日⦅日", Frame::FullEm, 1_000).expect("valid Appendix A fixture");
+    let paragraph = Paragraph::builder(text, 4_000)
+        .build()
+        .expect("valid Appendix A paragraph");
+
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    let line = &layout.lines()[0];
+    assert_eq!(
+        line.clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        vec![0, 1_500, 2_500]
+    );
+    assert_eq!(line.inline_extent(), 3_500);
+}
+
+#[test]
 fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
     fn positions(
         source: &str,

@@ -31,10 +31,12 @@
 extern crate alloc;
 
 mod construct;
+mod generated;
 mod layout;
 mod model;
 mod paragraph;
 mod pipeline;
+mod spec;
 pub mod style;
 
 pub use construct::{Construct, Ruby, RubyKind, RubyRun};

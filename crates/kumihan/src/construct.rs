@@ -303,11 +303,11 @@ impl Construct {
 }
 
 pub(crate) fn is_math_symbol(character: char) -> bool {
-    "=≠≒≃≅≈≡≢<>≦≧≪≫≶≷⋚⋛∧∨⌅⌆⊂⊃⊄⊅⊆⊇⊊⊋∈∋∉∪∩∥∦⇒⇔↔∽∝⊥⊕⊗＝＜＞".contains(character)
+    crate::spec::single_has_class(character, crate::spec::MATH_SYMBOL)
 }
 
 pub(crate) fn is_math_operator(character: char) -> bool {
-    "+−×÷±∓＋－".contains(character)
+    crate::spec::single_has_class(character, crate::spec::MATH_OPERATOR)
 }
 
 pub(crate) fn is_math_token(character: char) -> bool {

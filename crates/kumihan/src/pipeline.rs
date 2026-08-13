@@ -1508,15 +1508,15 @@ fn half_rounded_up(value: i32) -> i32 {
 }
 
 fn is_hiragana(character: char) -> bool {
-    matches!(character as u32, 0x3040..=0x309f)
+    crate::spec::is_hiragana(character)
 }
 
 fn is_katakana(character: char) -> bool {
-    matches!(character as u32, 0x30a0..=0x30ff | 0x31f0..=0x31ff)
+    crate::spec::is_katakana(character)
 }
 
 fn is_inseparable_character(character: char) -> bool {
-    "―…‥〳〴〵".contains(character)
+    crate::spec::single_has_class(character, crate::spec::INSEPARABLE)
 }
 
 fn is_western_word_space(paragraph: &Paragraph, ordinal: usize) -> bool {
@@ -2164,23 +2164,23 @@ fn quarter_inline_size(paragraph: &Paragraph, cluster: &crate::Cluster) -> i32 {
 }
 
 fn is_opening_bracket(character: char) -> bool {
-    "（([｛〔〈《「『【〘〖〝‘“｟«".contains(character)
+    crate::spec::single_has_class(character, crate::spec::OPENING_BRACKET)
 }
 
 fn is_closing_bracket(character: char) -> bool {
-    "）)]｝〕〉》」』】〙〗〟’”｠»".contains(character)
+    crate::spec::single_has_class(character, crate::spec::CLOSING_BRACKET)
 }
 
 fn is_full_stop(character: char) -> bool {
-    "。．".contains(character)
+    crate::spec::single_has_class(character, crate::spec::FULL_STOP)
 }
 
 fn is_comma(character: char) -> bool {
-    "、，".contains(character)
+    crate::spec::single_has_class(character, crate::spec::COMMA)
 }
 
 fn is_middle_dot(character: char) -> bool {
-    character == '・'
+    crate::spec::single_has_class(character, crate::spec::MIDDLE_DOT)
 }
 
 fn measure_line(
@@ -2430,12 +2430,16 @@ fn break_is_legal(paragraph: &Paragraph, style: &Style, offset: usize) -> bool {
 }
 
 fn is_line_end_prohibited(character: char) -> bool {
-    "（([｛〔〈《「『【〘〖〝‘“｟«".contains(character)
+    is_opening_bracket(character)
 }
 
 fn is_line_head_prohibited(character: char, level: KinsokuLevel) -> bool {
-    let ordinary = "、。，．・：；？！‼⁇⁈⁉)]｝〕〉》」』】〙〗〟’”｠»";
-    if ordinary.contains(character) {
+    if is_closing_bracket(character)
+        || crate::spec::single_has_class(character, crate::spec::DIVIDING_PUNCTUATION)
+        || is_middle_dot(character)
+        || is_full_stop(character)
+        || is_comma(character)
+    {
         return true;
     }
     level != KinsokuLevel::Loose

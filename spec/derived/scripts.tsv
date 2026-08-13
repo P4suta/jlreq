@@ -10,7 +10,7 @@
 # Source: spec/snapshot/ucd/Scripts.txt
 # Source SHA-256: 9f5e50d3abaee7d6ce09480f325c706f485ae3240912527e651954d2d6b035bf
 # Reader: xtask/src/classes.rs, xtask/src/derive.rs
-# Reader SHA-256: 446e614adafa1636178d2131a1eb72c044c5efb61f70605d6ed4bc4b8886b86e
+# Reader SHA-256: c08863ffe4a63e2b2ca1cbfc0fe17bf68e5c6bb5e1488d0339654d8358e801be
 
 script	first	last
 Hiragana	3041	3096

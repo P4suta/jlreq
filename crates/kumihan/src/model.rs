@@ -343,31 +343,5 @@ fn is_appendix_pair(piece: &str) -> bool {
 }
 
 fn appendix_pair(first: char, second: char) -> bool {
-    matches!(
-        (first, second),
-        ('\u{00e6}', '\u{0300}')
-            | (
-                '\u{0254}' | '\u{0259}' | '\u{025a}' | '\u{028c}',
-                '\u{0300}' | '\u{0301}'
-            )
-            | ('\u{02e5}', '\u{02e9}')
-            | ('\u{02e9}', '\u{02e5}')
-            | (
-                '\u{304b}'
-                    | '\u{304d}'
-                    | '\u{304f}'
-                    | '\u{3051}'
-                    | '\u{3053}'
-                    | '\u{30ab}'
-                    | '\u{30ad}'
-                    | '\u{30af}'
-                    | '\u{30b1}'
-                    | '\u{30b3}'
-                    | '\u{30bb}'
-                    | '\u{30c4}'
-                    | '\u{30c8}'
-                    | '\u{31f7}',
-                '\u{309a}'
-            )
-    )
+    crate::spec::is_pair(first, second)
 }

@@ -107,6 +107,12 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 **Stage 2**, `cargo run -p xtask -- generate`, emits `crates/*/src/generated/*.rs` from
 `spec/derived/` and `spec/captured/`.
 
+During the 1.0 migration, the Appendix A, compatibility-folding, ideograph, and kana-script
+units deliberately emit the same facts into both the unpublished `jlreq-class` regression
+asset and `kumihan`'s private `src/generated/` boundary. Both outputs share one emitter and
+one input; this is migration duplication, not a second transcription. The old output is
+removed with the legacy crates only after the black-box differential migration is complete.
+
 Both are byte-identity gates, both are dependency-free, and both run in CI on every commit.
 Adding a derived file is one entry in `DERIVATIONS`; adding a generated one is one entry in
 `UNITS`; each reader and each generator lives in the `xtask` module that owns its subject.
@@ -489,8 +495,8 @@ publication date in a `<time class="dt-published">` element, so `derive` now req
 recorded date to equal it, and to equal the `published` field of the snapshot's own
 `[[document]]` block.
 
-`data/manifest.toml` accordingly records every file the pipeline reads or writes: the six
-generated modules, every derived table — including those no generation unit consumes yet,
+`data/manifest.toml` accordingly records every file the pipeline reads or writes: every
+generated module, every derived table — including those no generation unit consumes yet,
 which `spec-links`, `attest`, `api` and `conform` nonetheless read — the four vendored
 documents, and every `xtask` module that produces one. The list is not written out here
 because it is not maintained here: `generate` builds it from `DERIVATIONS` and `UNITS`, so a

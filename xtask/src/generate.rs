@@ -160,10 +160,14 @@ pub(crate) struct Unit {
 /// still to arrive are the appendix notes and the captured matrices.
 const UNITS: &[Unit] = &[
     classes::APPENDIX_A_TABLE,
+    classes::KUMIHAN_APPENDIX_A_TABLE,
     classes::CLASS_TABLE,
     classes::IDEOGRAPH_TABLE,
+    classes::KUMIHAN_IDEOGRAPH_TABLE,
     classes::FOLDING_TABLE,
+    classes::KUMIHAN_FOLDING_TABLE,
     classes::SCRIPT_TABLE,
+    classes::KUMIHAN_SCRIPT_TABLE,
     inventory::RULE_INVENTORY,
     policy::POLICY_SPACE_UNIT,
     spacing::TABLE1,

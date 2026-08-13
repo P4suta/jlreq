@@ -10,7 +10,7 @@
 # Source: spec/snapshot/ucd/UnicodeData.txt
 # Source SHA-256: 2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c
 # Reader: xtask/src/classes.rs, xtask/src/derive.rs
-# Reader SHA-256: 446e614adafa1636178d2131a1eb72c044c5efb61f70605d6ed4bc4b8886b86e
+# Reader SHA-256: c08863ffe4a63e2b2ca1cbfc0fe17bf68e5c6bb5e1488d0339654d8358e801be
 
 source	target	frame
 3000	0020	full-em
