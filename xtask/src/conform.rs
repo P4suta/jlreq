@@ -68,9 +68,9 @@ pub(crate) const GATE: Gate = Gate {
     name: "conform",
     purpose: concat!(
         "every conformance case holds the published format, case ids are unique, and ",
-        "every inventoried rule either has a case or is deferred to a named milestone, as ",
-        "far as the suite and the two inventories exist — the census above says which of ",
-        "those a run could not read and how much is deferred"
+        "every inventoried rule has a case, is deferred to a named milestone, or carries ",
+        "an evidence-backed editorial/non-observable classification — the census says ",
+        "which inputs were readable and how much implementation debt remains"
     ),
     reference: "docs/design/conformance.md",
     run,
@@ -258,15 +258,16 @@ impl Suite {
         }
         let mut found = unresolved_addresses(cases, inventory, self.anchors.as_ref());
         let declared = declared_addresses(cases, inventory);
-        let deferred = self.deferrals.rules();
+        let accounted = self.deferrals.accounted();
         let uncovered: Vec<&str> = inventory
             .iter()
-            .filter(|rule| !declared.contains(rule.as_str()) && !deferred.contains(rule.as_str()))
+            .filter(|rule| !declared.contains(rule.as_str()) && !accounted.contains(rule.as_str()))
             .map(String::as_str)
             .collect();
         if !uncovered.is_empty() {
             found.push(format!(
-                "{count} inventoried rule(s) have neither a conformance case nor a deferral, \
+                "{count} inventoried rule(s) have neither a conformance case, a deferral, \
+                 nor an evidence-bearing classification, \
                  the first being {sample}; CONTRIBUTING.md makes a rule without a case \
                  incomplete, and a rule a later milestone covers is declared in {LEDGER} \
                  rather than left out (ADR 0013)",
@@ -350,11 +351,16 @@ impl Suite {
             return lines;
         }
         if let Some(inventory) = self.rules.as_ref() {
-            let (with_case, deferred, neither) =
-                split(inventory, &self.covered(cases), &self.deferrals.rules());
+            let (with_case, deferred, classified, neither) = split(
+                inventory,
+                &self.covered(cases),
+                &self.deferrals.rules(),
+                &self.deferrals.classified(),
+            );
             lines.push(format!(
                 "declared coverage: {with_case} of {total} inventoried rule(s) have a case, \
-                 {deferred} are deferred to a later milestone, {neither} are neither",
+                 {deferred} are deferred to a later milestone, {classified} are classified \
+                 editorial/non-observable, {neither} are none of these",
                 total = inventory.len()
             ));
         }
@@ -410,7 +416,7 @@ fn optimal_search_census(cases: &[Case]) -> String {
     )
 }
 
-/// How the inventory divides into the three states a rule can be in.
+/// How the inventory divides into its four observable accounting states.
 ///
 /// A rule that is both covered and deferred counts as covered here, because it is: the
 /// deferral is the thing that has gone stale, and `Ledger::examine` reports it as such
@@ -419,20 +425,24 @@ fn split(
     inventory: &BTreeSet<String>,
     covered: &BTreeSet<&str>,
     deferred: &BTreeSet<&str>,
-) -> (usize, usize, usize) {
+    classified: &BTreeSet<&str>,
+) -> (usize, usize, usize, usize) {
     let mut with_case = 0usize;
     let mut with_deferral = 0usize;
+    let mut with_classification = 0usize;
     let mut with_neither = 0usize;
     for rule in inventory {
         if covered.contains(rule.as_str()) {
             with_case = with_case.saturating_add(1);
         } else if deferred.contains(rule.as_str()) {
             with_deferral = with_deferral.saturating_add(1);
+        } else if classified.contains(rule.as_str()) {
+            with_classification = with_classification.saturating_add(1);
         } else {
             with_neither = with_neither.saturating_add(1);
         }
     }
-    (with_case, with_deferral, with_neither)
+    (with_case, with_deferral, with_classification, with_neither)
 }
 
 /// One case, kept for the checks that span cases.
@@ -4250,7 +4260,7 @@ mod tests {
         assert!(
             census.iter().any(|line| line.contains(
                 "1 of 3 inventoried rule(s) have a case, 2 are deferred to a later \
-                 milestone, 0 are neither"
+                 milestone, 0 are classified editorial/non-observable, 0 are none of these"
             )),
             "{census:#?}"
         );
@@ -4266,7 +4276,7 @@ mod tests {
         let found = suite.coverage(&cases);
         assert!(
             found.iter().any(|message| message
-                .contains("1 inventoried rule(s) have neither a conformance case nor a deferral")),
+                .contains("1 inventoried rule(s) have neither a conformance case, a deferral")),
             "deferring one of the two uncovered rules leaves the other uncovered: {found:#?}"
         );
         suite.deferrals = deferring("3.1.9", "M2");

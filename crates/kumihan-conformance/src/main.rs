@@ -177,6 +177,11 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
     let object = value
         .as_object()
         .ok_or_else(|| "each message must be a JSON object".to_owned())?;
+    if let Some(field) = object.keys().find(|field| {
+        !["protocol", "spec", "id", "request", "response", "expected"].contains(&field.as_str())
+    }) {
+        return Err(format!("unknown envelope field {field:?}"));
+    }
     required_string(object, "protocol", PROTOCOL)?;
     required_string(object, "spec", SPEC)?;
     let id = object
@@ -188,6 +193,13 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
     }
     let has_request = object.get("request").is_some_and(Value::is_object);
     let has_response = object.get("response").is_some_and(Value::is_object);
+    let has_expected = object.get("expected").is_some();
+    if has_response && has_expected {
+        return Err("an engine response cannot contain expected".to_owned());
+    }
+    if has_expected && !has_request {
+        return Err("expected is valid only beside a suite request".to_owned());
+    }
     if case {
         if !has_request || !object.get("expected").is_some_and(Value::is_object) {
             return Err("a suite case needs object-valued request and expected fields".to_owned());
@@ -371,5 +383,54 @@ mod tests {
             23,
             "profile plus 22 typed settings"
         );
+    }
+
+    #[test]
+    fn repeated_symbol_attachment_has_no_shaped_range() {
+        let response = json!({
+            "protocol": "kumihan.conformance/1",
+            "spec": "jlreq-2020-08-11+unicode-17.0.0",
+            "id": "emphasis",
+            "response": {
+                "lines": [{
+                    "range": [0, 3],
+                    "inline_origin": 0,
+                    "block_origin": 0,
+                    "inline_extent": 1000,
+                    "block_extent": 1000,
+                    "clusters": [],
+                    "attachments": [{
+                        "construct": 0,
+                        "range": [0, 0],
+                        "inline": 0,
+                        "block": -1000,
+                        "advance": 0,
+                        "size": {"inline": 1000, "block": 1000},
+                        "writing_mode": "horizontal-tb",
+                        "transform": "identity",
+                        "symbol": "・"
+                    }]
+                }],
+                "diagnostics": []
+            }
+        });
+        assert!(parse_messages(&response.to_string(), false).is_ok());
+    }
+
+    #[test]
+    fn envelope_vocabulary_and_message_roles_are_closed() {
+        let mut unknown: serde_json::Value =
+            serde_json::from_str(BUILTIN_SUITE.trim()).expect("built-in case JSON");
+        unknown["extension"] = json!(true);
+        assert!(parse_messages(&unknown.to_string(), false).is_err());
+
+        let mixed_output = json!({
+            "protocol": "kumihan.conformance/1",
+            "spec": "jlreq-2020-08-11+unicode-17.0.0",
+            "id": "mixed",
+            "response": {"lines": [], "diagnostics": []},
+            "expected": {"lines": [], "diagnostics": []}
+        });
+        assert!(parse_messages(&mixed_output.to_string(), false).is_err());
     }
 }

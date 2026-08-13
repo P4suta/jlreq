@@ -409,20 +409,22 @@ fn validate_attachment(value: &Value) -> Result<(), String> {
         "attachment",
     )?;
     offset(attachment.get("construct"), "attachment construct ordinal")?;
-    range(required(attachment, "range")?, "attachment range")?;
+    let symbol = required(attachment, "symbol")?;
+    if symbol.is_null() {
+        range(required(attachment, "range")?, "attachment range")?;
+    } else {
+        let (start, end) = offset_pair(required(attachment, "range")?, "attachment range")?;
+        if start != end {
+            return Err("a repeated-symbol attachment has an empty shaped range".to_owned());
+        }
+        one_char(Some(symbol), "attachment symbol")?;
+    }
     i32_value(attachment.get("inline"), "attachment inline")?;
     i32_value(attachment.get("block"), "attachment block")?;
     non_negative_i32(attachment.get("advance"), "attachment advance")?;
     validate_size(required(attachment, "size")?)?;
     writing_mode(attachment.get("writing_mode"))?;
     transform(attachment.get("transform"))?;
-    if let Some(symbol) = attachment.get("symbol") {
-        if !symbol.is_null() {
-            one_char(Some(symbol), "attachment symbol")?;
-        }
-    } else {
-        return Err("attachment symbol is required (and may be null)".to_owned());
-    }
     Ok(())
 }
 
@@ -475,15 +477,20 @@ fn transform(value: Option<&Value>) -> Result<&str, String> {
 }
 
 fn range(value: &Value, name: &str) -> Result<(usize, usize), String> {
+    let (start, end) = offset_pair(value, name)?;
+    if start >= end {
+        return Err(format!("{name} must be non-empty and ordered"));
+    }
+    Ok((start, end))
+}
+
+fn offset_pair(value: &Value, name: &str) -> Result<(usize, usize), String> {
     let values = array(value, name)?;
     if values.len() != 2 {
         return Err(format!("{name} must contain exactly two offsets"));
     }
     let start = offset(values.first(), &format!("{name} start"))?;
     let end = offset(values.get(1), &format!("{name} end"))?;
-    if start >= end {
-        return Err(format!("{name} must be non-empty and ordered"));
-    }
     Ok((start, end))
 }
 

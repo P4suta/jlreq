@@ -371,6 +371,23 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
                         "ruby base runs must end at shaped-cluster boundaries",
                     ));
                 }
+                if ruby.kind() == crate::RubyKind::Mono
+                    && text
+                        .clusters()
+                        .iter()
+                        .filter(|cluster| {
+                            let cluster = cluster.range();
+                            run.base().start <= cluster.start && cluster.end <= run.base().end
+                        })
+                        .count()
+                        != 1
+                {
+                    return Err(InputError::new(
+                        "input.mono-ruby-run-shape",
+                        Some(run.base()),
+                        "each mono-ruby run must cover exactly one shaped base cluster",
+                    ));
+                }
             }
         }
         match construct.kind() {
@@ -443,6 +460,7 @@ fn validate_breaks(
             }
         }
     }
+    breaks.retain(|opportunity| opportunity.offset != 0);
     breaks.sort_by_key(|opportunity| opportunity.offset);
     if breaks
         .windows(2)

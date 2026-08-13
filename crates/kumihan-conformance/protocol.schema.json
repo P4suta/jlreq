@@ -15,7 +15,12 @@
   },
   "oneOf": [
     { "required": ["request"], "not": { "required": ["response"] } },
-    { "required": ["response"], "not": { "required": ["request", "expected"] } }
+    {
+      "required": ["response"],
+      "not": {
+        "anyOf": [{ "required": ["request"] }, { "required": ["expected"] }]
+      }
+    }
   ],
   "$defs": {
     "i32": {
@@ -175,7 +180,7 @@
       "additionalProperties": false,
       "required": ["position", "alignment"],
       "properties": {
-        "position": { "$ref": "#/$defs/nonNegativeI32" },
+        "position": { "$ref": "#/$defs/positiveI32" },
         "alignment": { "enum": ["start", "center", "end", "character"] },
         "character": { "$ref": "#/$defs/scalar" }
       },

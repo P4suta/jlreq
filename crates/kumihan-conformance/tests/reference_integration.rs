@@ -80,13 +80,7 @@ fn icu4x_byte_offsets_feed_breaks_without_conversion() {
     )
     .expect("valid shaped text");
     let paragraph = Paragraph::builder(text, 2_000)
-        .breaks(
-            offsets
-                .into_iter()
-                .skip(1)
-                .filter(|offset| *offset < source.len())
-                .map(Break::allowed),
-        )
+        .breaks(offsets.into_iter().map(Break::allowed))
         .build()
         .expect("ICU4X offsets are accepted verbatim");
     assert_eq!(

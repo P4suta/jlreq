@@ -201,6 +201,19 @@ fn invalid_utf8_crossing_ranges_and_construct_internal_breaks_are_rejected() {
 }
 
 #[test]
+fn mono_ruby_requires_one_run_for_each_base_cluster() {
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid annotation");
+    let ruby = Ruby::new(RubyKind::Mono, 0..6, annotation, [RubyRun::new(0..6, 0..9)])
+        .expect("run partitions are locally valid until base shaping is known");
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid base");
+    let error = Paragraph::builder(text, 4_000)
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect_err("mono ruby cannot associate one run with two base clusters");
+    assert_eq!(error.code(), "input.mono-ruby-run-shape");
+}
+
+#[test]
 fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
     let source = "A\tB";
     let stop = TabStop::new(3_000, TabAlignment::Start).expect("valid tab stop");
@@ -226,6 +239,24 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
 }
 
 #[test]
+fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid segmenter fixture");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(0), Break::allowed(3), Break::allowed(6)])
+        .build()
+        .expect("segmenter offsets include zero and source length");
+    assert_eq!(paragraph.breaks().len(), 2);
+    assert_eq!(paragraph.breaks()[0].offset(), 3);
+    assert!(paragraph.breaks()[1].is_mandatory());
+    assert_eq!(
+        kumihan::compose(&paragraph, &Style::default())
+            .lines()
+            .len(),
+        2
+    );
+}
+
+#[test]
 fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
     let text = shaped("日本", Frame::FullEm, 1_000).expect("valid reuse fixture");
     let paragraph = Paragraph::builder(text, 1_000)
@@ -237,4 +268,22 @@ fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
     let second = composer.compose(&paragraph, &Style::book_2020());
     assert_eq!(first.lines().len(), 2);
     assert_eq!(second.lines().len(), 2);
+}
+
+#[test]
+fn line_extent_is_occupied_width_not_the_shifted_end_coordinate() {
+    for (alignment, origin) in [
+        (Alignment::Start, 0),
+        (Alignment::Center, 1_500),
+        (Alignment::End, 3_000),
+    ] {
+        let text = shaped("日", Frame::FullEm, 1_000).expect("valid alignment fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .alignment(alignment)
+            .build()
+            .expect("valid aligned paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        assert_eq!(layout.lines()[0].inline_origin(), origin);
+        assert_eq!(layout.lines()[0].inline_extent(), 1_000);
+    }
 }

@@ -103,9 +103,10 @@ product and never become dependencies or features of `kumihan`.
 ## Coverage and release status
 
 The legacy case corpus and generated inventories remain differential assets while cases are
-translated to protocol v1. They currently inventory 106 rules, cover 75, and record 31
-deferrals. A green legacy coverage subtraction means every rule is either covered or
-explicitly deferred; it does not mean 1.0 is complete.
+translated to protocol v1. They currently inventory 106 rules, cover 75, classify one as
+editorial and one as non-observable, and record 29 deferrals. A green legacy coverage
+subtraction means every rule is covered, explicitly classified with evidence, or deferred;
+it does not mean 1.0 is complete.
 
 Before release, every mechanically observable deferral must have a non-empty black-box
 case. Editorial guidance and statements no layout result can observe move to explicit

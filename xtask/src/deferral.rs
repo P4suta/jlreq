@@ -16,12 +16,14 @@
 //! Without a place to write that down, a gate could only choose between two false
 //! sentences: that the rules are covered, by weakening the subtraction until the remainder
 //! disappeared, or that the workspace is broken, by failing over a milestone that has not
-//! happened yet. So a rule is in exactly one of three states, and this module is what makes
-//! the middle one exist:
+//! happened yet. So a rule is in exactly one of five states, and this module makes every
+//! state explicit:
 //!
 //! - **covered** — a case names it, or a `covers` family credits it;
 //! - **deferred** — a `[[deferred]]` table names it and the milestone that will cover it;
-//! - **uncovered** — neither, which is a violation naming the rule.
+//! - **editorial** — evidence shows that it advises an editor, not the layout engine;
+//! - **non-observable** — evidence shows that JLReq requires no distinguishable output;
+//! - **uncovered** — none of these, which is a violation naming the rule.
 //!
 //! Deferred is not exempt, and three things keep it from becoming so. The count is reported
 //! on every run, per milestone, so the debt is stated in numbers on a green run rather than
@@ -80,11 +82,20 @@ const TABLE: &str = "deferred";
 /// The table that says a milestone already has.
 const OWNED: &str = "owned";
 
-/// The two tables the ledger has, and no others.
-const TABLES: [&str; 2] = [TABLE, OWNED];
+/// A specification statement that gives editorial guidance rather than a layout result.
+const EDITORIAL: &str = "editorial";
 
-/// The three keys either table carries, and no others.
-const KEYS: [&str; 3] = ["rule", "milestone", "why"];
+/// A statement whose required distinction is absent from the black-box input or output.
+const NON_OBSERVABLE: &str = "non-observable";
+
+/// The four states the ledger can record, and no others.
+const TABLES: [&str; 4] = [TABLE, OWNED, EDITORIAL, NON_OBSERVABLE];
+
+/// The three keys a scheduled or owned rule carries.
+const SCHEDULE_KEYS: [&str; 3] = ["rule", "milestone", "why"];
+
+/// A final classification has evidence but deliberately no schedule.
+const CLASSIFICATION_KEYS: [&str; 2] = ["rule", "why"];
 
 /// The heading depth `ROADMAP.md` gives one milestone.
 const HEADING: &str = "## ";
@@ -100,7 +111,7 @@ pub(crate) struct Deferral {
     table: &'static str,
     /// The rule, as a canonical address.
     rule: String,
-    /// The milestone whose cases close it, or have closed it, as `ROADMAP.md` heads it.
+    /// The milestone whose cases close it, or have closed it; empty for final classifications.
     milestone: String,
     /// The line the table opens on, so a finding names it.
     line: usize,
@@ -232,6 +243,22 @@ impl Ledger {
             .collect()
     }
 
+    /// Rules resolved by an evidence-bearing editorial or non-observable classification.
+    pub(crate) fn classified(&self) -> BTreeSet<&str> {
+        self.entries
+            .iter()
+            .filter(|entry| {
+                matches!(entry.table, EDITORIAL | NON_OBSERVABLE) && is_address(&entry.rule)
+            })
+            .map(|entry| entry.rule.as_str())
+            .collect()
+    }
+
+    /// Rules which legitimately need no case yet: deferred or explicitly classified.
+    pub(crate) fn accounted(&self) -> BTreeSet<&str> {
+        self.rules().union(&self.classified()).copied().collect()
+    }
+
     /// Every way this file can be wrong, in one pass.
     pub(crate) fn examine(&self, reference: Reference<'_>) -> Vec<String> {
         if !self.present {
@@ -242,12 +269,16 @@ impl Ledger {
             )];
         }
         let mut found = self.problems.clone();
-        if !reference.milestones.present && !self.entries.is_empty() {
+        let scheduled = self
+            .entries
+            .iter()
+            .filter(|entry| matches!(entry.table, TABLE | OWNED))
+            .count();
+        if !reference.milestones.present && scheduled != 0 {
             found.push(format!(
-                "{ROADMAP} could not be read, so nothing says the {count} milestone(s) this \
+                "{ROADMAP} could not be read, so nothing says the {scheduled} milestone(s) this \
                  file defers to exist; the roadmap is what a milestone is and this file only \
-                 names one (ADR 0019)",
-                count = self.entries.len()
+                 names one (ADR 0019)"
             ));
         }
         for entry in &self.entries {
@@ -259,8 +290,8 @@ impl Ledger {
 
     /// Every rule the suite covers that this file does not say a milestone covers.
     ///
-    /// The two tables are a total accounting of the inventory, and this is the half that
-    /// keeps it total. Without it a case could credit a rule to nobody: `kind` alone decides
+    /// The ledger tables are a total accounting of the inventory, and this is the half that
+    /// keeps covered rules total. Without it a case could credit a rule to nobody: `kind` alone decides
     /// which layer a case asks, so publishing a boundary case for a rule no layer of this
     /// workspace answers credited the rule to the coverage gate and put nothing in front of
     /// a reviewer. Both routes now end at the same file and the same `why`.
@@ -326,9 +357,20 @@ impl Ledger {
             .map(|(milestone, count)| format!("{milestone} {count}"))
             .collect::<Vec<_>>()
             .join(", ");
+        let editorial = self
+            .entries
+            .iter()
+            .filter(|entry| entry.table == EDITORIAL)
+            .count();
+        let non_observable = self
+            .entries
+            .iter()
+            .filter(|entry| entry.table == NON_OBSERVABLE)
+            .count();
         format!(
             "{LEDGER} defers {count}{of} rule(s) to a later milestone: {by_milestone}; and \
-             records {owned_count} as covered by a milestone already written: {owned}",
+             classifies {editorial} editorial and {non_observable} non-observable rule(s); \
+             and records {owned_count} as covered by a milestone already written: {owned}",
             count = deferred.len(),
             owned_count = self.owned().len()
         )
@@ -363,7 +405,10 @@ fn examine_entry(entry: &Deferral, reference: Reference<'_>) -> Vec<String> {
              contain; a deferral of a rule that does not exist defers nothing (ADR 0013)"
         ));
     }
-    if reference.milestones.present && !reference.milestones.names.contains(milestone) {
+    if matches!(*table, TABLE | OWNED)
+        && reference.milestones.present
+        && !reference.milestones.names.contains(milestone)
+    {
         found.push(format!(
             "{LEDGER}:{line}: names rule `{rule}` under `{milestone}`, which {ROADMAP} does \
              not declare; an entry names a milestone that document heads a section with"
@@ -377,6 +422,13 @@ fn examine_entry(entry: &Deferral, reference: Reference<'_>) -> Vec<String> {
             "{LEDGER}:{line}: defers rule `{rule}` to `{milestone}`, and a conformance case \
              already covers it; the deferral has gone stale and deleting it is what says the \
              rule now has a case (ADR 0013)"
+        ));
+    }
+    if matches!(*table, EDITORIAL | NON_OBSERVABLE) && covered.contains(rule.as_str()) {
+        found.push(format!(
+            "{LEDGER}:{line}: classifies rule `{rule}` under `[[{table}]]`, but a \
+             conformance case already observes it; remove or revise the contradicted \
+             classification"
         ));
     }
     if *table == OWNED && !covered.contains(rule.as_str()) {
@@ -397,7 +449,7 @@ fn is_address(text: &str) -> bool {
 /// One table of the ledger under construction.
 #[derive(Debug)]
 struct Draft {
-    /// Which of the two tables it is.
+    /// Which of the four tables it is.
     table: &'static str,
     /// The line the table header sits on.
     line: usize,
@@ -407,9 +459,9 @@ struct Draft {
 
 /// Read the ledger, and complain about anything the schema does not allow.
 ///
-/// It reads the one form this file is written in — `[[deferred]]` tables of one-line basic
-/// strings — and rejects everything else rather than skipping it, because a key this reader
-/// passed over in silence would be a key no reviewer was told about.
+/// It reads the four tables this file defines, all with one-line basic strings, and rejects
+/// everything else rather than skipping it, because a key this reader passed over in
+/// silence would be a key no reviewer was told about.
 fn parse(text: &str) -> (Vec<Deferral>, Vec<String>) {
     let mut entries = Vec::new();
     let mut problems = Vec::new();
@@ -446,7 +498,8 @@ fn open(content: &str, line: usize, problems: &mut Vec<String>) -> Option<Draft>
     }
     problems.push(format!(
         "{LEDGER}:{line}: `{content}` is not a table this file has; the schema is \
-         `[[{TABLE}]]`, `[[{OWNED}]]` and nothing else"
+         `[[{TABLE}]]`, `[[{OWNED}]]`, `[[{EDITORIAL}]]`, `[[{NON_OBSERVABLE}]]` and \
+         nothing else"
     ));
     None
 }
@@ -462,14 +515,15 @@ fn read_key(content: &str, line: usize, draft: Option<&mut Draft>, problems: &mu
     let key = key.trim();
     let Some(draft) = draft else {
         problems.push(format!(
-            "{LEDGER}:{line}: `{key}` sits outside a `[[{TABLE}]]` or `[[{OWNED}]]` table; \
+            "{LEDGER}:{line}: `{key}` sits outside a recognized ledger table; \
              this file has no top-level keys"
         ));
         return;
     };
-    if !KEYS.contains(&key) {
+    let keys = keys_for(draft.table);
+    if !keys.contains(&key) {
         problems.push(format!(
-            "{LEDGER}:{line}: `{key}` is not a key of `[[{table}]]`; the schema is {KEYS:?} \
+            "{LEDGER}:{line}: `{key}` is not a key of `[[{table}]]`; the schema is {keys:?} \
              and nothing else",
             table = draft.table
         ));
@@ -497,15 +551,15 @@ fn read_key(content: &str, line: usize, draft: Option<&mut Draft>, problems: &mu
 fn close(draft: Option<Draft>, entries: &mut Vec<Deferral>, problems: &mut Vec<String>) {
     let Some(draft) = draft else { return };
     let line = draft.line;
-    let missing: Vec<&str> = KEYS
-        .into_iter()
+    let missing: Vec<&str> = keys_for(draft.table)
+        .iter()
+        .copied()
         .filter(|key| draft.values.get(*key).is_none_or(String::is_empty))
         .collect();
     if !missing.is_empty() {
         problems.push(format!(
             "{LEDGER}:{line}: this `[[{table}]]` table has no {missing:?}; every entry carries \
-             the rule, the milestone whose cases close it or have closed it, and why that is \
-             the milestone",
+             every entry carries the fields its table schema requires",
             table = draft.table
         ));
         return;
@@ -528,6 +582,14 @@ fn close(draft: Option<Draft>, entries: &mut Vec<Deferral>, problems: &mut Vec<S
         milestone: read("milestone"),
         line,
     });
+}
+
+fn keys_for(table: &str) -> &'static [&'static str] {
+    if matches!(table, EDITORIAL | NON_OBSERVABLE) {
+        &CLASSIFICATION_KEYS
+    } else {
+        &SCHEDULE_KEYS
+    }
 }
 
 #[cfg(test)]
@@ -608,6 +670,34 @@ why = "Two conditional spaces rather than one amount."
                 .any(|message| message.contains("already covers it")),
             "a deferral the suite has answered is a violation rather than a duplicate: \
              {found:#?}"
+        );
+    }
+
+    #[test]
+    fn a_non_observable_rule_is_accounted_for_without_being_deferred() {
+        let source = r#"
+[[non-observable]]
+rule = "3.1.9"
+why = "The specification leaves the result implementation-defined, so no black-box output is required."
+"#;
+        let ledger = Ledger::of(source);
+        let found = examine(&ledger, &BTreeSet::new());
+        assert!(found.is_empty(), "{found:#?}");
+        assert!(
+            ledger.rules().is_empty(),
+            "classification is not implementation debt"
+        );
+        assert_eq!(ledger.classified(), BTreeSet::from(["3.1.9"]));
+        assert_eq!(ledger.accounted(), BTreeSet::from(["3.1.9"]));
+        let census = ledger.census(Some(&inventory()));
+        assert!(census.contains("1 non-observable"), "{census}");
+
+        let stale = examine(&ledger, &BTreeSet::from(["3.1.9"]));
+        assert!(
+            stale
+                .iter()
+                .any(|message| message.contains("classifies") && message.contains("case")),
+            "an observable case and a non-observable classification contradict: {stale:#?}"
         );
     }
 

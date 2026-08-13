@@ -14,8 +14,9 @@ remain the caller's responsibility.
 
 > **Release status:** the 1.0 architecture and candidate API are implemented, but every
 > product crate remains `publish = false`. The retained legacy conformance inventory still
-> reports 31 deferred JLReq rules. A release is blocked until every mechanically observable
-> deferral is implemented and editorial/non-observable statements are classified honestly.
+> reports 29 deferred JLReq rules and two evidence-backed classifications. A
+> release is blocked until every mechanically observable deferral is implemented and all
+> editorial/non-observable statements are classified honestly.
 
 ## Quick start
 

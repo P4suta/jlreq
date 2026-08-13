@@ -313,7 +313,7 @@ impl Composer {
             range,
             inline_origin: clamp_i32(alignment_offset),
             block_origin,
-            inline_extent: clamp_i32(cursor),
+            inline_extent: clamp_i32(cursor.saturating_sub(alignment_offset)),
             block_extent,
             clusters: placed,
             attachments: Vec::new(),
