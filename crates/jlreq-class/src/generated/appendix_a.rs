@@ -13,7 +13,7 @@
 //! - Source SHA-256: `e8d845a160febbba6bf64aa01b2f442c9f958366129bfc0c709eff222b60e5a6`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `1c3319a5b00ac897bfcf2048a5f7f766df313f37b8c05a13ec662526cb5bc7f2`
+//! - Generator SHA-256: `e90793dd18eefd94d19df29300833061d9e549db56b441d8a57814dccb8624cf`
 //! - Entries: 1686
 
 /// The longest key Appendix A enumerates, in code points.

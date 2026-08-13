@@ -85,6 +85,15 @@ pub(crate) const TABLE3: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
+/// Table 3 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE3: Unit = Unit {
+    input: "spec/captured/table3.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table3.rs",
+    summary: "Table 3, JLReq's own reduction-priority reading (Appendix D).",
+    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
+};
+
 /// Table 4, the JIS X 4051 reduction-priority reading (Appendix D).
 pub(crate) const TABLE4: Unit = Unit {
     input: "spec/captured/table4.en.tsv",
@@ -94,6 +103,15 @@ pub(crate) const TABLE4: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
+/// Table 4 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE4: Unit = Unit {
+    input: "spec/captured/table4.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table4.rs",
+    summary: "Table 4, the JIS X 4051 reduction-priority reading (Appendix D).",
+    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
+};
+
 /// Table 5, the book-practice reduction-priority reading (Appendix D).
 pub(crate) const TABLE5: Unit = Unit {
     input: "spec/captured/table5.en.tsv",
@@ -101,6 +119,15 @@ pub(crate) const TABLE5: Unit = Unit {
     output: "crates/jlreq-spacing/src/generated/table5.rs",
     summary: "Table 5, the book-practice reduction-priority reading (Appendix D).",
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
+};
+
+/// Table 5 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE5: Unit = Unit {
+    input: "spec/captured/table5.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table5.rs",
+    summary: "Table 5, the book-practice reduction-priority reading (Appendix D).",
+    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
 };
 
 /// Table 6, "Opportunities for Inter-character Space Expansion" (Appendix E).
@@ -116,6 +143,15 @@ pub(crate) const TABLE6: Unit = Unit {
             "OPPORTUNITIES_FOR_INTER_CHARACTER_SPACE_EXPANSION_DURING_LINE_ADJUSTMENT",
         )
     },
+};
+
+/// Table 6 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE6: Unit = Unit {
+    input: "spec/captured/table6.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table6.rs",
+    summary: "Table 6, \"Opportunities for Inter-character Space Expansion\" (Appendix E).",
+    emit: |table| emit_kumihan_ranged(table, RangedTable::Expansion, "E"),
 };
 
 /// One transcribed row, read by column name rather than position (`generate::Record`'s
@@ -573,6 +609,53 @@ fn emit_ranged(table: &Table, which: RangedTable, fallback: &str) -> Result<Emis
     Ok(Emission { items, entries })
 }
 
+/// Emit one of Tables 3 through 6 for `kumihan`, retaining JLReq references as strings.
+fn emit_kumihan_ranged(
+    table: &Table,
+    which: RangedTable,
+    fallback: &str,
+) -> Result<Emission, String> {
+    let rows = rows(table)?;
+    let doc = match which {
+        RangedTable::Reduction => "§D.1",
+        RangedTable::Expansion => "§E.1",
+    };
+    let mut items = format!(
+        "use crate::spec::{{RawRangedCell, em}};\n\n\
+         /// This table's cells, in the order the transcription was read.\n\
+         ///\n\
+         /// JLReq: {doc}\n\
+         pub(crate) static CELLS: &[RawRangedCell] = &[\n"
+    );
+    let mut entries = 0usize;
+    for row in &rows {
+        let before = axis(row.before)?;
+        let after = axis(row.after)?;
+        let token = ranged_cell(row.token)
+            .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
+        let rule = if row.note.is_empty() {
+            fallback
+        } else {
+            row.note
+        };
+        let limit_text = token
+            .limit
+            .map_or_else(|| "None".to_owned(), |value| format!("Some(em({value}))"));
+        let stage_text = token.stage.unwrap_or(0);
+        let _ = write!(
+            items,
+            "    RawRangedCell {{\n        before: {before},\n        after: {after},\n        \
+             limit: {limit_text},\n        two_valued: {two_valued},\n        residual: {residual},\n        \
+             stage: {stage_text},\n        rule: {rule:?},\n    }},\n",
+            two_valued = token.two_valued,
+            residual = token.residual,
+        );
+        entries = entries.saturating_add(1);
+    }
+    items.push_str("];\n");
+    Ok(Emission { items, entries })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Row, axis, break_cell, ranged_cell, rule_constant, spacing_cell, units};
@@ -721,9 +804,13 @@ mod tests {
             super::TABLE2,
             super::KUMIHAN_TABLE2,
             super::TABLE3,
+            super::KUMIHAN_TABLE3,
             super::TABLE4,
+            super::KUMIHAN_TABLE4,
             super::TABLE5,
+            super::KUMIHAN_TABLE5,
             super::TABLE6,
+            super::KUMIHAN_TABLE6,
         ] {
             assert!(unit.input.starts_with("spec/captured/table"));
             assert!(unit.output.contains("/src/generated/table"));

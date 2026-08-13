@@ -175,9 +175,13 @@ const UNITS: &[Unit] = &[
     spacing::TABLE2,
     spacing::KUMIHAN_TABLE2,
     spacing::TABLE3,
+    spacing::KUMIHAN_TABLE3,
     spacing::TABLE4,
+    spacing::KUMIHAN_TABLE4,
     spacing::TABLE5,
+    spacing::KUMIHAN_TABLE5,
     spacing::TABLE6,
+    spacing::KUMIHAN_TABLE6,
 ];
 
 /// A tab-separated input, as a generator sees it.

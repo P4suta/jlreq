@@ -13,7 +13,7 @@
 //! - Source SHA-256: `aa988703189460344a18ed4c7556b104d12eba8681a7e95516c5c27fe4ce36dc`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/policy.rs`
-//! - Generator SHA-256: `a3bc2a1ea80942e24c66a1f2484ef062f3d42f4239b65cb616133f6b91b08560`
+//! - Generator SHA-256: `9e847dcebdfc6232289dcfc3d2e8a7f39b70174485a04d34b3b59075d9c4953b`
 //! - Entries: 22
 
 use crate::policy::{ChoiceRecord, Exclusion, Question, QuestionRecord};

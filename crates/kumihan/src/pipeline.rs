@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::ops::Range;
 
 use crate::{
@@ -11,9 +11,12 @@ use crate::{
     WritingMode,
     construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
     style::{
-        AdjustmentPreference, GroupedNumeralBeforeWestern, IterationMarkAtLineHead,
-        JukugoRubyLayout, KinsokuLevel, RelaxationMechanism, Remainder, RubyAlignment,
-        RubyOverhangIndent, RubyOverhangKana,
+        AdjustmentPreference, AmbiguousContext, GroupRubyDistribution, GroupedNumeralBeforeWestern,
+        GroupedNumeralQualification, HangingPunctuation, IterationMarkAtLineHead,
+        JapaneseLatinExpansionCeiling, JukugoRubyLayout, KinsokuLevel, LineEndFullStopComma,
+        LineEndPunctuation, LineHeadOpeningBracket, ReductionTable, RelaxationMechanism, Remainder,
+        RubyAlignment, RubyOverhangIndent, RubyOverhangKana, SentenceMedialDividingMark,
+        UnlistedCodePoint,
     },
 };
 
@@ -73,8 +76,20 @@ struct ComplexIdentity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ExpansionSite {
     None,
-    Stage3 { weight: i32, cap: i32 },
-    Residual { weight: i32 },
+    Site {
+        weight: i32,
+        bounded: Option<(i32, u8)>,
+        residual: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ReductionSite {
+    boundary: usize,
+    weight: i32,
+    capacity: i32,
+    stage: u8,
+    discrete: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -173,7 +188,7 @@ impl Composer {
                     continue;
                 }
                 let line_number = self.nodes[start].line_count;
-                let width = measure_line(
+                let measured_width = measure_line(
                     paragraph,
                     style,
                     self.candidates[start].offset,
@@ -181,6 +196,14 @@ impl Composer {
                     line_number,
                 );
                 let available = i64::from(paragraph.line_extent);
+                let width = width_after_available_reduction(
+                    paragraph,
+                    style,
+                    self.candidates[start].offset,
+                    candidate.offset,
+                    measured_width,
+                    available,
+                );
                 let delta = available.saturating_sub(width);
                 let is_last = end.saturating_add(1) == self.candidates.len();
                 let mut cost = line_badness(delta, is_last, style.adjustment_preference());
@@ -302,11 +325,7 @@ impl Composer {
             &mut self.line_advances,
         );
 
-        let indent = if line_index == 0 {
-            paragraph.first_line_indent
-        } else {
-            0
-        };
+        let indent = line_head_indent(paragraph, style, start_cluster, line_index);
         let ruby_leading =
             ruby_line_leading_separation(paragraph, style, start_cluster, end_cluster, line_index);
         let content_width = self.line_advances.iter().fold(
@@ -328,7 +347,11 @@ impl Composer {
             style,
             start_cluster,
             end_cluster,
-            if justify { remaining } else { 0 },
+            if remaining < 0 || justify {
+                remaining
+            } else {
+                0
+            },
             &mut self.line_adjustments,
         );
 
@@ -419,12 +442,10 @@ impl Composer {
                 local = local.saturating_add(1);
             }
 
-            if local < clusters.len() {
-                let boundary = previous_ordinal.saturating_sub(start_cluster);
-                cursor = cursor.saturating_add(i64::from(
-                    self.line_adjustments.get(boundary).copied().unwrap_or(0),
-                ));
-            }
+            let boundary = previous_ordinal.saturating_sub(start_cluster);
+            cursor = cursor.saturating_add(i64::from(
+                self.line_adjustments.get(boundary).copied().unwrap_or(0),
+            ));
         }
 
         let range = if let (Some(first), Some(last)) = (clusters.first(), clusters.last()) {
@@ -432,11 +453,19 @@ impl Composer {
         } else {
             0..0
         };
+        let occupied = cursor.saturating_sub(alignment_offset);
+        let hanging = hanging_amount(
+            paragraph,
+            style,
+            end_cluster,
+            occupied,
+            i64::from(paragraph.line_extent),
+        );
         let mut line = Line {
             range,
             inline_origin: clamp_i32(alignment_offset),
             block_origin,
-            inline_extent: clamp_i32(cursor.saturating_sub(alignment_offset)),
+            inline_extent: clamp_i32(occupied.saturating_sub(hanging)),
             block_extent,
             clusters: placed,
             attachments: Vec::new(),
@@ -532,7 +561,7 @@ fn is_internal_furawake_offset(paragraph: &Paragraph, offset: usize) -> bool {
     })
 }
 
-fn boundary_expansion_site(paragraph: &Paragraph, before: usize) -> ExpansionSite {
+fn boundary_expansion_site(paragraph: &Paragraph, style: &Style, before: usize) -> ExpansionSite {
     let Some(cluster) = paragraph.text.clusters().get(before) else {
         return ExpansionSite::None;
     };
@@ -540,21 +569,29 @@ fn boundary_expansion_site(paragraph: &Paragraph, before: usize) -> ExpansionSit
     if after >= paragraph.text.clusters().len() {
         return ExpansionSite::None;
     }
+    if is_western_word_space(paragraph, before) {
+        let size = cluster
+            .size_override()
+            .unwrap_or(paragraph.text.size())
+            .inline();
+        let cap = half_rounded_up(size)
+            .saturating_sub(effective_cluster_body_advance(paragraph, before))
+            .max(0);
+        let after_class = class_of_cluster_with_style(paragraph, style, after);
+        let residual = crate::generated::table6::CELLS
+            .iter()
+            .any(|cell| cell.before == 26 && cell.after == after_class && cell.residual);
+        return ExpansionSite::Site {
+            weight: size,
+            bounded: (cap > 0).then_some((cap, 1)),
+            residual,
+        };
+    }
     let before_complex = expansion_complex_at(paragraph, before);
     let after_complex = expansion_complex_at(paragraph, after);
     if let (Some(before_complex), Some(after_complex)) = (before_complex, after_complex) {
         if before_complex == after_complex {
             return ExpansionSite::None;
-        }
-        if before_complex.kind == after_complex.kind {
-            let weight = cluster
-                .size_override()
-                .unwrap_or(paragraph.text.size())
-                .inline();
-            return ExpansionSite::Stage3 {
-                weight,
-                cap: weight / 4,
-            };
         }
     }
 
@@ -576,19 +613,99 @@ fn boundary_expansion_site(paragraph: &Paragraph, before: usize) -> ExpansionSit
             _ => false,
         })
     {
+        return ExpansionSite::None;
+    }
+
+    let before_class = class_of_cluster_with_style(paragraph, style, before);
+    let after_class = class_of_cluster_with_style(paragraph, style, after);
+    let before_character = single_cluster_character(paragraph, cluster);
+    let after_character = single_cluster_character(paragraph, &paragraph.text.clusters()[after]);
+    if before_class == 8 && after_class == 8 && cl_08_same_kind(before_character, after_character) {
+        return ExpansionSite::None;
+    }
+    if before_class == 27 && after_class == 13 {
+        let role = cluster.role();
+        if role == Some(ClusterRole::QuantitySymbol)
+            || before_character.is_some_and(|character| character.is_ascii_digit())
+        {
+            return ExpansionSite::None;
+        }
+    }
+    let Some(cell) = crate::generated::table6::CELLS
+        .iter()
+        .find(|cell| cell.before == before_class && cell.after == after_class)
+    else {
+        return ExpansionSite::None;
+    };
+    let before_size = cluster.size_override().unwrap_or(paragraph.text.size());
+    let after_cluster = &paragraph.text.clusters()[after];
+    let after_size = after_cluster
+        .size_override()
+        .unwrap_or(paragraph.text.size());
+    let before_solid = before_character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, cluster, character));
+    let after_solid = after_character.is_some_and(|character| {
+        contextual_punctuation_is_solid(paragraph, after_cluster, character)
+    });
+    let components = crate::spec::table_one_space_components(
+        before_class,
+        after_class,
+        before_size,
+        after_size,
+        before_solid,
+        after_solid,
+    );
+    let weight = match components {
+        [amount, 0] if amount > 0 => before_size.inline(),
+        [0, amount] if amount > 0 => after_size.inline(),
+        _ => before_size.inline(),
+    };
+    if cell.residual {
+        return ExpansionSite::Site {
+            weight,
+            bounded: None,
+            residual: true,
+        };
+    }
+    let Some(limit) = cell.limit else {
+        return ExpansionSite::None;
+    };
+    let current = boundary_space_after_with_style(paragraph, style, before);
+    let ceiling = expansion_ceiling(
+        style,
+        before_class,
+        after_class,
+        weight,
+        crate::spec::scale_spec_units(weight, limit),
+    );
+    let cap = ceiling.saturating_sub(current).max(0);
+    if cap == 0 || cell.stage == 0 {
         ExpansionSite::None
     } else {
-        ExpansionSite::Residual {
-            weight: cluster
-                .size_override()
-                .unwrap_or(paragraph.text.size())
-                .inline(),
+        ExpansionSite::Site {
+            weight,
+            bounded: Some((cap, cell.stage)),
+            residual: false,
         }
+    }
+}
+
+fn expansion_ceiling(style: &Style, before: u8, after: u8, weight: i32, table: i32) -> i32 {
+    if !matches!((before, after), (19, 27) | (27, 19)) {
+        return table;
+    }
+    match style.japanese_latin_expansion_ceiling() {
+        JapaneseLatinExpansionCeiling::HalfEm => half_rounded_up(weight),
+        JapaneseLatinExpansionCeiling::ThirdEm => {
+            (weight / 3).saturating_add(i32::from(weight % 3 != 0))
+        },
+        JapaneseLatinExpansionCeiling::Rigid => quarter_rounded_up(weight),
     }
 }
 
 fn boundary_expansion_site_on_line(
     paragraph: &Paragraph,
+    style: &Style,
     before: usize,
     line_start: usize,
     line_end: usize,
@@ -599,7 +716,7 @@ fn boundary_expansion_site_on_line(
     {
         ExpansionSite::None
     } else {
-        boundary_expansion_site(paragraph, before)
+        boundary_expansion_site(paragraph, style, before)
     }
 }
 
@@ -666,29 +783,52 @@ fn prepare_line_adjustments(
     adjustments: &mut Vec<i32>,
 ) {
     adjustments.clear();
-    adjustments.resize(line_end.saturating_sub(line_start).saturating_sub(1), 0);
-    if need <= 0 || adjustments.is_empty() {
+    adjustments.resize(line_end.saturating_sub(line_start), 0);
+    if adjustments.is_empty() || need == 0 {
+        return;
+    }
+    if need < 0 {
+        prepare_line_reductions(
+            paragraph,
+            style,
+            line_start,
+            line_end,
+            need.saturating_abs(),
+            adjustments,
+        );
         return;
     }
 
     let sites: Vec<_> = (line_start..line_end.saturating_sub(1))
-        .map(|before| boundary_expansion_site_on_line(paragraph, before, line_start, line_end))
-        .collect();
-    let stage3: Vec<_> = sites
-        .iter()
-        .enumerate()
-        .filter_map(|(index, site)| match site {
-            ExpansionSite::Stage3 { weight, cap } => Some((index, *weight, Some(*cap))),
-            _ => None,
+        .map(|before| {
+            boundary_expansion_site_on_line(paragraph, style, before, line_start, line_end)
         })
         .collect();
-    let capacity = stage3.iter().fold(0_i64, |sum, (_, _, cap)| {
-        sum.saturating_add(i64::from(cap.unwrap_or(0)))
-    });
-    let stage3_take = need.min(capacity);
-    distribute_adjustment(stage3_take, &stage3, style.remainder(), adjustments);
+    let mut remaining = need;
+    for stage in 1_u8..=3 {
+        if remaining == 0 {
+            return;
+        }
+        let stage_sites: Vec<_> = sites
+            .iter()
+            .enumerate()
+            .filter_map(|(index, site)| match site {
+                ExpansionSite::Site {
+                    weight,
+                    bounded: Some((cap, site_stage)),
+                    ..
+                } if *site_stage == stage => Some((index, *weight, Some(*cap))),
+                _ => None,
+            })
+            .collect();
+        let capacity = stage_sites.iter().fold(0_i64, |sum, (_, _, cap)| {
+            sum.saturating_add(i64::from(cap.unwrap_or(0)))
+        });
+        let take = remaining.min(capacity);
+        distribute_adjustment(take, &stage_sites, style.remainder(), adjustments);
+        remaining = remaining.saturating_sub(take);
+    }
 
-    let remaining = need.saturating_sub(stage3_take);
     if remaining == 0 {
         return;
     }
@@ -696,13 +836,414 @@ fn prepare_line_adjustments(
         .iter()
         .enumerate()
         .filter_map(|(index, site)| match site {
-            ExpansionSite::Stage3 { weight, .. } | ExpansionSite::Residual { weight } => {
+            ExpansionSite::Site {
+                weight,
+                bounded,
+                residual,
+            } if *residual || bounded.is_some_and(|(_, stage)| (2..=3).contains(&stage)) => {
                 Some((index, *weight, None))
             },
-            ExpansionSite::None => None,
+            ExpansionSite::None | ExpansionSite::Site { .. } => None,
         })
         .collect();
     distribute_adjustment(remaining, &union, style.remainder(), adjustments);
+}
+
+fn prepare_line_reductions(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_start: usize,
+    line_end: usize,
+    mut need: i64,
+    adjustments: &mut [i32],
+) {
+    let sites = reduction_sites(paragraph, style, line_start, line_end);
+    for stage in 1_u8..=6 {
+        if need <= 0 {
+            break;
+        }
+        let mut discrete: Vec<_> = sites
+            .iter()
+            .copied()
+            .filter(|site| site.stage == stage && site.discrete)
+            .collect();
+        if style.remainder() == Remainder::Trailing {
+            discrete.reverse();
+        }
+        for site in discrete {
+            if need <= 0 {
+                break;
+            }
+            apply_reduction(site.boundary, i64::from(site.capacity), adjustments);
+            need = need.saturating_sub(i64::from(site.capacity));
+        }
+
+        if need <= 0 {
+            break;
+        }
+        let continuous: Vec<_> = sites
+            .iter()
+            .copied()
+            .filter(|site| site.stage == stage && !site.discrete)
+            .collect();
+        let capacity = continuous.iter().fold(0_i64, |sum, site| {
+            sum.saturating_add(i64::from(site.capacity))
+        });
+        let take = need.min(capacity);
+        distribute_reduction(take, &continuous, style.remainder(), adjustments);
+        need = need.saturating_sub(take);
+    }
+}
+
+fn reduction_sites(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_start: usize,
+    line_end: usize,
+) -> Vec<ReductionSite> {
+    let mut sites = Vec::new();
+    for ordinal in line_start..line_end.saturating_sub(1) {
+        if is_western_word_space(paragraph, ordinal) {
+            let cluster = &paragraph.text.clusters()[ordinal];
+            let minimum = quarter_inline_size(paragraph, cluster);
+            let capacity = effective_cluster_body_advance(paragraph, ordinal)
+                .saturating_sub(minimum)
+                .max(0);
+            push_reduction_site(
+                &mut sites,
+                ordinal.saturating_sub(line_start),
+                paragraph.text.clusters()[ordinal]
+                    .size_override()
+                    .unwrap_or(paragraph.text.size())
+                    .inline(),
+                capacity,
+                1,
+                false,
+            );
+        }
+        append_table_reduction_sites(
+            paragraph,
+            style,
+            ordinal,
+            ordinal.saturating_sub(line_start),
+            &mut sites,
+        );
+    }
+    if let Some(ordinal) = line_end.checked_sub(1).filter(|_| line_start < line_end) {
+        append_line_end_reduction_site(
+            paragraph,
+            style,
+            ordinal,
+            ordinal.saturating_sub(line_start),
+            &mut sites,
+        );
+    }
+    sites
+}
+
+fn width_after_available_reduction(
+    paragraph: &Paragraph,
+    style: &Style,
+    start: usize,
+    end: usize,
+    width: i64,
+    available: i64,
+) -> i64 {
+    let need = width.saturating_sub(available);
+    if need <= 0 {
+        return width;
+    }
+    let line_start = cluster_index_at_or_after(paragraph, start);
+    let line_end = cluster_index_at_or_after(paragraph, end);
+    let capacity = reduction_sites(paragraph, style, line_start, line_end)
+        .iter()
+        .fold(0_i64, |sum, site| {
+            sum.saturating_add(i64::from(site.capacity))
+        });
+    let reduced = width.saturating_sub(need.min(capacity));
+    reduced.saturating_sub(hanging_amount(
+        paragraph, style, line_end, reduced, available,
+    ))
+}
+
+fn append_line_end_reduction_site(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    boundary: usize,
+    sites: &mut Vec<ReductionSite>,
+) {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return;
+    };
+    let before = class_of_cluster_with_style(paragraph, style, ordinal);
+    let cells = match style.reduction_table() {
+        ReductionTable::Table3 => crate::generated::table3::CELLS,
+        ReductionTable::Table4 => crate::generated::table4::CELLS,
+        ReductionTable::Table5 => crate::generated::table5::CELLS,
+    };
+    let Some(cell) = cells
+        .iter()
+        .find(|cell| cell.before == before && cell.after == 0)
+    else {
+        return;
+    };
+    let Some(limit) = cell.limit.filter(|_| cell.stage != 0) else {
+        return;
+    };
+    let size = cluster.size_override().unwrap_or(paragraph.text.size());
+    let current = line_end_space_after(paragraph, style, ordinal);
+    let floor = crate::spec::scale_spec_units(size.inline(), limit);
+    push_reduction_site(
+        sites,
+        boundary,
+        size.inline(),
+        current.saturating_sub(floor),
+        cell.stage,
+        cell.two_valued,
+    );
+}
+
+fn hanging_amount(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_end: usize,
+    occupied: i64,
+    available: i64,
+) -> i64 {
+    if style.hanging_punctuation() != HangingPunctuation::Hanging || occupied <= available {
+        return 0;
+    }
+    let Some(ordinal) = line_end.checked_sub(1) else {
+        return 0;
+    };
+    if !matches!(
+        class_of_cluster_with_style(paragraph, style, ordinal),
+        crate::spec::FULL_STOP | crate::spec::COMMA
+    ) {
+        return 0;
+    }
+    occupied
+        .saturating_sub(available)
+        .min(i64::from(effective_cluster_body_advance(paragraph, ordinal)).max(0))
+}
+
+fn append_table_reduction_sites(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    boundary: usize,
+    sites: &mut Vec<ReductionSite>,
+) {
+    let clusters = paragraph.text.clusters();
+    let Some(before_cluster) = clusters.get(ordinal) else {
+        return;
+    };
+    let Some(after_cluster) = clusters.get(ordinal.saturating_add(1)) else {
+        return;
+    };
+    let before = class_of_cluster_with_style(paragraph, style, ordinal);
+    let after = class_of_cluster_with_style(paragraph, style, ordinal.saturating_add(1));
+    let before_size = before_cluster
+        .size_override()
+        .unwrap_or(paragraph.text.size());
+    let after_size = after_cluster
+        .size_override()
+        .unwrap_or(paragraph.text.size());
+    let before_character = single_cluster_character(paragraph, before_cluster);
+    let after_character = single_cluster_character(paragraph, after_cluster);
+    let before_solid = before_character.is_some_and(|character| {
+        contextual_punctuation_is_solid(paragraph, before_cluster, character)
+    });
+    let after_solid = after_character.is_some_and(|character| {
+        contextual_punctuation_is_solid(paragraph, after_cluster, character)
+    });
+    let components = crate::spec::table_one_space_components(
+        before,
+        after,
+        before_size,
+        after_size,
+        before_solid,
+        after_solid,
+    );
+
+    if append_special_reduction_sites(
+        style.reduction_table(),
+        before,
+        after,
+        components,
+        [before_size.inline(), after_size.inline()],
+        boundary,
+        sites,
+    ) {
+        return;
+    }
+
+    let cells = match style.reduction_table() {
+        ReductionTable::Table3 => crate::generated::table3::CELLS,
+        ReductionTable::Table4 => crate::generated::table4::CELLS,
+        ReductionTable::Table5 => crate::generated::table5::CELLS,
+    };
+    let Some(cell) = cells
+        .iter()
+        .find(|cell| cell.before == before && cell.after == after)
+    else {
+        return;
+    };
+    let active = match components {
+        [amount, 0] if amount > 0 => Some((amount, before_size.inline())),
+        [0, amount] if amount > 0 => Some((amount, after_size.inline())),
+        _ => None,
+    };
+    let (amount, weight) = match (active, cell.limit) {
+        (Some(active), Some(_)) if cell.stage != 0 => active,
+        _ => return,
+    };
+    let floor = crate::spec::scale_spec_units(weight, cell.limit.unwrap_or(0));
+    push_reduction_site(
+        sites,
+        boundary,
+        weight,
+        amount.saturating_sub(floor),
+        cell.stage,
+        cell.two_valued,
+    );
+}
+
+fn append_special_reduction_sites(
+    table: ReductionTable,
+    before: u8,
+    after: u8,
+    components: [i32; 2],
+    weights: [i32; 2],
+    boundary: usize,
+    sites: &mut Vec<ReductionSite>,
+) -> bool {
+    let mut push = |component: usize, floor: i32, stage: u8| {
+        push_reduction_site(
+            sites,
+            boundary,
+            weights[component],
+            components[component].saturating_sub(floor),
+            stage,
+            false,
+        );
+    };
+    match (before, after, table) {
+        (5, 5, ReductionTable::Table3) => {
+            push(0, 0, 4);
+            push(1, 0, 4);
+        },
+        (5, 5, ReductionTable::Table4) => {
+            push(0, 0, 2);
+            push(1, 0, 2);
+        },
+        (5 | 6, 5, ReductionTable::Table5) => {},
+        (6, 5, ReductionTable::Table3) => push(1, 0, 4),
+        (6 | 7, 5, ReductionTable::Table4) => push(1, 0, 2),
+        (7, 5, ReductionTable::Table3) => {
+            push(0, 0, 5);
+            push(1, 0, 4);
+        },
+        (7, 5, ReductionTable::Table5) => {
+            push(0, quarter_rounded_up(weights[0]), 3);
+        },
+        _ => return false,
+    }
+    true
+}
+
+fn quarter_rounded_up(value: i32) -> i32 {
+    (value / 4).saturating_add(i32::from(value % 4 != 0))
+}
+
+fn push_reduction_site(
+    sites: &mut Vec<ReductionSite>,
+    boundary: usize,
+    weight: i32,
+    capacity: i32,
+    stage: u8,
+    discrete: bool,
+) {
+    if capacity > 0 && stage != 0 {
+        sites.push(ReductionSite {
+            boundary,
+            weight,
+            capacity,
+            stage,
+            discrete,
+        });
+    }
+}
+
+fn distribute_reduction(
+    amount: i64,
+    sites: &[ReductionSite],
+    remainder: Remainder,
+    adjustments: &mut [i32],
+) {
+    if amount <= 0 || sites.is_empty() {
+        return;
+    }
+    let weight_sum = sites.iter().fold(0_i64, |sum, site| {
+        sum.saturating_add(i64::from(site.weight.max(1)))
+    });
+    let mut assigned: Vec<i64> = sites
+        .iter()
+        .map(|site| {
+            amount
+                .saturating_mul(i64::from(site.weight.max(1)))
+                .checked_div(weight_sum.max(1))
+                .unwrap_or(0)
+                .min(i64::from(site.capacity))
+        })
+        .collect();
+    let mut left = amount.saturating_sub(
+        assigned
+            .iter()
+            .fold(0_i64, |sum, take| sum.saturating_add(*take)),
+    );
+    while left > 0 {
+        let mut progressed = false;
+        match remainder {
+            Remainder::Leading => {
+                for (site, take) in sites.iter().zip(&mut assigned) {
+                    if left == 0 {
+                        break;
+                    }
+                    if *take < i64::from(site.capacity) {
+                        *take = take.saturating_add(1);
+                        left = left.saturating_sub(1);
+                        progressed = true;
+                    }
+                }
+            },
+            Remainder::Trailing => {
+                for (site, take) in sites.iter().zip(&mut assigned).rev() {
+                    if left == 0 {
+                        break;
+                    }
+                    if *take < i64::from(site.capacity) {
+                        *take = take.saturating_add(1);
+                        left = left.saturating_sub(1);
+                        progressed = true;
+                    }
+                }
+            },
+        }
+        if !progressed {
+            break;
+        }
+    }
+    for (site, take) in sites.iter().zip(assigned) {
+        apply_reduction(site.boundary, take, adjustments);
+    }
+}
+
+fn apply_reduction(boundary: usize, amount: i64, adjustments: &mut [i32]) {
+    if let Some(adjustment) = adjustments.get_mut(boundary) {
+        *adjustment = adjustment.saturating_sub(clamp_i32(amount));
+    }
 }
 
 fn distribute_adjustment(
@@ -771,9 +1312,9 @@ fn distribute_adjustment(
     }
 }
 
-fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
+fn effective_cluster_advance(paragraph: &Paragraph, style: &Style, ordinal: usize) -> i32 {
     effective_cluster_body_advance(paragraph, ordinal)
-        .saturating_add(boundary_space_after(paragraph, ordinal))
+        .saturating_add(boundary_space_after_with_style(paragraph, style, ordinal))
 }
 
 fn effective_cluster_body_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
@@ -830,7 +1371,7 @@ fn effective_cluster_advance_on_line(
     line_end: usize,
     line_index: usize,
 ) -> i32 {
-    effective_cluster_advance_on_line_without_ruby(paragraph, ordinal, line_start, line_end)
+    effective_cluster_advance_on_line_without_ruby(paragraph, style, ordinal, line_start, line_end)
         .saturating_add(ruby_boundary_separation_after(
             paragraph, style, ordinal, line_start, line_end, line_index,
         ))
@@ -838,6 +1379,7 @@ fn effective_cluster_advance_on_line(
 
 fn effective_cluster_advance_on_line_without_ruby(
     paragraph: &Paragraph,
+    style: &Style,
     ordinal: usize,
     line_start: usize,
     line_end: usize,
@@ -855,18 +1397,35 @@ fn effective_cluster_advance_on_line_without_ruby(
         }
         return warichu_segment(paragraph, group, line_start, line_end).advance;
     }
-    if ordinal.saturating_add(1) == line_end
-        && formula_boundary_space_after(paragraph, ordinal).is_some()
-    {
-        return effective_cluster_body_advance(paragraph, ordinal);
-    }
     if is_western_word_space(paragraph, ordinal)
         && (ordinal == line_start || ordinal.saturating_add(1) == line_end)
     {
-        0
-    } else {
-        effective_cluster_advance(paragraph, ordinal)
+        return 0;
     }
+    if ordinal.saturating_add(1) == line_end {
+        return effective_cluster_body_advance(paragraph, ordinal)
+            .saturating_add(line_end_space_after(paragraph, style, ordinal));
+    }
+    effective_cluster_advance(paragraph, style, ordinal)
+}
+
+fn line_end_space_after(paragraph: &Paragraph, style: &Style, ordinal: usize) -> i32 {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return 0;
+    };
+    let class = class_of_cluster_with_style(paragraph, style, ordinal);
+    if (class == crate::spec::CLOSING_BRACKET
+        && style.line_end_punctuation() == LineEndPunctuation::Solid)
+        || (class == crate::spec::COMMA
+            && style.line_end_full_stop_comma() == LineEndFullStopComma::Jis)
+    {
+        return 0;
+    }
+    let size = cluster.size_override().unwrap_or(paragraph.text.size());
+    let character = single_cluster_character(paragraph, cluster);
+    let solid = character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, cluster, character));
+    crate::spec::table_one_space(class, 0, size, size, solid, false)
 }
 
 #[derive(Debug, Clone)]
@@ -992,7 +1551,7 @@ fn phonetic_jukugo_plan(
     let (first, last) = (runs.first()?, runs.last()?);
     let leading_allowance = if first.base.start == line_start {
         if line_index == 0 && style.ruby_overhang_indent() == RubyOverhangIndent::Permitted {
-            paragraph.first_line_indent.min(first.ruby_em)
+            line_head_indent(paragraph, style, line_start, line_index).min(first.ruby_em)
         } else {
             0
         }
@@ -1434,7 +1993,7 @@ fn ruby_line_leading_separation(
         }
         let allowance =
             if line_index == 0 && style.ruby_overhang_indent() == RubyOverhangIndent::Permitted {
-                paragraph.first_line_indent.min(overhang.ruby_em)
+                line_head_indent(paragraph, style, line_start, line_index).min(overhang.ruby_em)
             } else {
                 0
             };
@@ -1535,6 +2094,12 @@ fn boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
         .unwrap_or_else(|| ordinary_boundary_space_after(paragraph, ordinal))
 }
 
+fn boundary_space_after_with_style(paragraph: &Paragraph, style: &Style, ordinal: usize) -> i32 {
+    tate_chu_yoko_boundary_space_after(paragraph, ordinal)
+        .or_else(|| formula_boundary_space_after(paragraph, ordinal))
+        .unwrap_or_else(|| ordinary_boundary_space_after_with_style(paragraph, style, ordinal))
+}
+
 fn tate_chu_yoko_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> Option<i32> {
     if paragraph.writing_mode != WritingMode::VerticalRl {
         return None;
@@ -1597,7 +2162,69 @@ fn ordinary_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
     )
 }
 
+fn ordinary_boundary_space_after_with_style(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+) -> i32 {
+    let clusters = paragraph.text.clusters();
+    let Some(current) = clusters.get(ordinal) else {
+        return 0;
+    };
+    let Some(following) = clusters.get(ordinal.saturating_add(1)) else {
+        return 0;
+    };
+    let current_character = single_cluster_character(paragraph, current);
+    let following_character = single_cluster_character(paragraph, following);
+    let current_solid = current_character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, current, character));
+    let following_solid = following_character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, following, character));
+    let current_size = current.size_override().unwrap_or(paragraph.text.size());
+    let following_size = following.size_override().unwrap_or(paragraph.text.size());
+    let before = class_of_cluster_with_style(paragraph, style, ordinal);
+    let after = class_of_cluster_with_style(paragraph, style, ordinal.saturating_add(1));
+    let table = crate::spec::table_one_space(
+        before,
+        after,
+        current_size,
+        following_size,
+        current_solid,
+        following_solid,
+    );
+    let table_is_blank = crate::generated::table1::CELLS
+        .iter()
+        .find(|cell| cell.before == before && cell.after == after)
+        .is_none_or(|cell| cell.terms.is_empty());
+    if !table_is_blank
+        || style.sentence_medial_dividing_mark() != SentenceMedialDividingMark::QuarterEm
+    {
+        return table;
+    }
+    let before_quarter = if before == 4 && current.role() == Some(ClusterRole::SentenceMedial) {
+        quarter_inline_size(paragraph, current)
+    } else {
+        0
+    };
+    let after_quarter = if after == 4 && following.role() == Some(ClusterRole::SentenceMedial) {
+        quarter_inline_size(paragraph, following)
+    } else {
+        0
+    };
+    table
+        .saturating_add(before_quarter)
+        .saturating_add(after_quarter)
+}
+
 fn class_of_cluster(paragraph: &Paragraph, ordinal: usize) -> u8 {
+    class_of_cluster_impl(paragraph, None, ordinal)
+}
+
+fn class_of_cluster_with_style(paragraph: &Paragraph, style: &Style, ordinal: usize) -> u8 {
+    class_of_cluster_impl(paragraph, Some(style), ordinal)
+}
+
+fn class_of_cluster_impl(paragraph: &Paragraph, style: Option<&Style>, ordinal: usize) -> u8 {
     if tate_chu_yoko_cluster_range(paragraph, ordinal).is_some() {
         return 30;
     }
@@ -1626,6 +2253,11 @@ fn class_of_cluster(paragraph: &Paragraph, ordinal: usize) -> u8 {
         frame,
         cluster.role(),
         paragraph.writing_mode,
+        style.is_some_and(|style| style.unlisted_code_point() == UnlistedCodePoint::Ideographic),
+        style.is_some_and(|style| style.ambiguous_context() == AmbiguousContext::HighestClass),
+        style.is_some_and(|style| {
+            style.grouped_numeral_qualification() == GroupedNumeralQualification::ByRole
+        }),
     )
 }
 
@@ -2204,6 +2836,31 @@ fn is_middle_dot(character: char) -> bool {
     crate::spec::single_has_class(character, crate::spec::MIDDLE_DOT)
 }
 
+fn line_head_indent(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_start: usize,
+    line_index: usize,
+) -> i32 {
+    let ordinary = if line_index == 0 {
+        paragraph.first_line_indent
+    } else {
+        0
+    };
+    let Some(cluster) = paragraph.text.clusters().get(line_start) else {
+        return ordinary;
+    };
+    if class_of_cluster_with_style(paragraph, style, line_start) != crate::spec::OPENING_BRACKET {
+        return ordinary;
+    }
+    let half = half_inline_size(paragraph, cluster);
+    match (line_index == 0, style.line_head_opening_bracket()) {
+        (_, LineHeadOpeningBracket::Pattern2) => ordinary.saturating_add(half),
+        (true, LineHeadOpeningBracket::Pattern3) => ordinary.saturating_sub(half),
+        _ => ordinary,
+    }
+}
+
 fn measure_line(
     paragraph: &Paragraph,
     style: &Style,
@@ -2213,11 +2870,12 @@ fn measure_line(
 ) -> i64 {
     let start_cluster = cluster_index_at_or_after(paragraph, start);
     let end_cluster = cluster_index_at_or_after(paragraph, end);
-    let indent = if line_number == 0 {
-        i64::from(paragraph.first_line_indent)
-    } else {
-        0
-    };
+    let indent = i64::from(line_head_indent(
+        paragraph,
+        style,
+        start_cluster,
+        line_number,
+    ));
     let mut cursor = indent.saturating_add(i64::from(ruby_line_leading_separation(
         paragraph,
         style,
@@ -2348,11 +3006,7 @@ fn apply_tabs(
     line_number: usize,
     advances: &mut [i32],
 ) {
-    let mut cursor = if line_number == 0 {
-        i64::from(paragraph.first_line_indent)
-    } else {
-        0
-    };
+    let mut cursor = i64::from(line_head_indent(paragraph, style, start, line_number));
     let mut tab_index = 0;
     for local in 0..advances.len() {
         let ordinal = start.saturating_add(local);
@@ -2452,8 +3106,8 @@ fn break_is_legal(paragraph: &Paragraph, style: &Style, offset: usize) -> bool {
         return true;
     }
 
-    let raw_before = class_of_cluster(paragraph, before_ordinal);
-    let raw_after = class_of_cluster(paragraph, after_ordinal);
+    let raw_before = class_of_cluster_with_style(paragraph, style, before_ordinal);
+    let raw_after = class_of_cluster_with_style(paragraph, style, after_ordinal);
     let before_character =
         single_cluster_character(paragraph, &paragraph.text.clusters()[before_ordinal]);
     let after_character =
@@ -2718,9 +3372,12 @@ fn place_ruby_attachments(
                 style,
                 line,
                 construct,
-                ruby.annotation(),
-                &ruby.base(),
-                &(0..ruby.annotation().source().len()),
+                &RubySpan {
+                    annotation: ruby.annotation(),
+                    base_range: ruby.base(),
+                    annotation_range: 0..ruby.annotation().source().len(),
+                    distribution: Some(style.group_ruby_distribution()),
+                },
             ));
         },
         crate::RubyKind::Mono => {
@@ -2731,9 +3388,12 @@ fn place_ruby_attachments(
                         style,
                         line,
                         construct,
-                        ruby.annotation(),
-                        &run.base(),
-                        &run.annotation(),
+                        &RubySpan {
+                            annotation: ruby.annotation(),
+                            base_range: run.base(),
+                            annotation_range: run.annotation(),
+                            distribution: None,
+                        },
                     ));
                 }
             }
@@ -2756,9 +3416,12 @@ fn place_ruby_attachments(
                     style,
                     line,
                     construct,
-                    ruby.annotation(),
-                    &ruby.base(),
-                    &(0..ruby.annotation().source().len()),
+                    &RubySpan {
+                        annotation: ruby.annotation(),
+                        base_range: ruby.base(),
+                        annotation_range: 0..ruby.annotation().source().len(),
+                        distribution: Some(GroupRubyDistribution::Jis),
+                    },
                 ));
             } else {
                 for run in ruby.runs() {
@@ -2768,9 +3431,12 @@ fn place_ruby_attachments(
                             style,
                             line,
                             construct,
-                            ruby.annotation(),
-                            &run.base(),
-                            &run.annotation(),
+                            &RubySpan {
+                                annotation: ruby.annotation(),
+                                base_range: run.base(),
+                                annotation_range: run.annotation(),
+                                distribution: None,
+                            },
                         ));
                     }
                 }
@@ -2837,43 +3503,95 @@ fn range_fits_line(range: &Range<usize>, line: &Line) -> bool {
     line.range.start <= range.start && range.end <= line.range.end
 }
 
+struct RubySpan<'a> {
+    annotation: &'a crate::ShapedText,
+    base_range: Range<usize>,
+    annotation_range: Range<usize>,
+    distribution: Option<GroupRubyDistribution>,
+}
+
 fn place_ruby_span(
     paragraph: &Paragraph,
     style: &Style,
     line: &mut Line,
     construct: usize,
-    annotation: &crate::ShapedText,
-    base_range: &Range<usize>,
-    annotation_range: &Range<usize>,
+    span: &RubySpan<'_>,
 ) -> i32 {
-    let Some((base_start, base_end)) = bounds_for_ruby_range(paragraph, line, base_range) else {
+    let Some((base_start, base_end)) = bounds_for_ruby_range(paragraph, line, &span.base_range)
+    else {
         return 0;
     };
-    let annotation_width = annotation
+    let annotation_width = span
+        .annotation
         .clusters()
         .iter()
         .filter(|cluster| {
             let cluster = cluster.range();
-            annotation_range.start <= cluster.start && cluster.end <= annotation_range.end
+            span.annotation_range.start <= cluster.start && cluster.end <= span.annotation_range.end
         })
         .fold(0_i64, |sum, cluster| {
             sum.saturating_add(i64::from(cluster.advance()))
         });
     let base_width = i64::from(base_end).saturating_sub(i64::from(base_start));
-    let mut inline =
-        match style.ruby_alignment() {
-            _ if annotation_width > base_width => i64::from(base_start)
-                .saturating_add((base_width.saturating_sub(annotation_width)) / 2),
-            RubyAlignment::Nakatsuki => i64::from(base_start)
-                .saturating_add((base_width.saturating_sub(annotation_width)) / 2),
-            RubyAlignment::Katatsuki => i64::from(base_start),
+    let annotation_count = span
+        .annotation
+        .clusters()
+        .iter()
+        .filter(|cluster| {
+            let cluster = cluster.range();
+            span.annotation_range.start <= cluster.start && cluster.end <= span.annotation_range.end
+        })
+        .count();
+    let surplus = base_width.saturating_sub(annotation_width).max(0);
+    let mut gaps = Vec::new();
+    let mut inline = if annotation_width > base_width {
+        i64::from(base_start).saturating_add((base_width.saturating_sub(annotation_width)) / 2)
+    } else if let Some(distribution) = span.distribution {
+        let weights = match distribution {
+            GroupRubyDistribution::Jis => {
+                let mut weights = Vec::with_capacity(annotation_count.saturating_add(1));
+                weights.push(1);
+                weights.extend((1..annotation_count).map(|_| 2));
+                weights.push(1);
+                weights
+            },
+            GroupRubyDistribution::Flush => vec![1; annotation_count.saturating_sub(1)],
         };
+        let shares = proportional_shares(surplus, &weights, style.remainder());
+        match distribution {
+            GroupRubyDistribution::Jis => {
+                gaps.extend(
+                    shares
+                        .iter()
+                        .skip(1)
+                        .take(annotation_count.saturating_sub(1)),
+                );
+                i64::from(base_start)
+                    .saturating_add(i64::from(shares.first().copied().unwrap_or(0)))
+            },
+            GroupRubyDistribution::Flush => {
+                gaps.extend(shares);
+                i64::from(base_start)
+            },
+        }
+    } else {
+        match style.ruby_alignment() {
+            RubyAlignment::Nakatsuki => i64::from(base_start).saturating_add(surplus / 2),
+            RubyAlignment::Katatsuki => i64::from(base_start),
+        }
+    };
     let mut attachment_extent = 0;
-    for cluster in annotation.clusters().iter().filter(|cluster| {
-        let cluster = cluster.range();
-        annotation_range.start <= cluster.start && cluster.end <= annotation_range.end
-    }) {
-        let size = cluster.size_override().unwrap_or(annotation.size());
+    for (index, cluster) in span
+        .annotation
+        .clusters()
+        .iter()
+        .filter(|cluster| {
+            let cluster = cluster.range();
+            span.annotation_range.start <= cluster.start && cluster.end <= span.annotation_range.end
+        })
+        .enumerate()
+    {
+        let size = cluster.size_override().unwrap_or(span.annotation.size());
         line.attachments.push(Attachment {
             construct,
             range: cluster.range(),
@@ -2887,8 +3605,54 @@ fn place_ruby_span(
         });
         attachment_extent = attachment_extent.max(size.block());
         inline = inline.saturating_add(i64::from(cluster.advance()));
+        inline = inline.saturating_add(i64::from(gaps.get(index).copied().unwrap_or(0)));
     }
     attachment_extent
+}
+
+fn proportional_shares(total: i64, weights: &[i32], remainder: Remainder) -> Vec<i32> {
+    if total <= 0 || weights.is_empty() {
+        return vec![0; weights.len()];
+    }
+    let weight_sum = weights.iter().fold(0_i64, |sum, weight| {
+        sum.saturating_add(i64::from((*weight).max(0)))
+    });
+    if weight_sum == 0 {
+        return vec![0; weights.len()];
+    }
+    let mut shares: Vec<_> = weights
+        .iter()
+        .map(|weight| {
+            total
+                .saturating_mul(i64::from((*weight).max(0)))
+                .checked_div(weight_sum)
+                .unwrap_or(0)
+        })
+        .collect();
+    let mut left = total.saturating_sub(shares.iter().copied().sum::<i64>());
+    while left > 0 {
+        match remainder {
+            Remainder::Leading => {
+                for share in &mut shares {
+                    if left == 0 {
+                        break;
+                    }
+                    *share = share.saturating_add(1);
+                    left = left.saturating_sub(1);
+                }
+            },
+            Remainder::Trailing => {
+                for share in shares.iter_mut().rev() {
+                    if left == 0 {
+                        break;
+                    }
+                    *share = share.saturating_add(1);
+                    left = left.saturating_sub(1);
+                }
+            },
+        }
+    }
+    shares.into_iter().map(clamp_i32).collect()
 }
 
 fn attachment_block(paragraph: &Paragraph, line: &Line, size: Size) -> i32 {
@@ -2963,7 +3727,9 @@ fn clamp_i32(value: i64) -> i32 {
 mod tests {
     use alloc::vec;
 
-    use crate::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style, Widow, WritingMode};
+    use crate::{
+        Break, Cluster, Construct, Frame, Paragraph, ShapedText, Size, Style, Widow, WritingMode,
+    };
 
     fn text(source: &str) -> ShapedText {
         let clusters = source.char_indices().map(|(start, character)| {
@@ -3006,5 +3772,24 @@ mod tests {
         let layout = crate::compose(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 2);
         assert!(layout.lines()[1].block_origin() < layout.lines()[0].block_origin());
+    }
+
+    #[test]
+    fn distinct_ornamented_complexes_lower_to_table_six_stage_three() {
+        let paragraph = Paragraph::builder(text("日本"), 2_000)
+            .constructs([
+                Construct::script(0..3, text("注")),
+                Construct::script(3..6, text("記")),
+            ])
+            .build()
+            .expect("valid ornamented paragraph");
+        assert_eq!(
+            super::boundary_expansion_site(&paragraph, &Style::default(), 0),
+            super::ExpansionSite::Site {
+                weight: 1_000,
+                bounded: Some((250, 3)),
+                residual: false,
+            }
+        );
     }
 }

@@ -180,6 +180,8 @@ fn parse_shaped_text(value: &Value) -> Result<ShapedText, String> {
                 "text" => ClusterRole::Text,
                 "decimal-point" => ClusterRole::DecimalPoint,
                 "digit-group-separator" => ClusterRole::DigitGroupSeparator,
+                "sentence-medial" => ClusterRole::SentenceMedial,
+                "sentence-terminator" => ClusterRole::SentenceTerminator,
                 "grouped-numeral" => ClusterRole::GroupedNumeral,
                 "unit-symbol" => ClusterRole::UnitSymbol,
                 "quantity-symbol" => ClusterRole::QuantitySymbol,

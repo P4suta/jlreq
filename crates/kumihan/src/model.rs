@@ -76,6 +76,10 @@ pub enum ClusterRole {
     DecimalPoint,
     /// A punctuation mark used as a digit-group separator.
     DigitGroupSeparator,
+    /// A question or exclamation mark used inside a sentence.
+    SentenceMedial,
+    /// A question or exclamation mark ending a sentence.
+    SentenceTerminator,
     /// A European numeral handled as a grouped Japanese numeral.
     GroupedNumeral,
     /// A character inside a unit symbol.

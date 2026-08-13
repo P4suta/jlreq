@@ -14,6 +14,10 @@ pub(crate) mod ideograph;
 pub(crate) mod script;
 pub(crate) mod table1;
 pub(crate) mod table2;
+pub(crate) mod table3;
+pub(crate) mod table4;
+pub(crate) mod table5;
+pub(crate) mod table6;
 
 const LISTING_COUNT: usize = 1_686;
 const DISTINCT_KEY_COUNT: usize = 1_133;
@@ -132,6 +136,34 @@ const _: () = {
             ));
         }
         index = index.saturating_add(1);
+    }
+};
+
+const _: () = assert!(table3::CELLS.len() == TABLE_WITH_LINE_EDGE_COUNT);
+const _: () = assert!(table4::CELLS.len() == TABLE_WITH_LINE_EDGE_COUNT);
+const _: () = assert!(table5::CELLS.len() == TABLE_WITH_LINE_EDGE_COUNT);
+const _: () = assert!(table6::CELLS.len() == TABLE_WITHOUT_LINE_EDGE_COUNT);
+const _: () = {
+    let tables = [table3::CELLS, table4::CELLS, table5::CELLS, table6::CELLS];
+    let mut table = 0_usize;
+    while table < tables.len() {
+        let cells = tables[table];
+        let mut index = 0_usize;
+        while index < cells.len() {
+            let cell = &cells[index];
+            assert!(cell.before <= CLASS_COUNT && cell.after <= CLASS_COUNT);
+            assert!(cell.before != 17 && cell.before != 18);
+            assert!(cell.after != 17 && cell.after != 18);
+            if let Some(limit) = cell.limit {
+                assert!(limit >= 0 && limit <= 720);
+            }
+            assert!(cell.stage <= 6);
+            let _ = cell.two_valued;
+            let _ = cell.residual;
+            let _ = cell.rule;
+            index = index.saturating_add(1);
+        }
+        table = table.saturating_add(1);
     }
 };
 

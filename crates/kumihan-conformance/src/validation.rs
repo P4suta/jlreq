@@ -193,6 +193,8 @@ fn validate_shaped_text(shaped: &Map<String, Value>, name: &str) -> Result<(), S
                     "text",
                     "decimal-point",
                     "digit-group-separator",
+                    "sentence-medial",
+                    "sentence-terminator",
                     "grouped-numeral",
                     "unit-symbol",
                     "quantity-symbol",

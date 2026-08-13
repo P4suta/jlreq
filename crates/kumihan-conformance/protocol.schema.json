@@ -91,6 +91,8 @@
             "text",
             "decimal-point",
             "digit-group-separator",
+            "sentence-medial",
+            "sentence-terminator",
             "grouped-numeral",
             "unit-symbol",
             "quantity-symbol",

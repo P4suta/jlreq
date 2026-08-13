@@ -46,6 +46,17 @@ pub(crate) struct RawBreakCell {
     pub(crate) rule: &'static str,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RawRangedCell {
+    pub(crate) before: u8,
+    pub(crate) after: u8,
+    pub(crate) limit: Option<i32>,
+    pub(crate) two_valued: bool,
+    pub(crate) residual: bool,
+    pub(crate) stage: u8,
+    pub(crate) rule: &'static str,
+}
+
 pub(crate) const fn em(units: i32) -> i32 {
     units
 }
@@ -74,6 +85,9 @@ pub(crate) fn class_of(
     frame: Frame,
     role: Option<ClusterRole>,
     writing_mode: WritingMode,
+    unlisted_is_ideographic: bool,
+    highest_ambiguous_class: bool,
+    grouped_numeral_requires_role: bool,
 ) -> u8 {
     let mut characters = piece.chars();
     let Some(first) = characters.next() else {
@@ -86,12 +100,25 @@ pub(crate) fn class_of(
     let key = [first as u32, second.map_or(0, |character| character as u32)];
     let mut candidates = candidates(key);
     if candidates == 0 {
-        return if frame == Frame::Proportional { 27 } else { 19 };
+        return if unlisted_is_ideographic || frame != Frame::Proportional {
+            19
+        } else {
+            27
+        };
     }
     candidates = narrow_by_usage(candidates, key, writing_mode);
     candidates = narrow_by_frame(candidates, key, frame);
-    candidates = narrow_by_role(candidates, role, first);
-    first_non_construct(candidates).unwrap_or_else(|| first_class(candidates).unwrap_or(IDEOGRAPH))
+    candidates = narrow_by_role(candidates, role, first, grouped_numeral_requires_role);
+    let select = |classes| {
+        if highest_ambiguous_class {
+            last_class(classes)
+        } else {
+            first_class(classes)
+        }
+    };
+    select(candidates & !CONSTRUCT_CLASSES)
+        .or_else(|| select(candidates))
+        .unwrap_or(IDEOGRAPH)
 }
 
 pub(crate) fn table_one_space(
@@ -102,23 +129,46 @@ pub(crate) fn table_one_space(
     before_solid: bool,
     after_solid: bool,
 ) -> i32 {
+    table_one_space_components(
+        before,
+        after,
+        before_size,
+        after_size,
+        before_solid,
+        after_solid,
+    )
+    .into_iter()
+    .fold(0_i32, i32::saturating_add)
+}
+
+pub(crate) fn table_one_space_components(
+    before: u8,
+    after: u8,
+    before_size: Size,
+    after_size: Size,
+    before_solid: bool,
+    after_solid: bool,
+) -> [i32; 2] {
     let Some(cell) = crate::generated::table1::CELLS
         .iter()
         .find(|cell| cell.before == before && cell.after == after)
     else {
-        return 0;
+        return [0, 0];
     };
-    cell.terms.iter().fold(0_i32, |space, term| {
+    let mut components = [0_i32; 2];
+    for term in cell.terms {
         if (term.trailing && after_solid) || (!term.trailing && before_solid) {
-            return space;
+            continue;
         }
         let size = if term.trailing {
             after_size.inline()
         } else {
             before_size.inline()
         };
-        space.saturating_add(scale_spec_units(size, term.amount))
-    })
+        let slot = usize::from(term.trailing);
+        components[slot] = components[slot].saturating_add(scale_spec_units(size, term.amount));
+    }
+    components
 }
 
 pub(crate) fn table_two_cell(before: u8, after: u8) -> Option<RawBreakCell> {
@@ -220,19 +270,28 @@ fn narrow_by_frame(classes: u32, key: [u32; MAX_KEY_LEN], frame: Frame) -> u32 {
     narrowed
 }
 
-fn narrow_by_role(classes: u32, role: Option<ClusterRole>, character: char) -> u32 {
+fn narrow_by_role(
+    classes: u32,
+    role: Option<ClusterRole>,
+    character: char,
+    grouped_numeral_requires_role: bool,
+) -> u32 {
     let selected = match role {
         Some(
             ClusterRole::DecimalPoint
             | ClusterRole::DigitGroupSeparator
             | ClusterRole::GroupedNumeral,
         ) => class_bit(24),
+        Some(ClusterRole::SentenceMedial | ClusterRole::SentenceTerminator) => class_bit(4),
         Some(ClusterRole::UnitSymbol) => class_bit(25),
         Some(ClusterRole::WarichuBracket) if single_has_class(character, OPENING_BRACKET) => {
             class_bit(28)
         },
         Some(ClusterRole::WarichuBracket) if single_has_class(character, CLOSING_BRACKET) => {
             class_bit(29)
+        },
+        _ if grouped_numeral_requires_role && classes & class_bit(24) != 0 => {
+            return class_bit(27);
         },
         _ => return classes,
     };
@@ -255,15 +314,17 @@ const fn keep(original: u32, narrowed: u32) -> u32 {
     if narrowed == 0 { original } else { narrowed }
 }
 
-fn first_non_construct(classes: u32) -> Option<u8> {
-    first_class(classes & !CONSTRUCT_CLASSES)
-}
-
 fn first_class(classes: u32) -> Option<u8> {
     (1_u8..=30).find(|class| classes & class_bit(*class) != 0)
 }
 
-fn scale_spec_units(size: i32, units: i32) -> i32 {
+fn last_class(classes: u32) -> Option<u8> {
+    (1_u8..=30)
+        .rev()
+        .find(|class| classes & class_bit(*class) != 0)
+}
+
+pub(crate) fn scale_spec_units(size: i32, units: i32) -> i32 {
     let product = i64::from(size).saturating_mul(i64::from(units));
     let whole = product / 720;
     let rounded = whole.saturating_add(i64::from(product % 720 != 0));
@@ -369,5 +430,45 @@ mod tests {
         assert!(is_hiragana('あ'));
         assert!(is_katakana('ア'));
         assert!(is_ideograph('𠀀'));
+    }
+
+    #[test]
+    fn classification_policy_switches_are_applied_after_generated_membership() {
+        assert_eq!(
+            class_of(
+                "1",
+                Frame::HalfEm,
+                None,
+                WritingMode::HorizontalTb,
+                false,
+                false,
+                true,
+            ),
+            27
+        );
+        assert_eq!(
+            class_of(
+                "↔",
+                Frame::FullEm,
+                None,
+                WritingMode::HorizontalTb,
+                false,
+                true,
+                false,
+            ),
+            19
+        );
+        assert_eq!(
+            class_of(
+                "🦀",
+                Frame::Proportional,
+                None,
+                WritingMode::HorizontalTb,
+                true,
+                false,
+                false,
+            ),
+            19
+        );
     }
 }

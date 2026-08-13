@@ -228,9 +228,9 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         ("、12", 1_500, None, 2_500),
         ("「12", 1_000, None, 2_000),
         ("12（", 0, Some(1_500), 2_500),
-        ("12）", 0, Some(1_000), 2_000),
-        ("12。", 0, Some(1_000), 2_000),
-        ("12、", 0, Some(1_000), 2_000),
+        ("12）", 0, Some(1_000), 2_500),
+        ("12。", 0, Some(1_000), 2_500),
+        ("12、", 0, Some(1_000), 2_500),
     ];
 
     for (source, expected_digits, expected_following, expected_extent) in cases {
@@ -347,6 +347,138 @@ fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
         vec![0, 1_500, 2_500]
     );
     assert_eq!(line.inline_extent(), 3_500);
+}
+
+#[test]
+fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
+    let compose_with = |choice, role| {
+        let text = ShapedText::new(
+            "日？日",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 1_000).with_role(role),
+                Cluster::new(6..9, 1_000),
+            ],
+        )
+        .expect("valid dividing-mark fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .build()
+            .expect("valid dividing-mark paragraph");
+        let style = Style::builder()
+            .sentence_medial_dividing_mark(choice)
+            .build()
+            .expect("consistent dividing-mark style");
+        kumihan::compose(&paragraph, &style).lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::Solid,
+            ClusterRole::SentenceMedial,
+        ),
+        [0, 1_000, 2_000]
+    );
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::QuarterEm,
+            ClusterRole::SentenceMedial,
+        ),
+        [0, 1_250, 2_500]
+    );
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::QuarterEm,
+            ClusterRole::SentenceTerminator,
+        ),
+        [0, 1_000, 2_000],
+        "the alternative is not guessed for a sentence-final occurrence"
+    );
+}
+
+#[test]
+fn classification_choices_change_black_box_spacing_and_breaks() {
+    let unlisted = |choice| {
+        let text = ShapedText::new(
+            "🦀日",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..4, 700)
+                    .with_size(Size::square(700).expect("positive emoji size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(4..7, 1_000),
+            ],
+        )
+        .expect("valid unlisted fixture");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .build()
+            .expect("valid unlisted paragraph");
+        let style = Style::builder()
+            .unlisted_code_point(choice)
+            .build()
+            .expect("consistent unlisted style");
+        kumihan::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+    };
+    assert_eq!(unlisted(UnlistedCodePoint::ByFrame), 950);
+    assert_eq!(unlisted(UnlistedCodePoint::Ideographic), 700);
+
+    let ambiguous = |choice| {
+        let text = ShapedText::new(
+            "↔A",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..4, 400)
+                    .with_size(Size::square(400).expect("positive Latin size"))
+                    .with_frame(Frame::Proportional),
+            ],
+        )
+        .expect("valid ambiguous fixture");
+        let paragraph = Paragraph::builder(text, 2_000)
+            .build()
+            .expect("valid ambiguous paragraph");
+        let style = Style::builder()
+            .ambiguous_context(choice)
+            .build()
+            .expect("consistent ambiguity style");
+        kumihan::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+    };
+    assert_eq!(ambiguous(AmbiguousContext::LowestClass), 1_000);
+    assert_eq!(ambiguous(AmbiguousContext::HighestClass), 1_250);
+
+    let grouped = |choice| {
+        let text = ShapedText::new(
+            "1A末",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..1, 500).with_frame(Frame::HalfEm),
+                Cluster::new(1..2, 500)
+                    .with_size(Size::square(500).expect("positive Latin size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(2..5, 1_000),
+            ],
+        )
+        .expect("valid grouped-numeral fixture");
+        let paragraph = Paragraph::builder(text, 1_750)
+            .breaks([Break::allowed(1)])
+            .build()
+            .expect("valid grouped-numeral paragraph");
+        let style = Style::builder()
+            .grouped_numeral_qualification(choice)
+            .build()
+            .expect("consistent grouped-numeral style");
+        kumihan::compose(&paragraph, &style).lines().len()
+    };
+    assert_eq!(grouped(GroupedNumeralQualification::ByWidth), 2);
+    assert_eq!(grouped(GroupedNumeralQualification::ByRole), 1);
 }
 
 #[test]
@@ -908,11 +1040,52 @@ fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
         let line = &layout.lines()[0];
         assert_eq!(line.block_extent(), 1_700);
         assert_eq!(line.attachments().len(), 2);
-        assert_eq!(line.attachments()[0].inline(), 500);
+        assert_eq!(line.attachments()[0].inline(), 250);
         assert_eq!(line.attachments()[0].block(), expected_blocks[0]);
-        assert_eq!(line.attachments()[1].inline(), 1_000);
+        assert_eq!(line.attachments()[1].inline(), 1_250);
         assert_eq!(line.attachments()[1].block(), expected_blocks[1]);
     }
+}
+
+#[test]
+fn group_ruby_distribution_changes_leading_and_interior_shares() {
+    let annotation = shaped("にほん", Frame::FullEm, 300).expect("valid group reading");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..9,
+        annotation,
+        [RubyRun::new(0..9, 0..9)],
+    )
+    .expect("valid group ruby");
+    let compose_with = |distribution| {
+        let paragraph = Paragraph::builder(
+            shaped("日本語", Frame::FullEm, 400).expect("valid group base"),
+            1_200,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .build()
+        .expect("valid group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("consistent group-ruby style");
+        kumihan::compose(&paragraph, &style).lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        compose_with(GroupRubyDistribution::Jis),
+        [50, 450, 850],
+        "JIS divides surplus with 1:2:2:1 edge/interior weights"
+    );
+    assert_eq!(
+        compose_with(GroupRubyDistribution::Flush),
+        [0, 450, 900],
+        "flush aligns both run ends and divides only the interior gaps"
+    );
 }
 
 #[test]
@@ -964,7 +1137,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .iter()
         .map(kumihan::Attachment::inline)
         .collect();
-    assert_eq!(group_inline, [250, 750, 1_250]);
+    assert_eq!(group_inline, [84, 751, 1_417]);
 
     for (ruby, expected_second_base) in [
         (mono.clone(), 2_000),
@@ -1462,10 +1635,10 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
                 Construct::script(3..6, mark.clone()),
             ],
             WritingMode::HorizontalTb,
-            3_500,
+            3_750,
         ),
-        [0, 1_250, 2_500],
-        "a distinct ornamented complex receives the quarter-em third-order opportunity first"
+        [0, 1_250, 2_750],
+        "the outer second-order site is exhausted before the distinct complexes' third-order site"
     );
     assert_eq!(
         positions(
@@ -1483,8 +1656,8 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
     assert_eq!(
         positions([Construct::ruby(mono)], WritingMode::HorizontalTb, 3_250),
-        [0, 1_250, 2_250],
-        "each mono-ruby association is a distinct simple-ruby complex"
+        [0, 1_125, 2_250],
+        "the two third-order simple-ruby boundaries expand in equal size proportion"
     );
 
     let jukugo = Ruby::new(RubyKind::Jukugo, 0..6, annotation, runs).expect("valid jukugo ruby");
@@ -1503,8 +1676,8 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
             WritingMode::VerticalRl,
             3_250,
         ),
-        [0, 1_250, 2_250],
-        "distinct tate-chu-yoko runs receive the quarter-em opportunity"
+        [0, 1_125, 2_250],
+        "the two third-order tate-chu-yoko boundaries expand in equal size proportion"
     );
 
     let same_tcy = Paragraph::builder(
@@ -1561,8 +1734,8 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
             .iter()
             .map(kumihan::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
-        [0, 1_200, 2_500, 3_750],
-        "third-order shares use each preceding complex member's em: 200 then 300"
+        [0, 1_100, 2_250, 3_750],
+        "the outer second-order site takes 250 first, then third-order shares split the remaining 250 as 100 and 150"
     );
 }
 
@@ -1848,6 +2021,281 @@ fn both_relaxation_mechanisms_allow_kana_but_very_strict_does_not() {
         lines_at_only_boundary(make_text(), 3, &very_strict),
         Some(1)
     );
+}
+
+#[test]
+fn reduction_tables_apply_their_distinct_floor_to_an_overfull_boundary() {
+    let compose_with = |table| {
+        let text = shaped("、日", Frame::FullEm, 1_000).expect("valid reduction fixture");
+        let paragraph = Paragraph::builder(text, 2_000)
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid overfull paragraph");
+        let style = Style::builder()
+            .reduction_table(table)
+            .build()
+            .expect("consistent reduction style");
+        kumihan::compose(&paragraph, &style)
+    };
+
+    for table in [ReductionTable::Table3, ReductionTable::Table4] {
+        let layout = compose_with(table);
+        assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
+        assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+    }
+
+    let book = compose_with(ReductionTable::Table5);
+    assert_eq!(book.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(book.lines()[0].inline_extent(), 2_250);
+}
+
+#[test]
+fn reduction_uses_lower_priority_stages_only_after_earlier_ones() {
+    let text = shaped("・日、日", Frame::FullEm, 1_000).expect("valid staged fixture");
+    let paragraph = Paragraph::builder(text, 4_400)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid staged paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let positions: Vec<_> = layout.lines()[0]
+        .clusters()
+        .iter()
+        .map(kumihan::ClusterPlacement::inline)
+        .collect();
+
+    assert_eq!(positions, [0, 1_000, 2_000, 3_400]);
+    assert_eq!(layout.lines()[0].inline_extent(), 4_400);
+}
+
+#[test]
+fn western_word_space_reduces_first_and_keeps_a_quarter_em() {
+    let text = ShapedText::new(
+        "A B",
+        Size::square(1_000).expect("positive size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..1, 1_000),
+            Cluster::new(1..2, 500),
+            Cluster::new(2..3, 1_000),
+        ],
+    )
+    .expect("valid Western-space fixture");
+    let paragraph = Paragraph::builder(text, 2_250)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid Western-space paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_250);
+    assert_eq!(layout.lines()[0].inline_extent(), 2_250);
+}
+
+#[test]
+fn generated_reduction_tables_include_the_line_end_axis() {
+    let compose_with = |table| {
+        let text = ShapedText::new(
+            "亜。",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 500).with_frame(Frame::HalfEm),
+            ],
+        )
+        .expect("valid line-end reduction fixture");
+        let paragraph = Paragraph::builder(text, 1_700)
+            .build()
+            .expect("valid line-end reduction paragraph");
+        let style = Style::builder()
+            .reduction_table(table)
+            .build()
+            .expect("consistent reduction style");
+        kumihan::compose(&paragraph, &style)
+    };
+
+    assert_eq!(
+        compose_with(ReductionTable::Table3).lines()[0].inline_extent(),
+        1_500,
+        "Table 3 drains the full stop's discrete trailing half em"
+    );
+    assert_eq!(
+        compose_with(ReductionTable::Table4).lines()[0].inline_extent(),
+        2_000,
+        "Table 4 leaves this line-end cell rigid"
+    );
+    assert_eq!(
+        compose_with(ReductionTable::Table5).lines()[0].inline_extent(),
+        1_500,
+        "Table 5 carries the same discrete line-end reduction as Table 3"
+    );
+}
+
+#[test]
+fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
+    let compose_first = |pattern| {
+        let text = shaped("「日", Frame::FullEm, 1_000).expect("valid first-line fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .first_line_indent(1_000)
+            .build()
+            .expect("valid indented paragraph");
+        let style = Style::builder()
+            .line_head_opening_bracket(pattern)
+            .build()
+            .expect("consistent line-head style");
+        kumihan::compose(&paragraph, &style).lines()[0].clusters()[0].inline()
+    };
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern1), 1_000);
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern2), 1_500);
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern3), 500);
+
+    let compose_wrapped = |pattern| {
+        let text = shaped("日「日", Frame::FullEm, 1_000).expect("valid wrapped fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .breaks([Break::mandatory(3)])
+            .build()
+            .expect("valid wrapped paragraph");
+        let style = Style::builder()
+            .line_head_opening_bracket(pattern)
+            .build()
+            .expect("consistent line-head style");
+        kumihan::compose(&paragraph, &style).lines()[1].clusters()[0].inline()
+    };
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern1), 0);
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern2), 500);
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern3), 0);
+}
+
+#[test]
+fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
+    let compose_with = |hanging| {
+        let text = ShapedText::new(
+            "亜。",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 500).with_frame(Frame::HalfEm),
+            ],
+        )
+        .expect("valid hanging fixture");
+        let paragraph = Paragraph::builder(text, 1_300)
+            .build()
+            .expect("valid hanging paragraph");
+        let style = Style::builder()
+            .hanging_punctuation(hanging)
+            .build()
+            .expect("consistent hanging style");
+        kumihan::compose(&paragraph, &style)
+    };
+
+    let none = compose_with(HangingPunctuation::None);
+    assert_eq!(none.lines()[0].inline_extent(), 1_500);
+    assert_eq!(none.diagnostics()[0].code(), "layout.overfull");
+
+    let hanging = compose_with(HangingPunctuation::Hanging);
+    assert_eq!(
+        hanging.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000],
+        "hanging changes line accounting, not the shaped placements"
+    );
+    assert_eq!(hanging.lines()[0].inline_extent(), 1_300);
+    assert!(hanging.diagnostics().is_empty());
+}
+
+#[test]
+fn optimal_search_counts_reducible_space_before_choosing_a_break() {
+    let text = shaped("、日本", Frame::FullEm, 1_000).expect("valid reducible search fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .breaks([Break::allowed(3)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid reducible search paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 3_000);
+}
+
+#[test]
+fn table_six_does_not_expand_a_boundary_it_marks_closed() {
+    let text = shaped("「日末", Frame::FullEm, 1_000).expect("valid closed-expansion fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .breaks([Break::mandatory(6)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid closed-expansion paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+}
+
+#[test]
+fn japanese_latin_expansion_ceiling_changes_the_stage_distribution() {
+    let compose_with = |ceiling| {
+        let text = ShapedText::new(
+            "日A日日末",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..4, 400)
+                    .with_size(Size::square(400).expect("positive Western size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(4..7, 1_000),
+                Cluster::new(7..10, 1_000),
+                Cluster::new(10..13, 1_000),
+            ],
+        )
+        .expect("valid mixed-size expansion fixture");
+        let paragraph = Paragraph::builder(text, 4_100)
+            .breaks([Break::mandatory(10)])
+            .alignment(Alignment::Justify)
+            .build()
+            .expect("valid mixed-size expansion paragraph");
+        let style = Style::builder()
+            .japanese_latin_expansion_ceiling(ceiling)
+            .build()
+            .expect("consistent expansion style");
+        kumihan::compose(&paragraph, &style)
+    };
+
+    let half = compose_with(JapaneseLatinExpansionCeiling::HalfEm);
+    assert_eq!(half.lines()[0].clusters()[1].inline(), 1_350);
+
+    let third = compose_with(JapaneseLatinExpansionCeiling::ThirdEm);
+    assert_eq!(third.lines()[0].clusters()[1].inline(), 1_334);
+
+    let rigid = compose_with(JapaneseLatinExpansionCeiling::Rigid);
+    assert_eq!(rigid.lines()[0].clusters()[1].inline(), 1_250);
+}
+
+#[test]
+fn western_word_space_expands_to_half_an_em_at_the_first_stage() {
+    let text = ShapedText::new(
+        "A B末",
+        Size::square(1_000).expect("positive size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..1, 1_000),
+            Cluster::new(1..2, 333),
+            Cluster::new(2..3, 1_000),
+            Cluster::new(3..6, 1_000).with_frame(Frame::FullEm),
+        ],
+    )
+    .expect("valid Western expansion fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .breaks([Break::mandatory(3)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid Western expansion paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_500);
 }
 
 #[test]

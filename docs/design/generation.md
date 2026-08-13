@@ -108,7 +108,7 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 `spec/derived/` and `spec/captured/`.
 
 During the 1.0 migration, the Appendix A, compatibility-folding, ideograph, kana-script,
-and Tables 1 and 2 units deliberately emit the same facts into both the unpublished legacy
+and Tables 1 through 6 units deliberately emit the same facts into both the unpublished legacy
 regression assets and `kumihan`'s private `src/generated/` boundary. Both outputs share one
 parser and one input; this is migration duplication, not a second transcription. The old
 output is removed with the legacy crates only after the black-box differential migration is

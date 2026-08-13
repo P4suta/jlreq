@@ -13,7 +13,7 @@
 //! - Source SHA-256: `8e9f16b8cd0afc0081a0912131a83232a33dea0e067d9174aeb30a0b08589ab3`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `1c3319a5b00ac897bfcf2048a5f7f766df313f37b8c05a13ec662526cb5bc7f2`
+//! - Generator SHA-256: `e90793dd18eefd94d19df29300833061d9e549db56b441d8a57814dccb8624cf`
 //! - Entries: 16
 
 /// One range of code points the Unicode Character Database gives
