@@ -491,6 +491,128 @@ fn western_word_space_collapses_only_at_true_line_edges() {
 }
 
 #[test]
+fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
+    fn note_text(source: &str) -> ShapedText {
+        let last = source.chars().count().saturating_sub(1);
+        let clusters = source
+            .char_indices()
+            .enumerate()
+            .map(|(ordinal, (start, character))| {
+                let is_bracket = matches!(character, '(' | ')');
+                let cluster = Cluster::new(
+                    start..start.saturating_add(character.len_utf8()),
+                    if is_bracket { 1_000 } else { 500 },
+                )
+                .with_size(
+                    Size::square(if is_bracket { 1_000 } else { 500 })
+                        .expect("positive warichu cluster size"),
+                );
+                if is_bracket && (ordinal == 0 || ordinal == last) {
+                    cluster.with_role(ClusterRole::WarichuBracket)
+                } else {
+                    cluster
+                }
+            });
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive main-text size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid warichu text")
+    }
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let paragraph = Paragraph::builder(note_text("(abcd)"), 3_000)
+            .breaks([Break::allowed(2), Break::allowed(3), Break::allowed(4)])
+            .constructs([Construct::warichu(0..6)])
+            .writing_mode(mode)
+            .build()
+            .expect("valid balanced warichu paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 3_000);
+        assert_eq!(line.block_extent(), 1_000);
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            vec![0, 1_000, 1_500, 1_000, 1_500, 2_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::block)
+                .collect::<Vec<_>>(),
+            if mode == WritingMode::HorizontalTb {
+                vec![0, 0, 0, 500, 500, 0]
+            } else {
+                vec![0, 0, 0, -500, -500, 0]
+            }
+        );
+    }
+
+    let source = " A B ";
+    let clusters = source.char_indices().map(|(start, character)| {
+        Cluster::new(
+            start..start.saturating_add(character.len_utf8()),
+            if character == ' ' { 167 } else { 250 },
+        )
+        .with_size(Size::square(500).expect("positive small-note size"))
+    });
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive main-text size"),
+        Frame::Proportional,
+        clusters,
+    )
+    .expect("valid word-space warichu text");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(3)])
+        .constructs([Construct::warichu(0..5)])
+        .build()
+        .expect("word-space breaks are valid inside warichu");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 250);
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 0, 0),
+            (0, 0, 250),
+            (250, 0, 0),
+            (0, 500, 250),
+            (250, 500, 0)
+        ]
+    );
+
+    let paragraph = Paragraph::builder(note_text("(abcdefgh)"), 3_000)
+        .breaks((2..9).map(Break::allowed))
+        .constructs([Construct::warichu(0..10)])
+        .build()
+        .expect("valid straddling warichu paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].range(), 0..5);
+    assert_eq!(layout.lines()[1].range(), 5..10);
+    assert_eq!(
+        layout
+            .lines()
+            .iter()
+            .flat_map(kumihan::Line::clusters)
+            .map(kumihan::ClusterPlacement::range)
+            .collect::<Vec<_>>(),
+        (0..10).map(|start| start..start + 1).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
     let source = "日本";
     let text = ShapedText::new(

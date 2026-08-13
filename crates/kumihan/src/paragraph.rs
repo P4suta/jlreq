@@ -486,7 +486,7 @@ fn construct_allows_break(construct: &Construct, at: usize) -> bool {
             ruby.kind() != crate::RubyKind::Group
                 && ruby.runs().iter().any(|run| run.base().end == at)
         },
-        ConstructKind::Emphasis { .. } => true,
+        ConstructKind::Emphasis { .. } | ConstructKind::Warichu(_) => true,
         _ => false,
     }
 }
