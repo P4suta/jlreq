@@ -204,6 +204,7 @@ impl Suite {
         violations.extend(unique_ids(&cases));
         violations.extend(frame_pairs(&cases));
         violations.extend(self.coverage(&cases));
+        violations.extend(self.protocol_coverage(&cases));
         violations.extend(self.deferrals.examine(deferral::Reference {
             inventory: self.rules.as_ref(),
             covered: Some(&self.covered(&cases)),
@@ -289,6 +290,39 @@ impl Suite {
             ));
         }
         found
+    }
+
+    /// Require the language-independent suite to cover every observable inventoried rule.
+    fn protocol_coverage(&self, cases: &[Case]) -> Vec<String> {
+        if self.protocol_cases.is_none() {
+            return Vec::new();
+        }
+        let Some(inventory) = self.rules.as_ref() else {
+            return Vec::new();
+        };
+        let declared: BTreeSet<&str> = cases
+            .iter()
+            .filter(|case| case.body.get("protocol").is_some())
+            .flat_map(Case::rules)
+            .filter(|rule| inventory.contains(*rule))
+            .collect();
+        let classified = self.deferrals.classified();
+        let missing: Vec<&str> = inventory
+            .iter()
+            .map(String::as_str)
+            .filter(|rule| !classified.contains(rule) && !declared.contains(rule))
+            .collect();
+        if missing.is_empty() {
+            Vec::new()
+        } else {
+            vec![format!(
+                "{count} observable inventoried rule(s) lack a protocol-v1 black-box case, \
+                 the first being {sample}; an external process must be able to run the full \
+                 suite without the retained Rust-only corpus",
+                count = missing.len(),
+                sample = sample_of(&missing),
+            )]
+        }
     }
 
     /// What was examined, stated whether or not anything was found.
@@ -3681,6 +3715,35 @@ mod tests {
                 .any(|message| message.contains("non-empty rules")),
             "{found:#?}"
         );
+    }
+
+    #[test]
+    fn protocol_coverage_requires_every_observable_rule_in_the_external_suite() {
+        let legacy = cases_of(&file_with(MINIMAL));
+        let source = r#"{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"external/one","rules":["3.1.9"],"request":{},"expected":{}}"#;
+        let (found, protocol) = examine_protocol_suite("suite.ndjson", source);
+        assert!(found.is_empty(), "{found:#?}");
+
+        let mut suite = bare_suite();
+        suite.rules = Some(inventory());
+        suite.protocol_cases = Some(source.to_owned());
+        let cases: Vec<_> = legacy.into_iter().chain(protocol).collect();
+        let found = suite.protocol_coverage(&cases);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("2 observable inventoried rule(s)")),
+            "the retained Rust-only case must not satisfy the external contract: {found:#?}"
+        );
+
+        let complete = source.replace(
+            r#"["3.1.9"]"#,
+            r#"["3.1.9","B.1@cl-05,cl-05","B.1@cl-05,cl-19"]"#,
+        );
+        let (found, protocol) = examine_protocol_suite("suite.ndjson", &complete);
+        assert!(found.is_empty(), "{found:#?}");
+        suite.protocol_cases = Some(complete);
+        assert!(suite.protocol_coverage(&protocol).is_empty());
     }
 
     #[test]

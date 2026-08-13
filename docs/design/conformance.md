@@ -109,9 +109,10 @@ to an engine, and protocol requests or responses without `expected` reject the f
 The legacy case corpus and generated inventories remain differential assets while cases are
 translated to protocol v1. They inventory 106 rules: 100 have case coverage, three are
 classified editorial, three are classified non-observable, and none is deferred. The built-in
-protocol-v1 suite currently contains 67 non-empty black-box cases; the retained corpus adds
-independent classification, boundary, composition, feasibility, lowering, tab, alignment, and
-placement evidence.
+protocol-v1 suite contains 88 non-empty black-box cases and directly names all 100 mechanically
+observable inventoried rules. The retained corpus remains differential evidence for
+classification, boundary, composition, feasibility, lowering, tab, alignment, and placement
+until the legacy crates are removed.
 
 The coverage gate requires every mechanically observable rule to have a non-empty case.
 Editorial guidance and statements no layout result can observe carry explicit

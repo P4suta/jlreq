@@ -58,6 +58,22 @@ struct FurawakeSegment {
     block_extent: i32,
 }
 
+#[derive(Debug, Clone)]
+struct JidoriPlan {
+    range: Range<usize>,
+    extra_after: Vec<i32>,
+}
+
+impl JidoriPlan {
+    fn extra_after(&self, ordinal: usize) -> i32 {
+        ordinal
+            .checked_sub(self.range.start)
+            .and_then(|local| self.extra_after.get(local))
+            .copied()
+            .unwrap_or(0)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ComplexKind {
     Ornamented,
@@ -538,6 +554,32 @@ fn furawake_cluster_range(
     ))
 }
 
+fn jidori_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<(Range<usize>, u16)> {
+    let cluster = paragraph.text.clusters().get(ordinal)?.range();
+    let (range, cells) = paragraph.constructs.iter().find_map(|construct| {
+        let ConstructKind::Jidori { range, cells } = construct.kind() else {
+            return None;
+        };
+        (range.start <= cluster.start && cluster.end <= range.end).then_some((range, *cells))
+    })?;
+    Some((
+        cluster_index_at_or_after(paragraph, range.start)
+            ..cluster_index_at_or_after(paragraph, range.end),
+        cells,
+    ))
+}
+
+fn is_internal_jidori_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return false;
+    };
+    let boundary = cluster.range().end;
+    paragraph.constructs.iter().any(|construct| {
+        matches!(construct.kind(), ConstructKind::Jidori { range, .. }
+            if range.start < boundary && boundary < range.end)
+    })
+}
+
 fn formula_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     let cluster = paragraph.text.clusters().get(ordinal)?.range();
     let range = paragraph.constructs.iter().find_map(|construct| {
@@ -604,6 +646,7 @@ fn boundary_expansion_site(paragraph: &Paragraph, style: &Style, before: usize) 
             | ConstructKind::Warichu(range)
             | ConstructKind::Formula(range)
             | ConstructKind::Furawake { range, .. }
+            | ConstructKind::Jidori { range, .. }
             | ConstructKind::Script { range, .. } => range.start < boundary && boundary < range.end,
             ConstructKind::Ruby(ruby) => {
                 ruby.kind() != crate::RubyKind::Mono
@@ -903,6 +946,9 @@ fn reduction_sites(
 ) -> Vec<ReductionSite> {
     let mut sites = Vec::new();
     for ordinal in line_start..line_end.saturating_sub(1) {
+        if is_internal_jidori_boundary(paragraph, ordinal) {
+            continue;
+        }
         if is_western_word_space(paragraph, ordinal) {
             let cluster = &paragraph.text.clusters()[ordinal];
             let minimum = quarter_inline_size(paragraph, cluster);
@@ -1371,10 +1417,100 @@ fn effective_cluster_advance_on_line(
     line_end: usize,
     line_index: usize,
 ) -> i32 {
+    ordinary_cluster_advance_on_line(paragraph, style, ordinal, line_start, line_end, line_index)
+        .saturating_add(jidori_extra_after(
+            paragraph, style, ordinal, line_start, line_end, line_index,
+        ))
+}
+
+fn ordinary_cluster_advance_on_line(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    line_start: usize,
+    line_end: usize,
+    line_index: usize,
+) -> i32 {
     effective_cluster_advance_on_line_without_ruby(paragraph, style, ordinal, line_start, line_end)
         .saturating_add(ruby_boundary_separation_after(
             paragraph, style, ordinal, line_start, line_end, line_index,
         ))
+}
+
+fn jidori_extra_after(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    line_start: usize,
+    line_end: usize,
+    line_index: usize,
+) -> i32 {
+    let Some((range, cells)) = jidori_cluster_range(paragraph, ordinal) else {
+        return 0;
+    };
+    if range.start < line_start || range.end > line_end || range.start >= range.end {
+        return 0;
+    }
+    jidori_plan(
+        paragraph, style, range, cells, line_start, line_end, line_index,
+    )
+    .extra_after(ordinal)
+}
+
+fn jidori_plan(
+    paragraph: &Paragraph,
+    style: &Style,
+    range: Range<usize>,
+    cells: u16,
+    line_start: usize,
+    line_end: usize,
+    line_index: usize,
+) -> JidoriPlan {
+    let natural = range.clone().fold(0_i64, |sum, member| {
+        let advance = if member.saturating_add(1) == range.end {
+            effective_cluster_body_advance(paragraph, member)
+        } else {
+            ordinary_cluster_advance_on_line(
+                paragraph, style, member, line_start, line_end, line_index,
+            )
+        };
+        sum.saturating_add(i64::from(advance))
+    });
+    let target = i64::from(paragraph.text.size().inline()).saturating_mul(i64::from(cells));
+    let surplus = target.saturating_sub(natural).max(0);
+    let mut extra_after = vec![0; range.end.saturating_sub(range.start)];
+    let mut eligible = Vec::new();
+    for before in range.start..range.end.saturating_sub(1) {
+        if paragraph
+            .text
+            .clusters()
+            .get(before)
+            .is_some_and(|cluster| break_is_legal(paragraph, style, cluster.range().end))
+        {
+            eligible.push(before);
+        }
+    }
+    if eligible.is_empty() {
+        if let Some(last) = extra_after.last_mut() {
+            *last = clamp_i32(surplus);
+        }
+    } else {
+        let divisor = i64::try_from(eligible.len()).unwrap_or(i64::MAX).max(1);
+        let quotient = surplus.checked_div(divisor).unwrap_or(0);
+        let remainder = usize::try_from(surplus.rem_euclid(divisor)).unwrap_or(usize::MAX);
+        for (position, boundary) in eligible.iter().enumerate() {
+            let receives_remainder = match style.remainder() {
+                Remainder::Leading => position < remainder,
+                Remainder::Trailing => {
+                    eligible.len().saturating_sub(position.saturating_add(1)) < remainder
+                },
+            };
+            if let Some(extra) = extra_after.get_mut(boundary.saturating_sub(range.start)) {
+                *extra = clamp_i32(quotient.saturating_add(i64::from(receives_remainder)));
+            }
+        }
+    }
+    JidoriPlan { range, extra_after }
 }
 
 fn effective_cluster_advance_on_line_without_ruby(

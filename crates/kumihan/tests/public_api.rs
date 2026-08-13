@@ -128,6 +128,57 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
 }
 
 #[test]
+fn jidori_fills_declared_cells_and_keeps_its_outer_boundary_separate() {
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let text = shaped("日本語", Frame::FullEm, 1_000).expect("valid jidori fixture");
+        let paragraph = Paragraph::builder(text, 5_000)
+            .constructs([Construct::jidori(0..6, 4)])
+            .writing_mode(mode)
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid jidori paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            [0, 3_000, 4_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::advance)
+                .collect::<Vec<_>>(),
+            [3_000, 1_000, 1_000]
+        );
+        assert_eq!(line.inline_extent(), 5_000);
+    }
+}
+
+#[test]
+fn jidori_leaves_trailing_space_when_no_internal_boundary_can_expand() {
+    for source in ["日", "——"] {
+        let text = shaped(source, Frame::FullEm, 1_000).expect("valid closed jidori fixture");
+        let end = source.len();
+        let paragraph = Paragraph::builder(text, 4_000)
+            .constructs([Construct::jidori(0..end, 4)])
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid closed jidori paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 4_000);
+        assert_eq!(line.clusters()[0].inline(), 0);
+        assert_eq!(
+            line.clusters().last().expect("non-empty line").advance(),
+            if source == "日" { 4_000 } else { 3_000 }
+        );
+    }
+}
+
+#[test]
 fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     let upright = Paragraph::builder(
         shaped("Ａ", Frame::FullEm, 1_000).expect("valid upright fixture"),
