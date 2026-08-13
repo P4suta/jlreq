@@ -119,10 +119,10 @@ why = "The rule's own three enumerated cases are all vertical-writing-mode: 'In 
 rule = "3.2.1"
 why = "The primary text at spec/snapshot/index.html, §3.2.1 Composition of Japanese and Western Mixed Texts, enumerates authoring examples — a Latin symbol, a Western word, an acronym, a Western title, whole quoted paragraphs, and choosing katakana unit names in vertical text versus SI spellings in horizontal text — but states no spacing, break, adjustment, or placement result. Those choices change the source string before shaping; the black-box protocol intentionally receives that already-chosen string and cannot decide whether an author should have written センチメートル or cm. Its final Note merely points readers to JIS X 4051 4.7. The one engine fact suggested by the examples, that proportional Western characters are cl-27, is stated mechanically by §3.2.6 and already covered there. A duplicate case crediting §3.2.1 would therefore test §3.2.6 again, while an engine that rewrote the caller's content would exceed kumihan's scope. This rule is editorial input guidance, not deferred layout work."
 
-[[deferred]]
+[[owned]]
 rule = "3.2.3"
 milestone = "M5"
-why = "The rule states how Western text is set in vertical composition, so its case needs the vertical writing mode."
+why = "The unified placement view exposes all three methods §3.2.3 enumerates for Western text in vertical composition without owning font selection or shaping: a full-em cluster stays upright in vertical-rl, proportional Western clusters carry the rotate-clockwise transform, and an explicitly declared tate-chu-yoko range switches to horizontal-tb with the tate-chu-yoko transform. Protocol-v1 cases 3.2.3/vertical-full-em-western-upright, 3.2.3/vertical-proportional-western-rotated, and 3.2.3/vertical-two-digits-tate-chu-yoko measure those three results through an external process; vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods independently fixes the Rust view. The caller still chooses the already-shaped font/frame and whether a range is tate-chu-yoko, matching kumihan's declared boundary around shaping and authoring rather than guessing from source characters. Detailed solid-setting geometry for a tate-chu-yoko group belongs to §3.2.5 and remains deferred separately."
 
 [[deferred]]
 rule = "3.2.5"

@@ -5,8 +5,8 @@
 //! Black-box acceptance tests for the intentionally small public API.
 
 use kumihan::{
-    Alignment, Break, Cluster, Construct, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText,
-    Size, Style, TabAlignment, TabStop, Widow, WritingMode,
+    Alignment, Break, Cluster, Construct, CoordinateTransform, Frame, Paragraph, Ruby, RubyKind,
+    RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
         AdjustmentPreference, AmbiguousContext, ExpansionOrder, GroupRubyDistribution,
         GroupedNumeralBeforeWestern, GroupedNumeralQualification, HangingPunctuation,
@@ -125,6 +125,53 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
             assert_eq!(layout.lines()[0].clusters().len(), 1);
         }
     }
+}
+
+#[test]
+fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
+    let upright = Paragraph::builder(
+        shaped("Ａ", Frame::FullEm, 1_000).expect("valid upright fixture"),
+        1_000,
+    )
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid upright paragraph");
+    let upright_layout = kumihan::compose(&upright, &Style::default());
+    let upright_cluster = &upright_layout.lines()[0].clusters()[0];
+    assert_eq!(upright_cluster.writing_mode(), WritingMode::VerticalRl);
+    assert_eq!(upright_cluster.transform(), CoordinateTransform::Identity);
+
+    let rotated = Paragraph::builder(
+        shaped("AB", Frame::Proportional, 500).expect("valid rotated fixture"),
+        1_000,
+    )
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid rotated paragraph");
+    let rotated_layout = kumihan::compose(&rotated, &Style::default());
+    assert!(rotated_layout.lines()[0].clusters().iter().all(|cluster| {
+        cluster.writing_mode() == WritingMode::VerticalRl
+            && cluster.transform() == CoordinateTransform::RotateClockwise
+    }));
+
+    let tate_chu_yoko = Paragraph::builder(
+        shaped("12", Frame::Proportional, 500).expect("valid tate-chu-yoko fixture"),
+        1_000,
+    )
+    .constructs([Construct::tate_chu_yoko(0..2)])
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid tate-chu-yoko paragraph");
+    let tate_chu_yoko_layout = kumihan::compose(&tate_chu_yoko, &Style::default());
+    assert!(
+        tate_chu_yoko_layout.lines()[0]
+            .clusters()
+            .iter()
+            .all(|cluster| {
+                cluster.writing_mode() == WritingMode::HorizontalTb
+                    && cluster.transform() == CoordinateTransform::TateChuYoko
+            })
+    );
 }
 
 #[test]
