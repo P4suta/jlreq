@@ -107,13 +107,14 @@ to an engine, and protocol requests or responses without `expected` reject the f
 ## Coverage and release status
 
 The legacy case corpus and generated inventories remain differential assets while cases are
-translated to protocol v1. They currently inventory 106 rules, cover 77, classify two as
-editorial and three as non-observable, and record 24 deferrals. A green legacy coverage
-subtraction means every rule is covered, explicitly classified with evidence, or deferred;
-it does not mean 1.0 is complete.
+translated to protocol v1. They inventory 106 rules: 100 have case coverage, three are
+classified editorial, three are classified non-observable, and none is deferred. The built-in
+protocol-v1 suite currently contains 67 non-empty black-box cases; the retained corpus adds
+independent classification, boundary, composition, feasibility, lowering, tab, alignment, and
+placement evidence.
 
-Before release, every mechanically observable deferral must have a non-empty black-box
-case. Editorial guidance and statements no layout result can observe move to explicit
+The coverage gate requires every mechanically observable rule to have a non-empty case.
+Editorial guidance and statements no layout result can observe carry explicit
 `editorial` or `non-observable` classifications with evidence; empty cases never count as
-coverage. An external process must then be able to run the complete suite using only this
-protocol.
+coverage. The bundled sample engine runs the complete protocol-v1 suite as an external process
+using only this contract.

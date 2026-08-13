@@ -396,9 +396,49 @@ fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
             SentenceMedialDividingMark::QuarterEm,
             ClusterRole::SentenceTerminator,
         ),
-        [0, 1_000, 2_000],
-        "the alternative is not guessed for a sentence-final occurrence"
+        [0, 1_000, 3_000],
+        "the medial alternative is not guessed; the independent sentence-final rule inserts one em"
     );
+}
+
+#[test]
+fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
+    let text = ShapedText::new(
+        "日？日",
+        Size::square(1_000).expect("positive size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..6, 1_000).with_role(ClusterRole::SentenceTerminator),
+            Cluster::new(6..9, 1_000),
+        ],
+    )
+    .expect("valid sentence-final dividing-mark fixture");
+
+    let one_line = Paragraph::builder(text.clone(), 4_000)
+        .build()
+        .expect("valid one-line paragraph");
+    let layout = kumihan::compose(&one_line, &Style::default());
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 4_000);
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 3_000],
+        "a sentence-final dividing mark carries a fixed one-em following space"
+    );
+
+    let wrapped = Paragraph::builder(text, 3_000)
+        .breaks([Break::allowed(6)])
+        .build()
+        .expect("valid wrapping paragraph");
+    let layout = kumihan::compose(&wrapped, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+    assert_eq!(layout.lines()[1].clusters()[0].inline(), 0);
 }
 
 #[test]
@@ -1089,6 +1129,72 @@ fn group_ruby_distribution_changes_leading_and_interior_shares() {
 }
 
 #[test]
+fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
+    let compose_with = |distribution| {
+        let annotation = shaped("にほんごかな", Frame::FullEm, 500).expect("valid long reading");
+        let annotation_end = annotation.source().len();
+        let ruby = Ruby::new(
+            RubyKind::Group,
+            0..6,
+            annotation,
+            [RubyRun::new(0..6, 0..annotation_end)],
+        )
+        .expect("valid long group ruby");
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid group-ruby base"),
+            3_000,
+        )
+        .constructs([Construct::ruby(ruby)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid long group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("valid group-ruby style");
+        kumihan::compose(&paragraph, &style)
+    };
+
+    let jis = compose_with(GroupRubyDistribution::Jis);
+    assert_eq!(
+        jis.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [250, 1_750],
+        "JIS distributes the surplus at a 1:2:1 leading/interior/trailing ratio"
+    );
+    assert_eq!(
+        jis.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000, 2_500]
+    );
+
+    let flush = compose_with(GroupRubyDistribution::Flush);
+    assert_eq!(
+        flush.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 2_000],
+        "flush aligns both ends and puts the whole surplus between base characters"
+    );
+    assert_eq!(
+        flush.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000, 2_500]
+    );
+}
+
+#[test]
 fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid ruby reading");
     let runs = [RubyRun::new(0..3, 0..3), RubyRun::new(3..6, 3..9)];
@@ -1466,8 +1572,8 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
             .iter()
             .map(kumihan::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
-        [0, 1_500, 2_500, 4_000],
-        "a centered long group ruby forces its two half-surpluses off ideographic neighbors"
+        [0, 1_250, 2_750, 4_000],
+        "a long group ruby distributes the base at the JIS 1:2:1 ratio"
     );
     assert_eq!(layout.lines()[0].inline_extent(), 5_000);
     assert_eq!(
@@ -1813,6 +1919,31 @@ fn invalid_utf8_crossing_ranges_and_construct_internal_breaks_are_rejected() {
 }
 
 #[test]
+fn complex_break_rules_distinguish_internal_and_run_boundaries() {
+    let annotation = shaped("注", Frame::FullEm, 500).expect("valid script annotation");
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid script base");
+    let internal = Paragraph::builder(text.clone(), 2_000)
+        .breaks([Break::allowed(3)])
+        .constructs([Construct::script(0..6, annotation.clone())])
+        .build()
+        .expect_err("one ornamented complex is indivisible");
+    assert_eq!(internal.code(), "input.break-inside-construct");
+
+    let separate = Paragraph::builder(text, 1_000)
+        .breaks([Break::mandatory(3)])
+        .constructs([
+            Construct::script(0..3, annotation.clone()),
+            Construct::script(3..6, annotation),
+        ])
+        .build()
+        .expect("the boundary between distinct ornamented complexes is breakable");
+    assert_eq!(
+        kumihan::compose(&separate, &Style::default()).lines().len(),
+        2
+    );
+}
+
+#[test]
 fn mono_ruby_requires_one_run_for_each_base_cluster() {
     let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid annotation");
     let ruby = Ruby::new(RubyKind::Mono, 0..6, annotation, [RubyRun::new(0..6, 0..9)])
@@ -1848,6 +1979,68 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
     let layout = kumihan::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..6);
+}
+
+#[test]
+fn tab_characters_require_declared_stops() {
+    let text = shaped("A\tB", Frame::Proportional, 500).expect("valid tab fixture");
+    let error = Paragraph::builder(text, 5_000)
+        .build()
+        .expect_err("a tab without a corresponding stop is incomplete input");
+    assert_eq!(error.code(), "input.insufficient-tab-stops");
+
+    let text = shaped("A\tBC\tD", Frame::Proportional, 500).expect("valid two-line tab fixture");
+    Paragraph::builder(text, 5_000)
+        .breaks([Break::mandatory(3)])
+        .tab_stops([TabStop::new(3_000, TabAlignment::Start).expect("valid reusable stop")])
+        .build()
+        .expect("the same tab-stop declaration is reusable on each mandatory-delimited line");
+}
+
+#[test]
+fn tab_alignments_are_direction_independent() {
+    let cases = [
+        (TabAlignment::Start, [3_000, 3_500]),
+        (TabAlignment::Center, [2_500, 3_000]),
+        (TabAlignment::End, [2_000, 2_500]),
+        (TabAlignment::Character('C'), [2_500, 3_000]),
+    ];
+    for writing_mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        for (alignment, expected) in cases {
+            let text = shaped("A\tBC", Frame::Proportional, 500).expect("valid tab fixture");
+            let stop = TabStop::new(3_000, alignment).expect("valid tab stop");
+            let paragraph = Paragraph::builder(text, 5_000)
+                .tab_stops([stop])
+                .alignment(Alignment::Start)
+                .writing_mode(writing_mode)
+                .build()
+                .expect("valid tab paragraph");
+            let layout = kumihan::compose(&paragraph, &Style::default());
+            assert_eq!(
+                [
+                    layout.lines()[0].clusters()[2].inline(),
+                    layout.lines()[0].clusters()[3].inline(),
+                ],
+                expected
+            );
+        }
+    }
+}
+
+#[test]
+fn exhausted_tab_positions_continue_on_the_next_line() {
+    let text = shaped("AAAA\tB", Frame::Proportional, 500).expect("valid overflowing tab fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .tab_stops([TabStop::new(1_000, TabAlignment::Start).expect("valid tab stop")])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid overflowing tab paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].range(), 0..4);
+    assert_eq!(layout.lines()[1].range(), 4..6);
+    assert_eq!(layout.lines()[1].clusters()[1].inline(), 1_000);
 }
 
 #[test]

@@ -112,7 +112,7 @@ fn parse_request(value: &Value) -> Result<(Paragraph, Style), String> {
             };
             stops.push(
                 TabStop::new(integer(stop, "position")?, alignment)
-                    .map_err(|error| error.to_string())?,
+                    .map_err(|error| render_input_error(&error))?,
             );
         }
         builder = builder.tab_stops(stops);
@@ -143,7 +143,12 @@ fn parse_request(value: &Value) -> Result<(Paragraph, Style), String> {
     let style = request
         .get("style")
         .map_or_else(|| Ok(Style::default()), parse_style)?;
-    Ok((builder.build().map_err(|error| error.to_string())?, style))
+    Ok((
+        builder
+            .build()
+            .map_err(|error| render_input_error(&error))?,
+        style,
+    ))
 }
 
 fn parse_shaped_text(value: &Value) -> Result<ShapedText, String> {
@@ -192,7 +197,7 @@ fn parse_shaped_text(value: &Value) -> Result<ShapedText, String> {
         }
         clusters.push(cluster);
     }
-    ShapedText::new(source, size, frame, clusters).map_err(|error| error.to_string())
+    ShapedText::new(source, size, frame, clusters).map_err(|error| render_input_error(&error))
 }
 
 fn parse_construct(value: &Value) -> Result<Construct, String> {
@@ -238,8 +243,8 @@ fn parse_construct(value: &Value) -> Result<Construct, String> {
                     )?,
                 ));
             }
-            let ruby =
-                Ruby::new(ruby_kind, base, annotation, runs).map_err(|error| error.to_string())?;
+            let ruby = Ruby::new(ruby_kind, base, annotation, runs)
+                .map_err(|error| render_input_error(&error))?;
             Ok(Construct::ruby(ruby))
         },
         "tate-chu-yoko" => Ok(Construct::tate_chu_yoko(range()?)),
@@ -489,7 +494,7 @@ fn parse_style(value: &Value) -> Result<Style, String> {
             other => return Err(format!("unknown style setting {other:?}")),
         };
     }
-    builder.build().map_err(|error| error.to_string())
+    builder.build().map_err(render_style_error)
 }
 
 fn profile_style(profile: &str) -> Result<Style, String> {
@@ -591,7 +596,16 @@ fn transform_name(transform: CoordinateTransform) -> &'static str {
 
 fn parse_size(value: &Value) -> Result<Size, String> {
     let size = object(value, "size")?;
-    Size::new(integer(size, "inline")?, integer(size, "block")?).map_err(|error| error.to_string())
+    Size::new(integer(size, "inline")?, integer(size, "block")?)
+        .map_err(|error| render_input_error(&error))
+}
+
+fn render_input_error(error: &kumihan::InputError) -> String {
+    format!("{}: {}", error.code(), error.message())
+}
+
+fn render_style_error(error: kumihan::style::StyleError) -> String {
+    format!("{}: {}", error.code(), error.message())
 }
 
 fn parse_frame(frame: &str) -> Result<Frame, String> {

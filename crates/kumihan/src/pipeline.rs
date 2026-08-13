@@ -1437,6 +1437,23 @@ struct RubyOverhang {
 }
 
 #[derive(Debug, Clone)]
+struct GroupRubyBasePlan {
+    base: Range<usize>,
+    leading: i32,
+    trailing: i32,
+    gaps_after: Vec<(usize, i32)>,
+}
+
+impl GroupRubyBasePlan {
+    fn gap_after(&self, ordinal: usize) -> i32 {
+        self.gaps_after
+            .iter()
+            .find_map(|(boundary, gap)| (*boundary == ordinal).then_some(*gap))
+            .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone)]
 struct PhoneticJukugoRun {
     base: Range<usize>,
     annotation: Range<usize>,
@@ -1536,7 +1553,7 @@ fn phonetic_jukugo_plan(
         }
         let (annotation_count, annotation_width, ruby_em) =
             ruby_annotation_metrics(ruby.annotation(), &run.annotation());
-        let base_width = ruby_base_width(paragraph, &base);
+        let base_width = ruby_base_width(paragraph, style, &base);
         runs.push(PhoneticJukugoRun {
             base,
             annotation: run.annotation(),
@@ -1852,10 +1869,10 @@ fn ruby_annotation_metrics(
         })
 }
 
-fn ruby_base_width(paragraph: &Paragraph, base: &Range<usize>) -> i64 {
+fn ruby_base_width(paragraph: &Paragraph, style: &Style, base: &Range<usize>) -> i64 {
     base.clone().fold(0_i64, |sum, ordinal| {
         let boundary = if ordinal.saturating_add(1) < base.end {
-            boundary_space_after(paragraph, ordinal)
+            boundary_space_after_with_style(paragraph, style, ordinal)
         } else {
             0
         };
@@ -1864,6 +1881,89 @@ fn ruby_base_width(paragraph: &Paragraph, base: &Range<usize>) -> i64 {
         )))
         .saturating_add(i64::from(boundary))
     })
+}
+
+fn base_distribution_plan(
+    paragraph: &Paragraph,
+    style: &Style,
+    base_range: &Range<usize>,
+    annotation: &crate::ShapedText,
+    annotation_range: &Range<usize>,
+    distribution: GroupRubyDistribution,
+) -> Option<GroupRubyBasePlan> {
+    let base = cluster_index_at_or_after(paragraph, base_range.start)
+        ..cluster_index_at_or_after(paragraph, base_range.end);
+    let count = base.end.saturating_sub(base.start);
+    if count < 2 {
+        return None;
+    }
+    let (_, annotation_width, _) = ruby_annotation_metrics(annotation, annotation_range);
+    let surplus = annotation_width.saturating_sub(ruby_base_width(paragraph, style, &base));
+    if surplus <= 0 {
+        return None;
+    }
+
+    let weights = match distribution {
+        GroupRubyDistribution::Jis => {
+            let mut weights = Vec::with_capacity(count.saturating_add(1));
+            weights.push(1);
+            weights.extend((1..count).map(|_| 2));
+            weights.push(1);
+            weights
+        },
+        GroupRubyDistribution::Flush => vec![1; count.saturating_sub(1)],
+    };
+    let shares = proportional_shares(surplus, &weights, style.remainder());
+    let (leading, trailing, interior) = match distribution {
+        GroupRubyDistribution::Jis => (
+            shares.first().copied().unwrap_or(0),
+            shares.last().copied().unwrap_or(0),
+            shares
+                .iter()
+                .skip(1)
+                .take(count.saturating_sub(1))
+                .copied()
+                .collect::<Vec<_>>(),
+        ),
+        GroupRubyDistribution::Flush => (0, 0, shares),
+    };
+    let gaps_after = interior
+        .into_iter()
+        .enumerate()
+        .map(|(offset, gap)| (base.start.saturating_add(offset), gap))
+        .collect();
+    Some(GroupRubyBasePlan {
+        base,
+        leading,
+        trailing,
+        gaps_after,
+    })
+}
+
+fn group_ruby_base_plan(
+    paragraph: &Paragraph,
+    style: &Style,
+    ruby: &crate::Ruby,
+    base: &Range<usize>,
+    annotation: &Range<usize>,
+) -> Option<GroupRubyBasePlan> {
+    let distribution = match ruby.kind() {
+        crate::RubyKind::Group => style.group_ruby_distribution(),
+        crate::RubyKind::Jukugo
+            if style.jukugo_ruby_layout() != JukugoRubyLayout::Phonetic && *base == ruby.base() =>
+        {
+            GroupRubyDistribution::Jis
+        },
+        crate::RubyKind::Mono | crate::RubyKind::Jukugo => return None,
+    };
+    base_distribution_plan(
+        paragraph,
+        style,
+        base,
+        ruby.annotation(),
+        annotation,
+        distribution,
+    )
 }
 
 fn ruby_span_overhang(
@@ -1875,6 +1975,9 @@ fn ruby_span_overhang(
     line_start: usize,
     line_end: usize,
 ) -> Option<RubyOverhang> {
+    if group_ruby_base_plan(paragraph, style, ruby, &base, &annotation).is_some() {
+        return None;
+    }
     let base = cluster_index_at_or_after(paragraph, base.start)
         ..cluster_index_at_or_after(paragraph, base.end);
     if base.start < line_start || base.end > line_end || base.start >= base.end {
@@ -1883,7 +1986,7 @@ fn ruby_span_overhang(
     let base_width = base.clone().fold(0_i64, |sum, ordinal| {
         let body = i64::from(effective_cluster_body_advance(paragraph, ordinal));
         let boundary = if ordinal.saturating_add(1) < base.end {
-            i64::from(boundary_space_after(paragraph, ordinal))
+            i64::from(boundary_space_after_with_style(paragraph, style, ordinal))
         } else {
             0
         };
@@ -1930,7 +2033,21 @@ fn ruby_boundary_separation_after(
     line_index: usize,
 ) -> i32 {
     let mut required = 0_i32;
+    let mut distributed = 0_i32;
     visit_ruby_spans(paragraph, style, |ruby, base, annotation| {
+        if let Some(plan) = group_ruby_base_plan(paragraph, style, ruby, &base, &annotation) {
+            if plan.base.start < line_start || plan.base.end > line_end {
+                return;
+            }
+            if plan.base.start == before.saturating_add(1) && before >= line_start {
+                distributed = distributed.saturating_add(plan.leading);
+            }
+            distributed = distributed.saturating_add(plan.gap_after(before));
+            if plan.base.end == before.saturating_add(1) {
+                distributed = distributed.saturating_add(plan.trailing);
+            }
+            return;
+        }
         let Some(overhang) = ruby_span_overhang(
             paragraph, style, ruby, base, annotation, line_start, line_end,
         ) else {
@@ -1971,7 +2088,7 @@ fn ruby_boundary_separation_after(
             required = required.max(plan.gap_after(before));
         }
     }
-    required
+    required.saturating_add(distributed)
 }
 
 fn ruby_line_leading_separation(
@@ -1982,7 +2099,14 @@ fn ruby_line_leading_separation(
     line_index: usize,
 ) -> i32 {
     let mut required = 0_i32;
+    let mut distributed = 0_i32;
     visit_ruby_spans(paragraph, style, |ruby, base, annotation| {
+        if let Some(plan) = group_ruby_base_plan(paragraph, style, ruby, &base, &annotation) {
+            if plan.base.start == line_start && plan.base.end <= line_end {
+                distributed = distributed.saturating_add(plan.leading);
+            }
+            return;
+        }
         let Some(overhang) = ruby_span_overhang(
             paragraph, style, ruby, base, annotation, line_start, line_end,
         ) else {
@@ -2009,7 +2133,7 @@ fn ruby_line_leading_separation(
             required = required.max(plan.leading_gap);
         }
     }
-    required
+    required.saturating_add(distributed)
 }
 
 fn ruby_neighbor_overhang_allowance(
@@ -2026,10 +2150,10 @@ fn ruby_neighbor_overhang_allowance(
         return 0;
     };
     let adjacent_space = match side {
-        RubySide::Leading => boundary_space_after(paragraph, ordinal),
-        RubySide::Trailing => ordinal
-            .checked_sub(1)
-            .map_or(0, |before| boundary_space_after(paragraph, before)),
+        RubySide::Leading => boundary_space_after_with_style(paragraph, style, ordinal),
+        RubySide::Trailing => ordinal.checked_sub(1).map_or(0, |before| {
+            boundary_space_after_with_style(paragraph, style, before)
+        }),
     };
     let punctuation_allowance = match side {
         RubySide::Leading if is_opening_bracket(character) => ruby_em,
@@ -2184,6 +2308,13 @@ fn ordinary_boundary_space_after_with_style(
     let following_size = following.size_override().unwrap_or(paragraph.text.size());
     let before = class_of_cluster_with_style(paragraph, style, ordinal);
     let after = class_of_cluster_with_style(paragraph, style, ordinal.saturating_add(1));
+    if before == 4 && current.role() == Some(ClusterRole::SentenceTerminator) {
+        return if after == crate::spec::CLOSING_BRACKET {
+            0
+        } else {
+            current_size.inline()
+        };
+    }
     let table = crate::spec::table_one_space(
         before,
         after,
@@ -2922,6 +3053,8 @@ fn measure_line(
                     segment_width,
                 );
                 cursor = cursor.max(target);
+            } else {
+                return i64::MAX;
             }
         } else {
             let ordinal = start_cluster.saturating_add(local);
@@ -3103,6 +3236,9 @@ fn break_is_legal(paragraph: &Paragraph, style: &Style, offset: usize) -> bool {
         return true;
     };
     if after_ordinal >= paragraph.text.clusters().len() {
+        return true;
+    }
+    if &paragraph.text.source()[paragraph.text.clusters()[after_ordinal].range()] == "\t" {
         return true;
     }
 
@@ -3544,7 +3680,19 @@ fn place_ruby_span(
         .count();
     let surplus = base_width.saturating_sub(annotation_width).max(0);
     let mut gaps = Vec::new();
-    let mut inline = if annotation_width > base_width {
+    let base_plan = span.distribution.and_then(|distribution| {
+        base_distribution_plan(
+            paragraph,
+            style,
+            &span.base_range,
+            span.annotation,
+            &span.annotation_range,
+            distribution,
+        )
+    });
+    let mut inline = if let Some(plan) = base_plan {
+        i64::from(base_start).saturating_sub(i64::from(plan.leading))
+    } else if annotation_width > base_width {
         i64::from(base_start).saturating_add((base_width.saturating_sub(annotation_width)) / 2)
     } else if let Some(distribution) = span.distribution {
         let weights = match distribution {

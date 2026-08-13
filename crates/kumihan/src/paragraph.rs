@@ -331,7 +331,12 @@ impl ParagraphBuilder {
         validate_constructs(&self.text, &self.constructs)?;
         validate_breaks(&self.text, &self.constructs, &mut self.breaks)?;
         validate_construct_breaks(&self.text, &self.constructs, &self.breaks)?;
-        validate_tabs(self.line_extent, &mut self.tab_stops)?;
+        validate_tabs(
+            &self.text,
+            &self.breaks,
+            self.line_extent,
+            &mut self.tab_stops,
+        )?;
 
         Ok(Paragraph {
             text: self.text,
@@ -471,6 +476,24 @@ fn validate_breaks(
             }
         }
     }
+    for cluster in text.clusters() {
+        if &text.source()[cluster.range()] != "\t" {
+            continue;
+        }
+        let offset = cluster.range().start;
+        let inside_construct = constructs.iter().any(|construct| {
+            let range = construct.range();
+            range.start < offset && offset < range.end
+        });
+        if offset != 0
+            && !inside_construct
+            && !breaks
+                .iter()
+                .any(|opportunity| opportunity.offset == offset)
+        {
+            breaks.push(Break::allowed(offset));
+        }
+    }
     breaks.retain(|opportunity| opportunity.offset != 0);
     breaks.sort_by_key(|opportunity| opportunity.offset);
     if breaks
@@ -566,7 +589,12 @@ fn single_cluster_character(text: &ShapedText, cluster: &crate::Cluster) -> Opti
     characters.next().is_none().then_some(character)
 }
 
-fn validate_tabs(line_extent: i32, stops: &mut Vec<TabStop>) -> Result<(), InputError> {
+fn validate_tabs(
+    text: &ShapedText,
+    breaks: &[Break],
+    line_extent: i32,
+    stops: &mut Vec<TabStop>,
+) -> Result<(), InputError> {
     stops.sort_by(|left, right| {
         left.position
             .partial_cmp(&right.position)
@@ -590,6 +618,24 @@ fn validate_tabs(line_extent: i32, stops: &mut Vec<TabStop>) -> Result<(), Input
             None,
             "tab stop positions must be unique",
         ));
+    }
+    let mut tab_count = 0_usize;
+    for cluster in text.clusters() {
+        if &text.source()[cluster.range()] == "\t" {
+            tab_count = tab_count.saturating_add(1);
+            if tab_count > stops.len() {
+                return Err(InputError::new(
+                    "input.insufficient-tab-stops",
+                    Some(cluster.range()),
+                    "each tab character needs a declared stop on its mandatory-delimited line",
+                ));
+            }
+        }
+        if breaks.iter().any(|opportunity| {
+            opportunity.offset() == cluster.range().end && opportunity.is_mandatory()
+        }) {
+            tab_count = 0;
+        }
     }
     Ok(())
 }

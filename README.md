@@ -13,10 +13,9 @@ Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and
 remain the caller's responsibility.
 
 > **Release status:** the 1.0 architecture and candidate API are implemented, but every
-> product crate remains `publish = false`. The retained legacy conformance inventory still
-> reports zero deferred JLReq rules and six evidence-backed classifications. A
-> release is blocked until every mechanically observable deferral is implemented and all
-> editorial/non-observable statements are classified honestly.
+> product crate remains `publish = false`. The conformance inventory reports zero deferred
+> JLReq rules and six evidence-backed editorial/non-observable classifications. Publishing
+> remains intentionally disabled while the retained migration corpus is audited and removed.
 
 ## Quick start
 
