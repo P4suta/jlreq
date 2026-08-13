@@ -5,8 +5,8 @@
 //! Black-box acceptance tests for the intentionally small public API.
 
 use kumihan::{
-    Alignment, Break, Cluster, Construct, CoordinateTransform, Frame, Paragraph, Ruby, RubyKind,
-    RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
+    Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
+    RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
         AdjustmentPreference, AmbiguousContext, ExpansionOrder, GroupRubyDistribution,
         GroupedNumeralBeforeWestern, GroupedNumeralQualification, HangingPunctuation,
@@ -328,6 +328,97 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         1_500,
         "a multi-code-point shaping cluster is not classified by its first character alone"
     );
+}
+
+#[test]
+fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
+    fn positions(
+        source: &str,
+        role: Option<(usize, ClusterRole)>,
+        mode: WritingMode,
+    ) -> (Vec<i32>, i32) {
+        let clusters = source
+            .char_indices()
+            .enumerate()
+            .map(|(ordinal, (start, character))| {
+                let cluster =
+                    Cluster::new(start..start.saturating_add(character.len_utf8()), 1_000);
+                if role.is_some_and(|(target, _)| target == ordinal) {
+                    cluster.with_role(role.expect("role was present").1)
+                } else {
+                    cluster
+                }
+            });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive punctuation size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid punctuation text");
+        let paragraph = Paragraph::builder(text, 5_000)
+            .writing_mode(mode)
+            .build()
+            .expect("valid punctuation paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        (
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect(),
+            line.inline_extent(),
+        )
+    }
+
+    assert_eq!(
+        positions("一、二", None, WritingMode::VerticalRl),
+        (vec![0, 1_000, 2_500], 3_500),
+        "an ordinary ideographic comma retains its following half em"
+    );
+    assert_eq!(
+        positions(
+            "一、二",
+            Some((1, ClusterRole::DigitGroupSeparator)),
+            WritingMode::VerticalRl,
+        ),
+        (vec![0, 1_000, 2_000], 3_000),
+        "a vertical digit-group separator is solid"
+    );
+    assert_eq!(
+        positions("一・五", None, WritingMode::VerticalRl),
+        (vec![0, 1_250, 2_500], 3_500),
+        "an ordinary middle dot retains both quarter em spaces"
+    );
+    assert_eq!(
+        positions(
+            "一・五",
+            Some((1, ClusterRole::DecimalPoint)),
+            WritingMode::VerticalRl,
+        ),
+        (vec![0, 1_000, 2_000], 3_000),
+        "a vertical decimal point is solid"
+    );
+    assert_eq!(
+        positions(
+            "一・五",
+            Some((1, ClusterRole::DecimalPoint)),
+            WritingMode::HorizontalTb,
+        ),
+        (vec![0, 1_250, 2_500], 3_500),
+        "the main decimal exception remains vertical-only"
+    );
+    for role in [
+        ClusterRole::GroupedNumeral,
+        ClusterRole::UnitSymbol,
+        ClusterRole::Formula,
+    ] {
+        assert_eq!(
+            positions("A・B", Some((1, role)), WritingMode::HorizontalTb),
+            (vec![0, 1_000, 2_000], 3_000),
+            "the closing Note's construct roles are solid in the locale union"
+        );
+    }
 }
 
 #[test]

@@ -87,7 +87,15 @@
         "size": { "$ref": "#/$defs/size" },
         "frame": { "$ref": "#/$defs/frame" },
         "role": {
-          "enum": ["text", "grouped-numeral", "unit-symbol", "warichu-bracket"]
+          "enum": [
+            "text",
+            "decimal-point",
+            "digit-group-separator",
+            "grouped-numeral",
+            "unit-symbol",
+            "formula",
+            "warichu-bracket"
+          ]
         }
       }
     },

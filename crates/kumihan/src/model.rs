@@ -72,10 +72,16 @@ pub enum Frame {
 pub enum ClusterRole {
     /// Ordinary prose, with no additional contextual assertion.
     Text,
+    /// A punctuation mark used as a decimal point.
+    DecimalPoint,
+    /// A punctuation mark used as a digit-group separator.
+    DigitGroupSeparator,
     /// A European numeral handled as a grouped Japanese numeral.
     GroupedNumeral,
     /// A character inside a unit symbol.
     UnitSymbol,
+    /// A character inside a mathematical or chemical formula.
+    Formula,
     /// A bracket delimiting warichu.
     WarichuBracket,
 }

@@ -178,8 +178,11 @@ fn parse_shaped_text(value: &Value) -> Result<ShapedText, String> {
         if let Some(role) = entry.get("role").and_then(Value::as_str) {
             cluster = cluster.with_role(match role {
                 "text" => ClusterRole::Text,
+                "decimal-point" => ClusterRole::DecimalPoint,
+                "digit-group-separator" => ClusterRole::DigitGroupSeparator,
                 "grouped-numeral" => ClusterRole::GroupedNumeral,
                 "unit-symbol" => ClusterRole::UnitSymbol,
+                "formula" => ClusterRole::Formula,
                 "warichu-bracket" => ClusterRole::WarichuBracket,
                 other => return Err(format!("unknown cluster role {other:?}")),
             });

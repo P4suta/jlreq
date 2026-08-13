@@ -6,8 +6,9 @@ use alloc::vec::Vec;
 use core::ops::Range;
 
 use crate::{
-    Alignment, Attachment, ClusterPlacement, CoordinateTransform, Diagnostic, Frame, Layout, Line,
-    Paragraph, PlacementOrigin, Severity, Size, Style, TabAlignment, Widow, WritingMode,
+    Alignment, Attachment, ClusterPlacement, ClusterRole, CoordinateTransform, Diagnostic, Frame,
+    Layout, Line, Paragraph, PlacementOrigin, Severity, Size, Style, TabAlignment, Widow,
+    WritingMode,
     construct::ConstructKind,
     style::{AdjustmentPreference, KinsokuLevel, Remainder, RubyAlignment},
 };
@@ -435,25 +436,30 @@ fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
     } else {
         paragraph.text.clusters()[ordinal].advance()
     };
-    advance.saturating_add(tate_chu_yoko_boundary_space_after(paragraph, ordinal))
+    advance.saturating_add(boundary_space_after(paragraph, ordinal))
 }
 
-fn tate_chu_yoko_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
+fn boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
+    tate_chu_yoko_boundary_space_after(paragraph, ordinal)
+        .unwrap_or_else(|| ordinary_boundary_space_after(paragraph, ordinal))
+}
+
+fn tate_chu_yoko_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> Option<i32> {
     if paragraph.writing_mode != WritingMode::VerticalRl {
-        return 0;
+        return None;
     }
     let clusters = paragraph.text.clusters();
     let current_group = tate_chu_yoko_cluster_range(paragraph, ordinal);
     if let Some(group) = current_group {
         if group.start != ordinal || group.end >= clusters.len() {
-            return 0;
+            return Some(0);
         }
         let following = &clusters[group.end];
         let character = single_cluster_character(paragraph, following);
         if character.is_some_and(is_opening_bracket) {
-            return half_inline_size(paragraph, following);
+            return Some(half_inline_size(paragraph, following));
         }
-        return 0;
+        return Some(0);
     }
 
     let following_ordinal = ordinal.saturating_add(1);
@@ -461,16 +467,73 @@ fn tate_chu_yoko_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> 
         || tate_chu_yoko_cluster_range(paragraph, following_ordinal)
             .is_none_or(|group| group.start != following_ordinal)
     {
-        return 0;
+        return None;
     }
     let current = &clusters[ordinal];
     let character = single_cluster_character(paragraph, current);
     if character.is_some_and(|character| {
         is_closing_bracket(character) || is_full_stop(character) || is_comma(character)
     }) {
-        half_inline_size(paragraph, current)
+        Some(half_inline_size(paragraph, current))
     } else {
-        0
+        Some(0)
+    }
+}
+
+fn ordinary_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
+    let clusters = paragraph.text.clusters();
+    let Some(current) = clusters.get(ordinal) else {
+        return 0;
+    };
+    let following = clusters.get(ordinal.saturating_add(1));
+    let current_character = single_cluster_character(paragraph, current);
+    let following_character =
+        following.and_then(|cluster| single_cluster_character(paragraph, cluster));
+    let mut space = 0_i32;
+
+    if following.is_some()
+        && current_character.is_some_and(|character| {
+            (is_comma(character) || is_full_stop(character) || is_closing_bracket(character))
+                && !contextual_punctuation_is_solid(paragraph, current, character)
+        })
+    {
+        space = space.saturating_add(half_inline_size(paragraph, current));
+    }
+    if let (Some(character), Some(following)) = (following_character, following)
+        && is_opening_bracket(character)
+    {
+        space = space.saturating_add(half_inline_size(paragraph, following));
+    }
+    if current_character.is_some_and(|character| {
+        is_middle_dot(character) && !contextual_punctuation_is_solid(paragraph, current, character)
+    }) {
+        space = space.saturating_add(quarter_inline_size(paragraph, current));
+    }
+    if let (Some(character), Some(following)) = (following_character, following)
+        && is_middle_dot(character)
+        && !contextual_punctuation_is_solid(paragraph, following, character)
+    {
+        space = space.saturating_add(quarter_inline_size(paragraph, following));
+    }
+    space
+}
+
+fn contextual_punctuation_is_solid(
+    paragraph: &Paragraph,
+    cluster: &crate::Cluster,
+    character: char,
+) -> bool {
+    match cluster.role() {
+        Some(ClusterRole::DecimalPoint) => {
+            character == '・' && paragraph.writing_mode == WritingMode::VerticalRl
+        },
+        Some(ClusterRole::DigitGroupSeparator) => {
+            character == '、' && paragraph.writing_mode == WritingMode::VerticalRl
+        },
+        Some(ClusterRole::GroupedNumeral | ClusterRole::UnitSymbol | ClusterRole::Formula) => {
+            character == '・'
+        },
+        _ => false,
     }
 }
 
@@ -488,6 +551,14 @@ fn half_inline_size(paragraph: &Paragraph, cluster: &crate::Cluster) -> i32 {
     (size / 2).saturating_add(size % 2)
 }
 
+fn quarter_inline_size(paragraph: &Paragraph, cluster: &crate::Cluster) -> i32 {
+    let size = cluster
+        .size_override()
+        .unwrap_or(paragraph.text.size())
+        .inline();
+    (size / 4).saturating_add(i32::from(size % 4 != 0))
+}
+
 fn is_opening_bracket(character: char) -> bool {
     "（([｛〔〈《「『【〘〖〝‘“｟«".contains(character)
 }
@@ -502,6 +573,10 @@ fn is_full_stop(character: char) -> bool {
 
 fn is_comma(character: char) -> bool {
     "、，".contains(character)
+}
+
+fn is_middle_dot(character: char) -> bool {
+    character == '・'
 }
 
 fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: usize) -> i64 {

@@ -189,7 +189,15 @@ fn validate_shaped_text(shaped: &Map<String, Value>, name: &str) -> Result<(), S
             enum_string(
                 Some(value),
                 "cluster role",
-                &["text", "grouped-numeral", "unit-symbol", "warichu-bracket"],
+                &[
+                    "text",
+                    "decimal-point",
+                    "digit-group-separator",
+                    "grouped-numeral",
+                    "unit-symbol",
+                    "formula",
+                    "warichu-bracket",
+                ],
             )?;
         }
         expected_start = end;
