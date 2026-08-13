@@ -217,10 +217,10 @@ impl Composer {
         let end_cluster = cluster_range.end;
         self.line_advances.clear();
         let clusters = &paragraph.text.clusters()[start_cluster..end_cluster];
-        self.line_advances.extend(
-            (start_cluster..end_cluster)
-                .map(|ordinal| effective_cluster_advance(paragraph, ordinal)),
-        );
+        self.line_advances
+            .extend((start_cluster..end_cluster).map(|ordinal| {
+                effective_cluster_advance_on_line(paragraph, ordinal, start_cluster, end_cluster)
+            }));
         apply_tabs(
             paragraph,
             start_cluster,
@@ -251,7 +251,9 @@ impl Composer {
             && remaining > 0
             && clusters.len() > 1;
         let gap_count = (start_cluster..end_cluster.saturating_sub(1))
-            .filter(|ordinal| boundary_is_adjustable(paragraph, *ordinal))
+            .filter(|ordinal| {
+                boundary_is_adjustable_on_line(paragraph, *ordinal, start_cluster, end_cluster)
+            })
             .count();
         let gap = if justify {
             remaining
@@ -337,7 +339,14 @@ impl Composer {
                 local = local.saturating_add(1);
             }
 
-            if local < clusters.len() && boundary_is_adjustable(paragraph, previous_ordinal) {
+            if local < clusters.len()
+                && boundary_is_adjustable_on_line(
+                    paragraph,
+                    previous_ordinal,
+                    start_cluster,
+                    end_cluster,
+                )
+            {
                 cursor = cursor.saturating_add(gap);
                 let receives_remainder = match style.remainder() {
                     Remainder::Leading => {
@@ -418,6 +427,18 @@ fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
         })
 }
 
+fn boundary_is_adjustable_on_line(
+    paragraph: &Paragraph,
+    before: usize,
+    line_start: usize,
+    line_end: usize,
+) -> bool {
+    boundary_is_adjustable(paragraph, before)
+        && !(before == line_start && is_western_word_space(paragraph, before))
+        && !(before.saturating_add(2) == line_end
+            && is_western_word_space(paragraph, before.saturating_add(1)))
+}
+
 fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
     let advance = if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal) {
         if group.start != ordinal {
@@ -437,6 +458,30 @@ fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
         paragraph.text.clusters()[ordinal].advance()
     };
     advance.saturating_add(boundary_space_after(paragraph, ordinal))
+}
+
+fn effective_cluster_advance_on_line(
+    paragraph: &Paragraph,
+    ordinal: usize,
+    line_start: usize,
+    line_end: usize,
+) -> i32 {
+    if is_western_word_space(paragraph, ordinal)
+        && (ordinal == line_start || ordinal.saturating_add(1) == line_end)
+    {
+        0
+    } else {
+        effective_cluster_advance(paragraph, ordinal)
+    }
+}
+
+fn is_western_word_space(paragraph: &Paragraph, ordinal: usize) -> bool {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return false;
+    };
+    &paragraph.text.source()[cluster.range()] == " "
+        && cluster.frame_override().unwrap_or(paragraph.text.frame()) == Frame::Proportional
+        && matches!(cluster.role(), None | Some(ClusterRole::Text))
 }
 
 fn boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
@@ -594,7 +639,13 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
     {
         if &paragraph.text.source()[cluster.range()] == "\t" {
             let after_tab = start_cluster.saturating_add(local).saturating_add(1);
-            let segment_width = segment_width(paragraph, after_tab, end_cluster);
+            let segment_width = segment_width(
+                paragraph,
+                after_tab,
+                end_cluster,
+                start_cluster,
+                end_cluster,
+            );
             if let Some(stop) = paragraph
                 .tab_stops
                 .iter()
@@ -602,27 +653,47 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
                 .find(|stop| i64::from(stop.position()) > cursor)
             {
                 tab_index = tab_index.saturating_add(1);
-                let target = tab_target(paragraph, *stop, after_tab, end_cluster, segment_width);
+                let target = tab_target(
+                    paragraph,
+                    *stop,
+                    after_tab,
+                    end_cluster,
+                    start_cluster,
+                    end_cluster,
+                    segment_width,
+                );
                 cursor = cursor.max(target);
             }
         } else {
             let ordinal = start_cluster.saturating_add(local);
-            cursor =
-                cursor.saturating_add(i64::from(effective_cluster_advance(paragraph, ordinal)));
+            cursor = cursor.saturating_add(i64::from(effective_cluster_advance_on_line(
+                paragraph,
+                ordinal,
+                start_cluster,
+                end_cluster,
+            )));
         }
     }
     cursor
 }
 
-fn segment_width(paragraph: &Paragraph, start: usize, end: usize) -> i64 {
+fn segment_width(
+    paragraph: &Paragraph,
+    start: usize,
+    end: usize,
+    line_start: usize,
+    line_end: usize,
+) -> i64 {
     paragraph.text.clusters()[start..end]
         .iter()
         .enumerate()
         .take_while(|(_, cluster)| &paragraph.text.source()[cluster.range()] != "\t")
         .fold(0_i64, |sum, (local, _)| {
-            sum.saturating_add(i64::from(effective_cluster_advance(
+            sum.saturating_add(i64::from(effective_cluster_advance_on_line(
                 paragraph,
                 start.saturating_add(local),
+                line_start,
+                line_end,
             )))
         })
 }
@@ -632,6 +703,8 @@ fn tab_target(
     stop: crate::TabStop,
     start: usize,
     end: usize,
+    line_start: usize,
+    line_end: usize,
     segment_width: i64,
 ) -> i64 {
     let position = i64::from(stop.position());
@@ -648,9 +721,11 @@ fn tab_target(
                         && &paragraph.text.source()[cluster.1.range()] != "\t"
                 })
                 .fold(0_i64, |sum, (local, _)| {
-                    sum.saturating_add(i64::from(effective_cluster_advance(
+                    sum.saturating_add(i64::from(effective_cluster_advance_on_line(
                         paragraph,
                         start.saturating_add(local),
+                        line_start,
+                        line_end,
                     )))
                 });
             position.saturating_sub(before)
@@ -690,7 +765,15 @@ fn apply_tabs(
                 .find(|stop| i64::from(stop.position()) > cursor)
             {
                 tab_index = tab_index.saturating_add(1);
-                let target = tab_target(paragraph, *stop, ordinal.saturating_add(1), end, width);
+                let target = tab_target(
+                    paragraph,
+                    *stop,
+                    ordinal.saturating_add(1),
+                    end,
+                    start,
+                    end,
+                    width,
+                );
                 advances[local] = clamp_i32(target.saturating_sub(cursor).max(0));
             } else {
                 advances[local] = paragraph.text.size().inline();

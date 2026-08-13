@@ -422,6 +422,75 @@ fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
 }
 
 #[test]
+fn western_word_space_collapses_only_at_true_line_edges() {
+    fn compose_ascii(
+        source: &str,
+        breaks: impl IntoIterator<Item = Break>,
+        alignment: Alignment,
+        line_extent: i32,
+    ) -> kumihan::Layout {
+        let clusters = source.char_indices().map(|(start, character)| {
+            Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character == ' ' { 333 } else { 500 },
+            )
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive word-space size"),
+            Frame::Proportional,
+            clusters,
+        )
+        .expect("valid word-space text");
+        let paragraph = Paragraph::builder(text, line_extent)
+            .breaks(breaks)
+            .alignment(alignment)
+            .build()
+            .expect("valid word-space paragraph");
+        kumihan::compose(&paragraph, &Style::default())
+    }
+
+    let edged = compose_ascii(" AB ", [], Alignment::Start, 2_000);
+    assert_eq!(
+        edged.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 0), (0, 500), (500, 500), (1_000, 0)]
+    );
+    assert_eq!(edged.lines()[0].inline_extent(), 1_000);
+
+    let interior = compose_ascii("A B", [], Alignment::Start, 2_000);
+    assert_eq!(
+        interior.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 500), (500, 333), (833, 500)],
+        "the caller-supplied width is restored away from an edge"
+    );
+
+    let moved_to_edge = compose_ascii("A B", [Break::mandatory(2)], Alignment::Start, 2_000);
+    assert_eq!(moved_to_edge.lines()[0].inline_extent(), 500);
+    assert_eq!(moved_to_edge.lines()[0].clusters()[1].advance(), 0);
+    assert_eq!(moved_to_edge.lines()[1].clusters()[0].inline(), 0);
+
+    let justified = compose_ascii(" A B", [Break::mandatory(3)], Alignment::Justify, 2_000);
+    assert_eq!(justified.lines()[0].inline_extent(), 500);
+    assert_eq!(
+        justified.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 0), (0, 500), (500, 0)],
+        "line adjustment does not reopen either suppressed edge space"
+    );
+}
+
+#[test]
 fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
     let source = "日本";
     let text = ShapedText::new(
