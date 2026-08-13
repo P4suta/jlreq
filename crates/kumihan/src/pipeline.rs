@@ -216,8 +216,10 @@ impl Composer {
         let end_cluster = cluster_range.end;
         self.line_advances.clear();
         let clusters = &paragraph.text.clusters()[start_cluster..end_cluster];
-        self.line_advances
-            .extend(clusters.iter().map(crate::Cluster::advance));
+        self.line_advances.extend(
+            (start_cluster..end_cluster)
+                .map(|ordinal| effective_cluster_advance(paragraph, ordinal)),
+        );
         apply_tabs(
             paragraph,
             start_cluster,
@@ -247,7 +249,10 @@ impl Composer {
             && !is_last
             && remaining > 0
             && clusters.len() > 1;
-        let gap_count = clusters.len().saturating_sub(1);
+        let logical_item_count = (start_cluster..end_cluster)
+            .filter(|ordinal| !is_tate_chu_yoko_continuation(paragraph, *ordinal))
+            .count();
+        let gap_count = logical_item_count.saturating_sub(1);
         let gap = if justify {
             remaining
                 .checked_div(i64::try_from(gap_count).unwrap_or(1))
@@ -266,34 +271,77 @@ impl Composer {
         let mut placed = Vec::with_capacity(clusters.len());
         let mut cursor = i64::from(indent).saturating_add(alignment_offset);
         let mut block_extent = paragraph.text.size().block();
-        for (local, (cluster, advance)) in clusters
-            .iter()
-            .zip(self.line_advances.iter().copied())
-            .enumerate()
-        {
+        let mut local = 0;
+        let mut gap_ordinal = 0_usize;
+        while local < clusters.len() {
             let ordinal = start_cluster.saturating_add(local);
-            let size = cluster.size_override().unwrap_or(paragraph.text.size());
-            let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
-            block_extent = block_extent.max(size.block());
-            let (writing_mode, transform) = local_orientation(paragraph, ordinal, frame);
-            placed.push(ClusterPlacement {
-                origin: PlacementOrigin::Cluster(ordinal),
-                range: cluster.range(),
-                inline: clamp_i32(cursor),
-                block: block_origin,
-                advance,
-                size,
-                frame,
-                writing_mode,
-                transform,
-            });
-            cursor = cursor.saturating_add(i64::from(advance));
-            if local < gap_count {
+            if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal)
+                && group.start == ordinal
+            {
+                let group_end = group.end.min(end_cluster);
+                let member_count = group_end.saturating_sub(ordinal);
+                let horizontal_width = paragraph.text.clusters()[ordinal..group_end]
+                    .iter()
+                    .fold(0_i64, |sum, cluster| {
+                        sum.saturating_add(i64::from(cluster.advance()))
+                    });
+                block_extent = block_extent.max(clamp_i32(horizontal_width));
+                let mut member_block = i64::from(block_origin)
+                    .saturating_sub(horizontal_width.checked_div(2).unwrap_or(0));
+                for (member_local, cluster) in paragraph.text.clusters()[ordinal..group_end]
+                    .iter()
+                    .enumerate()
+                {
+                    let member_ordinal = ordinal.saturating_add(member_local);
+                    let size = cluster.size_override().unwrap_or(paragraph.text.size());
+                    let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
+                    let (writing_mode, transform) =
+                        local_orientation(paragraph, member_ordinal, frame);
+                    placed.push(ClusterPlacement {
+                        origin: PlacementOrigin::Cluster(member_ordinal),
+                        range: cluster.range(),
+                        inline: clamp_i32(cursor),
+                        block: clamp_i32(member_block),
+                        advance: cluster.advance(),
+                        size,
+                        frame,
+                        writing_mode,
+                        transform,
+                    });
+                    member_block = member_block.saturating_add(i64::from(cluster.advance()));
+                }
+                cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
+                local = local.saturating_add(member_count);
+            } else {
+                let cluster = &clusters[local];
+                let advance = self.line_advances[local];
+                let size = cluster.size_override().unwrap_or(paragraph.text.size());
+                let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
+                block_extent = block_extent.max(size.block());
+                let (writing_mode, transform) = local_orientation(paragraph, ordinal, frame);
+                placed.push(ClusterPlacement {
+                    origin: PlacementOrigin::Cluster(ordinal),
+                    range: cluster.range(),
+                    inline: clamp_i32(cursor),
+                    block: block_origin,
+                    advance,
+                    size,
+                    frame,
+                    writing_mode,
+                    transform,
+                });
+                cursor = cursor.saturating_add(i64::from(advance));
+                local = local.saturating_add(1);
+            }
+
+            if local < clusters.len() {
                 cursor = cursor.saturating_add(gap);
                 let receives_remainder = match style.remainder() {
-                    Remainder::Leading => i64::try_from(local).unwrap_or(i64::MAX) < remainder,
+                    Remainder::Leading => {
+                        i64::try_from(gap_ordinal).unwrap_or(i64::MAX) < remainder
+                    },
                     Remainder::Trailing => {
-                        i64::try_from(gap_count.saturating_sub(local.saturating_add(1)))
+                        i64::try_from(gap_count.saturating_sub(gap_ordinal.saturating_add(1)))
                             .unwrap_or(i64::MAX)
                             < remainder
                     },
@@ -301,6 +349,7 @@ impl Composer {
                 if receives_remainder {
                     cursor = cursor.saturating_add(1);
                 }
+                gap_ordinal = gap_ordinal.saturating_add(1);
             }
         }
 
@@ -330,6 +379,114 @@ fn cluster_index_at_or_after(paragraph: &Paragraph, offset: usize) -> usize {
         .partition_point(|cluster| cluster.range().start < offset)
 }
 
+fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
+    if paragraph.writing_mode != WritingMode::VerticalRl {
+        return None;
+    }
+    let cluster = paragraph.text.clusters().get(ordinal)?.range();
+    let range = paragraph.constructs.iter().find_map(|construct| {
+        let ConstructKind::TateChuYoko(range) = construct.kind() else {
+            return None;
+        };
+        (range.start <= cluster.start && cluster.end <= range.end).then_some(range)
+    })?;
+    Some(
+        cluster_index_at_or_after(paragraph, range.start)
+            ..cluster_index_at_or_after(paragraph, range.end),
+    )
+}
+
+fn is_tate_chu_yoko_continuation(paragraph: &Paragraph, ordinal: usize) -> bool {
+    tate_chu_yoko_cluster_range(paragraph, ordinal).is_some_and(|group| group.start != ordinal)
+}
+
+fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
+    let advance = if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal) {
+        if group.start != ordinal {
+            return 0;
+        }
+        paragraph.text.clusters()[group]
+            .iter()
+            .map(|cluster| {
+                cluster
+                    .size_override()
+                    .unwrap_or(paragraph.text.size())
+                    .block()
+            })
+            .max()
+            .unwrap_or(0)
+    } else {
+        paragraph.text.clusters()[ordinal].advance()
+    };
+    advance.saturating_add(tate_chu_yoko_boundary_space_after(paragraph, ordinal))
+}
+
+fn tate_chu_yoko_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
+    if paragraph.writing_mode != WritingMode::VerticalRl {
+        return 0;
+    }
+    let clusters = paragraph.text.clusters();
+    let current_group = tate_chu_yoko_cluster_range(paragraph, ordinal);
+    if let Some(group) = current_group {
+        if group.start != ordinal || group.end >= clusters.len() {
+            return 0;
+        }
+        let following = &clusters[group.end];
+        let character = single_cluster_character(paragraph, following);
+        if character.is_some_and(is_opening_bracket) {
+            return half_inline_size(paragraph, following);
+        }
+        return 0;
+    }
+
+    let following_ordinal = ordinal.saturating_add(1);
+    if following_ordinal >= clusters.len()
+        || tate_chu_yoko_cluster_range(paragraph, following_ordinal)
+            .is_none_or(|group| group.start != following_ordinal)
+    {
+        return 0;
+    }
+    let current = &clusters[ordinal];
+    let character = single_cluster_character(paragraph, current);
+    if character.is_some_and(|character| {
+        is_closing_bracket(character) || is_full_stop(character) || is_comma(character)
+    }) {
+        half_inline_size(paragraph, current)
+    } else {
+        0
+    }
+}
+
+fn single_cluster_character(paragraph: &Paragraph, cluster: &crate::Cluster) -> Option<char> {
+    let mut characters = paragraph.text.source()[cluster.range()].chars();
+    let character = characters.next()?;
+    characters.next().is_none().then_some(character)
+}
+
+fn half_inline_size(paragraph: &Paragraph, cluster: &crate::Cluster) -> i32 {
+    let size = cluster
+        .size_override()
+        .unwrap_or(paragraph.text.size())
+        .inline();
+    (size / 2).saturating_add(size % 2)
+}
+
+fn is_opening_bracket(character: char) -> bool {
+    "（([｛〔〈《「『【〘〖〝‘“｟«".contains(character)
+}
+
+fn is_closing_bracket(character: char) -> bool {
+    "）)]｝〕〉》」』】〙〗〟’”｠»".contains(character)
+}
+
+fn is_full_stop(character: char) -> bool {
+    "。．".contains(character)
+}
+
+fn is_comma(character: char) -> bool {
+    "、，".contains(character)
+}
+
 fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: usize) -> i64 {
     let start_cluster = cluster_index_at_or_after(paragraph, start);
     let end_cluster = cluster_index_at_or_after(paragraph, end);
@@ -357,7 +514,9 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
                 cursor = cursor.max(target);
             }
         } else {
-            cursor = cursor.saturating_add(i64::from(cluster.advance()));
+            let ordinal = start_cluster.saturating_add(local);
+            cursor =
+                cursor.saturating_add(i64::from(effective_cluster_advance(paragraph, ordinal)));
         }
     }
     cursor
@@ -366,9 +525,13 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
 fn segment_width(paragraph: &Paragraph, start: usize, end: usize) -> i64 {
     paragraph.text.clusters()[start..end]
         .iter()
-        .take_while(|cluster| &paragraph.text.source()[cluster.range()] != "\t")
-        .fold(0_i64, |sum, cluster| {
-            sum.saturating_add(i64::from(cluster.advance()))
+        .enumerate()
+        .take_while(|(_, cluster)| &paragraph.text.source()[cluster.range()] != "\t")
+        .fold(0_i64, |sum, (local, _)| {
+            sum.saturating_add(i64::from(effective_cluster_advance(
+                paragraph,
+                start.saturating_add(local),
+            )))
         })
 }
 
@@ -387,12 +550,16 @@ fn tab_target(
         TabAlignment::Character(character) => {
             let before = paragraph.text.clusters()[start..end]
                 .iter()
+                .enumerate()
                 .take_while(|cluster| {
-                    !paragraph.text.source()[cluster.range()].contains(character)
-                        && &paragraph.text.source()[cluster.range()] != "\t"
+                    !paragraph.text.source()[cluster.1.range()].contains(character)
+                        && &paragraph.text.source()[cluster.1.range()] != "\t"
                 })
-                .fold(0_i64, |sum, cluster| {
-                    sum.saturating_add(i64::from(cluster.advance()))
+                .fold(0_i64, |sum, (local, _)| {
+                    sum.saturating_add(i64::from(effective_cluster_advance(
+                        paragraph,
+                        start.saturating_add(local),
+                    )))
                 });
             position.saturating_sub(before)
         },
@@ -655,11 +822,20 @@ fn bounds_for_range(line: &Line, range: &Range<usize>) -> Option<(i32, i32)> {
         .iter()
         .filter(|placement| ranges_overlap(&placement.range, range));
     let first = matching.next()?;
-    let mut end = first.inline.saturating_add(first.advance);
+    let mut end = placement_inline_end(first);
     for placement in matching {
-        end = placement.inline.saturating_add(placement.advance);
+        end = end.max(placement_inline_end(placement));
     }
     Some((first.inline, end))
+}
+
+fn placement_inline_end(placement: &ClusterPlacement) -> i32 {
+    let advance = if placement.transform == CoordinateTransform::TateChuYoko {
+        placement.size.block()
+    } else {
+        placement.advance
+    };
+    placement.inline.saturating_add(advance)
 }
 
 fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {

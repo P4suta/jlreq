@@ -175,6 +175,162 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
 }
 
 #[test]
+fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
+    let text = ShapedText::new(
+        "日123本語",
+        Size::square(1_000).expect("positive base size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..4, 400).with_frame(Frame::Proportional),
+            Cluster::new(4..5, 400).with_frame(Frame::Proportional),
+            Cluster::new(5..6, 400).with_frame(Frame::Proportional),
+            Cluster::new(6..9, 1_000),
+            Cluster::new(9..12, 1_000),
+        ],
+    )
+    .expect("valid mixed vertical fixture");
+    let paragraph = Paragraph::builder(text, 4_000)
+        .breaks([Break::mandatory(9)])
+        .constructs([Construct::tate_chu_yoko(3..6)])
+        .alignment(Alignment::Justify)
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid tate-chu-yoko paragraph");
+
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    let first = &layout.lines()[0];
+    assert_eq!(first.inline_extent(), 4_000);
+    assert_eq!(first.block_extent(), 1_200);
+    assert_eq!(first.clusters()[0].inline(), 0);
+    assert_eq!(first.clusters()[4].inline(), 3_000);
+
+    let digits = &first.clusters()[1..4];
+    assert_eq!(digits[0].inline(), 1_500);
+    assert_eq!(digits[1].inline(), 1_500);
+    assert_eq!(digits[2].inline(), 1_500);
+    assert_eq!(digits[0].block(), -600);
+    assert_eq!(digits[1].block(), -200);
+    assert_eq!(digits[2].block(), 200);
+    assert!(digits.iter().all(|cluster| {
+        cluster.writing_mode() == WritingMode::HorizontalTb
+            && cluster.transform() == CoordinateTransform::TateChuYoko
+    }));
+
+    assert_eq!(layout.lines()[1].block_origin(), -1_200);
+}
+
+#[test]
+fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
+    let cases = [
+        ("）12", 1_500, None, 2_500),
+        ("。12", 1_500, None, 2_500),
+        ("、12", 1_500, None, 2_500),
+        ("「12", 1_000, None, 2_000),
+        ("12（", 0, Some(1_500), 2_500),
+        ("12）", 0, Some(1_000), 2_000),
+        ("12。", 0, Some(1_000), 2_000),
+        ("12、", 0, Some(1_000), 2_000),
+    ];
+
+    for (source, expected_digits, expected_following, expected_extent) in cases {
+        let digit_start = source.find('1').expect("fixture contains a digit run");
+        let clusters = source.char_indices().map(|(start, character)| {
+            let cluster = Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character.is_ascii_digit() {
+                    500
+                } else {
+                    1_000
+                },
+            );
+            if character.is_ascii_digit() {
+                cluster.with_frame(Frame::Proportional)
+            } else {
+                cluster
+            }
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive punctuation fixture size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid punctuation fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .constructs([Construct::tate_chu_yoko(
+                digit_start..digit_start.saturating_add(2),
+            )])
+            .writing_mode(WritingMode::VerticalRl)
+            .build()
+            .expect("valid punctuation paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        let first_digit = line
+            .clusters()
+            .iter()
+            .find(|cluster| cluster.range().start == digit_start)
+            .expect("placed first digit");
+        assert_eq!(first_digit.inline(), expected_digits, "source {source}");
+        if let Some(expected) = expected_following {
+            assert_eq!(
+                line.clusters()
+                    .last()
+                    .expect("following punctuation")
+                    .inline(),
+                expected,
+                "source {source}"
+            );
+        }
+        assert_eq!(line.inline_extent(), expected_extent, "source {source}");
+    }
+
+    let text = ShapedText::new(
+        "。12",
+        Size::square(1_000).expect("positive line-end fixture size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..4, 500).with_frame(Frame::Proportional),
+            Cluster::new(4..5, 500).with_frame(Frame::Proportional),
+        ],
+    )
+    .expect("valid line-end fixture");
+    let paragraph = Paragraph::builder(text, 2_000)
+        .breaks([Break::mandatory(3)])
+        .constructs([Construct::tate_chu_yoko(3..5)])
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid line-end paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(layout.lines()[0].inline_extent(), 1_500);
+    assert_eq!(layout.lines()[0].clusters()[0].advance(), 1_500);
+
+    let text = ShapedText::new(
+        "。x12",
+        Size::square(1_000).expect("positive multi-key fixture size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..4, 1_500),
+            Cluster::new(4..5, 500),
+            Cluster::new(5..6, 500),
+        ],
+    )
+    .expect("valid indivisible proportional fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .constructs([Construct::tate_chu_yoko(4..6)])
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid multi-key paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0].clusters()[1].inline(),
+        1_500,
+        "a multi-code-point shaping cluster is not classified by its first character alone"
+    );
+}
+
+#[test]
 fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
     let source = "日本";
     let text = ShapedText::new(
