@@ -97,6 +97,9 @@ const SCHEDULE_KEYS: [&str; 3] = ["rule", "milestone", "why"];
 /// A final classification has evidence but deliberately no schedule.
 const CLASSIFICATION_KEYS: [&str; 2] = ["rule", "why"];
 
+/// The vendored primary specification a final classification identifies in its evidence.
+const PRIMARY_SPEC: &str = "spec/snapshot/index.html";
+
 /// The heading depth `ROADMAP.md` gives one milestone.
 const HEADING: &str = "## ";
 
@@ -564,6 +567,22 @@ fn close(draft: Option<Draft>, entries: &mut Vec<Deferral>, problems: &mut Vec<S
         ));
         return;
     }
+    if matches!(draft.table, EDITORIAL | NON_OBSERVABLE)
+        && !draft
+            .values
+            .get("why")
+            .is_some_and(|why| why.contains(PRIMARY_SPEC))
+    {
+        problems.push(format!(
+            concat!(
+                "{}:{}: this `[[{}]]` table must cite `{}` in ",
+                "`why`; a final classification is evidence-bearing only when it points to ",
+                "the vendored primary text a reviewer can inspect"
+            ),
+            LEDGER, line, draft.table, PRIMARY_SPEC
+        ));
+        return;
+    }
     let read = |key: &str| draft.values.get(key).cloned().unwrap_or_default();
     let rule = read("rule");
     if let Some(twin) = entries.iter().find(|entry| entry.rule == rule) {
@@ -678,7 +697,7 @@ why = "Two conditional spaces rather than one amount."
         let source = r#"
 [[non-observable]]
 rule = "3.1.9"
-why = "The specification leaves the result implementation-defined, so no black-box output is required."
+why = "The Note in spec/snapshot/index.html leaves the result implementation-defined, so no black-box output is required."
 "#;
         let ledger = Ledger::of(source);
         let found = examine(&ledger, &BTreeSet::new());
@@ -698,6 +717,22 @@ why = "The specification leaves the result implementation-defined, so no black-b
                 .iter()
                 .any(|message| message.contains("classifies") && message.contains("case")),
             "an observable case and a non-observable classification contradict: {stale:#?}"
+        );
+    }
+
+    #[test]
+    fn a_final_classification_cites_the_primary_specification() {
+        let source = r#"
+[[editorial]]
+rule = "3.1.9"
+why = "This is advice for the author rather than a layout result."
+"#;
+        let (_, problems) = parse(source);
+        assert!(
+            problems
+                .iter()
+                .any(|message| message.contains("must cite `spec/snapshot/index.html`")),
+            "a conclusion without a primary-source locator is not evidence-bearing: {problems:#?}"
         );
     }
 
