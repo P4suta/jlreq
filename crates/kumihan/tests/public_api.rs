@@ -189,6 +189,49 @@ fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
 }
 
 #[test]
+fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
+    let annotation = ShapedText::new(
+        "にほ",
+        Size::square(500).expect("positive ruby size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 500),
+            Cluster::new(3..6, 500).with_size(Size::square(700).expect("positive mixed ruby size")),
+        ],
+    )
+    .expect("valid mixed-size ruby annotation");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..6)],
+    )
+    .expect("valid group ruby");
+
+    for (mode, expected_blocks) in [
+        (WritingMode::HorizontalTb, [-500, -700]),
+        (WritingMode::VerticalRl, [500, 700]),
+    ] {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid ruby base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .writing_mode(mode)
+        .build()
+        .expect("valid ruby paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.block_extent(), 1_700);
+        assert_eq!(line.attachments().len(), 2);
+        assert_eq!(line.attachments()[0].inline(), 500);
+        assert_eq!(line.attachments()[0].block(), expected_blocks[0]);
+        assert_eq!(line.attachments()[1].inline(), 1_000);
+        assert_eq!(line.attachments()[1].block(), expected_blocks[1]);
+    }
+}
+
+#[test]
 fn appendix_pair_is_normalized_across_shaping_clusters() {
     let source = "\u{31f7}\u{309a}";
     let first_end = '\u{31f7}'.len_utf8();

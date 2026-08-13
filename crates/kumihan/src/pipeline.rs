@@ -535,7 +535,7 @@ fn local_orientation(
 }
 
 fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
-    let mut emphasis_extent = 0;
+    let mut attachment_extent = 0;
     for (ordinal, construct) in paragraph.constructs.iter().enumerate() {
         if !ranges_overlap(&construct.range(), &line.range) {
             continue;
@@ -570,11 +570,9 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
                             transform: CoordinateTransform::Identity,
                             symbol: None,
                         });
+                        attachment_extent = attachment_extent.max(size.block());
                         inline = inline.saturating_add(i64::from(cluster.advance()));
                     }
-                    line.block_extent = line
-                        .block_extent
-                        .saturating_add(ruby.annotation().size().block());
                 }
             },
             ConstructKind::Emphasis { range, mark } => {
@@ -598,7 +596,7 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
                         transform: CoordinateTransform::Identity,
                         symbol: Some(*mark),
                     });
-                    emphasis_extent = emphasis_extent.max(size.block());
+                    attachment_extent = attachment_extent.max(size.block());
                 }
             },
             ConstructKind::ReferenceMark { range, mark }
@@ -629,9 +627,9 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
                             transform: CoordinateTransform::Identity,
                             symbol: None,
                         });
+                        attachment_extent = attachment_extent.max(size.block());
                         inline = inline.saturating_add(i64::from(cluster.advance()));
                     }
-                    line.block_extent = line.block_extent.saturating_add(mark.size().block());
                 }
             },
             ConstructKind::TateChuYoko(_)
@@ -641,7 +639,7 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
             | ConstructKind::Formula(_) => {},
         }
     }
-    line.block_extent = line.block_extent.saturating_add(emphasis_extent);
+    line.block_extent = line.block_extent.saturating_add(attachment_extent);
 }
 
 fn attachment_block(paragraph: &Paragraph, line: &Line, size: Size) -> i32 {

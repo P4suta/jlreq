@@ -107,8 +107,8 @@ to an engine, and protocol requests or responses without `expected` reject the f
 ## Coverage and release status
 
 The legacy case corpus and generated inventories remain differential assets while cases are
-translated to protocol v1. They currently inventory 106 rules, cover 76, classify two as
-editorial and two as non-observable, and record 26 deferrals. A green legacy coverage
+translated to protocol v1. They currently inventory 106 rules, cover 77, classify two as
+editorial and two as non-observable, and record 25 deferrals. A green legacy coverage
 subtraction means every rule is covered, explicitly classified with evidence, or deferred;
 it does not mean 1.0 is complete.
 
