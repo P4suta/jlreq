@@ -51,6 +51,28 @@ struct FurawakeSegment {
     block_extent: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ComplexKind {
+    Ornamented,
+    SimpleRuby,
+    JukugoRuby,
+    TateChuYoko,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ComplexIdentity {
+    kind: ComplexKind,
+    construct: usize,
+    member: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExpansionSite {
+    None,
+    Stage3 { weight: i32, cap: i32 },
+    Residual { weight: i32 },
+}
+
 /// A reusable whole-paragraph composer.
 ///
 /// All temporary search memory is retained between calls. The returned Layout owns its
@@ -62,6 +84,7 @@ pub struct Composer {
     nodes: Vec<Node>,
     chosen: Vec<usize>,
     line_advances: Vec<i32>,
+    line_adjustments: Vec<i32>,
 }
 
 impl Composer {
@@ -73,6 +96,7 @@ impl Composer {
             nodes: Vec::new(),
             chosen: Vec::new(),
             line_advances: Vec::new(),
+            line_adjustments: Vec::new(),
         }
     }
 
@@ -279,31 +303,19 @@ impl Composer {
             && !is_last
             && remaining > 0
             && clusters.len() > 1;
-        let gap_count = (start_cluster..end_cluster.saturating_sub(1))
-            .filter(|ordinal| {
-                boundary_is_adjustable_on_line(paragraph, *ordinal, start_cluster, end_cluster)
-            })
-            .count();
-        let gap = if justify {
-            remaining
-                .checked_div(i64::try_from(gap_count).unwrap_or(1))
-                .unwrap_or(0)
-        } else {
-            0
-        };
-        let remainder = if justify {
-            remaining
-                .checked_rem(i64::try_from(gap_count).unwrap_or(1))
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        prepare_line_adjustments(
+            paragraph,
+            style,
+            start_cluster,
+            end_cluster,
+            if justify { remaining } else { 0 },
+            &mut self.line_adjustments,
+        );
 
         let mut placed = Vec::with_capacity(clusters.len());
         let mut cursor = i64::from(indent).saturating_add(alignment_offset);
         let mut block_extent = paragraph.text.size().block();
         let mut local = 0;
-        let mut gap_ordinal = 0_usize;
         while local < clusters.len() {
             let ordinal = start_cluster.saturating_add(local);
             let previous_ordinal;
@@ -385,29 +397,11 @@ impl Composer {
                 local = local.saturating_add(1);
             }
 
-            if local < clusters.len()
-                && boundary_is_adjustable_on_line(
-                    paragraph,
-                    previous_ordinal,
-                    start_cluster,
-                    end_cluster,
-                )
-            {
-                cursor = cursor.saturating_add(gap);
-                let receives_remainder = match style.remainder() {
-                    Remainder::Leading => {
-                        i64::try_from(gap_ordinal).unwrap_or(i64::MAX) < remainder
-                    },
-                    Remainder::Trailing => {
-                        i64::try_from(gap_count.saturating_sub(gap_ordinal.saturating_add(1)))
-                            .unwrap_or(i64::MAX)
-                            < remainder
-                    },
-                };
-                if receives_remainder {
-                    cursor = cursor.saturating_add(1);
-                }
-                gap_ordinal = gap_ordinal.saturating_add(1);
+            if local < clusters.len() {
+                let boundary = previous_ordinal.saturating_sub(start_cluster);
+                cursor = cursor.saturating_add(i64::from(
+                    self.line_adjustments.get(boundary).copied().unwrap_or(0),
+                ));
             }
         }
 
@@ -516,21 +510,42 @@ fn is_internal_furawake_offset(paragraph: &Paragraph, offset: usize) -> bool {
     })
 }
 
-fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
+fn boundary_expansion_site(paragraph: &Paragraph, before: usize) -> ExpansionSite {
     let Some(cluster) = paragraph.text.clusters().get(before) else {
-        return false;
+        return ExpansionSite::None;
     };
+    let after = before.saturating_add(1);
+    if after >= paragraph.text.clusters().len() {
+        return ExpansionSite::None;
+    }
+    let before_complex = expansion_complex_at(paragraph, before);
+    let after_complex = expansion_complex_at(paragraph, after);
+    if let (Some(before_complex), Some(after_complex)) = (before_complex, after_complex) {
+        if before_complex == after_complex {
+            return ExpansionSite::None;
+        }
+        if before_complex.kind == after_complex.kind {
+            let weight = cluster
+                .size_override()
+                .unwrap_or(paragraph.text.size())
+                .inline();
+            return ExpansionSite::Stage3 {
+                weight,
+                cap: weight / 4,
+            };
+        }
+    }
+
     let boundary = cluster.range().end;
-    !paragraph
+    if paragraph
         .constructs
         .iter()
         .any(|construct| match construct.kind() {
             ConstructKind::TateChuYoko(range)
             | ConstructKind::Warichu(range)
             | ConstructKind::Formula(range)
-            | ConstructKind::Furawake { range, .. } => {
-                range.start < boundary && boundary < range.end
-            },
+            | ConstructKind::Furawake { range, .. }
+            | ConstructKind::Script { range, .. } => range.start < boundary && boundary < range.end,
             ConstructKind::Ruby(ruby) => {
                 ruby.kind() != crate::RubyKind::Mono
                     && ruby.base().start < boundary
@@ -538,18 +553,200 @@ fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
             },
             _ => false,
         })
+    {
+        ExpansionSite::None
+    } else {
+        ExpansionSite::Residual {
+            weight: cluster
+                .size_override()
+                .unwrap_or(paragraph.text.size())
+                .inline(),
+        }
+    }
 }
 
-fn boundary_is_adjustable_on_line(
+fn boundary_expansion_site_on_line(
     paragraph: &Paragraph,
     before: usize,
     line_start: usize,
     line_end: usize,
-) -> bool {
-    boundary_is_adjustable(paragraph, before)
-        && !(before == line_start && is_western_word_space(paragraph, before))
-        && !(before.saturating_add(2) == line_end
+) -> ExpansionSite {
+    if (before == line_start && is_western_word_space(paragraph, before))
+        || (before.saturating_add(2) == line_end
             && is_western_word_space(paragraph, before.saturating_add(1)))
+    {
+        ExpansionSite::None
+    } else {
+        boundary_expansion_site(paragraph, before)
+    }
+}
+
+fn expansion_complex_at(paragraph: &Paragraph, ordinal: usize) -> Option<ComplexIdentity> {
+    let cluster = paragraph.text.clusters().get(ordinal)?.range();
+    paragraph
+        .constructs
+        .iter()
+        .enumerate()
+        .find_map(|(construct, candidate)| match candidate.kind() {
+            ConstructKind::Script { range, .. }
+                if range.start <= cluster.start && cluster.end <= range.end =>
+            {
+                Some(ComplexIdentity {
+                    kind: ComplexKind::Ornamented,
+                    construct,
+                    member: 0,
+                })
+            },
+            ConstructKind::Ruby(ruby)
+                if ruby.base().start <= cluster.start && cluster.end <= ruby.base().end =>
+            {
+                let (kind, member) = match ruby.kind() {
+                    crate::RubyKind::Mono => (
+                        ComplexKind::SimpleRuby,
+                        ruby.runs()
+                            .iter()
+                            .position(|run| {
+                                let range = run.base();
+                                range.start <= cluster.start && cluster.end <= range.end
+                            })
+                            .unwrap_or(0),
+                    ),
+                    crate::RubyKind::Group => (ComplexKind::SimpleRuby, 0),
+                    crate::RubyKind::Jukugo => (ComplexKind::JukugoRuby, 0),
+                };
+                Some(ComplexIdentity {
+                    kind,
+                    construct,
+                    member,
+                })
+            },
+            ConstructKind::TateChuYoko(range)
+                if paragraph.writing_mode == WritingMode::VerticalRl
+                    && range.start <= cluster.start
+                    && cluster.end <= range.end =>
+            {
+                Some(ComplexIdentity {
+                    kind: ComplexKind::TateChuYoko,
+                    construct,
+                    member: 0,
+                })
+            },
+            _ => None,
+        })
+}
+
+fn prepare_line_adjustments(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_start: usize,
+    line_end: usize,
+    need: i64,
+    adjustments: &mut Vec<i32>,
+) {
+    adjustments.clear();
+    adjustments.resize(line_end.saturating_sub(line_start).saturating_sub(1), 0);
+    if need <= 0 || adjustments.is_empty() {
+        return;
+    }
+
+    let sites: Vec<_> = (line_start..line_end.saturating_sub(1))
+        .map(|before| boundary_expansion_site_on_line(paragraph, before, line_start, line_end))
+        .collect();
+    let stage3: Vec<_> = sites
+        .iter()
+        .enumerate()
+        .filter_map(|(index, site)| match site {
+            ExpansionSite::Stage3 { weight, cap } => Some((index, *weight, Some(*cap))),
+            _ => None,
+        })
+        .collect();
+    let capacity = stage3.iter().fold(0_i64, |sum, (_, _, cap)| {
+        sum.saturating_add(i64::from(cap.unwrap_or(0)))
+    });
+    let stage3_take = need.min(capacity);
+    distribute_adjustment(stage3_take, &stage3, style.remainder(), adjustments);
+
+    let remaining = need.saturating_sub(stage3_take);
+    if remaining == 0 {
+        return;
+    }
+    let union: Vec<_> = sites
+        .iter()
+        .enumerate()
+        .filter_map(|(index, site)| match site {
+            ExpansionSite::Stage3 { weight, .. } | ExpansionSite::Residual { weight } => {
+                Some((index, *weight, None))
+            },
+            ExpansionSite::None => None,
+        })
+        .collect();
+    distribute_adjustment(remaining, &union, style.remainder(), adjustments);
+}
+
+fn distribute_adjustment(
+    amount: i64,
+    sites: &[(usize, i32, Option<i32>)],
+    remainder: Remainder,
+    adjustments: &mut [i32],
+) {
+    if amount <= 0 || sites.is_empty() {
+        return;
+    }
+    let weight_sum = sites.iter().fold(0_i64, |sum, (_, weight, _)| {
+        sum.saturating_add(i64::from((*weight).max(1)))
+    });
+    let mut placed = 0_i64;
+    for &(index, weight, cap) in sites {
+        let proportional = amount
+            .saturating_mul(i64::from(weight.max(1)))
+            .checked_div(weight_sum.max(1))
+            .unwrap_or(0);
+        let share = cap.map_or(proportional, |cap| proportional.min(i64::from(cap)));
+        if let Some(adjustment) = adjustments.get_mut(index) {
+            *adjustment = adjustment.saturating_add(clamp_i32(share));
+            placed = placed.saturating_add(share);
+        }
+    }
+
+    let mut left = amount.saturating_sub(placed);
+    while left > 0 {
+        let mut progressed = false;
+        match remainder {
+            Remainder::Leading => {
+                for &(index, _, cap) in sites {
+                    if left == 0 {
+                        break;
+                    }
+                    let Some(adjustment) = adjustments.get_mut(index) else {
+                        continue;
+                    };
+                    if cap.is_none_or(|cap| *adjustment < cap) {
+                        *adjustment = adjustment.saturating_add(1);
+                        left = left.saturating_sub(1);
+                        progressed = true;
+                    }
+                }
+            },
+            Remainder::Trailing => {
+                for &(index, _, cap) in sites.iter().rev() {
+                    if left == 0 {
+                        break;
+                    }
+                    let Some(adjustment) = adjustments.get_mut(index) else {
+                        continue;
+                    };
+                    if cap.is_none_or(|cap| *adjustment < cap) {
+                        *adjustment = adjustment.saturating_add(1);
+                        left = left.saturating_sub(1);
+                        progressed = true;
+                    }
+                }
+            },
+        }
+        if !progressed {
+            break;
+        }
+    }
 }
 
 fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {

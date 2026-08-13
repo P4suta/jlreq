@@ -958,6 +958,132 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
 }
 
 #[test]
+fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
+    fn positions(constructs: impl IntoIterator<Item = Construct>, mode: WritingMode) -> Vec<i32> {
+        let paragraph = Paragraph::builder(
+            shaped("日本語文", Frame::FullEm, 1_000).expect("valid construct-run fixture"),
+            3_250,
+        )
+        .constructs(constructs)
+        .breaks([Break::mandatory(9)])
+        .alignment(Alignment::Justify)
+        .writing_mode(mode)
+        .build()
+        .expect("valid construct-run paragraph");
+        kumihan::compose(&paragraph, &Style::default()).lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect()
+    }
+
+    let mark = shaped("注", Frame::FullEm, 500).expect("valid script annotation");
+    assert_eq!(
+        positions(
+            [
+                Construct::script(0..3, mark.clone()),
+                Construct::script(3..6, mark.clone()),
+            ],
+            WritingMode::HorizontalTb,
+        ),
+        [0, 1_250, 2_250],
+        "a distinct ornamented complex receives the quarter-em third-order opportunity first"
+    );
+    assert_eq!(
+        positions([Construct::script(0..6, mark)], WritingMode::HorizontalTb,),
+        [0, 1_000, 2_250],
+        "the same ornamented complex stays solid internally"
+    );
+
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid ruby annotation");
+    let runs = [RubyRun::new(0..3, 0..3), RubyRun::new(3..6, 3..9)];
+    let mono =
+        Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
+    assert_eq!(
+        positions([Construct::ruby(mono)], WritingMode::HorizontalTb),
+        [0, 1_250, 2_250],
+        "each mono-ruby association is a distinct simple-ruby complex"
+    );
+
+    let jukugo = Ruby::new(RubyKind::Jukugo, 0..6, annotation, runs).expect("valid jukugo ruby");
+    assert_eq!(
+        positions([Construct::ruby(jukugo)], WritingMode::HorizontalTb),
+        [0, 1_000, 2_250],
+        "one jukugo-ruby compound has no internal expansion opportunity"
+    );
+
+    assert_eq!(
+        positions(
+            [
+                Construct::tate_chu_yoko(0..3),
+                Construct::tate_chu_yoko(3..6),
+            ],
+            WritingMode::VerticalRl,
+        ),
+        [0, 1_250, 2_250],
+        "distinct tate-chu-yoko runs receive the quarter-em opportunity"
+    );
+
+    let same_tcy = Paragraph::builder(
+        shaped("日本語文", Frame::FullEm, 1_000).expect("valid tate-chu-yoko fixture"),
+        2_250,
+    )
+    .constructs([Construct::tate_chu_yoko(0..6)])
+    .breaks([Break::mandatory(9)])
+    .alignment(Alignment::Justify)
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid single tate-chu-yoko run");
+    let same_tcy = kumihan::compose(&same_tcy, &Style::default());
+    assert_eq!(
+        same_tcy.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 0, 1_250],
+        "members of one tate-chu-yoko run share an inline item and cannot expand internally"
+    );
+
+    let mixed = ShapedText::new(
+        "日本語文末",
+        Size::square(1_000).expect("positive mixed-size default"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000)
+                .with_size(Size::square(800).expect("positive small complex size")),
+            Cluster::new(3..6, 1_000)
+                .with_size(Size::square(1_200).expect("positive large complex size")),
+            Cluster::new(6..9, 1_000),
+            Cluster::new(9..12, 1_000),
+            Cluster::new(12..15, 1_000),
+        ],
+    )
+    .expect("valid mixed-size complex fixture");
+    let mark = shaped("注", Frame::FullEm, 500).expect("valid mixed-size annotation");
+    let mixed = Paragraph::builder(mixed, 4_500)
+        .constructs([
+            Construct::script(0..3, mark.clone()),
+            Construct::script(3..6, mark.clone()),
+            Construct::script(6..9, mark),
+        ])
+        .breaks([Break::mandatory(12)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid mixed-size complex paragraph");
+    let mixed = kumihan::compose(&mixed, &Style::default());
+    assert_eq!(
+        mixed.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_200, 2_500, 3_500],
+        "third-order shares use each preceding complex member's em: 200 then 300"
+    );
+}
+
+#[test]
 fn appendix_pair_is_normalized_across_shaping_clusters() {
     let source = "\u{31f7}\u{309a}";
     let first_end = '\u{31f7}'.len_utf8();
