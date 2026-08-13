@@ -958,6 +958,161 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
 }
 
 #[test]
+fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
+    fn group_ruby(base: core::ops::Range<usize>, reading: &str) -> Ruby {
+        let annotation = shaped(reading, Frame::FullEm, 500).expect("valid long ruby reading");
+        let annotation_end = annotation.source().len();
+        Ruby::new(
+            RubyKind::Group,
+            base.clone(),
+            annotation,
+            [RubyRun::new(base, 0..annotation_end)],
+        )
+        .expect("valid long group ruby")
+    }
+
+    let paragraph = Paragraph::builder(
+        shaped("前日本後末", Frame::FullEm, 1_000).expect("valid long-ruby base"),
+        5_000,
+    )
+    .constructs([Construct::ruby(group_ruby(3..9, "にほんごかな"))])
+    .breaks([Break::mandatory(12)])
+    .alignment(Alignment::Start)
+    .build()
+    .expect("valid long-ruby paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_500, 2_500, 4_000],
+        "a centered long group ruby forces its two half-surpluses off ideographic neighbors"
+    );
+    assert_eq!(layout.lines()[0].inline_extent(), 5_000);
+    assert_eq!(
+        layout.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000, 3_500]
+    );
+
+    let compose_preceding = |preceding: char, style: Style| {
+        let source = format!("{preceding}日後末");
+        let paragraph = Paragraph::builder(
+            shaped(&source, Frame::FullEm, 1_000).expect("valid overhang-neighbor base"),
+            3_500,
+        )
+        .constructs([Construct::ruby(group_ruby(3..6, "にほん"))])
+        .breaks([Break::mandatory(9)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid overhang-neighbor paragraph");
+        kumihan::compose(&paragraph, &style)
+    };
+    let ideograph = compose_preceding('前', Style::default());
+    let opening = compose_preceding('「', Style::default());
+    let ideographic_space = compose_preceding('　', Style::default());
+    assert_eq!(ideograph.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(ideograph.lines()[0].attachments()[0].inline(), 1_000);
+    for permitted in [&opening, &ideographic_space] {
+        assert_eq!(permitted.lines()[0].clusters()[1].inline(), 1_000);
+        assert_eq!(permitted.lines()[0].attachments()[0].inline(), 750);
+        assert_eq!(permitted.lines()[0].clusters()[2].inline(), 2_250);
+    }
+
+    let jis_katakana = compose_preceding('ア', Style::jis_reading_2020());
+    let preferred_katakana = compose_preceding('ア', Style::default());
+    let any_ideograph = compose_preceding(
+        '前',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::Any)
+            .build()
+            .expect("valid any-neighbor ruby style"),
+    );
+    let no_hiragana = compose_preceding(
+        'あ',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::None)
+            .build()
+            .expect("valid no-neighbor ruby style"),
+    );
+    assert_eq!(preferred_katakana.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(jis_katakana.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(any_ideograph.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(no_hiragana.lines()[0].clusters()[1].inline(), 1_250);
+    let katatsuki_ideograph = compose_preceding(
+        '前',
+        Style::builder()
+            .ruby_alignment(RubyAlignment::Katatsuki)
+            .build()
+            .expect("valid katatsuki ruby style"),
+    );
+    assert_eq!(katatsuki_ideograph.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(
+        katatsuki_ideograph.lines()[0].attachments()[0].inline(),
+        1_000,
+        "katatsuki falls back to the centered method when adjacent cl-19 forbids overhang"
+    );
+
+    let compose_indent = |style: Style| {
+        let paragraph = Paragraph::builder(
+            shaped("日後末", Frame::FullEm, 1_000).expect("valid ruby-indent base"),
+            3_500,
+        )
+        .constructs([Construct::ruby(group_ruby(0..3, "にほん"))])
+        .breaks([Break::mandatory(6)])
+        .first_line_indent(1_000)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid ruby-indent paragraph");
+        kumihan::compose(&paragraph, &style)
+    };
+    let permitted = compose_indent(Style::default());
+    let prohibited = compose_indent(
+        Style::builder()
+            .ruby_overhang_indent(RubyOverhangIndent::Prohibited)
+            .build()
+            .expect("valid prohibited-indent style"),
+    );
+    assert_eq!(permitted.lines()[0].clusters()[0].inline(), 1_000);
+    assert_eq!(permitted.lines()[0].attachments()[0].inline(), 750);
+    assert_eq!(permitted.lines()[0].inline_extent(), 3_250);
+    assert_eq!(prohibited.lines()[0].clusters()[0].inline(), 1_250);
+    assert_eq!(prohibited.lines()[0].attachments()[0].inline(), 1_000);
+    assert_eq!(prohibited.lines()[0].inline_extent(), 3_500);
+
+    let fixpoint = Paragraph::builder(
+        shaped("前日後末", Frame::FullEm, 1_000).expect("valid overhang-fixpoint base"),
+        2_000,
+    )
+    .constructs([Construct::ruby(group_ruby(3..6, "にほんご"))])
+    .breaks([Break::allowed(3), Break::allowed(6), Break::allowed(9)])
+    .alignment(Alignment::Start)
+    .build()
+    .expect("valid overhang-fixpoint paragraph");
+    let fixpoint = kumihan::compose(&fixpoint, &Style::default());
+    assert_eq!(
+        fixpoint
+            .lines()
+            .iter()
+            .map(kumihan::Line::range)
+            .collect::<Vec<_>>(),
+        [0..3, 3..6, 6..12],
+        "break search remeasures the ruby after each candidate changes its neighbors"
+    );
+    assert!(
+        fixpoint
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.code() != "layout.overfull")
+    );
+}
+
+#[test]
 fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
     fn positions(constructs: impl IntoIterator<Item = Construct>, mode: WritingMode) -> Vec<i32> {
         let paragraph = Paragraph::builder(

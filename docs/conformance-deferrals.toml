@@ -196,15 +196,15 @@ rule = "F.4"
 milestone = "M4"
 why = "The worked examples of jukugo ruby distribution under expansion, which `jlreq-inline` does not reproduce this round, for the identical reason `F.3`'s own entry states."
 
-[[deferred]]
+[[owned]]
 rule = "B.2#1"
 milestone = "M4"
-why = "The note states how far ruby text may be extended over a preceding opening bracket, which is the overhang `jlreq-inline` answers."
+why = "The integrated overhang budget recognizes a preceding cl-01 opening bracket as JLReq's preferred full-ruby-em permission instead of treating it as cl-19. Protocol-v1 case B.2-note-1/opening-bracket-allows-ruby-overhang places 1500 units of ruby over a 1000-unit base: the annotation begins at 750 and overlaps the bracket by 250, while the forbidden trailing ideographic overlap becomes 250 units of base separation. The result is observed through the versioned process protocol, including both base and annotation coordinates."
 
-[[deferred]]
+[[owned]]
 rule = "B.2#8"
 milestone = "M4"
-why = "The note states how far ruby text may be extended over a full-width ideographic space, which is the overhang `jlreq-inline` answers."
+why = "Protocol-v1 case B.2-note-8/ideographic-space-allows-ruby-overhang distinguishes cl-14 from a visually equal cl-19 neighbor: the long annotation overlaps the ideographic space by 250 units without moving its base. The two paragraph-indent cases exercise both typed answers to ruby.overhang_indent on identical input. The preferred profile keeps the base at the declared 1000-unit indent and lets ruby begin at 750; the prohibited answer adds a 250-unit leading separation, moving the base to 1250 and the annotation to 1000."
 
 [[owned]]
 rule = "B.2#9"
@@ -357,7 +357,7 @@ why = "The rule forbids a break between two consecutive middle dots and the like
 [[owned]]
 rule = "3.3.8"
 milestone = "M1"
-why = "Two different halves of this rule, and only one of them changed this round. `crates/jlreq-conform/cases/A.16.json` publishes `classify`-kind cases citing 3.3.8 as the reason cl-16 (katakana) is its own class rather than folded into cl-19 — §3.9.2's own Note: 'ルビのはみ出しがあった場合，平仮名と同様に掛かってよいとしたことから独立した文字クラスとした' — and that half was already attempted at M0, unaffected by anything here. The half this file's own sentence was actually about — rule 1's own prohibition, forbidding ruby from overhanging an adjacent cl-19 character and forcing the bases apart as natural advance instead (§3.3.1's note) — is genuinely attempted now: `jlreq_inline::lower` (M4-a round 1) computes it as `Contribution::separations` for `RubyStyle::MonoRuby`, with unit tests exercising a real, non-empty forced separation (`crates/jlreq-inline/src/lower.rs`), and, as of this round (M4-a round 2), two published `lower` cases exercise it too: `3.3.8/forced-separation/only-beside-ideographic-neighbors` measures existence and absence — a forced separation beside a cl-19 neighbor and none beside an equally oversized construct's own hiragana neighbor — under `standing: \"normative\"` and no asserted amount, and `3.3.8/forced-separation/even-split-by-remainder-policy` measures the even-split amount `docs/decisions/mono-ruby-separation-split.md` reads, under `standing: \"unstated\"` with both `adjustment.remainder` readings published, never asserted as JLReq's own requirement. What remains unattempted, and is not this round's claim either, is rules 2 through 6's own overhang *permissions* over kana, half-em spaces, inseparable characters and brackets (`Question::RUBY_OVERHANG_KANA`, `Question::RUBY_OVERHANG_INDENT`, both unfilled slots `jlreq_inline::lower`'s own module doc names). This entry once named that gap 'placement's own later work (task #78)'; task #78 has since shipped `jlreq_inline::place`, and that forward reference is falsified rather than resolved, in the identical sense this ledger's own §3.3.4 entry already states for a sibling forward reference to the same task. `place`'s own module doc states plainly that it omits the `overhang` parameter `docs/design/api-spine.md`'s sketch names, reading neither `Question::RUBY_OVERHANG_KANA` nor `Question::RUBY_OVERHANG_INDENT`; the one future reader of an `overhang` value it does name, task #81, is scoped to a different, still-unwritten `Question` for §3.3.5(c)'s own narrower katatsuki-with-overflow choice, not to either of these two."
+why = "The legacy cases retain rule 1's forced-separation and cl-16-classification evidence. The unified pipeline now completes the observable placement side: it measures every placed ruby span against its base, splits the positive surplus by the selected integer remainder direction, subtracts the permission supplied by the actual neighboring character or first-line indent, and feeds the remaining boundary demand back into optimal line measurement before final placement. The public long_ruby_respects_neighbor_and_indent_overhang_budgets test covers long group ruby between cl-19 neighbors, all four RubyOverhangKana answers, both RubyOverhangIndent answers, opening brackets, cl-14, and a break-search fixture whose legal result changes only when candidate lines are remeasured. Protocol-v1 cases under B.2-note-1 and B.2-note-8 independently observe the bracket, ideographic-space, and indent branches through base and annotation coordinates. Rules 3, 5, and 6 use direction-specific budgets: only the realized adjacent punctuation space is available on its spacing side, middle-dot capacity is that realized space plus half a ruby em, and the punctuation glyph side permits one ruby em."
 
 [[owned]]
 rule = "3.3.5"

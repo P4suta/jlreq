@@ -10,7 +10,10 @@ use crate::{
     Layout, Line, Paragraph, PlacementOrigin, Severity, Size, Style, TabAlignment, Widow,
     WritingMode,
     construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
-    style::{AdjustmentPreference, KinsokuLevel, Remainder, RubyAlignment},
+    style::{
+        AdjustmentPreference, KinsokuLevel, Remainder, RubyAlignment, RubyOverhangIndent,
+        RubyOverhangKana,
+    },
 };
 
 const INFINITE_COST: i64 = i64::MAX / 4;
@@ -71,6 +74,12 @@ enum ExpansionSite {
     None,
     Stage3 { weight: i32, cap: i32 },
     Residual { weight: i32 },
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LineSpan {
+    start: usize,
+    end: usize,
 }
 
 /// A reusable whole-paragraph composer.
@@ -164,6 +173,7 @@ impl Composer {
                 let line_number = self.nodes[start].line_count;
                 let width = measure_line(
                     paragraph,
+                    style,
                     self.candidates[start].offset,
                     candidate.offset,
                     line_number,
@@ -272,10 +282,17 @@ impl Composer {
         let clusters = &paragraph.text.clusters()[start_cluster..end_cluster];
         self.line_advances
             .extend((start_cluster..end_cluster).map(|ordinal| {
-                effective_cluster_advance_on_line(paragraph, ordinal, start_cluster, end_cluster)
+                effective_cluster_advance_on_line(
+                    paragraph,
+                    style,
+                    ordinal,
+                    start_cluster,
+                    end_cluster,
+                )
             }));
         apply_tabs(
             paragraph,
+            style,
             start_cluster,
             end_cluster,
             line_index,
@@ -287,12 +304,12 @@ impl Composer {
         } else {
             0
         };
-        let content_width = self
-            .line_advances
-            .iter()
-            .fold(i64::from(indent), |sum, advance| {
-                sum.saturating_add(i64::from(*advance))
-            });
+        let ruby_leading =
+            ruby_line_leading_separation(paragraph, style, start_cluster, end_cluster, line_index);
+        let content_width = self.line_advances.iter().fold(
+            i64::from(indent.saturating_add(ruby_leading)),
+            |sum, advance| sum.saturating_add(i64::from(*advance)),
+        );
         let remaining = i64::from(paragraph.line_extent).saturating_sub(content_width);
         let alignment_offset = match paragraph.alignment {
             Alignment::Start | Alignment::Justify => 0,
@@ -313,7 +330,9 @@ impl Composer {
         );
 
         let mut placed = Vec::with_capacity(clusters.len());
-        let mut cursor = i64::from(indent).saturating_add(alignment_offset);
+        let mut cursor = i64::from(indent)
+            .saturating_add(i64::from(ruby_leading))
+            .saturating_add(alignment_offset);
         let mut block_extent = paragraph.text.size().block();
         let mut local = 0;
         while local < clusters.len() {
@@ -802,6 +821,19 @@ fn nested_cluster_body_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
 
 fn effective_cluster_advance_on_line(
     paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    line_start: usize,
+    line_end: usize,
+) -> i32 {
+    effective_cluster_advance_on_line_without_ruby(paragraph, ordinal, line_start, line_end)
+        .saturating_add(ruby_boundary_separation_after(
+            paragraph, style, ordinal, line_start, line_end,
+        ))
+}
+
+fn effective_cluster_advance_on_line_without_ruby(
+    paragraph: &Paragraph,
     ordinal: usize,
     line_start: usize,
     line_end: usize,
@@ -831,6 +863,253 @@ fn effective_cluster_advance_on_line(
     } else {
         effective_cluster_advance(paragraph, ordinal)
     }
+}
+
+#[derive(Debug, Clone)]
+struct RubyOverhang {
+    base: Range<usize>,
+    leading: i32,
+    trailing: i32,
+    ruby_em: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum RubySide {
+    Leading,
+    Trailing,
+}
+
+fn visit_ruby_spans(
+    paragraph: &Paragraph,
+    mut visit: impl FnMut(&crate::Ruby, Range<usize>, Range<usize>),
+) {
+    for construct in &paragraph.constructs {
+        let ConstructKind::Ruby(ruby) = construct.kind() else {
+            continue;
+        };
+        match ruby.kind() {
+            crate::RubyKind::Group => visit(ruby, ruby.base(), 0..ruby.annotation().source().len()),
+            crate::RubyKind::Mono => {
+                for run in ruby.runs() {
+                    visit(ruby, run.base(), run.annotation());
+                }
+            },
+            crate::RubyKind::Jukugo => {
+                let per_base = ruby
+                    .runs()
+                    .iter()
+                    .all(|run| annotation_cluster_count(ruby.annotation(), &run.annotation()) <= 2);
+                if per_base {
+                    for run in ruby.runs() {
+                        visit(ruby, run.base(), run.annotation());
+                    }
+                } else {
+                    visit(ruby, ruby.base(), 0..ruby.annotation().source().len());
+                }
+            },
+        }
+    }
+}
+
+fn ruby_span_overhang(
+    paragraph: &Paragraph,
+    style: &Style,
+    ruby: &crate::Ruby,
+    base: Range<usize>,
+    annotation: Range<usize>,
+    line_start: usize,
+    line_end: usize,
+) -> Option<RubyOverhang> {
+    let base = cluster_index_at_or_after(paragraph, base.start)
+        ..cluster_index_at_or_after(paragraph, base.end);
+    if base.start < line_start || base.end > line_end || base.start >= base.end {
+        return None;
+    }
+    let base_width = base.clone().fold(0_i64, |sum, ordinal| {
+        let body = i64::from(effective_cluster_body_advance(paragraph, ordinal));
+        let boundary = if ordinal.saturating_add(1) < base.end {
+            i64::from(boundary_space_after(paragraph, ordinal))
+        } else {
+            0
+        };
+        sum.saturating_add(body).saturating_add(boundary)
+    });
+    let mut annotation_width = 0_i64;
+    let mut ruby_em = 0_i32;
+    for cluster in ruby.annotation().clusters().iter().filter(|cluster| {
+        let cluster = cluster.range();
+        annotation.start <= cluster.start && cluster.end <= annotation.end
+    }) {
+        annotation_width = annotation_width.saturating_add(i64::from(cluster.advance()));
+        ruby_em = ruby_em.max(
+            cluster
+                .size_override()
+                .unwrap_or(ruby.annotation().size())
+                .inline(),
+        );
+    }
+    let surplus = annotation_width.saturating_sub(base_width).max(0);
+    if surplus == 0 {
+        return None;
+    }
+    let half = surplus / 2;
+    let odd = surplus % 2;
+    let (leading, trailing) = match style.remainder() {
+        Remainder::Leading => (half.saturating_add(odd), half),
+        Remainder::Trailing => (half, half.saturating_add(odd)),
+    };
+    Some(RubyOverhang {
+        base,
+        leading: clamp_i32(leading),
+        trailing: clamp_i32(trailing),
+        ruby_em,
+    })
+}
+
+fn ruby_boundary_separation_after(
+    paragraph: &Paragraph,
+    style: &Style,
+    before: usize,
+    line_start: usize,
+    line_end: usize,
+) -> i32 {
+    let mut required = 0_i32;
+    visit_ruby_spans(paragraph, |ruby, base, annotation| {
+        let Some(overhang) = ruby_span_overhang(
+            paragraph, style, ruby, base, annotation, line_start, line_end,
+        ) else {
+            return;
+        };
+        if overhang.base.start == before.saturating_add(1) && before >= line_start {
+            let allowance = ruby_neighbor_overhang_allowance(
+                paragraph,
+                style,
+                before,
+                RubySide::Leading,
+                overhang.ruby_em,
+            );
+            required = required.max(overhang.leading.saturating_sub(allowance));
+        }
+        if overhang.base.end == before.saturating_add(1) {
+            let allowance = if overhang.base.end < line_end {
+                ruby_neighbor_overhang_allowance(
+                    paragraph,
+                    style,
+                    overhang.base.end,
+                    RubySide::Trailing,
+                    overhang.ruby_em,
+                )
+            } else {
+                0
+            };
+            required = required.max(overhang.trailing.saturating_sub(allowance));
+        }
+    });
+    required
+}
+
+fn ruby_line_leading_separation(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_start: usize,
+    line_end: usize,
+    line_index: usize,
+) -> i32 {
+    let mut required = 0_i32;
+    visit_ruby_spans(paragraph, |ruby, base, annotation| {
+        let Some(overhang) = ruby_span_overhang(
+            paragraph, style, ruby, base, annotation, line_start, line_end,
+        ) else {
+            return;
+        };
+        if overhang.base.start != line_start {
+            return;
+        }
+        let allowance =
+            if line_index == 0 && style.ruby_overhang_indent() == RubyOverhangIndent::Permitted {
+                paragraph.first_line_indent.min(overhang.ruby_em)
+            } else {
+                0
+            };
+        required = required.max(overhang.leading.saturating_sub(allowance));
+    });
+    required
+}
+
+fn ruby_neighbor_overhang_allowance(
+    paragraph: &Paragraph,
+    style: &Style,
+    ordinal: usize,
+    side: RubySide,
+    ruby_em: i32,
+) -> i32 {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return 0;
+    };
+    let Some(character) = single_cluster_character(paragraph, cluster) else {
+        return 0;
+    };
+    let adjacent_space = match side {
+        RubySide::Leading => boundary_space_after(paragraph, ordinal),
+        RubySide::Trailing => ordinal
+            .checked_sub(1)
+            .map_or(0, |before| boundary_space_after(paragraph, before)),
+    };
+    let punctuation_allowance = match side {
+        RubySide::Leading if is_opening_bracket(character) => ruby_em,
+        RubySide::Leading
+            if is_closing_bracket(character) || is_full_stop(character) || is_comma(character) =>
+        {
+            ruby_em.min(adjacent_space)
+        },
+        RubySide::Trailing if is_opening_bracket(character) => ruby_em.min(adjacent_space),
+        RubySide::Trailing
+            if is_closing_bracket(character) || is_full_stop(character) || is_comma(character) =>
+        {
+            ruby_em
+        },
+        _ => 0,
+    };
+    let kana = match style.ruby_overhang_kana() {
+        RubyOverhangKana::Kana => is_hiragana(character) || is_katakana(character),
+        RubyOverhangKana::Jis => is_hiragana(character),
+        RubyOverhangKana::Any => {
+            is_hiragana(character) || is_katakana(character) || is_ideographic_character(character)
+        },
+        RubyOverhangKana::None => false,
+    };
+    if punctuation_allowance != 0 {
+        punctuation_allowance
+    } else if is_middle_dot(character) {
+        ruby_em.min(adjacent_space.saturating_add(half_rounded_up(ruby_em)))
+    } else if character == '\u{3000}' || is_inseparable_character(character) || kana {
+        ruby_em
+    } else {
+        0
+    }
+}
+
+fn half_rounded_up(value: i32) -> i32 {
+    (value / 2).saturating_add(value % 2)
+}
+
+fn is_hiragana(character: char) -> bool {
+    matches!(character as u32, 0x3040..=0x309f)
+}
+
+fn is_katakana(character: char) -> bool {
+    matches!(character as u32, 0x30a0..=0x30ff | 0x31f0..=0x31ff)
+}
+
+fn is_ideographic_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x3400..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x323af
+    )
+}
+
+fn is_inseparable_character(character: char) -> bool {
+    "―…‥〳〴〵".contains(character)
 }
 
 fn is_western_word_space(paragraph: &Paragraph, ordinal: usize) -> bool {
@@ -1497,14 +1776,27 @@ fn is_middle_dot(character: char) -> bool {
     character == '・'
 }
 
-fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: usize) -> i64 {
+fn measure_line(
+    paragraph: &Paragraph,
+    style: &Style,
+    start: usize,
+    end: usize,
+    line_number: usize,
+) -> i64 {
     let start_cluster = cluster_index_at_or_after(paragraph, start);
     let end_cluster = cluster_index_at_or_after(paragraph, end);
-    let mut cursor = if line_number == 0 {
+    let indent = if line_number == 0 {
         i64::from(paragraph.first_line_indent)
     } else {
         0
     };
+    let mut cursor = indent.saturating_add(i64::from(ruby_line_leading_separation(
+        paragraph,
+        style,
+        start_cluster,
+        end_cluster,
+        line_number,
+    )));
     let mut tab_index = 0;
     for (local, cluster) in paragraph.text.clusters()[start_cluster..end_cluster]
         .iter()
@@ -1514,6 +1806,7 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
             let after_tab = start_cluster.saturating_add(local).saturating_add(1);
             let segment_width = segment_width(
                 paragraph,
+                style,
                 after_tab,
                 end_cluster,
                 start_cluster,
@@ -1528,11 +1821,14 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
                 tab_index = tab_index.saturating_add(1);
                 let target = tab_target(
                     paragraph,
+                    style,
                     *stop,
                     after_tab,
                     end_cluster,
-                    start_cluster,
-                    end_cluster,
+                    LineSpan {
+                        start: start_cluster,
+                        end: end_cluster,
+                    },
                     segment_width,
                 );
                 cursor = cursor.max(target);
@@ -1541,6 +1837,7 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
             let ordinal = start_cluster.saturating_add(local);
             cursor = cursor.saturating_add(i64::from(effective_cluster_advance_on_line(
                 paragraph,
+                style,
                 ordinal,
                 start_cluster,
                 end_cluster,
@@ -1552,6 +1849,7 @@ fn measure_line(paragraph: &Paragraph, start: usize, end: usize, line_number: us
 
 fn segment_width(
     paragraph: &Paragraph,
+    style: &Style,
     start: usize,
     end: usize,
     line_start: usize,
@@ -1564,6 +1862,7 @@ fn segment_width(
         .fold(0_i64, |sum, (local, _)| {
             sum.saturating_add(i64::from(effective_cluster_advance_on_line(
                 paragraph,
+                style,
                 start.saturating_add(local),
                 line_start,
                 line_end,
@@ -1573,11 +1872,11 @@ fn segment_width(
 
 fn tab_target(
     paragraph: &Paragraph,
+    style: &Style,
     stop: crate::TabStop,
     start: usize,
     end: usize,
-    line_start: usize,
-    line_end: usize,
+    line: LineSpan,
     segment_width: i64,
 ) -> i64 {
     let position = i64::from(stop.position());
@@ -1596,9 +1895,10 @@ fn tab_target(
                 .fold(0_i64, |sum, (local, _)| {
                     sum.saturating_add(i64::from(effective_cluster_advance_on_line(
                         paragraph,
+                        style,
                         start.saturating_add(local),
-                        line_start,
-                        line_end,
+                        line.start,
+                        line.end,
                     )))
                 });
             position.saturating_sub(before)
@@ -1608,6 +1908,7 @@ fn tab_target(
 
 fn apply_tabs(
     paragraph: &Paragraph,
+    style: &Style,
     start: usize,
     end: usize,
     line_number: usize,
@@ -1640,11 +1941,11 @@ fn apply_tabs(
                 tab_index = tab_index.saturating_add(1);
                 let target = tab_target(
                     paragraph,
+                    style,
                     *stop,
                     ordinal.saturating_add(1),
                     end,
-                    start,
-                    end,
+                    LineSpan { start, end },
                     width,
                 );
                 advances[local] = clamp_i32(target.saturating_sub(cursor).max(0));
@@ -1926,7 +2227,7 @@ fn place_ruby_span(
     base_range: &Range<usize>,
     annotation_range: &Range<usize>,
 ) -> i32 {
-    let Some((base_start, base_end)) = bounds_for_range(line, base_range) else {
+    let Some((base_start, base_end)) = bounds_for_ruby_range(paragraph, line, base_range) else {
         return 0;
     };
     let annotation_width = annotation
@@ -1940,12 +2241,14 @@ fn place_ruby_span(
             sum.saturating_add(i64::from(cluster.advance()))
         });
     let base_width = i64::from(base_end).saturating_sub(i64::from(base_start));
-    let mut inline = match style.ruby_alignment() {
-        RubyAlignment::Nakatsuki => {
-            i64::from(base_start).saturating_add((base_width.saturating_sub(annotation_width)) / 2)
-        },
-        RubyAlignment::Katatsuki => i64::from(base_start),
-    };
+    let mut inline =
+        match style.ruby_alignment() {
+            _ if annotation_width > base_width => i64::from(base_start)
+                .saturating_add((base_width.saturating_sub(annotation_width)) / 2),
+            RubyAlignment::Nakatsuki => i64::from(base_start)
+                .saturating_add((base_width.saturating_sub(annotation_width)) / 2),
+            RubyAlignment::Katatsuki => i64::from(base_start),
+        };
     let mut attachment_extent = 0;
     for cluster in annotation.clusters().iter().filter(|cluster| {
         let cluster = cluster.range();
@@ -1987,6 +2290,31 @@ fn bounds_for_range(line: &Line, range: &Range<usize>) -> Option<(i32, i32)> {
         end = end.max(placement_inline_end(placement));
     }
     Some((first.inline, end))
+}
+
+fn bounds_for_ruby_range(
+    paragraph: &Paragraph,
+    line: &Line,
+    range: &Range<usize>,
+) -> Option<(i32, i32)> {
+    let mut matching = line
+        .clusters
+        .iter()
+        .filter(|placement| ranges_overlap(&placement.range, range));
+    let first = matching.next()?;
+    let mut end = ruby_base_inline_end(paragraph, first);
+    for placement in matching {
+        end = end.max(ruby_base_inline_end(paragraph, placement));
+    }
+    Some((first.inline, end))
+}
+
+fn ruby_base_inline_end(paragraph: &Paragraph, placement: &ClusterPlacement) -> i32 {
+    let advance = match placement.origin {
+        PlacementOrigin::Cluster(ordinal) => effective_cluster_body_advance(paragraph, ordinal),
+        PlacementOrigin::Construct(_) => placement.advance,
+    };
+    placement.inline.saturating_add(advance)
 }
 
 fn placement_inline_end(placement: &ClusterPlacement) -> i32 {
