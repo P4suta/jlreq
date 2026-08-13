@@ -105,10 +105,9 @@
 # The order is the inventory's own: § 3 in section order, then the appendix sections, then
 # the appendix notes, so this file and spec/derived/rules.tsv can be read side by side.
 
-[[deferred]]
+[[editorial]]
 rule = "3.1.1"
-milestone = "M5"
-why = "The rule lists the punctuation marks that are used in one writing mode and not the other, so a case can only show it once vertical composition exists."
+why = "The primary text at spec/snapshot/index.html, §3.1.1 Differences in Vertical and Horizontal Composition in Use of Punctuation Marks, describes which source characters an editor may choose: IDEOGRAPHIC FULL STOP and IDEOGRAPHIC COMMA in vertical text; three alternative comma/full-stop conventions in horizontal text; corner brackets versus quotation marks; vertical-only double-prime quotation marks; and direction-specific iteration marks. It states no spacing, break, adjustment, transform, or placement result for a supplied character. The black-box protocol receives the caller's already-chosen UTF-8 string and shaped clusters, while font choice, shaping, and authoring are permanently outside kumihan's scope. Rejecting or rewriting one of the listed characters would turn usage guidance into an engine requirement the section does not state. Direction-dependent glyph treatment of Western punctuation, when a caller has chosen it, is covered mechanically by §§3.2.3 and 3.2.5 rather than by crediting this source-selection section twice."
 
 [[deferred]]
 rule = "3.1.3"
