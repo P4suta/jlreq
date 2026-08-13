@@ -12,6 +12,34 @@ use crate::generated::appendix_a::{LISTINGS, MAX_KEY_LEN};
 use crate::generated::folding::FOLDS;
 use crate::generated::ideograph::RANGES as IDEOGRAPH_RANGES;
 use crate::generated::script::{HIRAGANA, KATAKANA, RANGES as SCRIPT_RANGES};
+use crate::model::{ClusterRole, Frame, Size, WritingMode};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RawHang {
+    None,
+    OverSpace,
+    OverCharacter,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RawTerm {
+    pub(crate) trailing: bool,
+    pub(crate) amount: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RawSpacingCell {
+    pub(crate) before: u8,
+    pub(crate) after: u8,
+    pub(crate) prohibited: bool,
+    pub(crate) hang: RawHang,
+    pub(crate) rule: &'static str,
+    pub(crate) terms: &'static [RawTerm],
+}
+
+pub(crate) const fn em(units: i32) -> i32 {
+    units
+}
 
 pub(crate) const OPENING_BRACKET: u8 = 1;
 pub(crate) const CLOSING_BRACKET: u8 = 2;
@@ -23,6 +51,209 @@ pub(crate) const INSEPARABLE: u8 = 8;
 pub(crate) const MATH_SYMBOL: u8 = 17;
 pub(crate) const MATH_OPERATOR: u8 = 18;
 const IDEOGRAPH: u8 = 19;
+const CONSTRUCT_CLASSES: u32 = class_bit(20)
+    | class_bit(21)
+    | class_bit(22)
+    | class_bit(23)
+    | class_bit(24)
+    | class_bit(25)
+    | class_bit(28)
+    | class_bit(29)
+    | class_bit(30);
+
+pub(crate) fn class_of(
+    piece: &str,
+    frame: Frame,
+    role: Option<ClusterRole>,
+    writing_mode: WritingMode,
+) -> u8 {
+    let mut characters = piece.chars();
+    let Some(first) = characters.next() else {
+        return IDEOGRAPH;
+    };
+    let second = characters.next();
+    if characters.next().is_some() {
+        return if frame == Frame::Proportional { 27 } else { 19 };
+    }
+    let key = [first as u32, second.map_or(0, |character| character as u32)];
+    let mut candidates = candidates(key);
+    if candidates == 0 {
+        return if frame == Frame::Proportional { 27 } else { 19 };
+    }
+    candidates = narrow_by_usage(candidates, key, writing_mode);
+    candidates = narrow_by_frame(candidates, key, frame);
+    candidates = narrow_by_role(candidates, role, first);
+    first_non_construct(candidates).unwrap_or_else(|| first_class(candidates).unwrap_or(IDEOGRAPH))
+}
+
+pub(crate) fn table_one_space(
+    before: u8,
+    after: u8,
+    before_size: Size,
+    after_size: Size,
+    before_solid: bool,
+    after_solid: bool,
+) -> i32 {
+    let Some(cell) = crate::generated::table1::CELLS
+        .iter()
+        .find(|cell| cell.before == before && cell.after == after)
+    else {
+        return 0;
+    };
+    cell.terms.iter().fold(0_i32, |space, term| {
+        if (term.trailing && after_solid) || (!term.trailing && before_solid) {
+            return space;
+        }
+        let size = if term.trailing {
+            after_size.inline()
+        } else {
+            before_size.inline()
+        };
+        space.saturating_add(scale_spec_units(size, term.amount))
+    })
+}
+
+const fn class_bit(class: u8) -> u32 {
+    1_u32 << class.saturating_sub(1)
+}
+
+fn candidates(key: [u32; MAX_KEY_LEN]) -> u32 {
+    let literal = listings(key);
+    let selected = if literal.is_empty() && key[1] == 0 {
+        char::from_u32(key[0])
+            .and_then(fold)
+            .map_or(literal, |folded| listings([folded as u32, 0]))
+    } else {
+        literal
+    };
+    let mut classes = selected
+        .iter()
+        .fold(0_u32, |set, listing| set | class_bit(listing.class));
+    if key[1] == 0
+        && char::from_u32(key[0]).is_some_and(is_ideograph)
+        && classes & class_bit(IDEOGRAPH) == 0
+    {
+        classes |= class_bit(IDEOGRAPH);
+    }
+    classes
+}
+
+fn narrow_by_usage(classes: u32, key: [u32; MAX_KEY_LEN], mode: WritingMode) -> u32 {
+    let narrowed = listings_for_candidate(key)
+        .iter()
+        .fold(0_u32, |set, listing| {
+            let usage = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].usage;
+            let permitted = usage == crate::generated::appendix_a::USAGE_UNQUALIFIED
+                || (usage == crate::generated::appendix_a::USAGE_HORIZONTAL_ONLY
+                    && mode == WritingMode::HorizontalTb)
+                || (usage == crate::generated::appendix_a::USAGE_VERTICAL_ONLY
+                    && mode == WritingMode::VerticalRl);
+            if permitted {
+                set | class_bit(listing.class)
+            } else {
+                set
+            }
+        });
+    keep(classes, classes & narrowed)
+}
+
+fn narrow_by_frame(classes: u32, key: [u32; MAX_KEY_LEN], frame: Frame) -> u32 {
+    let frame_bit = match frame {
+        Frame::FullEm => crate::generated::appendix_a::FRAME_FULL_EM,
+        Frame::HalfEm => crate::generated::appendix_a::FRAME_HALF_EM,
+        Frame::Proportional => crate::generated::appendix_a::FRAME_PROPORTIONAL,
+    };
+    let permitted = listings_for_candidate(key)
+        .iter()
+        .fold(0_u32, |set, listing| {
+            let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
+            if frames == crate::generated::appendix_a::FRAMES_UNSTATED || frames & frame_bit != 0 {
+                set | class_bit(listing.class)
+            } else {
+                set
+            }
+        });
+    let mut narrowed = keep(classes, classes & permitted);
+    let explicitly_stated = listings_for_candidate(key)
+        .iter()
+        .fold(0_u32, |set, listing| {
+            let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
+            let stated_by_advance = matches!(listing.class, 1 | 2 | 5 | 6 | 7)
+                && matches!(frame, Frame::FullEm | Frame::HalfEm);
+            if listing.class < 20 && (frames & frame_bit != 0 || stated_by_advance) {
+                set | class_bit(listing.class)
+            } else {
+                set
+            }
+        });
+    if explicitly_stated != 0 {
+        narrowed = keep(narrowed, narrowed & (explicitly_stated | CONSTRUCT_CLASSES));
+    }
+    if frame == Frame::Proportional {
+        let without_half_advance =
+            narrowed & !(class_bit(1) | class_bit(2) | class_bit(5) | class_bit(6) | class_bit(7));
+        narrowed = keep(narrowed, without_half_advance);
+    }
+    if narrowed & class_bit(IDEOGRAPH) != 0 && narrowed & class_bit(27) != 0 {
+        narrowed = match frame {
+            Frame::Proportional => narrowed & !class_bit(IDEOGRAPH),
+            Frame::FullEm => narrowed & !class_bit(27),
+            Frame::HalfEm if narrowed & class_bit(24) != 0 => narrowed & !class_bit(IDEOGRAPH),
+            _ => narrowed,
+        };
+    }
+    narrowed
+}
+
+fn narrow_by_role(classes: u32, role: Option<ClusterRole>, character: char) -> u32 {
+    let selected = match role {
+        Some(
+            ClusterRole::DecimalPoint
+            | ClusterRole::DigitGroupSeparator
+            | ClusterRole::GroupedNumeral,
+        ) => class_bit(24),
+        Some(ClusterRole::UnitSymbol) => class_bit(25),
+        Some(ClusterRole::WarichuBracket) if single_has_class(character, OPENING_BRACKET) => {
+            class_bit(28)
+        },
+        Some(ClusterRole::WarichuBracket) if single_has_class(character, CLOSING_BRACKET) => {
+            class_bit(29)
+        },
+        _ => return classes,
+    };
+    keep(classes, classes & selected)
+}
+
+fn listings_for_candidate(
+    key: [u32; MAX_KEY_LEN],
+) -> &'static [crate::generated::appendix_a::Listing] {
+    let literal = listings(key);
+    if !literal.is_empty() || key[1] != 0 {
+        return literal;
+    }
+    char::from_u32(key[0])
+        .and_then(fold)
+        .map_or(literal, |folded| listings([folded as u32, 0]))
+}
+
+const fn keep(original: u32, narrowed: u32) -> u32 {
+    if narrowed == 0 { original } else { narrowed }
+}
+
+fn first_non_construct(classes: u32) -> Option<u8> {
+    first_class(classes & !CONSTRUCT_CLASSES)
+}
+
+fn first_class(classes: u32) -> Option<u8> {
+    (1_u8..=30).find(|class| classes & class_bit(*class) != 0)
+}
+
+fn scale_spec_units(size: i32, units: i32) -> i32 {
+    let product = i64::from(size).saturating_mul(i64::from(units));
+    let whole = product / 720;
+    let rounded = whole.saturating_add(i64::from(product % 720 != 0));
+    i32::try_from(rounded).unwrap_or(i32::MAX)
+}
 
 /// Whether Appendix A names the single-code-point key under `class`.
 ///

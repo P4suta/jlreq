@@ -16,7 +16,7 @@
 //! - Generator SHA-256: `00e4be634b79f78b3ed56c72f5d3b1814a0ca4d4bb21b39c72c5d5ce61fdca12`
 //! - Entries: 841
 
-use crate::raw::{RawHang, RawSpacingCell, RawTerm, em};
+use crate::spec::{RawHang, RawSpacingCell, RawTerm, em};
 
 /// Table 1's cells, in the order the transcription was read.
 ///
@@ -27,7 +27,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -35,7 +35,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -43,7 +43,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -51,7 +51,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -59,7 +59,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -70,7 +70,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -78,7 +78,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -86,7 +86,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -94,7 +94,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -102,7 +102,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -110,7 +110,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -118,7 +118,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -126,7 +126,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -134,7 +134,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -142,7 +142,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -150,7 +150,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -158,7 +158,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -166,7 +166,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -174,7 +174,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -182,7 +182,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_1,
+        rule: "B.2#1",
         terms: &[],
     },
     RawSpacingCell {
@@ -190,7 +190,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_1,
+        rule: "B.2#1",
         terms: &[],
     },
     RawSpacingCell {
@@ -198,7 +198,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -206,7 +206,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -214,7 +214,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -222,7 +222,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -230,7 +230,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -238,7 +238,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -246,7 +246,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -254,7 +254,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -262,7 +262,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -273,7 +273,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -281,7 +281,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -292,7 +292,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -303,7 +303,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -314,7 +314,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -322,7 +322,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -330,7 +330,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -341,7 +341,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -352,7 +352,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -363,7 +363,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -374,7 +374,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -385,7 +385,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -396,7 +396,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -404,7 +404,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -415,7 +415,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -426,7 +426,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -437,7 +437,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -445,7 +445,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -456,7 +456,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -467,7 +467,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -478,7 +478,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -489,7 +489,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -500,7 +500,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -511,7 +511,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -522,7 +522,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -533,7 +533,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -541,7 +541,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -552,7 +552,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_2,
+        rule: "B.2#2",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -563,7 +563,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -574,7 +574,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -582,7 +582,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -590,7 +590,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -598,7 +598,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -609,7 +609,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -617,7 +617,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -625,7 +625,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -633,7 +633,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -641,7 +641,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -649,7 +649,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -657,7 +657,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -665,7 +665,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -673,7 +673,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -681,7 +681,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -689,7 +689,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -697,7 +697,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -705,7 +705,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -713,7 +713,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -721,7 +721,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -729,7 +729,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -737,7 +737,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -745,7 +745,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -753,7 +753,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -761,7 +761,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -769,7 +769,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -777,7 +777,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -785,7 +785,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -793,7 +793,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -801,7 +801,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -812,7 +812,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -820,7 +820,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -828,7 +828,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -836,7 +836,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -847,7 +847,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -855,7 +855,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -863,7 +863,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -871,7 +871,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -879,7 +879,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -887,7 +887,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -895,7 +895,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -903,7 +903,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -911,7 +911,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -919,7 +919,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -927,7 +927,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -935,7 +935,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -943,7 +943,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -951,7 +951,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -962,7 +962,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -970,7 +970,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -978,7 +978,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -989,7 +989,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1000,7 +1000,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1008,7 +1008,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1019,7 +1019,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1027,7 +1027,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1035,7 +1035,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1043,7 +1043,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1051,7 +1051,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1062,7 +1062,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1073,7 +1073,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1084,7 +1084,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1095,7 +1095,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_3,
+        rule: "B.2#3",
         terms: &[
             RawTerm {
                 trailing: false,
@@ -1112,7 +1112,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1123,7 +1123,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1134,7 +1134,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1145,7 +1145,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1156,7 +1156,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1167,7 +1167,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1178,7 +1178,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1189,7 +1189,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1200,7 +1200,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1211,7 +1211,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1222,7 +1222,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1233,7 +1233,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1244,7 +1244,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1255,7 +1255,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1266,7 +1266,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1277,7 +1277,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1288,7 +1288,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1299,7 +1299,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1310,7 +1310,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1321,7 +1321,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1332,7 +1332,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1343,7 +1343,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1354,7 +1354,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1365,7 +1365,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_4,
+        rule: "B.2#4",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -1376,7 +1376,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1387,7 +1387,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1395,7 +1395,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1406,7 +1406,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1417,320 +1417,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_5,
-        terms: &[
-            RawTerm {
-                trailing: false,
-                amount: em(360),
-            },
-            RawTerm {
-                trailing: true,
-                amount: em(180),
-            },
-        ],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 6,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 7,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 8,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 9,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 10,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 11,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 12,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 13,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 14,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 15,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 16,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 19,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 20,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 21,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 22,
-        prohibited: false,
-        hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 23,
-        prohibited: false,
-        hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 24,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 25,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 26,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 27,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 28,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 29,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 30,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 6,
-        after: 0,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_6,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 7,
-        after: 1,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 7,
-        after: 2,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[],
-    },
-    RawSpacingCell {
-        before: 7,
-        after: 3,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 7,
-        after: 4,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
-        terms: &[RawTerm {
-            trailing: false,
-            amount: em(360),
-        }],
-    },
-    RawSpacingCell {
-        before: 7,
-        after: 5,
-        prohibited: false,
-        hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_5,
+        rule: "B.2#5",
         terms: &[
             RawTerm {
                 trailing: false,
@@ -1743,11 +1430,324 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         ],
     },
     RawSpacingCell {
+        before: 6,
+        after: 6,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 7,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 8,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 9,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 10,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 11,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 12,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 13,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 14,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 15,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 16,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 19,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 20,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 21,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 22,
+        prohibited: false,
+        hang: RawHang::OverSpace,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 23,
+        prohibited: false,
+        hang: RawHang::OverSpace,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 24,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 25,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 26,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 27,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 28,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 29,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 30,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 6,
+        after: 0,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.2#6",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 7,
+        after: 1,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 7,
+        after: 2,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[],
+    },
+    RawSpacingCell {
+        before: 7,
+        after: 3,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 7,
+        after: 4,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.1",
+        terms: &[RawTerm {
+            trailing: false,
+            amount: em(360),
+        }],
+    },
+    RawSpacingCell {
+        before: 7,
+        after: 5,
+        prohibited: false,
+        hang: RawHang::None,
+        rule: "B.2#5",
+        terms: &[
+            RawTerm {
+                trailing: false,
+                amount: em(360),
+            },
+            RawTerm {
+                trailing: true,
+                amount: em(180),
+            },
+        ],
+    },
+    RawSpacingCell {
         before: 7,
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1755,7 +1755,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1763,7 +1763,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1774,7 +1774,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1785,7 +1785,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1796,7 +1796,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1807,7 +1807,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1818,7 +1818,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1829,7 +1829,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1840,7 +1840,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1851,7 +1851,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1862,7 +1862,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1873,7 +1873,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -1881,7 +1881,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1892,7 +1892,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1903,7 +1903,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1914,7 +1914,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1925,7 +1925,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1936,7 +1936,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1947,7 +1947,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1958,7 +1958,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1969,7 +1969,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1980,7 +1980,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -1991,7 +1991,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_6,
+        rule: "B.2#6",
         terms: &[RawTerm {
             trailing: false,
             amount: em(360),
@@ -2002,7 +2002,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -2013,7 +2013,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2021,7 +2021,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2029,7 +2029,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2037,7 +2037,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -2048,7 +2048,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2056,7 +2056,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2064,7 +2064,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2072,7 +2072,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2080,7 +2080,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2088,7 +2088,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2096,7 +2096,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2104,7 +2104,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2112,7 +2112,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2120,7 +2120,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2128,7 +2128,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2136,7 +2136,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2144,7 +2144,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2152,7 +2152,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2160,7 +2160,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2168,7 +2168,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2176,7 +2176,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2184,7 +2184,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2192,7 +2192,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2200,7 +2200,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2208,7 +2208,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2216,7 +2216,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2224,7 +2224,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2232,7 +2232,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2240,7 +2240,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -2251,7 +2251,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2259,7 +2259,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2267,7 +2267,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2275,7 +2275,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -2286,7 +2286,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2294,7 +2294,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2302,7 +2302,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2310,7 +2310,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2318,7 +2318,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2326,7 +2326,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2334,7 +2334,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2342,7 +2342,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2350,7 +2350,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2358,7 +2358,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2366,7 +2366,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2374,7 +2374,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2382,7 +2382,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2390,7 +2390,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2401,7 +2401,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2409,7 +2409,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2417,7 +2417,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2428,7 +2428,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2439,7 +2439,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2447,7 +2447,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2458,7 +2458,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2466,7 +2466,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2474,7 +2474,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2482,7 +2482,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2490,7 +2490,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -2501,7 +2501,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2509,7 +2509,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2517,7 +2517,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2525,7 +2525,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -2536,7 +2536,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2544,7 +2544,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2552,7 +2552,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2560,7 +2560,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2568,7 +2568,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2576,7 +2576,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2584,7 +2584,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2592,7 +2592,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2600,7 +2600,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2608,7 +2608,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2616,7 +2616,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2624,7 +2624,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2632,7 +2632,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2640,7 +2640,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2651,7 +2651,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -2659,7 +2659,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -2667,7 +2667,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2678,7 +2678,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2689,7 +2689,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2697,7 +2697,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2708,7 +2708,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2716,7 +2716,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2724,7 +2724,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2732,7 +2732,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2740,7 +2740,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -2751,7 +2751,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2759,7 +2759,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2767,7 +2767,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2775,7 +2775,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -2786,7 +2786,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2794,7 +2794,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2802,7 +2802,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2810,7 +2810,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2818,7 +2818,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2826,7 +2826,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2834,7 +2834,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2842,7 +2842,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2850,7 +2850,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2858,7 +2858,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2866,7 +2866,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2874,7 +2874,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2882,7 +2882,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2890,7 +2890,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2901,7 +2901,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -2909,7 +2909,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -2917,7 +2917,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2928,7 +2928,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2939,7 +2939,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2947,7 +2947,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -2958,7 +2958,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2966,7 +2966,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2974,7 +2974,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2982,7 +2982,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -2990,7 +2990,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -3001,7 +3001,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3009,7 +3009,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3017,7 +3017,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3025,7 +3025,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -3036,7 +3036,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3044,7 +3044,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3052,7 +3052,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3060,7 +3060,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3068,7 +3068,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3076,7 +3076,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3084,7 +3084,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3092,7 +3092,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3100,7 +3100,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3108,7 +3108,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3116,7 +3116,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3124,7 +3124,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3132,7 +3132,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3140,7 +3140,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3148,7 +3148,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3156,7 +3156,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3164,7 +3164,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3172,7 +3172,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3180,7 +3180,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3188,7 +3188,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3196,7 +3196,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3204,7 +3204,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3212,7 +3212,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3220,7 +3220,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3228,7 +3228,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -3239,7 +3239,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3247,7 +3247,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3255,7 +3255,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3263,7 +3263,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -3274,7 +3274,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3282,7 +3282,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3290,7 +3290,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3298,7 +3298,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3306,7 +3306,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3314,7 +3314,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3322,7 +3322,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3330,7 +3330,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3338,7 +3338,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3346,7 +3346,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3354,7 +3354,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3362,7 +3362,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3370,7 +3370,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3378,7 +3378,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3386,7 +3386,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3394,7 +3394,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3402,7 +3402,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3410,7 +3410,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3418,7 +3418,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3426,7 +3426,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3434,7 +3434,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3442,7 +3442,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3450,7 +3450,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3458,7 +3458,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3466,7 +3466,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3474,7 +3474,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3482,7 +3482,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3490,7 +3490,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3498,7 +3498,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -3509,7 +3509,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3517,7 +3517,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3525,7 +3525,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3533,7 +3533,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3541,7 +3541,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3549,7 +3549,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3557,7 +3557,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3565,7 +3565,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3573,7 +3573,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3581,7 +3581,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3589,7 +3589,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3597,7 +3597,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3605,7 +3605,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3613,7 +3613,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3621,7 +3621,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_8,
+        rule: "B.2#8",
         terms: &[],
     },
     RawSpacingCell {
@@ -3629,7 +3629,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_8,
+        rule: "B.2#8",
         terms: &[],
     },
     RawSpacingCell {
@@ -3637,7 +3637,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3645,7 +3645,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3653,7 +3653,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3661,7 +3661,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3669,7 +3669,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3677,7 +3677,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3685,7 +3685,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3693,7 +3693,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3701,7 +3701,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -3712,7 +3712,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3720,7 +3720,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3728,7 +3728,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3736,7 +3736,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -3747,7 +3747,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3755,7 +3755,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3763,7 +3763,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3771,7 +3771,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3779,7 +3779,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3787,7 +3787,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3795,7 +3795,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3803,7 +3803,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3811,7 +3811,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3819,7 +3819,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3827,7 +3827,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3835,7 +3835,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3843,7 +3843,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3851,7 +3851,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -3862,7 +3862,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3870,7 +3870,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3878,7 +3878,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -3889,7 +3889,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -3900,7 +3900,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3908,7 +3908,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -3919,7 +3919,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3927,7 +3927,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3935,7 +3935,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3943,7 +3943,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3951,7 +3951,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -3962,7 +3962,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3970,7 +3970,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3978,7 +3978,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -3986,7 +3986,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -3997,7 +3997,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4005,7 +4005,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4013,7 +4013,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4021,7 +4021,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4029,7 +4029,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4037,7 +4037,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4045,7 +4045,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4053,7 +4053,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4061,7 +4061,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4069,7 +4069,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4077,7 +4077,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4085,7 +4085,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4093,7 +4093,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4101,7 +4101,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4112,7 +4112,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -4120,7 +4120,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -4128,7 +4128,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4139,7 +4139,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4150,7 +4150,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4158,7 +4158,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4169,7 +4169,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4177,7 +4177,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4185,7 +4185,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4193,7 +4193,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4201,7 +4201,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -4212,7 +4212,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4220,7 +4220,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4228,7 +4228,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4236,7 +4236,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4247,7 +4247,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4255,7 +4255,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4263,7 +4263,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4271,7 +4271,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4279,7 +4279,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4287,7 +4287,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4295,7 +4295,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4303,7 +4303,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4311,7 +4311,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4319,7 +4319,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4327,7 +4327,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4335,7 +4335,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4343,7 +4343,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4351,7 +4351,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4362,7 +4362,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4370,7 +4370,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4378,7 +4378,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4389,7 +4389,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4400,7 +4400,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4408,7 +4408,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4419,7 +4419,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4427,7 +4427,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4435,7 +4435,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4443,7 +4443,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4451,7 +4451,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -4462,7 +4462,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4470,7 +4470,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4478,7 +4478,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4486,7 +4486,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4497,7 +4497,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4505,7 +4505,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4513,7 +4513,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4521,7 +4521,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4529,7 +4529,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4537,7 +4537,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4545,7 +4545,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4553,7 +4553,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4561,7 +4561,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4569,7 +4569,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4577,7 +4577,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4585,7 +4585,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4593,7 +4593,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4601,7 +4601,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4609,7 +4609,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4617,7 +4617,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4625,7 +4625,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4633,7 +4633,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4641,7 +4641,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4649,7 +4649,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4657,7 +4657,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4665,7 +4665,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4673,7 +4673,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4681,7 +4681,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4689,7 +4689,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -4700,7 +4700,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4708,7 +4708,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4716,7 +4716,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4724,7 +4724,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4735,7 +4735,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4743,7 +4743,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4751,7 +4751,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4759,7 +4759,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4770,7 +4770,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4781,7 +4781,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4792,7 +4792,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4800,7 +4800,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4808,7 +4808,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4816,7 +4816,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4827,7 +4827,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4838,7 +4838,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4849,7 +4849,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4857,7 +4857,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_9,
+        rule: "B.2#9",
         terms: &[],
     },
     RawSpacingCell {
@@ -4865,7 +4865,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4876,7 +4876,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4887,7 +4887,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4895,7 +4895,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4903,7 +4903,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4911,7 +4911,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4919,7 +4919,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -4930,7 +4930,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4938,7 +4938,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -4949,7 +4949,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4957,7 +4957,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -4968,7 +4968,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4976,7 +4976,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4984,7 +4984,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -4992,7 +4992,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5003,7 +5003,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5011,7 +5011,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5019,7 +5019,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5027,7 +5027,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5035,7 +5035,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5043,7 +5043,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5051,7 +5051,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5059,7 +5059,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5067,7 +5067,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_8,
+        rule: "B.2#8",
         terms: &[],
     },
     RawSpacingCell {
@@ -5075,7 +5075,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5083,7 +5083,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5091,7 +5091,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5099,7 +5099,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5107,7 +5107,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5118,7 +5118,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_10,
+        rule: "B.2#10",
         terms: &[],
     },
     RawSpacingCell {
@@ -5126,7 +5126,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5134,7 +5134,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5145,7 +5145,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5156,7 +5156,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5164,7 +5164,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5175,7 +5175,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5183,7 +5183,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5191,7 +5191,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5199,7 +5199,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5207,7 +5207,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -5218,7 +5218,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5226,7 +5226,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5234,7 +5234,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5242,7 +5242,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5253,7 +5253,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5261,7 +5261,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5269,7 +5269,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5277,7 +5277,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5285,7 +5285,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5293,7 +5293,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5301,7 +5301,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5309,7 +5309,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5317,7 +5317,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_8,
+        rule: "B.2#8",
         terms: &[],
     },
     RawSpacingCell {
@@ -5325,7 +5325,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5333,7 +5333,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::OverCharacter,
-        rule: jlreq_spec::RuleId::B_2_NOTE_7,
+        rule: "B.2#7",
         terms: &[],
     },
     RawSpacingCell {
@@ -5341,7 +5341,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5349,7 +5349,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5357,7 +5357,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5368,7 +5368,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5376,7 +5376,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_11,
+        rule: "B.2#11",
         terms: &[],
     },
     RawSpacingCell {
@@ -5384,7 +5384,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5395,7 +5395,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5406,7 +5406,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5414,7 +5414,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5425,7 +5425,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5433,7 +5433,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5441,7 +5441,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5449,7 +5449,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5457,7 +5457,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -5468,7 +5468,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5476,7 +5476,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5484,7 +5484,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5492,7 +5492,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5503,7 +5503,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5511,7 +5511,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5519,7 +5519,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5527,7 +5527,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5538,7 +5538,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5549,7 +5549,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5560,7 +5560,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5568,7 +5568,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5576,7 +5576,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5584,7 +5584,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5595,7 +5595,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5606,7 +5606,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5617,7 +5617,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5625,7 +5625,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5633,7 +5633,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5644,7 +5644,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5655,7 +5655,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5663,7 +5663,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5674,7 +5674,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5682,7 +5682,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5690,7 +5690,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5701,7 +5701,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5709,7 +5709,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5720,7 +5720,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5728,7 +5728,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -5739,7 +5739,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5747,7 +5747,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5755,7 +5755,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5763,7 +5763,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_12,
+        rule: "B.2#12",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5774,7 +5774,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5782,7 +5782,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5790,7 +5790,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5798,7 +5798,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5809,7 +5809,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5820,7 +5820,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5831,7 +5831,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5839,7 +5839,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5847,7 +5847,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5855,7 +5855,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5866,7 +5866,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5877,7 +5877,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5888,7 +5888,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5896,7 +5896,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5904,7 +5904,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5915,7 +5915,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5926,7 +5926,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5937,7 +5937,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5945,7 +5945,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5953,7 +5953,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5961,7 +5961,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -5972,7 +5972,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5980,7 +5980,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -5991,7 +5991,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -5999,7 +5999,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -6010,7 +6010,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6018,7 +6018,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6026,7 +6026,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6034,7 +6034,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6045,7 +6045,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6053,7 +6053,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6061,7 +6061,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6069,7 +6069,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6077,7 +6077,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6085,7 +6085,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6093,7 +6093,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6101,7 +6101,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6109,7 +6109,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6117,7 +6117,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6125,7 +6125,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6133,7 +6133,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6141,7 +6141,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6149,7 +6149,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6157,7 +6157,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6165,7 +6165,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6173,7 +6173,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6181,7 +6181,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6189,7 +6189,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6197,7 +6197,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6205,7 +6205,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6213,7 +6213,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_13,
+        rule: "B.2#13",
         terms: &[],
     },
     RawSpacingCell {
@@ -6221,7 +6221,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6229,7 +6229,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_13,
+        rule: "B.2#13",
         terms: &[],
     },
     RawSpacingCell {
@@ -6237,7 +6237,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -6248,7 +6248,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6256,7 +6256,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6264,7 +6264,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6272,7 +6272,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6283,7 +6283,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6291,7 +6291,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6299,7 +6299,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6307,7 +6307,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6318,7 +6318,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6329,7 +6329,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6340,7 +6340,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6348,7 +6348,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6356,7 +6356,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6364,7 +6364,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6375,7 +6375,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6386,7 +6386,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6397,7 +6397,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6405,7 +6405,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6413,7 +6413,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6424,7 +6424,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::OverSpace,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6435,7 +6435,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6443,7 +6443,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -6454,7 +6454,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6462,7 +6462,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6470,7 +6470,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -6481,7 +6481,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6489,7 +6489,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6500,7 +6500,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6508,7 +6508,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6516,7 +6516,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6524,7 +6524,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6532,7 +6532,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6540,7 +6540,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6548,7 +6548,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6556,7 +6556,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6564,7 +6564,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6572,7 +6572,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_14,
+        rule: "B.2#14",
         terms: &[],
     },
     RawSpacingCell {
@@ -6580,7 +6580,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_15,
+        rule: "B.2#15",
         terms: &[],
     },
     RawSpacingCell {
@@ -6588,7 +6588,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_16,
+        rule: "B.2#16",
         terms: &[],
     },
     RawSpacingCell {
@@ -6596,7 +6596,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6604,7 +6604,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6612,7 +6612,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6620,7 +6620,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6628,7 +6628,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6636,7 +6636,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6644,7 +6644,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6652,7 +6652,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6660,7 +6660,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6668,7 +6668,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6676,7 +6676,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6684,7 +6684,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6692,7 +6692,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_13,
+        rule: "B.2#13",
         terms: &[],
     },
     RawSpacingCell {
@@ -6700,7 +6700,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6708,7 +6708,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6716,7 +6716,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6724,7 +6724,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6732,7 +6732,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6740,7 +6740,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -6751,7 +6751,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6759,7 +6759,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6767,7 +6767,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6775,7 +6775,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6786,7 +6786,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6794,7 +6794,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6802,7 +6802,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6810,7 +6810,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6818,7 +6818,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6826,7 +6826,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6834,7 +6834,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6842,7 +6842,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6850,7 +6850,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6858,7 +6858,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6866,7 +6866,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6874,7 +6874,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6882,7 +6882,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6890,7 +6890,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6901,7 +6901,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6909,7 +6909,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6917,7 +6917,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6928,7 +6928,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6939,7 +6939,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6947,7 +6947,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -6958,7 +6958,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6966,7 +6966,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6974,7 +6974,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6982,7 +6982,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -6990,7 +6990,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(360),
@@ -7001,7 +7001,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7009,7 +7009,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7017,7 +7017,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7025,7 +7025,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: true,
             amount: em(180),
@@ -7036,7 +7036,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7044,7 +7044,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7052,7 +7052,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7060,7 +7060,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7068,7 +7068,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7076,7 +7076,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7084,7 +7084,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7092,7 +7092,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7100,7 +7100,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7108,7 +7108,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7116,7 +7116,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7124,7 +7124,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7132,7 +7132,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7140,7 +7140,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -7151,7 +7151,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7159,7 +7159,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7167,7 +7167,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -7178,7 +7178,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -7189,7 +7189,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7197,7 +7197,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[RawTerm {
             trailing: false,
             amount: em(180),
@@ -7208,7 +7208,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7216,7 +7216,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7224,7 +7224,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7232,7 +7232,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7240,7 +7240,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 1,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_17,
+        rule: "B.2#17",
         terms: &[],
     },
     RawSpacingCell {
@@ -7248,7 +7248,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 2,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7256,7 +7256,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 3,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7264,7 +7264,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 4,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7272,7 +7272,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 5,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7280,7 +7280,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 6,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7288,7 +7288,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 7,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7296,7 +7296,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 8,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7304,7 +7304,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 9,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_14,
+        rule: "B.2#14",
         terms: &[],
     },
     RawSpacingCell {
@@ -7312,7 +7312,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 10,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_15,
+        rule: "B.2#15",
         terms: &[],
     },
     RawSpacingCell {
@@ -7320,7 +7320,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 11,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_16,
+        rule: "B.2#16",
         terms: &[],
     },
     RawSpacingCell {
@@ -7328,7 +7328,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 12,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7336,7 +7336,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 13,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7344,7 +7344,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 14,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7352,7 +7352,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 15,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7360,7 +7360,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 16,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7368,7 +7368,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 19,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7376,7 +7376,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 20,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7384,7 +7384,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 21,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7392,7 +7392,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 22,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7400,7 +7400,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 23,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7408,7 +7408,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 24,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7416,7 +7416,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 25,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7424,7 +7424,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 26,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::B_2_NOTE_13,
+        rule: "B.2#13",
         terms: &[],
     },
     RawSpacingCell {
@@ -7432,7 +7432,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 27,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7440,7 +7440,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 28,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7448,7 +7448,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 29,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7456,7 +7456,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 30,
         prohibited: false,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
     RawSpacingCell {
@@ -7464,7 +7464,7 @@ pub(crate) static CELLS: &[RawSpacingCell] = &[
         after: 0,
         prohibited: true,
         hang: RawHang::None,
-        rule: jlreq_spec::RuleId::SPACING_BETWEEN_CHARACTERS,
+        rule: "B.1",
         terms: &[],
     },
 ];

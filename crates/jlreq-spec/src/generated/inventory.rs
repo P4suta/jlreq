@@ -13,7 +13,7 @@
 //! - Source SHA-256: `31720f702736262024c6c96f2ac1b7a865b989e837d86a2f91bbe2f1a0b712a6`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/inventory.rs`
-//! - Generator SHA-256: `288be52285fa2955f5233083763145e214c769bc0960e8e8b7c3efc566592842`
+//! - Generator SHA-256: `2040ec86dcf5866101aa5c880a218f70f63bd6acd327119c7a1d8fbb9e0a6637`
 //! - Entries: 106
 
 use crate::rule::{Address, Appendix, Rule, RuleId, Standing};

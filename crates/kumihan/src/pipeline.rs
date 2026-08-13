@@ -1575,37 +1575,57 @@ fn ordinary_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
     let Some(current) = clusters.get(ordinal) else {
         return 0;
     };
-    let following = clusters.get(ordinal.saturating_add(1));
+    let Some(following) = clusters.get(ordinal.saturating_add(1)) else {
+        return 0;
+    };
     let current_character = single_cluster_character(paragraph, current);
-    let following_character =
-        following.and_then(|cluster| single_cluster_character(paragraph, cluster));
-    let mut space = 0_i32;
+    let following_character = single_cluster_character(paragraph, following);
+    let current_solid = current_character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, current, character));
+    let following_solid = following_character
+        .is_some_and(|character| contextual_punctuation_is_solid(paragraph, following, character));
+    let current_size = current.size_override().unwrap_or(paragraph.text.size());
+    let following_size = following.size_override().unwrap_or(paragraph.text.size());
+    crate::spec::table_one_space(
+        class_of_cluster(paragraph, ordinal),
+        class_of_cluster(paragraph, ordinal.saturating_add(1)),
+        current_size,
+        following_size,
+        current_solid,
+        following_solid,
+    )
+}
 
-    if following.is_some()
-        && current_character.is_some_and(|character| {
-            (is_comma(character) || is_full_stop(character) || is_closing_bracket(character))
-                && !contextual_punctuation_is_solid(paragraph, current, character)
-        })
-    {
-        space = space.saturating_add(half_inline_size(paragraph, current));
+fn class_of_cluster(paragraph: &Paragraph, ordinal: usize) -> u8 {
+    if tate_chu_yoko_cluster_range(paragraph, ordinal).is_some() {
+        return 30;
     }
-    if let (Some(character), Some(following)) = (following_character, following)
-        && is_opening_bracket(character)
-    {
-        space = space.saturating_add(half_inline_size(paragraph, following));
+    let cluster = &paragraph.text.clusters()[ordinal];
+    let range = cluster.range();
+    for construct in &paragraph.constructs {
+        if !ranges_overlap(&construct.range(), &range) {
+            continue;
+        }
+        match construct.kind() {
+            ConstructKind::Ruby(ruby) => {
+                return if ruby.kind() == crate::RubyKind::Jukugo {
+                    23
+                } else {
+                    22
+                };
+            },
+            ConstructKind::Emphasis { .. } | ConstructKind::Script { .. } => return 21,
+            ConstructKind::ReferenceMark { .. } => return 20,
+            _ => {},
+        }
     }
-    if current_character.is_some_and(|character| {
-        is_middle_dot(character) && !contextual_punctuation_is_solid(paragraph, current, character)
-    }) {
-        space = space.saturating_add(quarter_inline_size(paragraph, current));
-    }
-    if let (Some(character), Some(following)) = (following_character, following)
-        && is_middle_dot(character)
-        && !contextual_punctuation_is_solid(paragraph, following, character)
-    {
-        space = space.saturating_add(quarter_inline_size(paragraph, following));
-    }
-    space
+    let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
+    crate::spec::class_of(
+        &paragraph.text.source()[range],
+        frame,
+        cluster.role(),
+        paragraph.writing_mode,
+    )
 }
 
 fn contextual_punctuation_is_solid(

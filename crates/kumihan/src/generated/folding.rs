@@ -13,7 +13,7 @@
 //! - Source SHA-256: `44255c6d0c8125bdd692ba09c3ca1482212752ce590ac1db3bcf9293ffb22597`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `4b9ee91056000031fce83c7745f05ec8b25f69e28a048a1e84d51548f66ab331`
+//! - Generator SHA-256: `3cf271a8ac1db005d1c3c7361915c47183fc6d68fdb0800de40ea9cf4dff48b1`
 //! - Entries: 226
 
 use super::appendix_a::{FRAME_FULL_EM, FRAME_HALF_EM};

@@ -107,11 +107,13 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 **Stage 2**, `cargo run -p xtask -- generate`, emits `crates/*/src/generated/*.rs` from
 `spec/derived/` and `spec/captured/`.
 
-During the 1.0 migration, the Appendix A, compatibility-folding, ideograph, and kana-script
-units deliberately emit the same facts into both the unpublished `jlreq-class` regression
-asset and `kumihan`'s private `src/generated/` boundary. Both outputs share one emitter and
-one input; this is migration duplication, not a second transcription. The old output is
-removed with the legacy crates only after the black-box differential migration is complete.
+During the 1.0 migration, the Appendix A, compatibility-folding, ideograph, kana-script,
+and Table 1 units deliberately emit the same facts into both the unpublished legacy
+regression assets and `kumihan`'s private `src/generated/` boundary. Both outputs share one
+parser and one input; this is migration duplication, not a second transcription. The old
+output is removed with the legacy crates only after the black-box differential migration is
+complete. The dependency-free projection records rule references as private JLReq strings
+rather than importing the legacy `RuleId` vocabulary.
 
 Both are byte-identity gates, both are dependency-free, and both run in CI on every commit.
 Adding a derived file is one entry in `DERIVATIONS`; adding a generated one is one entry in

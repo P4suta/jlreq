@@ -12,6 +12,7 @@ pub(crate) mod appendix_a;
 pub(crate) mod folding;
 pub(crate) mod ideograph;
 pub(crate) mod script;
+pub(crate) mod table1;
 
 const LISTING_COUNT: usize = 1_686;
 const DISTINCT_KEY_COUNT: usize = 1_133;
@@ -22,6 +23,7 @@ const IDEOGRAPH_COUNT: u32 = 101_996;
 const FOLD_COUNT: usize = 226;
 const SCRIPT_RANGE_COUNT: usize = 22;
 const CLASS_COUNT: u8 = 30;
+const TABLE_WITH_LINE_EDGE_COUNT: usize = 841;
 
 const ALL_FRAMES: u8 = appendix_a::FRAME_FULL_EM
     | appendix_a::FRAME_HALF_EM
@@ -126,6 +128,32 @@ const _: () = {
                 &appendix_a::LISTINGS[index.saturating_sub(1)],
                 listing
             ));
+        }
+        index = index.saturating_add(1);
+    }
+};
+
+const _: () = assert!(table1::CELLS.len() == TABLE_WITH_LINE_EDGE_COUNT);
+const _: () = {
+    let mut index = 0_usize;
+    while index < table1::CELLS.len() {
+        let cell = &table1::CELLS[index];
+        assert!(cell.before <= CLASS_COUNT && cell.after <= CLASS_COUNT);
+        assert!(cell.before != 17 && cell.before != 18);
+        assert!(cell.after != 17 && cell.after != 18);
+        assert!(cell.terms.len() <= 2);
+        let _ = cell.prohibited;
+        let _ = cell.rule;
+        match cell.hang {
+            crate::spec::RawHang::None
+            | crate::spec::RawHang::OverSpace
+            | crate::spec::RawHang::OverCharacter => {},
+        }
+        let mut term = 0_usize;
+        while term < cell.terms.len() {
+            let _ = cell.terms[term].trailing;
+            assert!(cell.terms[term].amount >= 0 && cell.terms[term].amount <= 720);
+            term = term.saturating_add(1);
         }
         index = index.saturating_add(1);
     }

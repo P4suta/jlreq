@@ -13,7 +13,7 @@
 //! - Source SHA-256: `d4864a39d1fe165269aa18608f5d3ed74fa21c8510d462afd6f86e9bba57d00e`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `4b9ee91056000031fce83c7745f05ec8b25f69e28a048a1e84d51548f66ab331`
+//! - Generator SHA-256: `3cf271a8ac1db005d1c3c7361915c47183fc6d68fdb0800de40ea9cf4dff48b1`
 //! - Entries: 22
 
 /// The `Script=Hiragana` tag.

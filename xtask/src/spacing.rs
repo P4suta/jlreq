@@ -49,6 +49,15 @@ pub(crate) const TABLE1: Unit = Unit {
     emit: emit_table1,
 };
 
+/// Table 1 behind the sole public library's dependency-free private boundary.
+pub(crate) const KUMIHAN_TABLE1: Unit = Unit {
+    input: "spec/captured/table1.en.tsv",
+    generator: &["xtask/src/spacing.rs"],
+    output: "crates/kumihan/src/generated/table1.rs",
+    summary: "Table 1, \"Spacing between Characters\" (Appendix B).",
+    emit: emit_kumihan_table1,
+};
+
 /// Table 2, "Possibilities for Line-breaking between Characters" (Appendix C).
 pub(crate) const TABLE2: Unit = Unit {
     input: "spec/captured/table2.en.tsv",
@@ -300,6 +309,36 @@ fn emit_table1(table: &Table) -> Result<Emission, String> {
             items,
             "    RawSpacingCell {{\n        before: {before},\n        after: {after},\n        \
              prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule},\n        \
+             {terms_field}    }},\n",
+            terms_field = render_terms(&terms),
+        );
+        entries = entries.saturating_add(1);
+    }
+    items.push_str("];\n");
+    Ok(Emission { items, entries })
+}
+
+/// Emit Table 1 for `kumihan`, retaining observable JLReq references without `RuleId`.
+fn emit_kumihan_table1(table: &Table) -> Result<Emission, String> {
+    let rows = rows(table)?;
+    let mut items = String::from(
+        "use crate::spec::{RawHang, RawSpacingCell, RawTerm, em};\n\n\
+         /// Table 1's cells, in the order the transcription was read.\n\
+         ///\n\
+         /// JLReq: §B.1\n\
+         pub(crate) static CELLS: &[RawSpacingCell] = &[\n",
+    );
+    let mut entries = 0usize;
+    for row in &rows {
+        let before = axis(row.before)?;
+        let after = axis(row.after)?;
+        let (prohibited, hang, terms) = spacing_cell(row)
+            .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
+        let rule = if row.note.is_empty() { "B.1" } else { row.note };
+        let _ = write!(
+            items,
+            "    RawSpacingCell {{\n        before: {before},\n        after: {after},\n        \
+             prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule:?},\n        \
              {terms_field}    }},\n",
             terms_field = render_terms(&terms),
         );

@@ -350,6 +350,47 @@ fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
 }
 
 #[test]
+fn table_one_spaces_japanese_and_western_text_by_the_referents_em() {
+    fn positions(source: &str) -> (Vec<i32>, i32) {
+        let clusters = source.char_indices().map(|(start, character)| {
+            let cluster = Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character.is_ascii() { 400 } else { 1_000 },
+            );
+            if character.is_ascii() {
+                cluster
+                    .with_frame(Frame::Proportional)
+                    .with_size(Size::square(400).expect("positive Western size"))
+            } else {
+                cluster
+            }
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive Japanese size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid mixed-size text");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .build()
+            .expect("valid mixed-size paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        (
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect(),
+            line.inline_extent(),
+        )
+    }
+
+    assert_eq!(positions("日A"), (vec![0, 1_250], 1_650));
+    assert_eq!(positions("A日"), (vec![0, 650], 1_650));
+}
+
+#[test]
 fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
     fn positions(
         source: &str,
@@ -1391,10 +1432,14 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
 
 #[test]
 fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
-    fn positions(constructs: impl IntoIterator<Item = Construct>, mode: WritingMode) -> Vec<i32> {
+    fn positions(
+        constructs: impl IntoIterator<Item = Construct>,
+        mode: WritingMode,
+        inline_extent: i32,
+    ) -> Vec<i32> {
         let paragraph = Paragraph::builder(
             shaped("日本語文", Frame::FullEm, 1_000).expect("valid construct-run fixture"),
-            3_250,
+            inline_extent,
         )
         .constructs(constructs)
         .breaks([Break::mandatory(9)])
@@ -1417,13 +1462,18 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
                 Construct::script(3..6, mark.clone()),
             ],
             WritingMode::HorizontalTb,
+            3_500,
         ),
-        [0, 1_250, 2_250],
+        [0, 1_250, 2_500],
         "a distinct ornamented complex receives the quarter-em third-order opportunity first"
     );
     assert_eq!(
-        positions([Construct::script(0..6, mark)], WritingMode::HorizontalTb,),
-        [0, 1_000, 2_250],
+        positions(
+            [Construct::script(0..6, mark)],
+            WritingMode::HorizontalTb,
+            3_500,
+        ),
+        [0, 1_000, 2_500],
         "the same ornamented complex stays solid internally"
     );
 
@@ -1432,14 +1482,14 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
     let mono =
         Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
     assert_eq!(
-        positions([Construct::ruby(mono)], WritingMode::HorizontalTb),
+        positions([Construct::ruby(mono)], WritingMode::HorizontalTb, 3_250),
         [0, 1_250, 2_250],
         "each mono-ruby association is a distinct simple-ruby complex"
     );
 
     let jukugo = Ruby::new(RubyKind::Jukugo, 0..6, annotation, runs).expect("valid jukugo ruby");
     assert_eq!(
-        positions([Construct::ruby(jukugo)], WritingMode::HorizontalTb),
+        positions([Construct::ruby(jukugo)], WritingMode::HorizontalTb, 3_250,),
         [0, 1_000, 2_250],
         "one jukugo-ruby compound has no internal expansion opportunity"
     );
@@ -1451,6 +1501,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
                 Construct::tate_chu_yoko(3..6),
             ],
             WritingMode::VerticalRl,
+            3_250,
         ),
         [0, 1_250, 2_250],
         "distinct tate-chu-yoko runs receive the quarter-em opportunity"
@@ -1493,7 +1544,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
     )
     .expect("valid mixed-size complex fixture");
     let mark = shaped("注", Frame::FullEm, 500).expect("valid mixed-size annotation");
-    let mixed = Paragraph::builder(mixed, 4_500)
+    let mixed = Paragraph::builder(mixed, 4_750)
         .constructs([
             Construct::script(0..3, mark.clone()),
             Construct::script(3..6, mark.clone()),
@@ -1510,7 +1561,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
             .iter()
             .map(kumihan::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
-        [0, 1_200, 2_500, 3_500],
+        [0, 1_200, 2_500, 3_750],
         "third-order shares use each preceding complex member's em: 200 then 300"
     );
 }

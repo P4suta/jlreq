@@ -171,6 +171,7 @@ const UNITS: &[Unit] = &[
     inventory::RULE_INVENTORY,
     policy::POLICY_SPACE_UNIT,
     spacing::TABLE1,
+    spacing::KUMIHAN_TABLE1,
     spacing::TABLE2,
     spacing::TABLE3,
     spacing::TABLE4,
