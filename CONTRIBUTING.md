@@ -24,6 +24,11 @@ answer is not the answer CI gets, which makes it worthless in both directions.
 `mise exec -- just ci` is also the pre-push hook. If it passes locally it passes in CI; if
 it fails, fix the cause rather than narrowing the gate.
 
+`just fuzz-check` compiles the separate nightly public-API harness on Windows and runs a
+bounded libFuzzer plus sanitizer workload on Unix. The required Linux CI job always takes
+the latter path; continue an exploratory run with `cargo +nightly fuzz run public_api`
+from `fuzz/`.
+
 ## Rules that are not negotiable
 
 - **No `allow` and no `ignore`.** Every gate is strict on purpose. Make the code pass

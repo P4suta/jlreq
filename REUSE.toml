@@ -11,6 +11,7 @@ path = [
   "**/*.md",
   "docs/design/address-corpus.tsv",
   "Cargo.lock",
+  "fuzz/Cargo.lock",
   ".gitignore",
   "fuzz/.gitignore",
   ".github/CODEOWNERS",

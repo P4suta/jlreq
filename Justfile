@@ -72,6 +72,13 @@ wasm:
     rustup target add wasm32-unknown-unknown
     cargo check {{core_crates}} --target wasm32-unknown-unknown --no-default-features
 
+# Exercise malformed and extreme public inputs under libFuzzer and sanitizers. The target
+# is a separate nightly workspace, so none of its dependencies enter the product graph.
+# cargo-fuzz's MSVC runtime does not execute reliably; Windows still compiles the exact
+# harness, while the required Linux CI job performs the bounded sanitizer run.
+fuzz-check:
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bin public_api" } else { "cargo +nightly fuzz run public_api --fuzz-dir fuzz -- -runs=10000" } }}
+
 # Reject std, I/O, and font dependencies in the layout core (docs/adr/0001).
 purity:
     cargo run --quiet -p xtask -- purity
@@ -200,5 +207,5 @@ check: fmt-check toml-check typos lint design shear reuse actionlint zizmor
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc no-std wasm design deny shear reuse actionlint zizmor msrv
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv
     @echo "local CI passed"

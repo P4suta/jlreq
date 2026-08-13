@@ -164,6 +164,23 @@ jobs:
       # test of whether the boundary in docs/adr/0003 still holds.
       - run: just wasm
 
+  fuzz:
+    name: fuzz (public API invariants)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # nightly
+        with:
+          toolchain: nightly
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0,cargo-fuzz@0.13.2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: fuzz -> target
+      - run: just fuzz-check
+
   purity:
     name: purity (no std, I/O, font, or float in the core)
     runs-on: ubuntu-latest
@@ -304,6 +321,7 @@ jobs:
       - feature-matrix
       - no_std
       - wasm
+      - fuzz
       - purity
       - design
       - doc
