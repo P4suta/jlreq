@@ -5,7 +5,10 @@
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
-use crate::{Construct, InputError, ShapedText, WritingMode, construct::ConstructKind};
+use crate::{
+    Construct, InputError, ShapedText, WritingMode,
+    construct::{ConstructKind, is_math_token},
+};
 
 /// The semantic kind of a caller-supplied line-break opportunity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -327,6 +330,7 @@ impl ParagraphBuilder {
 
         validate_constructs(&self.text, &self.constructs)?;
         validate_breaks(&self.text, &self.constructs, &mut self.breaks)?;
+        validate_construct_breaks(&self.text, &self.constructs, &self.breaks)?;
         validate_tabs(self.line_extent, &mut self.tab_stops)?;
 
         Ok(Paragraph {
@@ -398,6 +402,13 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
                     "furawake needs at least one column",
                 ));
             },
+            ConstructKind::Furawake { line_gap, .. } if *line_gap < 0 => {
+                return Err(InputError::new(
+                    "input.invalid-furawake-line-gap",
+                    Some(range),
+                    "furawake line gap must not be negative",
+                ));
+            },
             ConstructKind::Jidori { cells, .. } if *cells == 0 => {
                 return Err(InputError::new(
                     "input.invalid-jidori-cells",
@@ -450,7 +461,7 @@ fn validate_breaks(
             let range = construct.range();
             if range.start < opportunity.offset
                 && opportunity.offset < range.end
-                && !construct_allows_break(construct, opportunity.offset)
+                && !construct_allows_break(text, construct, opportunity.offset)
             {
                 return Err(InputError::new(
                     "input.break-inside-construct",
@@ -480,15 +491,79 @@ fn validate_breaks(
     Ok(())
 }
 
-fn construct_allows_break(construct: &Construct, at: usize) -> bool {
+fn construct_allows_break(text: &ShapedText, construct: &Construct, at: usize) -> bool {
     match construct.kind() {
         ConstructKind::Ruby(ruby) => {
             ruby.kind() != crate::RubyKind::Group
                 && ruby.runs().iter().any(|run| run.base().end == at)
         },
-        ConstructKind::Emphasis { .. } | ConstructKind::Warichu(_) => true,
+        ConstructKind::Emphasis { .. }
+        | ConstructKind::Warichu(_)
+        | ConstructKind::Furawake { .. } => true,
+        ConstructKind::Formula(range) => {
+            let before = text
+                .clusters()
+                .iter()
+                .find(|cluster| cluster.range().end == at)
+                .and_then(|cluster| single_cluster_character(text, cluster));
+            let after = text
+                .clusters()
+                .iter()
+                .find(|cluster| cluster.range().start == at)
+                .and_then(|cluster| single_cluster_character(text, cluster));
+            range.start < at
+                && at < range.end
+                && (before.is_some_and(is_math_token) || after.is_some_and(is_math_token))
+        },
         _ => false,
     }
+}
+
+fn validate_construct_breaks(
+    text: &ShapedText,
+    constructs: &[Construct],
+    breaks: &[Break],
+) -> Result<(), InputError> {
+    for construct in constructs {
+        let ConstructKind::Furawake { range, columns, .. } = construct.kind() else {
+            continue;
+        };
+        let split_count = breaks
+            .iter()
+            .filter(|opportunity| {
+                range.start < opportunity.offset && opportunity.offset < range.end
+            })
+            .count();
+        if split_count != usize::from(columns.saturating_sub(1)) {
+            return Err(InputError::new(
+                "input.furawake-split-count",
+                Some(range.clone()),
+                "furawake needs exactly one declared split between adjacent sublines",
+            ));
+        }
+        if usize::from(*columns)
+            > text
+                .clusters()
+                .iter()
+                .filter(|cluster| {
+                    range.start <= cluster.range().start && cluster.range().end <= range.end
+                })
+                .count()
+        {
+            return Err(InputError::new(
+                "input.furawake-empty-subline",
+                Some(range.clone()),
+                "every furawake subline must contain at least one shaped cluster",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn single_cluster_character(text: &ShapedText, cluster: &crate::Cluster) -> Option<char> {
+    let mut characters = text.source()[cluster.range()].chars();
+    let character = characters.next()?;
+    characters.next().is_none().then_some(character)
 }
 
 fn validate_tabs(line_extent: i32, stops: &mut Vec<TabStop>) -> Result<(), InputError> {

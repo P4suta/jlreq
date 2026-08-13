@@ -60,14 +60,14 @@ placement rules, including local direction changes such as tate-chu-yoko.
 
 ## Remaining conformance work
 
-The legacy inventory currently reports 15 deferred rules and six evidence-backed
+The legacy inventory currently reports 13 deferred rules and six evidence-backed
 editorial/non-observable classifications. Highest-priority implementation groups are:
 
 1. complete spacing/classification parity with generated Appendix tables in the unified
    pipeline;
 2. ruby overhang fixpoint, long group ruby, phonetic jukugo, and Appendix F;
-3. full lowering, line interaction, and physical placement for furawake, jidori,
-   reference marks, scripts, and formulae;
+3. full lowering, line interaction, and physical placement for jidori, reference marks,
+   and scripts;
 4. construct-aware expansion/reduction in paragraph search;
 5. remaining vertical-writing-specific rules and exact physical transforms;
 6. translate all applicable legacy cases to protocol-v1 black-box requests and responses;

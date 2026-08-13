@@ -248,6 +248,7 @@ fn parse_construct(value: &Value) -> Result<Construct, String> {
         "furawake" => Ok(Construct::furawake(
             range()?,
             u16_integer(entry, "columns")?,
+            integer(entry, "line_gap")?,
         )),
         "jidori" => Ok(Construct::jidori(range()?, u16_integer(entry, "cells")?)),
         "reference-mark" => Ok(Construct::reference_mark(

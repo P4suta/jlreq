@@ -82,11 +82,11 @@ whole-paragraph optimization.
 | `tate_chu_yoko` | upright horizontal span in vertical writing |
 | `emphasis_dots` | repeated emphasis marks |
 | `warichu` | inline cutting note |
-| `furawake` | distribution into an explicit number of columns |
+| `furawake` | distribution at declared breaks into an explicit number of sublines and line gap |
 | `jidori` | fit into an explicit number of full-em cells |
 | `reference_mark` | shaped reference mark attached to a base |
 | `script` | shaped subscript/superscript complex |
-| `formula` | indivisible shaped formula span |
+| `formula` | shaped formula span with math-token break opportunities |
 
 Ruby alone has public supporting types: `Ruby`, `RubyKind`, and `RubyRun`. The annotation is
 another `ShapedText`; runs map base ranges to annotation ranges. Internal runs,

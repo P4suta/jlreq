@@ -170,11 +170,12 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "range", "columns"],
+          "required": ["kind", "range", "columns", "line_gap"],
           "properties": {
             "kind": { "const": "furawake" },
             "range": { "$ref": "#/$defs/range" },
-            "columns": { "type": "integer", "minimum": 1, "maximum": 65535 }
+            "columns": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "line_gap": { "$ref": "#/$defs/nonNegativeI32" }
           }
         },
         {

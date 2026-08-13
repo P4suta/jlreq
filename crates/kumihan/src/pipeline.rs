@@ -9,7 +9,7 @@ use crate::{
     Alignment, Attachment, ClusterPlacement, ClusterRole, CoordinateTransform, Diagnostic, Frame,
     Layout, Line, Paragraph, PlacementOrigin, Severity, Size, Style, TabAlignment, Widow,
     WritingMode,
-    construct::ConstructKind,
+    construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
     style::{AdjustmentPreference, KinsokuLevel, Remainder, RubyAlignment},
 };
 
@@ -39,6 +39,16 @@ struct WarichuSegment {
     first_width: i32,
     second_width: i32,
     advance: i32,
+}
+
+#[derive(Debug, Clone)]
+struct FurawakeSegment {
+    range: Range<usize>,
+    lanes: Vec<Range<usize>>,
+    block_extents: Vec<i32>,
+    line_gap: i32,
+    advance: i32,
+    block_extent: i32,
 }
 
 /// A reusable whole-paragraph composer.
@@ -85,12 +95,17 @@ impl Composer {
             mandatory: true,
             discretionary: false,
         });
-        self.candidates
-            .extend(paragraph.breaks.iter().map(|opportunity| Candidate {
-                offset: opportunity.offset(),
-                mandatory: opportunity.is_mandatory(),
-                discretionary: opportunity.is_discretionary(),
-            }));
+        self.candidates.extend(
+            paragraph
+                .breaks
+                .iter()
+                .filter(|opportunity| !is_internal_furawake_offset(paragraph, opportunity.offset()))
+                .map(|opportunity| Candidate {
+                    offset: opportunity.offset(),
+                    mandatory: opportunity.is_mandatory(),
+                    discretionary: opportunity.is_discretionary(),
+                }),
+        );
     }
 
     fn search(&mut self, paragraph: &Paragraph, style: &Style) {
@@ -137,6 +152,7 @@ impl Composer {
                     cost = cost.saturating_add(100_000);
                 }
                 cost = cost.saturating_add(warichu_break_penalty(paragraph, candidate.offset));
+                cost = cost.saturating_add(formula_break_penalty(paragraph, candidate.offset));
                 if is_last {
                     cost = cost.saturating_add(widow_penalty(
                         paragraph,
@@ -291,7 +307,16 @@ impl Composer {
         while local < clusters.len() {
             let ordinal = start_cluster.saturating_add(local);
             let previous_ordinal;
-            if let Some(group) = warichu_cluster_range(paragraph, ordinal)
+            if let Some((group, columns, line_gap)) = furawake_cluster_range(paragraph, ordinal)
+                && group.start == ordinal
+            {
+                let segment = furawake_segment(paragraph, group, columns, line_gap, end_cluster);
+                previous_ordinal = segment.range.end.saturating_sub(1);
+                block_extent = block_extent.max(segment.block_extent);
+                place_furawake_segment(paragraph, &segment, cursor, block_origin, &mut placed);
+                cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
+                local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
+            } else if let Some(group) = warichu_cluster_range(paragraph, ordinal)
                 && group.start.max(start_cluster) == ordinal
             {
                 let segment = warichu_segment(paragraph, group, start_cluster, end_cluster);
@@ -443,6 +468,54 @@ fn warichu_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<
     )
 }
 
+fn furawake_cluster_range(
+    paragraph: &Paragraph,
+    ordinal: usize,
+) -> Option<(Range<usize>, u16, i32)> {
+    let cluster = paragraph.text.clusters().get(ordinal)?.range();
+    let (range, columns, line_gap) = paragraph.constructs.iter().find_map(|construct| {
+        let ConstructKind::Furawake {
+            range,
+            columns,
+            line_gap,
+        } = construct.kind()
+        else {
+            return None;
+        };
+        (range.start <= cluster.start && cluster.end <= range.end)
+            .then_some((range, *columns, *line_gap))
+    })?;
+    Some((
+        cluster_index_at_or_after(paragraph, range.start)
+            ..cluster_index_at_or_after(paragraph, range.end),
+        columns,
+        line_gap,
+    ))
+}
+
+fn formula_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
+    let cluster = paragraph.text.clusters().get(ordinal)?.range();
+    let range = paragraph.constructs.iter().find_map(|construct| {
+        let ConstructKind::Formula(range) = construct.kind() else {
+            return None;
+        };
+        (range.start <= cluster.start && cluster.end <= range.end).then_some(range)
+    })?;
+    Some(
+        cluster_index_at_or_after(paragraph, range.start)
+            ..cluster_index_at_or_after(paragraph, range.end),
+    )
+}
+
+fn is_internal_furawake_offset(paragraph: &Paragraph, offset: usize) -> bool {
+    paragraph.constructs.iter().any(|construct| {
+        let ConstructKind::Furawake { range, .. } = construct.kind() else {
+            return false;
+        };
+        range.start < offset && offset < range.end
+    })
+}
+
 fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
     let Some(cluster) = paragraph.text.clusters().get(before) else {
         return false;
@@ -452,7 +525,10 @@ fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
         .constructs
         .iter()
         .any(|construct| match construct.kind() {
-            ConstructKind::TateChuYoko(range) | ConstructKind::Warichu(range) => {
+            ConstructKind::TateChuYoko(range)
+            | ConstructKind::Warichu(range)
+            | ConstructKind::Formula(range)
+            | ConstructKind::Furawake { range, .. } => {
                 range.start < boundary && boundary < range.end
             },
             ConstructKind::Ruby(ruby) => {
@@ -482,6 +558,24 @@ fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
 }
 
 fn effective_cluster_body_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
+    if let Some((group, columns, line_gap)) = furawake_cluster_range(paragraph, ordinal) {
+        if group.start != ordinal {
+            return 0;
+        }
+        furawake_segment(
+            paragraph,
+            group,
+            columns,
+            line_gap,
+            paragraph.text.clusters().len(),
+        )
+        .advance
+    } else {
+        nested_cluster_body_advance(paragraph, ordinal)
+    }
+}
+
+fn nested_cluster_body_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
     if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal) {
         if group.start != ordinal {
             return 0;
@@ -496,6 +590,14 @@ fn effective_cluster_body_advance(paragraph: &Paragraph, ordinal: usize) -> i32 
             })
             .max()
             .unwrap_or(0)
+    } else if formula_cluster_range(paragraph, ordinal).is_some()
+        && single_cluster_character(paragraph, &paragraph.text.clusters()[ordinal])
+            .is_some_and(is_math_token)
+    {
+        paragraph.text.clusters()[ordinal]
+            .size_override()
+            .unwrap_or(paragraph.text.size())
+            .inline()
     } else {
         paragraph.text.clusters()[ordinal].advance()
     }
@@ -507,12 +609,23 @@ fn effective_cluster_advance_on_line(
     line_start: usize,
     line_end: usize,
 ) -> i32 {
+    if let Some((group, columns, line_gap)) = furawake_cluster_range(paragraph, ordinal) {
+        if ordinal != group.start {
+            return 0;
+        }
+        return furawake_segment(paragraph, group, columns, line_gap, line_end).advance;
+    }
     if let Some(group) = warichu_cluster_range(paragraph, ordinal) {
         let segment_start = group.start.max(line_start);
         if ordinal != segment_start {
             return 0;
         }
         return warichu_segment(paragraph, group, line_start, line_end).advance;
+    }
+    if ordinal.saturating_add(1) == line_end
+        && formula_boundary_space_after(paragraph, ordinal).is_some()
+    {
+        return effective_cluster_body_advance(paragraph, ordinal);
     }
     if is_western_word_space(paragraph, ordinal)
         && (ordinal == line_start || ordinal.saturating_add(1) == line_end)
@@ -534,6 +647,7 @@ fn is_western_word_space(paragraph: &Paragraph, ordinal: usize) -> bool {
 
 fn boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> i32 {
     tate_chu_yoko_boundary_space_after(paragraph, ordinal)
+        .or_else(|| formula_boundary_space_after(paragraph, ordinal))
         .unwrap_or_else(|| ordinary_boundary_space_after(paragraph, ordinal))
 }
 
@@ -631,6 +745,239 @@ fn contextual_punctuation_is_solid(
         },
         _ => false,
     }
+}
+
+fn formula_boundary_space_after(paragraph: &Paragraph, ordinal: usize) -> Option<i32> {
+    let clusters = paragraph.text.clusters();
+    let following_ordinal = ordinal.saturating_add(1);
+    let current_formula = formula_cluster_range(paragraph, ordinal);
+    let following_formula = formula_cluster_range(paragraph, following_ordinal);
+    if current_formula.is_none() && following_formula.is_none() {
+        return None;
+    }
+    let current = clusters.get(ordinal)?;
+    let following = clusters.get(following_ordinal)?;
+
+    match (current_formula, following_formula) {
+        (Some(current_range), Some(following_range)) if current_range == following_range => {
+            if current_range.start == 0 && current_range.end == clusters.len() {
+                let current_character = single_cluster_character(paragraph, current);
+                let following_character = single_cluster_character(paragraph, following);
+                let symbol_boundary = current_character.is_some_and(is_math_symbol)
+                    ^ following_character.is_some_and(is_math_symbol);
+                if symbol_boundary {
+                    let symbol = if current_character.is_some_and(is_math_symbol) {
+                        current
+                    } else {
+                        following
+                    };
+                    return Some(quarter_inline_size(paragraph, symbol));
+                }
+                if current_character.is_some_and(is_math_operator)
+                    || following_character.is_some_and(is_math_operator)
+                {
+                    return Some(0);
+                }
+            }
+            Some(0)
+        },
+        (None, Some(range)) if range.start == following_ordinal => {
+            Some(formula_outer_boundary_space(paragraph, current, following))
+        },
+        (Some(range), None) if range.end == following_ordinal => {
+            Some(formula_outer_boundary_space(paragraph, following, current))
+        },
+        _ => Some(0),
+    }
+}
+
+fn formula_outer_boundary_space(
+    paragraph: &Paragraph,
+    outside: &crate::Cluster,
+    endpoint: &crate::Cluster,
+) -> i32 {
+    if is_japanese_formula_neighbor(paragraph, outside)
+        && formula_endpoint_needs_quarter(paragraph, endpoint)
+    {
+        quarter_inline_size(paragraph, endpoint)
+    } else {
+        0
+    }
+}
+
+fn formula_endpoint_needs_quarter(paragraph: &Paragraph, cluster: &crate::Cluster) -> bool {
+    let character = single_cluster_character(paragraph, cluster);
+    !character.is_some_and(is_math_token)
+        && (cluster.frame_override().unwrap_or(paragraph.text.frame()) == Frame::Proportional
+            || cluster.role() == Some(ClusterRole::GroupedNumeral))
+}
+
+fn is_japanese_formula_neighbor(paragraph: &Paragraph, cluster: &crate::Cluster) -> bool {
+    if cluster.frame_override().unwrap_or(paragraph.text.frame()) == Frame::Proportional {
+        return false;
+    }
+    single_cluster_character(paragraph, cluster).is_some_and(|character| {
+        !character.is_whitespace()
+            && !is_opening_bracket(character)
+            && !is_closing_bracket(character)
+            && !is_full_stop(character)
+            && !is_comma(character)
+            && !is_middle_dot(character)
+            && !is_math_token(character)
+    })
+}
+
+fn furawake_segment(
+    paragraph: &Paragraph,
+    range: Range<usize>,
+    columns: u16,
+    line_gap: i32,
+    line_end: usize,
+) -> FurawakeSegment {
+    let mut lanes = Vec::with_capacity(usize::from(columns));
+    let start_offset = paragraph.text.clusters()[range.start].range().start;
+    let end_offset = paragraph.text.clusters()[range.end.saturating_sub(1)]
+        .range()
+        .end;
+    let mut start = range.start;
+    for opportunity in paragraph.breaks.iter().filter(|opportunity| {
+        start_offset < opportunity.offset() && opportunity.offset() < end_offset
+    }) {
+        let split = cluster_index_at_or_after(paragraph, opportunity.offset());
+        lanes.push(start..split);
+        start = split;
+    }
+    lanes.push(start..range.end);
+
+    let widths: Vec<_> = lanes
+        .iter()
+        .map(|lane| construct_lane_width(paragraph, lane))
+        .collect();
+    let block_extents: Vec<_> = lanes
+        .iter()
+        .map(|lane| construct_lane_block_extent(paragraph, lane))
+        .collect();
+    let block_extent = block_extents
+        .iter()
+        .copied()
+        .fold(0_i32, i32::saturating_add)
+        .saturating_add(
+            line_gap
+                .saturating_mul(i32::try_from(lanes.len().saturating_sub(1)).unwrap_or(i32::MAX)),
+        );
+    let outer_space = if range.end < line_end {
+        boundary_space_after(paragraph, range.end.saturating_sub(1))
+    } else {
+        0
+    };
+    let advance = widths
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(0)
+        .saturating_add(outer_space);
+    FurawakeSegment {
+        range,
+        lanes,
+        block_extents,
+        line_gap,
+        advance,
+        block_extent,
+    }
+}
+
+fn construct_lane_width(paragraph: &Paragraph, lane: &Range<usize>) -> i32 {
+    lane.clone().fold(0_i32, |sum, ordinal| {
+        let logical_end = tate_chu_yoko_cluster_range(paragraph, ordinal)
+            .map_or_else(|| ordinal.saturating_add(1), |group| group.end);
+        let boundary = if logical_end < lane.end {
+            boundary_space_after(paragraph, ordinal)
+        } else {
+            0
+        };
+        sum.saturating_add(nested_cluster_body_advance(paragraph, ordinal))
+            .saturating_add(boundary)
+    })
+}
+
+fn construct_lane_block_extent(paragraph: &Paragraph, lane: &Range<usize>) -> i32 {
+    paragraph.text.clusters()[lane.clone()]
+        .iter()
+        .map(|cluster| {
+            cluster
+                .size_override()
+                .unwrap_or(paragraph.text.size())
+                .block()
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+fn place_furawake_segment(
+    paragraph: &Paragraph,
+    segment: &FurawakeSegment,
+    inline: i64,
+    block_origin: i32,
+    placed: &mut Vec<ClusterPlacement>,
+) {
+    let main_block_extent = paragraph.text.size().block();
+    let mut block = match paragraph.writing_mode {
+        WritingMode::HorizontalTb => i64::from(block_origin).saturating_add(i64::from(
+            main_block_extent.saturating_sub(segment.block_extent) / 2,
+        )),
+        WritingMode::VerticalRl => i64::from(block_origin).saturating_add(i64::from(
+            segment.block_extent.saturating_sub(main_block_extent) / 2,
+        )),
+    };
+    for (lane_index, lane) in segment.lanes.iter().enumerate() {
+        let mut cursor = inline;
+        for ordinal in lane.clone() {
+            let logical_end = tate_chu_yoko_cluster_range(paragraph, ordinal)
+                .map_or_else(|| ordinal.saturating_add(1), |group| group.end);
+            let boundary = if logical_end < lane.end {
+                boundary_space_after(paragraph, ordinal)
+            } else {
+                0
+            };
+            let advance = nested_cluster_body_advance(paragraph, ordinal).saturating_add(boundary);
+            place_construct_member(paragraph, ordinal, cursor, block, advance, placed);
+            cursor = cursor.saturating_add(i64::from(advance));
+        }
+        let step = segment.block_extents[lane_index].saturating_add(segment.line_gap);
+        match paragraph.writing_mode {
+            WritingMode::HorizontalTb => {
+                block = block.saturating_add(i64::from(step));
+            },
+            WritingMode::VerticalRl => {
+                block = block.saturating_sub(i64::from(step));
+            },
+        }
+    }
+}
+
+fn place_construct_member(
+    paragraph: &Paragraph,
+    ordinal: usize,
+    inline: i64,
+    block: i64,
+    advance: i32,
+    placed: &mut Vec<ClusterPlacement>,
+) {
+    let cluster = &paragraph.text.clusters()[ordinal];
+    let size = cluster.size_override().unwrap_or(paragraph.text.size());
+    let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
+    let (writing_mode, transform) = local_orientation(paragraph, ordinal, frame);
+    placed.push(ClusterPlacement {
+        origin: PlacementOrigin::Cluster(ordinal),
+        range: cluster.range(),
+        inline: clamp_i32(inline),
+        block: clamp_i32(block),
+        advance,
+        size,
+        frame,
+        writing_mode,
+        transform,
+    });
 }
 
 fn warichu_segment(
@@ -885,6 +1232,30 @@ fn warichu_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
             )
         })
         .fold(0_i64, i64::saturating_add)
+}
+
+fn formula_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
+    let is_independent_formula = paragraph.constructs.iter().any(|construct| {
+        matches!(
+            construct.kind(),
+            ConstructKind::Formula(range)
+                if range.start == 0
+                    && range.end == paragraph.text.source().len()
+                    && range.start < offset
+                    && offset < range.end
+        )
+    });
+    if !is_independent_formula {
+        return 0;
+    }
+    let after = paragraph.text.source()[offset..].chars().next();
+    if after.is_some_and(is_math_symbol) {
+        0
+    } else if after.is_some_and(is_math_operator) {
+        100_000_000
+    } else {
+        200_000_000
+    }
 }
 
 fn single_cluster_character(paragraph: &Paragraph, cluster: &crate::Cluster) -> Option<char> {

@@ -181,6 +181,7 @@ pub(crate) enum ConstructKind {
     Furawake {
         range: Range<usize>,
         columns: u16,
+        line_gap: i32,
     },
     Jidori {
         range: Range<usize>,
@@ -230,11 +231,19 @@ impl Construct {
         }
     }
 
-    /// Distribute a byte range across the requested number of inline columns.
+    /// Distribute a byte range across the requested number of aligned sublines.
+    ///
+    /// Paragraph break opportunities strictly inside the range declare the boundaries
+    /// between those sublines. The line gap is the non-negative block-axis gap between
+    /// adjacent sublines.
     #[must_use]
-    pub const fn furawake(range: Range<usize>, columns: u16) -> Self {
+    pub const fn furawake(range: Range<usize>, columns: u16, line_gap: i32) -> Self {
         Self {
-            kind: ConstructKind::Furawake { range, columns },
+            kind: ConstructKind::Furawake {
+                range,
+                columns,
+                line_gap,
+            },
         }
     }
 
@@ -262,7 +271,9 @@ impl Construct {
         }
     }
 
-    /// Treat a pre-shaped math range as one unbreakable inline structure.
+    /// Treat a pre-shaped math range as one formula structure.
+    ///
+    /// Declared paragraph breaks are accepted only next to a math symbol or operator.
     #[must_use]
     pub const fn formula(range: Range<usize>) -> Self {
         Self {
@@ -289,4 +300,16 @@ impl Construct {
     pub(crate) const fn kind(&self) -> &ConstructKind {
         &self.kind
     }
+}
+
+pub(crate) fn is_math_symbol(character: char) -> bool {
+    "=≠≒≃≅≈≡≢<>≦≧≪≫≶≷⋚⋛∧∨⌅⌆⊂⊃⊄⊅⊆⊇⊊⊋∈∋∉∪∩∥∦⇒⇔↔∽∝⊥⊕⊗＝＜＞".contains(character)
+}
+
+pub(crate) fn is_math_operator(character: char) -> bool {
+    "+−×÷±∓＋－".contains(character)
+}
+
+pub(crate) fn is_math_token(character: char) -> bool {
+    is_math_symbol(character) || is_math_operator(character)
 }

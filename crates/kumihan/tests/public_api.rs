@@ -105,7 +105,7 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
         Construct::tate_chu_yoko(0..3),
         Construct::emphasis_dots(0..3, '・'),
         Construct::warichu(0..3),
-        Construct::furawake(0..3, 2),
+        Construct::furawake(0..3, 1, 0),
         Construct::jidori(0..3, 2),
         Construct::reference_mark(0..3, annotation.clone()),
         Construct::script(0..3, annotation),
@@ -613,6 +613,145 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
 }
 
 #[test]
+fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let text = shaped("甲乙丙", Frame::FullEm, 1_000).expect("valid furiwake fixture");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .breaks([Break::mandatory(3)])
+            .constructs([Construct::furawake(0..9, 2, 200)])
+            .writing_mode(mode)
+            .build()
+            .expect("one declared split builds two furiwake lines");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 2_000);
+        assert_eq!(line.block_extent(), 2_200);
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            vec![0, 0, 1_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::block)
+                .collect::<Vec<_>>(),
+            if mode == WritingMode::HorizontalTb {
+                vec![-600, 600, 600]
+            } else {
+                vec![600, -600, -600]
+            }
+        );
+    }
+
+    let text = shaped("甲乙丙", Frame::FullEm, 1_000).expect("valid split-count fixture");
+    let error = Paragraph::builder(text, 3_000)
+        .constructs([Construct::furawake(0..9, 2, 0)])
+        .build()
+        .expect_err("two furiwake lines require one declared split");
+    assert_eq!(error.code(), "input.furawake-split-count");
+}
+
+#[test]
+fn formula_spacing_width_and_breaks_follow_math_token_context() {
+    let source = "文x=y文";
+    let clusters = [
+        Cluster::new(0..3, 1_000),
+        Cluster::new(3..4, 500)
+            .with_frame(Frame::Proportional)
+            .with_role(ClusterRole::Formula),
+        Cluster::new(4..5, 400).with_role(ClusterRole::Formula),
+        Cluster::new(5..6, 500)
+            .with_frame(Frame::Proportional)
+            .with_role(ClusterRole::Formula),
+        Cluster::new(6..9, 1_000),
+    ];
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive formula size"),
+        Frame::FullEm,
+        clusters,
+    )
+    .expect("valid inline formula");
+    let paragraph = Paragraph::builder(text, 5_000)
+        .constructs([Construct::formula(3..6)])
+        .build()
+        .expect("valid inline formula paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 1_250),
+            (1_250, 500),
+            (1_750, 1_000),
+            (2_750, 750),
+            (3_500, 1_000)
+        ]
+    );
+    assert_eq!(layout.lines()[0].inline_extent(), 4_500);
+
+    let text = shaped("a=b+c", Frame::Proportional, 500).expect("valid display formula");
+    let paragraph = Paragraph::builder(text, 5_000)
+        .constructs([Construct::formula(0..5)])
+        .build()
+        .expect("valid display formula paragraph");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::advance)
+            .collect::<Vec<_>>(),
+        vec![750, 1_250, 500, 1_000, 500],
+        "display equations have quarter-em equality spacing and solid operators"
+    );
+
+    let text = shaped("a=b", Frame::Proportional, 500).expect("valid formula break fixture");
+    let paragraph = Paragraph::builder(text, 2_000)
+        .breaks([Break::mandatory(1), Break::allowed(2)])
+        .constructs([Construct::formula(0..3)])
+        .build()
+        .expect("either side of an equality token is a valid caller-declared break");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].inline_extent(), 500);
+    assert_eq!(layout.lines()[1].inline_extent(), 1_750);
+
+    let text =
+        shaped("ab=cd+ef", Frame::Proportional, 500).expect("valid formula priority fixture");
+    let paragraph = Paragraph::builder(text, 4_500)
+        .breaks([Break::allowed(2), Break::allowed(5)])
+        .constructs([Construct::formula(0..8)])
+        .build()
+        .expect("valid independent formula alternatives");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(
+        layout
+            .lines()
+            .iter()
+            .map(kumihan::Line::range)
+            .collect::<Vec<_>>(),
+        vec![0..2, 2..8],
+        "a feasible break before an equality symbol precedes one before an operator"
+    );
+
+    let text = shaped("abc", Frame::Proportional, 500).expect("valid solid formula fixture");
+    let error = Paragraph::builder(text, 2_000)
+        .breaks([Break::allowed(1)])
+        .constructs([Construct::formula(0..3)])
+        .build()
+        .expect_err("formula letters remain indivisible away from a math token");
+    assert_eq!(error.code(), "input.break-inside-construct");
+}
+
+#[test]
 fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
     let source = "日本";
     let text = ShapedText::new(
@@ -882,12 +1021,12 @@ fn invalid_utf8_crossing_ranges_and_construct_internal_breaks_are_rejected() {
         .expect_err("constructs cross");
     assert_eq!(crossing.code(), "input.crossing-constructs");
 
-    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid formula fixture");
+    let text = shaped("abc", Frame::Proportional, 1_000).expect("valid formula fixture");
     let internal = Paragraph::builder(text, 4_000)
-        .constructs([Construct::formula(0..6)])
-        .breaks([Break::allowed(3)])
+        .constructs([Construct::formula(0..3)])
+        .breaks([Break::allowed(1)])
         .build()
-        .expect_err("formula is indivisible");
+        .expect_err("formula is indivisible away from a math token");
     assert_eq!(internal.code(), "input.break-inside-construct");
 }
 

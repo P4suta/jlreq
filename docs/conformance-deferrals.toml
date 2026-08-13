@@ -157,15 +157,15 @@ rule = "3.4.3"
 milestone = "M4"
 why = "Long warichu participate in the same whole-paragraph dynamic program as ordinary clusters. A declared internal opportunity may become a main-line break; each resulting segment is balanced independently, the opening and closing brackets stay with the outer segments, and every original shaped cluster is emitted exactly once. Protocol-v1 case 3.4.3/warichu-straddles-balanced-main-lines forces a ten-cluster note over two equal main-line segments, while the public Rust acceptance test verifies the ranges and original-source order."
 
-[[deferred]]
+[[owned]]
 rule = "3.7.2"
 milestone = "M4"
-why = "Furiwake (振分け) distributes several phrases over a given length, which `jlreq-inline` places."
+why = "The opaque furawake construct now carries the section's required subline count and caller-selected block-axis line gap, while paragraph break offsets strictly inside its range declare the exact subline boundaries. The builder rejects a missing or surplus split, and those offsets are consumed by construct lowering rather than exposed to the outer paragraph search, enforcing the prohibition on straddling main-text lines. Protocol-v1 cases 3.7.2/furawake-declared-sublines-horizontal and 3.7.2/furawake-declared-sublines-vertical measure the shared inline start, longest-subline logical advance, explicit 200-unit gap, centered 2200-unit block demand, and both physical writing directions. Character size and optional surrounding brackets remain caller-shaped inputs as the section requires."
 
-[[deferred]]
+[[owned]]
 rule = "3.7.4"
 milestone = "M4"
-why = "Math symbols and operators are set with the spacing this rule states around a formula that `jlreq-inline` builds."
+why = "The formula construct now applies the machine-observable principal method throughout the unified pipeline. Appendix A cl-17 math symbols and cl-18 operators consume one local em regardless of their supplied glyph advance. Inline formula interiors are solid, while proportional or grouped-numeral endpoints receive quarter-em boundaries against Japanese text. A formula occupying the complete paragraph uses quarter-em spacing on both sides of cl-17 and solid spacing beside cl-18; declared breaks are accepted only adjacent to those tokens, actual line breaks discard the crossed spacing, and the paragraph optimizer prefers a feasible break before cl-17 over one before cl-18. Protocol-v1 cases 3.7.4/inline-formula-full-em-symbol-and-outer-quarter-ems, 3.7.4/display-formula-equality-quarter-em-operator-solid, and 3.7.4/display-formula-prefers-break-before-equality distinguish these results. The section explicitly excludes fractions, roots, integrals, summations, and general mathematical notation; its alternative display-spacing methods and common alignment examples have no corresponding choice among JLReq 2020's 22 derived settings and are not invented as public knobs."
 
 [[non-observable]]
 rule = "3.9.3"

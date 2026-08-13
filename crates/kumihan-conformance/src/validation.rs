@@ -247,11 +247,12 @@ fn validate_construct(value: &Value, source: &str) -> Result<(), String> {
         "furawake" => {
             only_fields(
                 construct,
-                &["kind", "range", "columns"],
+                &["kind", "range", "columns", "line_gap"],
                 "furawake construct",
             )?;
             validate_source_range(construct, source, "construct range")?;
             positive_u16(construct.get("columns"), "furawake columns")?;
+            non_negative_i32(construct.get("line_gap"), "furawake line gap")?;
         },
         "jidori" => {
             only_fields(construct, &["kind", "range", "cells"], "jidori construct")?;
