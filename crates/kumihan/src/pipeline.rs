@@ -249,10 +249,9 @@ impl Composer {
             && !is_last
             && remaining > 0
             && clusters.len() > 1;
-        let logical_item_count = (start_cluster..end_cluster)
-            .filter(|ordinal| !is_tate_chu_yoko_continuation(paragraph, *ordinal))
+        let gap_count = (start_cluster..end_cluster.saturating_sub(1))
+            .filter(|ordinal| boundary_is_adjustable(paragraph, *ordinal))
             .count();
-        let gap_count = logical_item_count.saturating_sub(1);
         let gap = if justify {
             remaining
                 .checked_div(i64::try_from(gap_count).unwrap_or(1))
@@ -275,11 +274,13 @@ impl Composer {
         let mut gap_ordinal = 0_usize;
         while local < clusters.len() {
             let ordinal = start_cluster.saturating_add(local);
+            let previous_ordinal;
             if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal)
                 && group.start == ordinal
             {
                 let group_end = group.end.min(end_cluster);
                 let member_count = group_end.saturating_sub(ordinal);
+                previous_ordinal = group_end.saturating_sub(1);
                 let horizontal_width = paragraph.text.clusters()[ordinal..group_end]
                     .iter()
                     .fold(0_i64, |sum, cluster| {
@@ -313,6 +314,7 @@ impl Composer {
                 cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
                 local = local.saturating_add(member_count);
             } else {
+                previous_ordinal = ordinal;
                 let cluster = &clusters[local];
                 let advance = self.line_advances[local];
                 let size = cluster.size_override().unwrap_or(paragraph.text.size());
@@ -334,7 +336,7 @@ impl Composer {
                 local = local.saturating_add(1);
             }
 
-            if local < clusters.len() {
+            if local < clusters.len() && boundary_is_adjustable(paragraph, previous_ordinal) {
                 cursor = cursor.saturating_add(gap);
                 let receives_remainder = match style.remainder() {
                     Remainder::Leading => {
@@ -396,8 +398,23 @@ fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<
     )
 }
 
-fn is_tate_chu_yoko_continuation(paragraph: &Paragraph, ordinal: usize) -> bool {
-    tate_chu_yoko_cluster_range(paragraph, ordinal).is_some_and(|group| group.start != ordinal)
+fn boundary_is_adjustable(paragraph: &Paragraph, before: usize) -> bool {
+    let Some(cluster) = paragraph.text.clusters().get(before) else {
+        return false;
+    };
+    let boundary = cluster.range().end;
+    !paragraph
+        .constructs
+        .iter()
+        .any(|construct| match construct.kind() {
+            ConstructKind::TateChuYoko(range) => range.start < boundary && boundary < range.end,
+            ConstructKind::Ruby(ruby) => {
+                ruby.kind() != crate::RubyKind::Mono
+                    && ruby.base().start < boundary
+                    && boundary < ruby.base().end
+            },
+            _ => false,
+        })
 }
 
 fn effective_cluster_advance(paragraph: &Paragraph, ordinal: usize) -> i32 {
@@ -709,38 +726,14 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
         }
         match construct.kind() {
             ConstructKind::Ruby(ruby) => {
-                let base = bounds_for_range(line, &ruby.base());
-                if let Some((base_start, base_end)) = base {
-                    let annotation_width = ruby
-                        .annotation()
-                        .clusters()
-                        .iter()
-                        .fold(0_i64, |sum, cluster| {
-                            sum.saturating_add(i64::from(cluster.advance()))
-                        });
-                    let base_width = i64::from(base_end).saturating_sub(i64::from(base_start));
-                    let mut inline = match style.ruby_alignment() {
-                        RubyAlignment::Nakatsuki => i64::from(base_start)
-                            .saturating_add((base_width.saturating_sub(annotation_width)) / 2),
-                        RubyAlignment::Katatsuki => i64::from(base_start),
-                    };
-                    for cluster in ruby.annotation().clusters() {
-                        let size = cluster.size_override().unwrap_or(ruby.annotation().size());
-                        line.attachments.push(Attachment {
-                            construct: ordinal,
-                            range: cluster.range(),
-                            inline: clamp_i32(inline),
-                            block: attachment_block(paragraph, line, size),
-                            advance: cluster.advance(),
-                            size,
-                            writing_mode: paragraph.writing_mode,
-                            transform: CoordinateTransform::Identity,
-                            symbol: None,
-                        });
-                        attachment_extent = attachment_extent.max(size.block());
-                        inline = inline.saturating_add(i64::from(cluster.advance()));
-                    }
-                }
+                place_ruby_attachments(
+                    paragraph,
+                    style,
+                    line,
+                    ordinal,
+                    ruby,
+                    &mut attachment_extent,
+                );
             },
             ConstructKind::Emphasis { range, mark } => {
                 for placement in line
@@ -807,6 +800,142 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
         }
     }
     line.block_extent = line.block_extent.saturating_add(attachment_extent);
+}
+
+fn place_ruby_attachments(
+    paragraph: &Paragraph,
+    style: &Style,
+    line: &mut Line,
+    construct: usize,
+    ruby: &crate::Ruby,
+    attachment_extent: &mut i32,
+) {
+    match ruby.kind() {
+        crate::RubyKind::Group => {
+            *attachment_extent = (*attachment_extent).max(place_ruby_span(
+                paragraph,
+                style,
+                line,
+                construct,
+                ruby.annotation(),
+                &ruby.base(),
+                &(0..ruby.annotation().source().len()),
+            ));
+        },
+        crate::RubyKind::Mono => {
+            for run in ruby.runs() {
+                if range_fits_line(&run.base(), line) {
+                    *attachment_extent = (*attachment_extent).max(place_ruby_span(
+                        paragraph,
+                        style,
+                        line,
+                        construct,
+                        ruby.annotation(),
+                        &run.base(),
+                        &run.annotation(),
+                    ));
+                }
+            }
+        },
+        crate::RubyKind::Jukugo => {
+            let per_base = ruby
+                .runs()
+                .iter()
+                .all(|run| annotation_cluster_count(ruby.annotation(), &run.annotation()) <= 2);
+            if !per_base && range_fits_line(&ruby.base(), line) {
+                *attachment_extent = (*attachment_extent).max(place_ruby_span(
+                    paragraph,
+                    style,
+                    line,
+                    construct,
+                    ruby.annotation(),
+                    &ruby.base(),
+                    &(0..ruby.annotation().source().len()),
+                ));
+            } else {
+                for run in ruby.runs() {
+                    if range_fits_line(&run.base(), line) {
+                        *attachment_extent = (*attachment_extent).max(place_ruby_span(
+                            paragraph,
+                            style,
+                            line,
+                            construct,
+                            ruby.annotation(),
+                            &run.base(),
+                            &run.annotation(),
+                        ));
+                    }
+                }
+            }
+        },
+    }
+}
+
+fn annotation_cluster_count(annotation: &crate::ShapedText, range: &Range<usize>) -> usize {
+    annotation
+        .clusters()
+        .iter()
+        .filter(|cluster| {
+            let cluster = cluster.range();
+            range.start <= cluster.start && cluster.end <= range.end
+        })
+        .count()
+}
+
+fn range_fits_line(range: &Range<usize>, line: &Line) -> bool {
+    line.range.start <= range.start && range.end <= line.range.end
+}
+
+fn place_ruby_span(
+    paragraph: &Paragraph,
+    style: &Style,
+    line: &mut Line,
+    construct: usize,
+    annotation: &crate::ShapedText,
+    base_range: &Range<usize>,
+    annotation_range: &Range<usize>,
+) -> i32 {
+    let Some((base_start, base_end)) = bounds_for_range(line, base_range) else {
+        return 0;
+    };
+    let annotation_width = annotation
+        .clusters()
+        .iter()
+        .filter(|cluster| {
+            let cluster = cluster.range();
+            annotation_range.start <= cluster.start && cluster.end <= annotation_range.end
+        })
+        .fold(0_i64, |sum, cluster| {
+            sum.saturating_add(i64::from(cluster.advance()))
+        });
+    let base_width = i64::from(base_end).saturating_sub(i64::from(base_start));
+    let mut inline = match style.ruby_alignment() {
+        RubyAlignment::Nakatsuki => {
+            i64::from(base_start).saturating_add((base_width.saturating_sub(annotation_width)) / 2)
+        },
+        RubyAlignment::Katatsuki => i64::from(base_start),
+    };
+    let mut attachment_extent = 0;
+    for cluster in annotation.clusters().iter().filter(|cluster| {
+        let cluster = cluster.range();
+        annotation_range.start <= cluster.start && cluster.end <= annotation_range.end
+    }) {
+        let size = cluster.size_override().unwrap_or(annotation.size());
+        line.attachments.push(Attachment {
+            construct,
+            range: cluster.range(),
+            inline: clamp_i32(inline),
+            block: attachment_block(paragraph, line, size),
+            advance: cluster.advance(),
+            size,
+            writing_mode: paragraph.writing_mode,
+            transform: CoordinateTransform::Identity,
+            symbol: None,
+        });
+        attachment_extent = attachment_extent.max(size.block());
+        inline = inline.saturating_add(i64::from(cluster.advance()));
+    }
+    attachment_extent
 }
 
 fn attachment_block(paragraph: &Paragraph, line: &Line, size: Size) -> i32 {

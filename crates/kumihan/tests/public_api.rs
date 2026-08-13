@@ -435,6 +435,108 @@ fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
 }
 
 #[test]
+fn ruby_kinds_preserve_base_associations_and_break_semantics() {
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid ruby reading");
+    let runs = [RubyRun::new(0..3, 0..3), RubyRun::new(3..6, 3..9)];
+    let mono =
+        Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
+    let jukugo =
+        Ruby::new(RubyKind::Jukugo, 0..6, annotation.clone(), runs).expect("valid jukugo ruby");
+    let group = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..9)],
+    )
+    .expect("valid group ruby");
+
+    let compose_kind = |ruby| {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid ruby base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect("valid ruby paragraph");
+        kumihan::compose(&paragraph, &Style::default())
+    };
+
+    let mono_layout = compose_kind(mono.clone());
+    let mono_inline: Vec<_> = mono_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(kumihan::Attachment::inline)
+        .collect();
+    assert_eq!(mono_inline, [250, 1_000, 1_500]);
+
+    let jukugo_layout = compose_kind(jukugo.clone());
+    let jukugo_inline: Vec<_> = jukugo_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(kumihan::Attachment::inline)
+        .collect();
+    assert_eq!(jukugo_inline, mono_inline);
+
+    let group_layout = compose_kind(group.clone());
+    let group_inline: Vec<_> = group_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(kumihan::Attachment::inline)
+        .collect();
+    assert_eq!(group_inline, [250, 750, 1_250]);
+
+    for (ruby, expected_second_base) in [
+        (mono.clone(), 2_000),
+        (jukugo.clone(), 1_000),
+        (group.clone(), 1_000),
+    ] {
+        let paragraph = Paragraph::builder(
+            shaped("日本語", Frame::FullEm, 1_000).expect("valid adjusted ruby base"),
+            3_000,
+        )
+        .breaks([Break::mandatory(6)])
+        .constructs([Construct::ruby(ruby)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid adjusted ruby paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        assert_eq!(
+            layout.lines()[0].clusters()[1].inline(),
+            expected_second_base,
+            "only mono ruby exposes its internal base boundary to line adjustment"
+        );
+    }
+
+    for ruby in [mono, jukugo] {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid split ruby base"),
+            1_000,
+        )
+        .breaks([Break::mandatory(3)])
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect("mono and jukugo may split at a declared run boundary");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 2);
+        assert_eq!(layout.lines()[0].attachments().len(), 1);
+        assert_eq!(layout.lines()[0].attachments()[0].range(), 0..3);
+        assert_eq!(layout.lines()[1].attachments().len(), 2);
+        assert_eq!(layout.lines()[1].attachments()[0].range(), 3..6);
+        assert_eq!(layout.lines()[1].attachments()[1].range(), 6..9);
+    }
+
+    let error = Paragraph::builder(
+        shaped("日本", Frame::FullEm, 1_000).expect("valid group ruby base"),
+        1_000,
+    )
+    .breaks([Break::allowed(3)])
+    .constructs([Construct::ruby(group)])
+    .build()
+    .expect_err("group ruby is indivisible");
+    assert_eq!(error.code(), "input.break-inside-construct");
+}
+
+#[test]
 fn appendix_pair_is_normalized_across_shaping_clusters() {
     let source = "\u{31f7}\u{309a}";
     let first_end = '\u{31f7}'.len_utf8();
