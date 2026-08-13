@@ -363,9 +363,11 @@ mod tests {
 
     #[test]
     fn suite_rule_metadata_is_required_and_never_sent_on_the_wire() {
-        let case: serde_json::Value =
-            serde_json::from_str(BUILTIN_SUITE.lines().next().expect("built-in case"))
-                .expect("case JSON");
+        let case: serde_json::Value = BUILTIN_SUITE
+            .lines()
+            .map(|line| serde_json::from_str(line).expect("case JSON"))
+            .find(|case: &serde_json::Value| case["id"] == "quick-start/two-lines")
+            .expect("quick-start case");
         assert_eq!(case["rules"], json!(["3.1.10"]));
 
         let mut missing = case.clone();

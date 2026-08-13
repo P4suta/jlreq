@@ -171,30 +171,30 @@ why = "The formula construct now applies the machine-observable principal method
 rule = "3.9.3"
 why = "The primary text at spec/snapshot/index.html, §3.9.3 Positioning Methods for each Character Class, explains that line-edge permission, adjacent spacing, breakability, reduction, and expansion can be described in two-dimensional class-pair tables, then delegates the concrete answers to Appendices B, C, D, and E. A black-box layout can observe every delegated cell, and those cells have their own inventoried addresses and cases, but it cannot distinguish an implementation that indexes a two-dimensional table from one that computes identical results with match expressions, generated code, or another equivalent representation. The section's Notes about how JIS X 4051 prints X marks and separates line-head and line-end rows likewise prescribe documentation shape, not output. No case can uniquely observe this introductory representation statement without merely duplicating an Appendix rule, so it is non-observable rather than unfinished matrix implementation."
 
-[[deferred]]
+[[owned]]
 rule = "F"
 milestone = "M4"
-why = "Appendix F states how a jukugo ruby annotation is distributed over its base characters under §3.3.7¶2's own `phonetic` answer specifically — the layout §3.3.7¶2's own third sentence promises 'decided by the phonetic structure of the kanji compound word and the type of script of the adjacent characters.' `jlreq-inline` places jukugo ruby now (M4-a round 7, task #88; §3.3.7's own entry, now in `[[owned]]` below, states the scope in full), which is not the same fact as applying §F's own distribution: `Question::JUKUGO_RUBY_LAYOUT`'s own `phonetic` answer declines every compound it reaches, unconditionally, rather than reading any part of this appendix."
+why = "The unified pipeline reads the typed JukugoRubyLayout::Phonetic answer and the caller-declared RubyRun associations directly, so Appendix F is now observable without exposing any lowering representation. Protocol-v1 cases F.1/two-or-fewer-stay-with-base, F.2/following-overhang-precedes-expansion, F.3/expansion-is-proportional-to-reading-length, and F.4/four-ruby-run-expands-only-eligible-base exercise the katatsuki vertical-writing premise through only the versioned request and placement response. The retained legacy jlreq-inline decline remains migration history; it is not in the public kumihan call path."
 
-[[deferred]]
+[[owned]]
 rule = "F.1"
 milestone = "M4"
-why = "The first distribution principle of jukugo ruby, which `jlreq-inline` does not apply this round: §3.3.7¶2's own `phonetic` answer declines outright, so this principle is read nowhere in `jlreq_inline::place` (task #88; `F`'s own entry above states why placing jukugo ruby is not the same fact as applying this)."
+why = "F.1/two-or-fewer-stay-with-base distinguishes phonetic association from whole-compound placement: one ruby character stays katatsuki on the first base and two stay on the second at inline coordinates 1000 and 1500. F.2/following-overhang-precedes-expansion additionally observes the one-ruby-em internal ceiling and the §3.3.8 neighbor permission selected by the typed style."
 
-[[deferred]]
+[[owned]]
 rule = "F.2"
 milestone = "M4"
-why = "The second distribution principle of jukugo ruby, which `jlreq-inline` does not apply this round, for the identical reason `F.1`'s own entry states."
+why = "The phonetic constraint solver preserves annotation order while trying each run at its own base start, allows at most one local ruby em over the adjacent base, prefers the following side, and solves backward when only the preceding external character permits overhang. F.2/following-overhang-precedes-expansion observes the preferred forward path in vertical writing; the public phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps test also fixes the backward fallback and proves that neither path inserts base spacing while overhang suffices."
 
-[[deferred]]
+[[owned]]
 rule = "F.3"
 milestone = "M4"
-why = "Jukugo ruby distribution against a line that has been expanded, which `jlreq-inline` does not place this round: §3.3.7¶2's own `phonetic` answer, the only one this rule's own detail belongs to, declines outright rather than reading any part of it (`F`'s own entry above)."
+why = "Only runs carrying more than two annotation clusters enter the expansion pool. The pipeline finds the smallest integer expansion after exhausting internal and permitted external overhang, apportions it by solid annotation length, splits each assigned amount before and after the eligible base using the typed remainder direction, and feeds those exact gaps into paragraph search, tab measurement, base placement, and attachment placement. F.3/expansion-is-proportional-to-reading-length observes a 3:4 allocation, including the leading integer remainder. The public acceptance test also fixes the line-head all-after and line-end all-before exceptions in both writing modes."
 
-[[deferred]]
+[[owned]]
 rule = "F.4"
 milestone = "M4"
-why = "The worked examples of jukugo ruby distribution under expansion, which `jlreq-inline` does not reproduce this round, for the identical reason `F.3`'s own entry states."
+why = "F.4/four-ruby-run-expands-only-eligible-base reproduces the appendix's four-ruby-character shape: the one-character run remains ineligible, the four-character run receives the remaining one-ruby-character expansion, and its two boundaries each gain a quarter base em. The response exposes advances 1250 and 1250, base coordinates 1000 and 2250, and five contiguous ruby placements, so an implementation that merely centers the whole compound cannot pass."
 
 [[owned]]
 rule = "B.2#1"

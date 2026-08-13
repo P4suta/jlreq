@@ -923,8 +923,12 @@ why = "This is advice for the author rather than a layout result."
         });
         assert!(found.is_empty(), "{found:#?}");
         assert!(
-            !ledger.rules().is_empty(),
-            "the suite is written milestone by milestone, so the ledger is not empty yet"
+            ledger.rules().is_empty(),
+            "all mechanically observable rules are now covered, so no scheduled debt remains"
+        );
+        assert!(
+            !ledger.owned().is_empty(),
+            "the completed ledger keeps its covered-rule obligations"
         );
     }
 }

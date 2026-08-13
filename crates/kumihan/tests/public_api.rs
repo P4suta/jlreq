@@ -958,6 +958,252 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
 }
 
 #[test]
+fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
+    fn jukugo(
+        base: core::ops::Range<usize>,
+        reading: &str,
+        runs: impl IntoIterator<Item = RubyRun>,
+    ) -> Construct {
+        let annotation = shaped(reading, Frame::FullEm, 500).expect("valid jukugo reading");
+        Construct::ruby(
+            Ruby::new(RubyKind::Jukugo, base, annotation, runs).expect("valid jukugo ruby"),
+        )
+    }
+
+    let phonetic = Style::builder()
+        .jukugo_ruby_layout(JukugoRubyLayout::Phonetic)
+        .ruby_alignment(RubyAlignment::Katatsuki)
+        .build()
+        .expect("valid phonetic jukugo style");
+    let compose =
+        |source: &str, construct: Construct, extent: i32, end: usize, mode: WritingMode| {
+            let paragraph = Paragraph::builder(
+                shaped(source, Frame::FullEm, 1_000).expect("valid jukugo base"),
+                extent,
+            )
+            .constructs([construct])
+            .breaks([Break::mandatory(end)])
+            .alignment(Alignment::Start)
+            .writing_mode(mode)
+            .build()
+            .expect("valid phonetic jukugo paragraph");
+            kumihan::compose(&paragraph, &phonetic)
+        };
+
+    let forward = compose(
+        "前日本あ末",
+        jukugo(
+            3..9,
+            "にほんかな",
+            [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+        ),
+        4_000,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        forward.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_000, 3_000],
+        "F.2 prefers overhanging the following base and then the following kana"
+    );
+    assert_eq!(
+        forward.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let backward = compose(
+        "あ日本後末",
+        jukugo(
+            3..9,
+            "にほんかな",
+            [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+        ),
+        4_000,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        backward.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_000, 3_000],
+        "F.2 falls back to the preceding permitted character when the following one forbids overhang"
+    );
+    assert_eq!(
+        backward.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [500, 1_000, 1_500, 2_000, 2_500]
+    );
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let expanded = compose(
+            "前日本後末",
+            jukugo(
+                3..9,
+                "にほんかな",
+                [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+            ),
+            4_500,
+            12,
+            mode,
+        );
+        assert_eq!(
+            expanded.lines()[0]
+                .clusters()
+                .iter()
+                .map(kumihan::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            [0, 1_250, 2_500, 3_500],
+            "F.3 splits the remaining ruby-character width around the run with three ruby characters"
+        );
+        assert_eq!(
+            expanded.lines()[0]
+                .attachments()
+                .iter()
+                .map(kumihan::Attachment::inline)
+                .collect::<Vec<_>>(),
+            [1_000, 1_500, 2_000, 2_500, 3_000]
+        );
+        assert_eq!(expanded.lines()[0].inline_extent(), 4_500);
+    }
+
+    let four_ruby = compose(
+        "前居候後末",
+        jukugo(
+            3..9,
+            "いそうろう",
+            [RubyRun::new(3..6, 0..3), RubyRun::new(6..9, 3..15)],
+        ),
+        4_500,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        four_ruby.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_250, 3_500],
+        "F.4's four-ruby example assigns one ruby-character width around only the eligible base"
+    );
+    assert_eq!(
+        four_ruby.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let line_head = compose(
+        "日本後末",
+        jukugo(
+            0..6,
+            "にほんかな",
+            [RubyRun::new(0..3, 0..9), RubyRun::new(3..6, 9..15)],
+        ),
+        3_500,
+        9,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        line_head.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_500, 2_500],
+        "F.3 keeps both starts flush at line head and puts the whole assigned space after the first base"
+    );
+    assert_eq!(
+        line_head.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000]
+    );
+
+    let line_end = compose(
+        "前居候末",
+        jukugo(
+            3..9,
+            "いそうろう",
+            [RubyRun::new(3..6, 0..3), RubyRun::new(6..9, 3..15)],
+        ),
+        3_500,
+        9,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        line_end.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_500],
+        "F.3 keeps both ends flush at line end and puts the whole assigned space before the final base"
+    );
+    assert_eq!(
+        line_end.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let proportional = compose(
+        "前日本語後末",
+        jukugo(
+            3..12,
+            "にほんごくみはんじ",
+            [
+                RubyRun::new(3..6, 0..9),
+                RubyRun::new(6..9, 9..21),
+                RubyRun::new(9..12, 21..27),
+            ],
+        ),
+        6_500,
+        15,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        proportional.lines()[0]
+            .clusters()
+            .iter()
+            .map(kumihan::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_322, 3_072, 4_500, 5_500],
+        "F.3 apportions the total expansion in the 3:4 solid-reading-length ratio and sends the integer remainder leading"
+    );
+    assert_eq!(
+        proportional.lines()[0]
+            .attachments()
+            .iter()
+            .map(kumihan::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [
+            1_000, 1_500, 2_000, 2_500, 3_000, 3_500, 4_000, 4_500, 5_000
+        ]
+    );
+}
+
+#[test]
 fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     fn group_ruby(base: core::ops::Range<usize>, reading: &str) -> Ruby {
         let annotation = shaped(reading, Frame::FullEm, 500).expect("valid long ruby reading");

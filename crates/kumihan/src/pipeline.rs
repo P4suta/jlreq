@@ -11,8 +11,8 @@ use crate::{
     WritingMode,
     construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
     style::{
-        AdjustmentPreference, KinsokuLevel, Remainder, RubyAlignment, RubyOverhangIndent,
-        RubyOverhangKana,
+        AdjustmentPreference, JukugoRubyLayout, KinsokuLevel, Remainder, RubyAlignment,
+        RubyOverhangIndent, RubyOverhangKana,
     },
 };
 
@@ -77,9 +77,10 @@ enum ExpansionSite {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct LineSpan {
+struct LineContext {
     start: usize,
     end: usize,
+    index: usize,
 }
 
 /// A reusable whole-paragraph composer.
@@ -288,6 +289,7 @@ impl Composer {
                     ordinal,
                     start_cluster,
                     end_cluster,
+                    line_index,
                 )
             }));
         apply_tabs(
@@ -438,7 +440,7 @@ impl Composer {
             clusters: placed,
             attachments: Vec::new(),
         };
-        place_attachments(paragraph, style, &mut line);
+        place_attachments(paragraph, style, line_index, &mut line);
         line
     }
 }
@@ -825,10 +827,11 @@ fn effective_cluster_advance_on_line(
     ordinal: usize,
     line_start: usize,
     line_end: usize,
+    line_index: usize,
 ) -> i32 {
     effective_cluster_advance_on_line_without_ruby(paragraph, ordinal, line_start, line_end)
         .saturating_add(ruby_boundary_separation_after(
-            paragraph, style, ordinal, line_start, line_end,
+            paragraph, style, ordinal, line_start, line_end, line_index,
         ))
 }
 
@@ -873,6 +876,41 @@ struct RubyOverhang {
     ruby_em: i32,
 }
 
+#[derive(Debug, Clone)]
+struct PhoneticJukugoRun {
+    base: Range<usize>,
+    annotation: Range<usize>,
+    base_start: i64,
+    base_end: i64,
+    annotation_start: i64,
+    annotation_width: i64,
+    ruby_em: i32,
+    annotation_count: usize,
+}
+
+#[derive(Debug, Clone)]
+struct PhoneticJukugoPlan {
+    runs: Vec<PhoneticJukugoRun>,
+    leading_gap: i32,
+    gaps_after: Vec<(usize, i32)>,
+}
+
+impl PhoneticJukugoPlan {
+    fn gap_after(&self, ordinal: usize) -> i32 {
+        self.gaps_after
+            .iter()
+            .find_map(|(boundary, gap)| (*boundary == ordinal).then_some(*gap))
+            .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PhoneticEdges {
+    line: LineContext,
+    leading_allowance: i32,
+    trailing_allowance: i32,
+}
+
 #[derive(Debug, Clone, Copy)]
 enum RubySide {
     Leading,
@@ -881,6 +919,7 @@ enum RubySide {
 
 fn visit_ruby_spans(
     paragraph: &Paragraph,
+    style: &Style,
     mut visit: impl FnMut(&crate::Ruby, Range<usize>, Range<usize>),
 ) {
     for construct in &paragraph.constructs {
@@ -895,6 +934,9 @@ fn visit_ruby_spans(
                 }
             },
             crate::RubyKind::Jukugo => {
+                if style.jukugo_ruby_layout() == JukugoRubyLayout::Phonetic {
+                    continue;
+                }
                 let per_base = ruby
                     .runs()
                     .iter()
@@ -909,6 +951,359 @@ fn visit_ruby_spans(
             },
         }
     }
+}
+
+fn phonetic_jukugo_plan(
+    paragraph: &Paragraph,
+    style: &Style,
+    ruby: &crate::Ruby,
+    line_start: usize,
+    line_end: usize,
+    line_index: usize,
+) -> Option<PhoneticJukugoPlan> {
+    if ruby.kind() != crate::RubyKind::Jukugo
+        || style.jukugo_ruby_layout() != JukugoRubyLayout::Phonetic
+    {
+        return None;
+    }
+
+    let mut runs = Vec::new();
+    for run in ruby.runs() {
+        let base = cluster_index_at_or_after(paragraph, run.base().start)
+            ..cluster_index_at_or_after(paragraph, run.base().end);
+        if base.start < line_start || base.end > line_end || base.start >= base.end {
+            continue;
+        }
+        let (annotation_count, annotation_width, ruby_em) =
+            ruby_annotation_metrics(ruby.annotation(), &run.annotation());
+        let base_width = ruby_base_width(paragraph, &base);
+        runs.push(PhoneticJukugoRun {
+            base,
+            annotation: run.annotation(),
+            base_start: 0,
+            base_end: base_width,
+            annotation_start: 0,
+            annotation_width,
+            ruby_em,
+            annotation_count,
+        });
+    }
+    let (first, last) = (runs.first()?, runs.last()?);
+    let leading_allowance = if first.base.start == line_start {
+        if line_index == 0 && style.ruby_overhang_indent() == RubyOverhangIndent::Permitted {
+            paragraph.first_line_indent.min(first.ruby_em)
+        } else {
+            0
+        }
+    } else {
+        ruby_neighbor_overhang_allowance(
+            paragraph,
+            style,
+            first.base.start.saturating_sub(1),
+            RubySide::Leading,
+            first.ruby_em,
+        )
+    };
+    let trailing_allowance = if last.base.end == line_end {
+        0
+    } else {
+        ruby_neighbor_overhang_allowance(
+            paragraph,
+            style,
+            last.base.end,
+            RubySide::Trailing,
+            last.ruby_em,
+        )
+    };
+    let edges = PhoneticEdges {
+        line: LineContext {
+            start: line_start,
+            end: line_end,
+            index: line_index,
+        },
+        leading_allowance,
+        trailing_allowance,
+    };
+    let maximum_expansion =
+        runs.iter()
+            .filter(|run| run.annotation_count > 2)
+            .fold(0_i64, |sum, run| {
+                let base_width = run.base_end.saturating_sub(run.base_start);
+                sum.saturating_add(run.annotation_width.saturating_sub(base_width).max(0))
+            });
+
+    build_phonetic_jukugo_plan(paragraph, style, &runs, 0, edges).or_else(|| {
+        let mut lower = 1_i64;
+        let mut upper = maximum_expansion;
+        let upper_plan = build_phonetic_jukugo_plan(paragraph, style, &runs, upper, edges)?;
+        while lower < upper {
+            let middle = lower.saturating_add(upper.saturating_sub(lower) / 2);
+            if build_phonetic_jukugo_plan(paragraph, style, &runs, middle, edges).is_some() {
+                upper = middle;
+            } else {
+                lower = middle.saturating_add(1);
+            }
+        }
+        if lower == maximum_expansion {
+            Some(upper_plan)
+        } else {
+            build_phonetic_jukugo_plan(paragraph, style, &runs, lower, edges)
+        }
+    })
+}
+
+fn build_phonetic_jukugo_plan(
+    paragraph: &Paragraph,
+    style: &Style,
+    raw_runs: &[PhoneticJukugoRun],
+    expansion: i64,
+    edges: PhoneticEdges,
+) -> Option<PhoneticJukugoPlan> {
+    let assigned = apportion_phonetic_expansion(raw_runs, expansion, style.remainder());
+    let mut before = alloc::vec![0_i64; raw_runs.len()];
+    let mut after = alloc::vec![0_i64; raw_runs.len()];
+    for (index, (run, amount)) in raw_runs.iter().zip(assigned).enumerate() {
+        if run.annotation_count <= 2 || amount == 0 {
+            continue;
+        }
+        if run.base.start == edges.line.start && run.base.end != edges.line.end {
+            after[index] = amount;
+        } else if run.base.end == edges.line.end && run.base.start != edges.line.start {
+            before[index] = amount;
+        } else {
+            let half = amount / 2;
+            let odd = amount % 2;
+            match style.remainder() {
+                Remainder::Leading => {
+                    before[index] = half.saturating_add(odd);
+                    after[index] = half;
+                },
+                Remainder::Trailing => {
+                    before[index] = half;
+                    after[index] = half.saturating_add(odd);
+                },
+            }
+        }
+    }
+
+    let mut leading_gap = 0_i64;
+    let mut gaps_after = Vec::<(usize, i64)>::new();
+    for (index, run) in raw_runs.iter().enumerate() {
+        if before[index] != 0 {
+            if run.base.start == edges.line.start {
+                leading_gap = leading_gap.saturating_add(before[index]);
+            } else {
+                add_phonetic_gap(
+                    &mut gaps_after,
+                    run.base.start.saturating_sub(1),
+                    before[index],
+                );
+            }
+        }
+        if after[index] != 0 {
+            add_phonetic_gap(
+                &mut gaps_after,
+                run.base.end.saturating_sub(1),
+                after[index],
+            );
+        }
+    }
+
+    let first = raw_runs.first()?;
+    let mut cursor = if first.base.start == edges.line.start {
+        leading_gap
+    } else {
+        phonetic_gap_after(&gaps_after, first.base.start.saturating_sub(1))
+    };
+    let mut runs = Vec::with_capacity(raw_runs.len());
+    for (index, raw) in raw_runs.iter().enumerate() {
+        let base_start = cursor;
+        let mut base_end = base_start;
+        for ordinal in raw.base.clone() {
+            cursor = cursor.saturating_add(i64::from(effective_cluster_body_advance(
+                paragraph, ordinal,
+            )));
+            base_end = cursor;
+            if ordinal.saturating_add(1) < raw.base.end {
+                cursor = cursor
+                    .saturating_add(i64::from(boundary_space_after(paragraph, ordinal)))
+                    .saturating_add(phonetic_gap_after(&gaps_after, ordinal));
+            }
+        }
+        if index.saturating_add(1) < raw_runs.len() {
+            let boundary = raw.base.end.saturating_sub(1);
+            cursor = cursor
+                .saturating_add(i64::from(boundary_space_after(paragraph, boundary)))
+                .saturating_add(phonetic_gap_after(&gaps_after, boundary));
+        }
+        runs.push(PhoneticJukugoRun {
+            base: raw.base.clone(),
+            annotation: raw.annotation.clone(),
+            base_start,
+            base_end,
+            annotation_start: 0,
+            annotation_width: raw.annotation_width,
+            ruby_em: raw.ruby_em,
+            annotation_count: raw.annotation_count,
+        });
+    }
+
+    let mut lower = Vec::with_capacity(runs.len());
+    let mut upper = Vec::with_capacity(runs.len());
+    for (index, run) in runs.iter().enumerate() {
+        let minimum = if index == 0 {
+            run.base_start
+                .saturating_sub(before[index])
+                .saturating_sub(i64::from(edges.leading_allowance))
+        } else {
+            runs[index.saturating_sub(1)]
+                .base_end
+                .saturating_sub(i64::from(run.ruby_em))
+        };
+        let maximum_end = if index.saturating_add(1) == runs.len() {
+            run.base_end
+                .saturating_add(after[index])
+                .saturating_add(i64::from(edges.trailing_allowance))
+        } else {
+            runs[index.saturating_add(1)]
+                .base_start
+                .saturating_add(i64::from(run.ruby_em))
+        };
+        lower.push(minimum);
+        upper.push(maximum_end.saturating_sub(run.annotation_width));
+    }
+
+    let mut latest = upper.clone();
+    for index in (0..latest.len().saturating_sub(1)).rev() {
+        latest[index] = latest[index]
+            .min(latest[index.saturating_add(1)].saturating_sub(runs[index].annotation_width));
+    }
+    if latest
+        .iter()
+        .zip(&lower)
+        .any(|(latest, lower)| latest < lower)
+    {
+        return None;
+    }
+
+    let mut previous_end: Option<i64> = None;
+    for (index, run) in runs.iter_mut().enumerate() {
+        let minimum = previous_end.map_or(lower[index], |end| end.max(lower[index]));
+        let preferred = run.base_start.max(minimum);
+        let start = preferred.min(latest[index]);
+        if start < minimum {
+            return None;
+        }
+        run.annotation_start = start;
+        previous_end = Some(start.saturating_add(run.annotation_width));
+    }
+
+    Some(PhoneticJukugoPlan {
+        runs,
+        leading_gap: clamp_i32(leading_gap),
+        gaps_after: gaps_after
+            .into_iter()
+            .map(|(ordinal, gap)| (ordinal, clamp_i32(gap)))
+            .collect(),
+    })
+}
+
+fn apportion_phonetic_expansion(
+    runs: &[PhoneticJukugoRun],
+    total: i64,
+    remainder: Remainder,
+) -> Vec<i64> {
+    let weight = runs
+        .iter()
+        .filter(|run| run.annotation_count > 2)
+        .fold(0_i64, |sum, run| {
+            sum.saturating_add(run.annotation_width.max(1))
+        });
+    let mut assigned: Vec<_> = runs
+        .iter()
+        .map(|run| {
+            if run.annotation_count > 2 && weight != 0 {
+                total
+                    .saturating_mul(run.annotation_width.max(1))
+                    .checked_div(weight)
+                    .unwrap_or(0)
+            } else {
+                0
+            }
+        })
+        .collect();
+    let mut remainder_units = total.saturating_sub(
+        assigned
+            .iter()
+            .fold(0_i64, |sum, amount| sum.saturating_add(*amount)),
+    );
+    let indices: Vec<_> = match remainder {
+        Remainder::Leading => (0..runs.len()).collect(),
+        Remainder::Trailing => (0..runs.len()).rev().collect(),
+    };
+    for index in indices {
+        if remainder_units == 0 {
+            break;
+        }
+        if runs[index].annotation_count > 2 {
+            assigned[index] = assigned[index].saturating_add(1);
+            remainder_units = remainder_units.saturating_sub(1);
+        }
+    }
+    assigned
+}
+
+fn add_phonetic_gap(gaps: &mut Vec<(usize, i64)>, ordinal: usize, amount: i64) {
+    if let Some((_, gap)) = gaps.iter_mut().find(|(boundary, _)| *boundary == ordinal) {
+        *gap = gap.saturating_add(amount);
+    } else {
+        gaps.push((ordinal, amount));
+    }
+}
+
+fn phonetic_gap_after(gaps: &[(usize, i64)], ordinal: usize) -> i64 {
+    gaps.iter()
+        .find_map(|(boundary, gap)| (*boundary == ordinal).then_some(*gap))
+        .unwrap_or(0)
+}
+
+fn ruby_annotation_metrics(
+    annotation: &crate::ShapedText,
+    range: &Range<usize>,
+) -> (usize, i64, i32) {
+    annotation
+        .clusters()
+        .iter()
+        .filter(|cluster| {
+            let cluster = cluster.range();
+            range.start <= cluster.start && cluster.end <= range.end
+        })
+        .fold((0_usize, 0_i64, 0_i32), |(count, width, em), cluster| {
+            (
+                count.saturating_add(1),
+                width.saturating_add(i64::from(cluster.advance())),
+                em.max(
+                    cluster
+                        .size_override()
+                        .unwrap_or(annotation.size())
+                        .inline(),
+                ),
+            )
+        })
+}
+
+fn ruby_base_width(paragraph: &Paragraph, base: &Range<usize>) -> i64 {
+    base.clone().fold(0_i64, |sum, ordinal| {
+        let boundary = if ordinal.saturating_add(1) < base.end {
+            boundary_space_after(paragraph, ordinal)
+        } else {
+            0
+        };
+        sum.saturating_add(i64::from(effective_cluster_body_advance(
+            paragraph, ordinal,
+        )))
+        .saturating_add(i64::from(boundary))
+    })
 }
 
 fn ruby_span_overhang(
@@ -972,9 +1367,10 @@ fn ruby_boundary_separation_after(
     before: usize,
     line_start: usize,
     line_end: usize,
+    line_index: usize,
 ) -> i32 {
     let mut required = 0_i32;
-    visit_ruby_spans(paragraph, |ruby, base, annotation| {
+    visit_ruby_spans(paragraph, style, |ruby, base, annotation| {
         let Some(overhang) = ruby_span_overhang(
             paragraph, style, ruby, base, annotation, line_start, line_end,
         ) else {
@@ -1005,6 +1401,16 @@ fn ruby_boundary_separation_after(
             required = required.max(overhang.trailing.saturating_sub(allowance));
         }
     });
+    for construct in &paragraph.constructs {
+        let ConstructKind::Ruby(ruby) = construct.kind() else {
+            continue;
+        };
+        if let Some(plan) =
+            phonetic_jukugo_plan(paragraph, style, ruby, line_start, line_end, line_index)
+        {
+            required = required.max(plan.gap_after(before));
+        }
+    }
     required
 }
 
@@ -1016,7 +1422,7 @@ fn ruby_line_leading_separation(
     line_index: usize,
 ) -> i32 {
     let mut required = 0_i32;
-    visit_ruby_spans(paragraph, |ruby, base, annotation| {
+    visit_ruby_spans(paragraph, style, |ruby, base, annotation| {
         let Some(overhang) = ruby_span_overhang(
             paragraph, style, ruby, base, annotation, line_start, line_end,
         ) else {
@@ -1033,6 +1439,16 @@ fn ruby_line_leading_separation(
             };
         required = required.max(overhang.leading.saturating_sub(allowance));
     });
+    for construct in &paragraph.constructs {
+        let ConstructKind::Ruby(ruby) = construct.kind() else {
+            continue;
+        };
+        if let Some(plan) =
+            phonetic_jukugo_plan(paragraph, style, ruby, line_start, line_end, line_index)
+        {
+            required = required.max(plan.leading_gap);
+        }
+    }
     required
 }
 
@@ -1809,8 +2225,11 @@ fn measure_line(
                 style,
                 after_tab,
                 end_cluster,
-                start_cluster,
-                end_cluster,
+                LineContext {
+                    start: start_cluster,
+                    end: end_cluster,
+                    index: line_number,
+                },
             );
             if let Some(stop) = paragraph
                 .tab_stops
@@ -1825,9 +2244,10 @@ fn measure_line(
                     *stop,
                     after_tab,
                     end_cluster,
-                    LineSpan {
+                    LineContext {
                         start: start_cluster,
                         end: end_cluster,
+                        index: line_number,
                     },
                     segment_width,
                 );
@@ -1841,6 +2261,7 @@ fn measure_line(
                 ordinal,
                 start_cluster,
                 end_cluster,
+                line_number,
             )));
         }
     }
@@ -1852,8 +2273,7 @@ fn segment_width(
     style: &Style,
     start: usize,
     end: usize,
-    line_start: usize,
-    line_end: usize,
+    line: LineContext,
 ) -> i64 {
     paragraph.text.clusters()[start..end]
         .iter()
@@ -1864,8 +2284,9 @@ fn segment_width(
                 paragraph,
                 style,
                 start.saturating_add(local),
-                line_start,
-                line_end,
+                line.start,
+                line.end,
+                line.index,
             )))
         })
 }
@@ -1876,7 +2297,7 @@ fn tab_target(
     stop: crate::TabStop,
     start: usize,
     end: usize,
-    line: LineSpan,
+    line: LineContext,
     segment_width: i64,
 ) -> i64 {
     let position = i64::from(stop.position());
@@ -1899,6 +2320,7 @@ fn tab_target(
                         start.saturating_add(local),
                         line.start,
                         line.end,
+                        line.index,
                     )))
                 });
             position.saturating_sub(before)
@@ -1945,7 +2367,11 @@ fn apply_tabs(
                     *stop,
                     ordinal.saturating_add(1),
                     end,
-                    LineSpan { start, end },
+                    LineContext {
+                        start,
+                        end,
+                        index: line_number,
+                    },
                     width,
                 );
                 advances[local] = clamp_i32(target.saturating_sub(cursor).max(0));
@@ -2050,7 +2476,7 @@ fn local_orientation(
     }
 }
 
-fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
+fn place_attachments(paragraph: &Paragraph, style: &Style, line_index: usize, line: &mut Line) {
     let mut attachment_extent = 0;
     for (ordinal, construct) in paragraph.constructs.iter().enumerate() {
         if !ranges_overlap(&construct.range(), &line.range) {
@@ -2061,6 +2487,7 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
                 place_ruby_attachments(
                     paragraph,
                     style,
+                    line_index,
                     line,
                     ordinal,
                     ruby,
@@ -2137,6 +2564,7 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
 fn place_ruby_attachments(
     paragraph: &Paragraph,
     style: &Style,
+    line_index: usize,
     line: &mut Line,
     construct: usize,
     ruby: &crate::Ruby,
@@ -2170,6 +2598,13 @@ fn place_ruby_attachments(
             }
         },
         crate::RubyKind::Jukugo => {
+            if style.jukugo_ruby_layout() == JukugoRubyLayout::Phonetic
+                && let Some(extent) =
+                    place_phonetic_jukugo(paragraph, style, line_index, line, construct, ruby)
+            {
+                *attachment_extent = (*attachment_extent).max(extent);
+                return;
+            }
             let per_base = ruby
                 .runs()
                 .iter()
@@ -2201,6 +2636,49 @@ fn place_ruby_attachments(
             }
         },
     }
+}
+
+fn place_phonetic_jukugo(
+    paragraph: &Paragraph,
+    style: &Style,
+    line_index: usize,
+    line: &mut Line,
+    construct: usize,
+    ruby: &crate::Ruby,
+) -> Option<i32> {
+    let line_start = cluster_index_at_or_after(paragraph, line.range.start);
+    let line_end = cluster_index_at_or_after(paragraph, line.range.end);
+    let plan = phonetic_jukugo_plan(paragraph, style, ruby, line_start, line_end, line_index)?;
+    let first = plan.runs.first()?;
+    let actual_start = line.clusters.iter().find_map(|placement| {
+        (placement.origin == PlacementOrigin::Cluster(first.base.start))
+            .then_some(i64::from(placement.inline))
+    })?;
+    let offset = actual_start.saturating_sub(first.base_start);
+    let mut attachment_extent = 0;
+    for run in &plan.runs {
+        let mut inline = offset.saturating_add(run.annotation_start);
+        for cluster in ruby.annotation().clusters().iter().filter(|cluster| {
+            let cluster = cluster.range();
+            run.annotation.start <= cluster.start && cluster.end <= run.annotation.end
+        }) {
+            let size = cluster.size_override().unwrap_or(ruby.annotation().size());
+            line.attachments.push(Attachment {
+                construct,
+                range: cluster.range(),
+                inline: clamp_i32(inline),
+                block: attachment_block(paragraph, line, size),
+                advance: cluster.advance(),
+                size,
+                writing_mode: paragraph.writing_mode,
+                transform: CoordinateTransform::Identity,
+                symbol: None,
+            });
+            attachment_extent = attachment_extent.max(size.block());
+            inline = inline.saturating_add(i64::from(cluster.advance()));
+        }
+    }
+    Some(attachment_extent)
 }
 
 fn annotation_cluster_count(annotation: &crate::ShapedText, range: &Range<usize>) -> usize {
