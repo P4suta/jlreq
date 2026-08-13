@@ -178,7 +178,10 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
         .as_object()
         .ok_or_else(|| "each message must be a JSON object".to_owned())?;
     if let Some(field) = object.keys().find(|field| {
-        !["protocol", "spec", "id", "request", "response", "expected"].contains(&field.as_str())
+        ![
+            "protocol", "spec", "id", "rules", "request", "response", "expected",
+        ]
+        .contains(&field.as_str())
     }) {
         return Err(format!("unknown envelope field {field:?}"));
     }
@@ -199,6 +202,12 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
     }
     if has_expected && !has_request {
         return Err("expected is valid only beside a suite request".to_owned());
+    }
+    match (has_expected, object.get("rules")) {
+        (true, Some(rules)) => validate_rules(rules)?,
+        (true, None) => return Err("a suite case needs non-empty rules metadata".to_owned()),
+        (false, Some(_)) => return Err("rules metadata is valid only in a suite case".to_owned()),
+        (false, None) => {},
     }
     if case {
         if !has_request || !object.get("expected").is_some_and(Value::is_object) {
@@ -223,6 +232,26 @@ fn validate_envelope(value: &Value, case: bool) -> Result<(), String> {
         }
     } else if let Some(response) = object.get("response") {
         validate_response(response)?;
+    }
+    Ok(())
+}
+
+fn validate_rules(value: &Value) -> Result<(), String> {
+    let rules = value
+        .as_array()
+        .ok_or_else(|| "suite rules must be an array".to_owned())?;
+    if rules.is_empty() {
+        return Err("suite rules must not be empty".to_owned());
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for rule in rules {
+        let rule = rule
+            .as_str()
+            .filter(|rule| !rule.is_empty())
+            .ok_or_else(|| "each suite rule must be a non-empty string".to_owned())?;
+        if !seen.insert(rule) {
+            return Err(format!("suite rule {rule:?} is repeated"));
+        }
     }
     Ok(())
 }
@@ -333,6 +362,28 @@ mod tests {
     }
 
     #[test]
+    fn suite_rule_metadata_is_required_and_never_sent_on_the_wire() {
+        let case: serde_json::Value =
+            serde_json::from_str(BUILTIN_SUITE.lines().next().expect("built-in case"))
+                .expect("case JSON");
+        assert_eq!(case["rules"], json!(["3.1.10"]));
+
+        let mut missing = case.clone();
+        missing
+            .as_object_mut()
+            .expect("case object")
+            .remove("rules");
+        assert!(parse_messages(&missing.to_string(), true).is_err());
+
+        let mut wire_request = case;
+        wire_request
+            .as_object_mut()
+            .expect("case object")
+            .remove("expected");
+        assert!(parse_messages(&wire_request.to_string(), false).is_err());
+    }
+
+    #[test]
     fn wrong_protocol_is_an_input_error() {
         let message =
             r#"{"protocol":"old","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"x","request":{}}"#;
@@ -375,6 +426,7 @@ mod tests {
             serde_json::from_str(PROTOCOL_SCHEMA).expect("protocol schema JSON");
         assert!(schema["$defs"]["request"].is_object());
         assert!(schema["$defs"]["response"].is_object());
+        assert!(schema["properties"]["rules"].is_object());
         assert_eq!(
             schema["$defs"]["styleSettings"]["properties"]
                 .as_object()

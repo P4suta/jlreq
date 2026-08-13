@@ -9,6 +9,12 @@
     "protocol": { "const": "kumihan.conformance/1" },
     "spec": { "const": "jlreq-2020-08-11+unicode-17.0.0" },
     "id": { "type": "string", "minLength": 1 },
+    "rules": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "request": { "$ref": "#/$defs/request" },
     "response": { "$ref": "#/$defs/response" },
     "expected": { "$ref": "#/$defs/response" }
@@ -20,6 +26,16 @@
       "not": {
         "anyOf": [{ "required": ["request"] }, { "required": ["expected"] }]
       }
+    }
+  ],
+  "allOf": [
+    {
+      "if": { "required": ["expected"] },
+      "then": { "required": ["rules"] }
+    },
+    {
+      "if": { "required": ["rules"] },
+      "then": { "required": ["expected"] }
     }
   ],
   "$defs": {

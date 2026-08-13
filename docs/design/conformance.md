@@ -100,6 +100,10 @@ cargo run -p kumihan-conformance -- run $engine
 The package has no library target. JSON parsing dependencies remain confined to this
 product and never become dependencies or features of `kumihan`.
 
+Suite envelopes carry a non-empty `rules` array beside `request` and `expected`. This is
+runner-only provenance used by the coverage gate; `run` strips it before sending the request
+to an engine, and protocol requests or responses without `expected` reject the field.
+
 ## Coverage and release status
 
 The legacy case corpus and generated inventories remain differential assets while cases are

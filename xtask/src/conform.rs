@@ -7,9 +7,10 @@
 //! The conformance suite is the deliverable [ADR
 //! 0006](../../docs/adr/0006-conformance-suite-as-artifact.md) says is worth more than the
 //! implementation, so it is validated as a published artifact rather than as a test
-//! directory. `conform --check` reads every case file under `crates/jlreq-conform/cases`,
-//! holds it to the format `docs/design/conformance.md` fixes, and subtracts the cases from
-//! the rule inventory.
+//! directory. `conform --check` reads every retained case under
+//! `crates/jlreq-conform/cases` and every protocol-v1 case in
+//! `crates/kumihan-conformance/suite.ndjson`, then subtracts their declared rules from the
+//! rule inventory.
 //!
 //! Everything checked here is a property of a *well-formed case* rather than of an
 //! implementation's answer. A case whose input the library would refuse to build tests
@@ -82,6 +83,10 @@ pub(crate) const GATE: Gate = Gate {
 /// reads the identical path rather than a second copy of the string that could drift from
 /// this one.
 pub(crate) const CASES_DIR: &str = "crates/jlreq-conform/cases";
+/// The language-independent black-box suite for the unified product.
+const PROTOCOL_CASES_FILE: &str = "crates/kumihan-conformance/suite.ndjson";
+const PROTOCOL: &str = "kumihan.conformance/1";
+const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// The committed schema, published so nobody else has to use our reader.
 const SCHEMA_FILE: &str = "crates/jlreq-conform/cases.schema.json";
 /// The rule inventory `RuleId::ALL` is generated from.
@@ -133,6 +138,8 @@ struct Suite {
     directory_exists: bool,
     /// Every case file, as its path relative to the workspace root and its contents.
     files: Vec<(String, String)>,
+    /// The protocol-v1 NDJSON suite, when present.
+    protocol_cases: Option<String>,
     /// The committed JSON Schema, once it is written.
     schema: Option<String>,
     /// Every address in the rule inventory, once it is generated.
@@ -161,6 +168,7 @@ impl Suite {
         Ok(Self {
             directory_exists: directory.is_dir(),
             files,
+            protocol_cases: read_if_present(&root.join(PROTOCOL_CASES_FILE))?,
             schema: read_if_present(&root.join(SCHEMA_FILE))?,
             rules: read_inventory(&root.join(RULES_INVENTORY), "address")?,
             questions: read_questions(&root.join(QUESTIONS_INVENTORY))?,
@@ -185,6 +193,11 @@ impl Suite {
         let mut cases = Vec::new();
         for (name, source) in &self.files {
             let (found, read) = examine_file(name, source, self.reference());
+            violations.extend(found);
+            cases.extend(read);
+        }
+        if let Some(source) = &self.protocol_cases {
+            let (found, read) = examine_protocol_suite(PROTOCOL_CASES_FILE, source);
             violations.extend(found);
             cases.extend(read);
         }
@@ -289,6 +302,16 @@ impl Suite {
             } else {
                 format!("{CASES_DIR} does not exist yet, so the suite is the empty set")
             },
+            match &self.protocol_cases {
+                Some(source) => format!(
+                    "read {count} protocol-v1 case(s) from {PROTOCOL_CASES_FILE}",
+                    count = source
+                        .lines()
+                        .filter(|line| !line.trim().is_empty())
+                        .count()
+                ),
+                None => format!("{PROTOCOL_CASES_FILE} does not exist yet"),
+            },
             kind_census(cases),
             format!(
                 "{declaring} case(s) declare {total} matrix coordinate(s) under `cells`, \
@@ -377,11 +400,18 @@ impl Suite {
 fn kind_census(cases: &[Case]) -> String {
     let declared: BTreeSet<&str> = cases.iter().flat_map(Case::rules).collect();
     format!(
-        "{cases} case(s) naming {rules} distinct rule address(es): {classify} classify, \
-         {boundary} boundary, {compose} compose, {align} align, {tab} tab, {feasible} \
-         feasible, {lower} lower, {place} place, of which {pairs} form a §3.1.2 frame pair",
+        concat!(
+            "{cases} case(s) naming {rules} distinct rule address(es): {protocol} protocol-v1, ",
+            "{classify} classify, {boundary} boundary, {compose} compose, {align} align, ",
+            "{tab} tab, {feasible} feasible, {lower} lower, {place} place, of which {pairs} ",
+            "form a §3.1.2 frame pair"
+        ),
         cases = cases.len(),
         rules = declared.len(),
+        protocol = cases
+            .iter()
+            .filter(|case| case.body.get("protocol").is_some())
+            .count(),
         classify = cases.iter().filter(|case| case.asks("classify")).count(),
         boundary = cases.iter().filter(|case| case.asks("boundary")).count(),
         compose = cases.iter().filter(|case| case.asks("compose")).count(),
@@ -399,6 +429,86 @@ fn kind_census(cases: &[Case]) -> String {
                 ))
             .count()
     )
+}
+
+/// Read runner-only coverage metadata from the language-independent NDJSON suite.
+///
+/// The product validator owns the complete protocol grammar. This dependency-free gate
+/// independently checks the envelope facts on which coverage relies, so a malformed case
+/// cannot close an inventoried rule merely because another test was not run.
+fn examine_protocol_suite(name: &str, source: &str) -> (Vec<String>, Vec<Case>) {
+    let mut problems = Vec::new();
+    let mut cases = Vec::new();
+    for (offset, line) in source.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let line_number = offset.saturating_add(1);
+        let location = format!("{name}:{line_number}");
+        let body = match Json::parse(line) {
+            Ok(body) => body,
+            Err(error) => {
+                problems.push(format!("{location}: {}", error.message()));
+                continue;
+            },
+        };
+        let Some(object) = body.as_object() else {
+            problems.push(format!(
+                "{location}: a protocol suite case must be an object"
+            ));
+            continue;
+        };
+        let mut valid = true;
+        for (field, _) in object {
+            if !["protocol", "spec", "id", "rules", "request", "expected"].contains(&field.as_str())
+            {
+                problems.push(format!(
+                    "{location}: unknown protocol suite field `{field}`"
+                ));
+                valid = false;
+            }
+        }
+        for (field, expected) in [("protocol", PROTOCOL), ("spec", SPECIFICATION)] {
+            if body.get(field).and_then(Json::as_text) != Some(expected) {
+                problems.push(format!("{location}: `{field}` must be `{expected}`"));
+                valid = false;
+            }
+        }
+        let id = body
+            .get("id")
+            .and_then(Json::as_text)
+            .filter(|id| !id.is_empty());
+        if id.is_none() {
+            problems.push(format!("{location}: `id` must be a non-empty string"));
+            valid = false;
+        }
+        let rules = body.get("rules").and_then(Json::as_array);
+        if rules.is_none_or(|rules| {
+            rules.is_empty()
+                || rules
+                    .iter()
+                    .any(|rule| rule.as_text().is_none_or(str::is_empty))
+        }) {
+            problems.push(format!(
+                "{location}: a protocol suite case needs a non-empty rules array of strings"
+            ));
+            valid = false;
+        }
+        for field in ["request", "expected"] {
+            if body.get(field).and_then(Json::as_object).is_none() {
+                problems.push(format!("{location}: `{field}` must be an object"));
+                valid = false;
+            }
+        }
+        if valid {
+            cases.push(Case {
+                file: location,
+                id: id.unwrap_or_default().to_owned(),
+                body,
+            });
+        }
+    }
+    (problems, cases)
 }
 
 /// How many `compose` cases name `Search::Optimal` rather than leaving `search` absent
@@ -3225,7 +3335,8 @@ mod tests {
         Case, Json, Ledger, Milestones, REQUIRED_BY_SHAPE, RULES_INVENTORY, Reference, Suite,
         accept_arguments, check_input, check_permitted, check_question, check_schema, check_trims,
         check_widow_threshold, declared_addresses, declared_units_per_em, deferral, examine_file,
-        frame_pairs, inventory_column, is_path, parse_address, unique_ids, unresolved_addresses,
+        examine_protocol_suite, frame_pairs, inventory_column, is_path, parse_address, unique_ids,
+        unresolved_addresses,
     };
     use crate::shared;
 
@@ -3516,6 +3627,7 @@ mod tests {
         Suite {
             directory_exists: false,
             files: Vec::new(),
+            protocol_cases: None,
             schema: None,
             rules: None,
             questions: None,
@@ -3551,6 +3663,24 @@ mod tests {
     #[test]
     fn the_minimal_case_validates() {
         assert!(examine(&file_with(MINIMAL)).is_empty());
+    }
+
+    #[test]
+    fn protocol_suite_rules_enter_the_same_coverage_set() {
+        let source = r#"{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"3.3.9/emphasis","rules":["3.3.9"],"request":{},"expected":{}}"#;
+        let (found, cases) = examine_protocol_suite("suite.ndjson", source);
+        assert!(found.is_empty(), "{found:#?}");
+        assert_eq!(cases.len(), 1);
+        assert_eq!(cases[0].rules(), ["3.3.9"]);
+
+        let missing = source.replace(r#","rules":["3.3.9"]"#, "");
+        let (found, _) = examine_protocol_suite("suite.ndjson", &missing);
+        assert!(
+            found
+                .iter()
+                .any(|message| message.contains("non-empty rules")),
+            "{found:#?}"
+        );
     }
 
     #[test]
@@ -4511,7 +4641,7 @@ mod tests {
         let suite = Suite::read(&root).expect("the suite and its inventories are readable");
         let (census, violations) = suite.examine();
         assert!(violations.is_empty(), "{violations:#?}");
-        assert_eq!(census.len(), 9, "{census:#?}");
+        assert_eq!(census.len(), 10, "{census:#?}");
         assert!(
             census
                 .iter()
