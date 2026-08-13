@@ -1279,6 +1279,13 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
             .build()
             .expect("valid any-neighbor ruby style"),
     );
+    let any_fullwidth_latin = compose_preceding(
+        'Ａ',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::Any)
+            .build()
+            .expect("valid any-neighbor ruby style"),
+    );
     let no_hiragana = compose_preceding(
         'あ',
         Style::builder()
@@ -1289,6 +1296,11 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     assert_eq!(preferred_katakana.lines()[0].clusters()[1].inline(), 1_000);
     assert_eq!(jis_katakana.lines()[0].clusters()[1].inline(), 1_250);
     assert_eq!(any_ideograph.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(
+        any_fullwidth_latin.lines()[0].clusters()[1].inline(),
+        1_000,
+        "the Any alternative means every neighboring character, not only Japanese scripts"
+    );
     assert_eq!(no_hiragana.lines()[0].clusters()[1].inline(), 1_250);
     let katatsuki_ideograph = compose_preceding(
         '前',

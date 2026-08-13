@@ -1489,9 +1489,7 @@ fn ruby_neighbor_overhang_allowance(
     let kana = match style.ruby_overhang_kana() {
         RubyOverhangKana::Kana => is_hiragana(character) || is_katakana(character),
         RubyOverhangKana::Jis => is_hiragana(character),
-        RubyOverhangKana::Any => {
-            is_hiragana(character) || is_katakana(character) || is_ideographic_character(character)
-        },
+        RubyOverhangKana::Any => true,
         RubyOverhangKana::None => false,
     };
     if punctuation_allowance != 0 {
@@ -1515,13 +1513,6 @@ fn is_hiragana(character: char) -> bool {
 
 fn is_katakana(character: char) -> bool {
     matches!(character as u32, 0x30a0..=0x30ff | 0x31f0..=0x31ff)
-}
-
-fn is_ideographic_character(character: char) -> bool {
-    matches!(
-        character as u32,
-        0x3400..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x323af
-    )
 }
 
 fn is_inseparable_character(character: char) -> bool {

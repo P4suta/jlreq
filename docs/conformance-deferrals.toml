@@ -382,7 +382,7 @@ why = "The unified warichu geometry makes the section's mechanical one-line rule
 [[owned]]
 rule = "B.2#7"
 milestone = "M1"
-why = "The note states how far ruby may overhang the katakana and the other classes beside it, which the boundary answer carries as `ruby_overhang`; two cases ask for it and nothing answers them yet."
+why = "The integrated long-ruby budget implements all four typed readings. The preferred profile permits one ruby em over hiragana and katakana; the JIS profile narrows that to hiragana; `none` forbids hiragana, katakana, and ideographic neighbors; and `any` permits every neighboring character after the note's punctuation-specific budgets have been applied. Public acceptance coverage compares all four answers on identical geometry. Protocol-v1 case B.2-note-7/any-ruby-overhang-includes-non-japanese-character is deliberately outside the three Japanese script groups: a full-width Latin neighbor supplies the selected overhang, proving `any` was not implemented as only the union of examples the note says it includes."
 
 [[owned]]
 rule = "B.2#10"

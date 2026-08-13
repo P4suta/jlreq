@@ -70,7 +70,7 @@ pub enum RubyOverhangKana {
     Kana,
     /// The narrower JIS reading recorded by JLReq.
     Jis,
-    /// Any kana or ideograph.
+    /// Any neighboring character, including kana and ideographs.
     Any,
     /// No kana or ideograph.
     None,
