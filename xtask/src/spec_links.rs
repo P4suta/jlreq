@@ -83,6 +83,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use crate::conform::PROTOCOL_CASES_FILE;
 use crate::deferral::{LEDGER, Ledger};
 use crate::shared::{self, Address, CoreCrate, Detail, Gate, Section, address, number};
 
@@ -159,7 +160,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     )];
     let sections = read_table(&root.join(SECTIONS), SECTIONS, &mut violations)?;
     let inventory = read_table(&root.join(INVENTORY), INVENTORY, &mut violations)?;
-    let cases = read_cases(&root.join(CASES))?;
+    let cases = read_cases(&root.join(CASES), &root.join(PROTOCOL_CASES_FILE))?;
 
     let deferrals = Ledger::read(&root)?;
 
@@ -1044,23 +1045,22 @@ fn table_rows(text: &str, name: &str, violations: &mut Vec<String>) -> BTreeSet<
     rows
 }
 
-/// Every rule the conformance cases declare, or `None` when there are none yet.
-fn read_cases(dir: &Path) -> io::Result<Option<BTreeSet<String>>> {
-    if !dir.is_dir() {
-        return Ok(None);
-    }
+/// Every rule either conformance case format declares, or `None` when neither exists yet.
+fn read_cases(dir: &Path, protocol_cases: &Path) -> io::Result<Option<BTreeSet<String>>> {
     let mut files = Vec::new();
-    for entry in fs::read_dir(dir)? {
-        let path = entry?.path();
-        if path
-            .extension()
-            .is_some_and(|extension| extension == "json")
-        {
-            files.push(path);
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let path = entry?.path();
+            if path
+                .extension()
+                .is_some_and(|extension| extension == "json")
+            {
+                files.push(path);
+            }
         }
     }
     files.sort();
-    if files.is_empty() {
+    if files.is_empty() && !protocol_cases.is_file() {
         return Ok(None);
     }
     let mut rules = BTreeSet::new();
@@ -1070,6 +1070,16 @@ fn read_cases(dir: &Path) -> io::Result<Option<BTreeSet<String>>> {
             io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("{path}: {reason}", path = file.display()),
+            )
+        })?;
+        rules.extend(declared);
+    }
+    if protocol_cases.is_file() {
+        let text = fs::read_to_string(protocol_cases)?;
+        let declared = declared_rules(&text).map_err(|reason| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("{path}: {reason}", path = protocol_cases.display()),
             )
         })?;
         rules.extend(declared);
@@ -1146,8 +1156,8 @@ mod tests {
 
     use super::{
         Citation, Cited, Detail, Mention, Surface, address, check_cases, check_rules,
-        check_sections, claim, claim_of, declared_rules, is_generated, read_addresses, read_table,
-        requires_public_item_citations, scan, table_rows,
+        check_sections, claim, claim_of, declared_rules, is_generated, read_addresses, read_cases,
+        read_table, requires_public_item_citations, scan, table_rows,
     };
 
     /// Build a citation index the way `read_addresses` does, from addresses alone.
@@ -1508,6 +1518,34 @@ pub enum Standing {
         );
         assert_eq!(violations.len(), 1, "found {violations:?}");
         assert!(violations[0].contains("B.2#3"), "found {violations:?}");
+    }
+
+    #[test]
+    fn protocol_rules_join_legacy_rules_in_case_closure() {
+        let root = std::env::temp_dir().join(format!(
+            "kumihan-spec-links-protocol-{}",
+            std::process::id()
+        ));
+        let legacy = root.join("legacy");
+        let protocol = root.join("suite.ndjson");
+        std::fs::create_dir_all(&legacy).expect("temporary legacy case directory");
+        std::fs::write(legacy.join("case.json"), r#"{"rules":["3.1.9"]}"#)
+            .expect("temporary legacy case");
+        std::fs::write(
+            &protocol,
+            r#"{"protocol":"kumihan.conformance/1","rules":["3.3.9"]}"#,
+        )
+        .expect("temporary protocol case");
+
+        let rules = read_cases(&legacy, &protocol)
+            .expect("both case sources are readable")
+            .expect("the union is non-empty");
+        assert_eq!(rules, table(&["3.1.9", "3.3.9"]));
+
+        std::fs::remove_file(legacy.join("case.json")).expect("remove temporary legacy case");
+        std::fs::remove_file(&protocol).expect("remove temporary protocol case");
+        std::fs::remove_dir(&legacy).expect("remove temporary legacy directory");
+        std::fs::remove_dir(&root).expect("remove temporary root");
     }
 
     #[test]

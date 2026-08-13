@@ -44,6 +44,14 @@ impl Size {
     pub const fn block(self) -> i32 {
         self.block
     }
+
+    /// Half the size on each axis, rounding an indivisible caller unit upward.
+    pub(crate) const fn half_rounded_up(self) -> Self {
+        Self {
+            inline: (self.inline / 2).saturating_add(self.inline % 2),
+            block: (self.block / 2).saturating_add(self.block % 2),
+        }
+    }
 }
 
 /// The metrics frame used when classifying and spacing a shaped cluster.

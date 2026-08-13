@@ -415,7 +415,8 @@ mod tests {
     #[test]
     fn all_style_settings_belong_to_the_closed_typed_vocabulary() {
         let mut case: serde_json::Value =
-            serde_json::from_str(BUILTIN_SUITE.trim()).expect("built-in case JSON");
+            serde_json::from_str(BUILTIN_SUITE.lines().next().expect("built-in case"))
+                .expect("built-in case JSON");
         case["request"]["style"] = json!({"made.up.setting": "anything"});
         assert!(parse_messages(&case.to_string(), true).is_err());
     }
@@ -472,7 +473,8 @@ mod tests {
     #[test]
     fn envelope_vocabulary_and_message_roles_are_closed() {
         let mut unknown: serde_json::Value =
-            serde_json::from_str(BUILTIN_SUITE.trim()).expect("built-in case JSON");
+            serde_json::from_str(BUILTIN_SUITE.lines().next().expect("built-in case"))
+                .expect("built-in case JSON");
         unknown["extension"] = json!(true);
         assert!(parse_messages(&unknown.to_string(), false).is_err());
 

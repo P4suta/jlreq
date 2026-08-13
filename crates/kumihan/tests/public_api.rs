@@ -128,6 +128,67 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
 }
 
 #[test]
+fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
+    let source = "日本";
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive base size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..6, 600).with_size(Size::square(600).expect("positive mixed size")),
+        ],
+    )
+    .expect("valid emphasis fixture");
+
+    for (mode, expected_blocks) in [
+        (WritingMode::HorizontalTb, [-500, -300]),
+        (WritingMode::VerticalRl, [500, 300]),
+    ] {
+        let paragraph = Paragraph::builder(text.clone(), 2_000)
+            .constructs([Construct::emphasis_dots(0..6, '•')])
+            .writing_mode(mode)
+            .build()
+            .expect("valid emphasis paragraph");
+        let layout = kumihan::compose(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.block_extent(), 1_500);
+        assert_eq!(line.attachments().len(), 2);
+
+        let first = &line.attachments()[0];
+        assert_eq!(first.inline(), 250);
+        assert_eq!(first.block(), expected_blocks[0]);
+        assert_eq!(first.advance(), 0);
+        assert_eq!(first.size().inline(), 500);
+        assert_eq!(first.size().block(), 500);
+        assert_eq!(first.symbol(), Some('•'));
+
+        let second = &line.attachments()[1];
+        assert_eq!(second.inline(), 1_150);
+        assert_eq!(second.block(), expected_blocks[1]);
+        assert_eq!(second.advance(), 0);
+        assert_eq!(second.size().inline(), 300);
+        assert_eq!(second.size().block(), 300);
+        assert_eq!(second.symbol(), Some('•'));
+    }
+
+    let paragraph = Paragraph::builder(text, 2_000)
+        .constructs([
+            Construct::emphasis_dots(0..3, '•'),
+            Construct::emphasis_dots(3..6, '•'),
+        ])
+        .build()
+        .expect("two disjoint emphasis runs are valid");
+    let layout = kumihan::compose(&paragraph, &Style::default());
+    assert_eq!(layout.lines()[0].attachments().len(), 2);
+    assert_eq!(
+        layout.lines()[0].block_extent(),
+        1_500,
+        "disjoint emphasis runs share one side rather than stacking"
+    );
+}
+
+#[test]
 fn appendix_pair_is_normalized_across_shaping_clusters() {
     let source = "\u{31f7}\u{309a}";
     let first_end = '\u{31f7}'.len_utf8();

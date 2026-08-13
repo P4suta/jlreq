@@ -535,6 +535,7 @@ fn local_orientation(
 }
 
 fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
+    let mut emphasis_extent = 0;
     for (ordinal, construct) in paragraph.constructs.iter().enumerate() {
         if !ranges_overlap(&construct.range(), &line.range) {
             continue;
@@ -582,17 +583,22 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
                     .iter()
                     .filter(|placement| ranges_overlap(&placement.range, range))
                 {
+                    let size = placement.size.half_rounded_up();
+                    let inline = i64::from(placement.inline).saturating_add(
+                        i64::from(placement.advance).saturating_sub(i64::from(size.inline())) / 2,
+                    );
                     line.attachments.push(Attachment {
                         construct: ordinal,
                         range: 0..0,
-                        inline: placement.inline,
-                        block: attachment_block(paragraph, line, placement.size),
+                        inline: clamp_i32(inline),
+                        block: attachment_block(paragraph, line, size),
                         advance: 0,
-                        size: placement.size,
+                        size,
                         writing_mode: paragraph.writing_mode,
                         transform: CoordinateTransform::Identity,
                         symbol: Some(*mark),
                     });
+                    emphasis_extent = emphasis_extent.max(size.block());
                 }
             },
             ConstructKind::ReferenceMark { range, mark }
@@ -635,6 +641,7 @@ fn place_attachments(paragraph: &Paragraph, style: &Style, line: &mut Line) {
             | ConstructKind::Formula(_) => {},
         }
     }
+    line.block_extent = line.block_extent.saturating_add(emphasis_extent);
 }
 
 fn attachment_block(paragraph: &Paragraph, line: &Line, size: Size) -> i32 {

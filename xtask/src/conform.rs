@@ -84,7 +84,7 @@ pub(crate) const GATE: Gate = Gate {
 /// this one.
 pub(crate) const CASES_DIR: &str = "crates/jlreq-conform/cases";
 /// The language-independent black-box suite for the unified product.
-const PROTOCOL_CASES_FILE: &str = "crates/kumihan-conformance/suite.ndjson";
+pub(crate) const PROTOCOL_CASES_FILE: &str = "crates/kumihan-conformance/suite.ndjson";
 const PROTOCOL: &str = "kumihan.conformance/1";
 const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// The committed schema, published so nobody else has to use our reader.
