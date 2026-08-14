@@ -5,19 +5,22 @@
 use alloc::{vec, vec::Vec};
 use core::ops::Range;
 
-use crate::{
-    Alignment, Attachment, ClusterPlacement, ClusterRole, CoordinateTransform, Diagnostic, Frame,
-    Layout, Line, Paragraph, PlacementOrigin, Severity, Size, Style, TabAlignment, Widow,
-    WritingMode,
-    construct::{ConstructKind, is_math_operator, is_math_symbol, is_math_token},
-    style::{
-        AdjustmentPreference, AmbiguousContext, GroupRubyDistribution, GroupedNumeralBeforeWestern,
-        GroupedNumeralQualification, HangingPunctuation, IterationMarkAtLineHead,
-        JapaneseLatinExpansionCeiling, JukugoRubyLayout, KinsokuLevel, LineEndFullStopComma,
-        LineEndPunctuation, LineHeadOpeningBracket, ReductionTable, RelaxationMechanism, Remainder,
-        RubyAlignment, RubyOverhangIndent, RubyOverhangKana, SentenceMedialDividingMark,
-        UnlistedCodePoint,
-    },
+use crate::construct::{
+    ConstructKind, Ruby, RubyKind, is_math_operator, is_math_symbol, is_math_token,
+};
+use crate::layout::{
+    Attachment, ClusterPlacement, CoordinateTransform, Diagnostic, Layout, Line, PlacementOrigin,
+    Severity,
+};
+use crate::model::{ClusterRole, Frame, Size, WritingMode};
+use crate::paragraph::{Alignment, Paragraph, TabAlignment, TabStop, Widow};
+use crate::style::{
+    AdjustmentPreference, AmbiguousContext, GroupRubyDistribution, GroupedNumeralBeforeWestern,
+    GroupedNumeralQualification, HangingPunctuation, IterationMarkAtLineHead,
+    JapaneseLatinExpansionCeiling, JukugoRubyLayout, KinsokuLevel, LineEndFullStopComma,
+    LineEndPunctuation, LineHeadOpeningBracket, ReductionTable, RelaxationMechanism, Remainder,
+    RubyAlignment, RubyOverhangIndent, RubyOverhangKana, SentenceMedialDividingMark, Style,
+    UnlistedCodePoint,
 };
 
 const INFINITE_COST: i64 = i64::MAX / 4;
@@ -381,7 +384,7 @@ impl Composer {
             let ordinal = start_cluster.saturating_add(local);
             let previous_ordinal;
             if let Some((group, columns, line_gap)) = furawake_cluster_range(paragraph, ordinal)
-                && group.start == ordinal
+                .filter(|(group, _, _)| group.start == ordinal)
             {
                 let segment = furawake_segment(paragraph, group, columns, line_gap, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
@@ -390,7 +393,7 @@ impl Composer {
                 cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
                 local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
             } else if let Some(group) = warichu_cluster_range(paragraph, ordinal)
-                && group.start.max(start_cluster) == ordinal
+                .filter(|group| group.start.max(start_cluster) == ordinal)
             {
                 let segment = warichu_segment(paragraph, group, start_cluster, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
@@ -398,7 +401,7 @@ impl Composer {
                 cursor = cursor.saturating_add(i64::from(segment.advance));
                 local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
             } else if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal)
-                && group.start == ordinal
+                .filter(|group| group.start == ordinal)
             {
                 let group_end = group.end.min(end_cluster);
                 let member_count = group_end.saturating_sub(ordinal);
@@ -649,7 +652,7 @@ fn boundary_expansion_site(paragraph: &Paragraph, style: &Style, before: usize) 
             | ConstructKind::Jidori { range, .. }
             | ConstructKind::Script { range, .. } => range.start < boundary && boundary < range.end,
             ConstructKind::Ruby(ruby) => {
-                ruby.kind() != crate::RubyKind::Mono
+                ruby.kind() != RubyKind::Mono
                     && ruby.base().start < boundary
                     && boundary < ruby.base().end
             },
@@ -783,7 +786,7 @@ fn expansion_complex_at(paragraph: &Paragraph, ordinal: usize) -> Option<Complex
                 if ruby.base().start <= cluster.start && cluster.end <= ruby.base().end =>
             {
                 let (kind, member) = match ruby.kind() {
-                    crate::RubyKind::Mono => (
+                    RubyKind::Mono => (
                         ComplexKind::SimpleRuby,
                         ruby.runs()
                             .iter()
@@ -793,8 +796,8 @@ fn expansion_complex_at(paragraph: &Paragraph, ordinal: usize) -> Option<Complex
                             })
                             .unwrap_or(0),
                     ),
-                    crate::RubyKind::Group => (ComplexKind::SimpleRuby, 0),
-                    crate::RubyKind::Jukugo => (ComplexKind::JukugoRuby, 0),
+                    RubyKind::Group => (ComplexKind::SimpleRuby, 0),
+                    RubyKind::Jukugo => (ComplexKind::JukugoRuby, 0),
                 };
                 Some(ComplexIdentity {
                     kind,
@@ -1633,20 +1636,20 @@ enum RubySide {
 fn visit_ruby_spans(
     paragraph: &Paragraph,
     style: &Style,
-    mut visit: impl FnMut(&crate::Ruby, Range<usize>, Range<usize>),
+    mut visit: impl FnMut(&Ruby, Range<usize>, Range<usize>),
 ) {
     for construct in &paragraph.constructs {
         let ConstructKind::Ruby(ruby) = construct.kind() else {
             continue;
         };
         match ruby.kind() {
-            crate::RubyKind::Group => visit(ruby, ruby.base(), 0..ruby.annotation().source().len()),
-            crate::RubyKind::Mono => {
+            RubyKind::Group => visit(ruby, ruby.base(), 0..ruby.annotation().source().len()),
+            RubyKind::Mono => {
                 for run in ruby.runs() {
                     visit(ruby, run.base(), run.annotation());
                 }
             },
-            crate::RubyKind::Jukugo => {
+            RubyKind::Jukugo => {
                 if style.jukugo_ruby_layout() == JukugoRubyLayout::Phonetic {
                     continue;
                 }
@@ -1669,14 +1672,12 @@ fn visit_ruby_spans(
 fn phonetic_jukugo_plan(
     paragraph: &Paragraph,
     style: &Style,
-    ruby: &crate::Ruby,
+    ruby: &Ruby,
     line_start: usize,
     line_end: usize,
     line_index: usize,
 ) -> Option<PhoneticJukugoPlan> {
-    if ruby.kind() != crate::RubyKind::Jukugo
-        || style.jukugo_ruby_layout() != JukugoRubyLayout::Phonetic
-    {
+    if ruby.kind() != RubyKind::Jukugo || style.jukugo_ruby_layout() != JukugoRubyLayout::Phonetic {
         return None;
     }
 
@@ -2079,18 +2080,18 @@ fn base_distribution_plan(
 fn group_ruby_base_plan(
     paragraph: &Paragraph,
     style: &Style,
-    ruby: &crate::Ruby,
+    ruby: &Ruby,
     base: &Range<usize>,
     annotation: &Range<usize>,
 ) -> Option<GroupRubyBasePlan> {
     let distribution = match ruby.kind() {
-        crate::RubyKind::Group => style.group_ruby_distribution(),
-        crate::RubyKind::Jukugo
+        RubyKind::Group => style.group_ruby_distribution(),
+        RubyKind::Jukugo
             if style.jukugo_ruby_layout() != JukugoRubyLayout::Phonetic && *base == ruby.base() =>
         {
             GroupRubyDistribution::Jis
         },
-        crate::RubyKind::Mono | crate::RubyKind::Jukugo => return None,
+        RubyKind::Mono | RubyKind::Jukugo => return None,
     };
     base_distribution_plan(
         paragraph,
@@ -2105,7 +2106,7 @@ fn group_ruby_base_plan(
 fn ruby_span_overhang(
     paragraph: &Paragraph,
     style: &Style,
-    ruby: &crate::Ruby,
+    ruby: &Ruby,
     base: Range<usize>,
     annotation: Range<usize>,
     line_start: usize,
@@ -2503,7 +2504,7 @@ fn class_of_cluster_impl(paragraph: &Paragraph, style: Option<&Style>, ordinal: 
         }
         match construct.kind() {
             ConstructKind::Ruby(ruby) => {
-                return if ruby.kind() == crate::RubyKind::Jukugo {
+                return if ruby.kind() == RubyKind::Jukugo {
                     23
                 } else {
                     22
@@ -3233,7 +3234,7 @@ fn segment_width(
 fn tab_target(
     paragraph: &Paragraph,
     style: &Style,
-    stop: crate::TabStop,
+    stop: TabStop,
     start: usize,
     end: usize,
     line: LineContext,
@@ -3634,11 +3635,11 @@ fn place_ruby_attachments(
     line_index: usize,
     line: &mut Line,
     construct: usize,
-    ruby: &crate::Ruby,
+    ruby: &Ruby,
     attachment_extent: &mut i32,
 ) {
     match ruby.kind() {
-        crate::RubyKind::Group => {
+        RubyKind::Group => {
             *attachment_extent = (*attachment_extent).max(place_ruby_span(
                 paragraph,
                 style,
@@ -3652,7 +3653,7 @@ fn place_ruby_attachments(
                 },
             ));
         },
-        crate::RubyKind::Mono => {
+        RubyKind::Mono => {
             for run in ruby.runs() {
                 if range_fits_line(&run.base(), line) {
                     *attachment_extent = (*attachment_extent).max(place_ruby_span(
@@ -3670,13 +3671,14 @@ fn place_ruby_attachments(
                 }
             }
         },
-        crate::RubyKind::Jukugo => {
-            if style.jukugo_ruby_layout() == JukugoRubyLayout::Phonetic
-                && let Some(extent) =
+        RubyKind::Jukugo => {
+            if style.jukugo_ruby_layout() == JukugoRubyLayout::Phonetic {
+                if let Some(extent) =
                     place_phonetic_jukugo(paragraph, style, line_index, line, construct, ruby)
-            {
-                *attachment_extent = (*attachment_extent).max(extent);
-                return;
+                {
+                    *attachment_extent = (*attachment_extent).max(extent);
+                    return;
+                }
             }
             let per_base = ruby
                 .runs()
@@ -3723,7 +3725,7 @@ fn place_phonetic_jukugo(
     line_index: usize,
     line: &mut Line,
     construct: usize,
-    ruby: &crate::Ruby,
+    ruby: &Ruby,
 ) -> Option<i32> {
     let line_start = cluster_index_at_or_after(paragraph, line.range.start);
     let line_end = cluster_index_at_or_after(paragraph, line.range.end);
@@ -4011,9 +4013,10 @@ fn clamp_i32(value: i64) -> i32 {
 mod tests {
     use alloc::vec;
 
-    use crate::{
-        Break, Cluster, Construct, Frame, Paragraph, ShapedText, Size, Style, Widow, WritingMode,
-    };
+    use crate::construct::Construct;
+    use crate::model::{Cluster, Frame, ShapedText, Size, WritingMode};
+    use crate::paragraph::{Break, Paragraph, Widow};
+    use crate::style::Style;
 
     fn text(source: &str) -> ShapedText {
         let clusters = source.char_indices().map(|(start, character)| {

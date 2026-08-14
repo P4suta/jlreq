@@ -6,10 +6,11 @@
 //!
 //! Holds the unified candidate surface exactly to `docs/api-1.0.toml`, including the
 //! bidirectional mapping from all 22 specification questions to dedicated Style enums.
-//! During migration it also keeps the retained legacy surface within the compatibility
-//! shape in `docs/api-frozen.toml`; that control disappears with the old crates.
+//! The retired pre-1.0 crate surfaces are deliberately outside this gate. Their structural
+//! parser remains unit-tested for repository archaeology, but is inactive unless somebody
+//! restores the deleted `docs/api-frozen.toml` control.
 //!
-//! Four things are checked, each against the control file rather than against a list kept
+//! That historical parser checked four things, each against its control file rather than against a list kept
 //! here, so that relaxing any of them is a reviewed edit to a code-owned file, and a fifth
 //! is checked about the gate itself:
 //!
@@ -67,15 +68,6 @@
 //! there, and demanding a constructor for `Frame` or `Role` would be the same gate failing
 //! on the same design.
 //!
-//! # What is reported rather than failed on
-//!
-//! Most of the types the frozen file names do not exist yet: they arrive with
-//! `jlreq-class` at M0, `jlreq-line` at M1 and M3, `jlreq-spacing` at M2. Failing on their
-//! absence would make this a milestone tracker; falling silent would make it worthless the
-//! moment they land. So each listed item that is not present is printed as a line of the
-//! gate's own output, naming the crate it waits on, and the check begins constraining it
-//! the moment its declaration exists.
-//!
 //! # How the surface is read
 //!
 //! Hand-rolled, for the reason stated on `purity`'s manifest scan: the tool that enforces
@@ -83,18 +75,14 @@
 //! stripped of comments and of string and character literals — so prose naming a forbidden
 //! word is not a finding — then read as items: types with their attributes, functions with
 //! their parameter and result types, associated constants with their declared type, and
-//! the two `macro_rules!` surfaces `jlreq-unit` generates, whose expansions are
-//! instantiated at each invocation so that `InlineExtent::new` is seen where it is
-//! written.
+//! macro-generated surfaces, whose expansions are instantiated at each invocation.
 //!
 //! Visibility is read literally: a type is public when it is declared `pub`, whether or not
 //! a `pub use` re-exports it. That is the outer bound and it fails closed — a `pub` type is
 //! one export line away from an adopter's hands, so holding it to the frozen shape now is
-//! what keeps the shape from being decided by that line. The surface governed is what this
-//! workspace publishes, which is every member whose own manifest does not say
-//! `publish = false`; input positions are collected from the whole workspace, because the
-//! pinned definition says so and because a call site outside the published crates can only
-//! add obligations, never remove them.
+//! what keeps the shape from being decided by that line. The 1.0 surface governed by the
+//! active path is the sole `kumihan` library and the `kumihan::style` namespace, compared
+//! exactly with `docs/api-1.0.toml`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -106,10 +94,7 @@ use crate::shared::{self, Gate};
 /// The `api` gate, as the dispatcher sees it.
 pub(crate) const GATE: Gate = Gate {
     name: "api",
-    purpose: concat!(
-        "kumihan matches docs/api-1.0.toml and its 22 typed Style mappings exactly; ",
-        "retained migration assets remain constrained by docs/api-frozen.toml"
-    ),
+    purpose: "kumihan matches docs/api-1.0.toml and its 22 typed Style mappings exactly",
     reference: concat!(
         "docs/adr/0012-outcome-and-detail-compatibility.md ",
         "and docs/design/api-spine.md"
@@ -127,21 +112,27 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
         ));
     }
     let root = shared::workspace_root()?;
-    let control = Control::read(&root)?;
-    let surface = Surface::read(&root)?;
-    control.resolve_against(&surface)?;
-
-    report(&control, &surface);
-
     let mut violations = Vec::new();
-    check_readability(&surface, &mut violations);
-    check_exhaustiveness(&control, &surface, &mut violations);
-    check_projections(&control, &surface, &mut violations);
-    check_construction(&surface, &mut violations);
-    check_forbidden_names(&control, &surface, &mut violations);
-    check_forbidden_signatures(&control, &surface, &mut violations);
-    check_policy_space(&root, &control, &mut violations)?;
+    // Keep the historical parser executable only for repository archaeology: the 1.0
+    // workspace does not ship this file, so it is never part of the release contract.
+    if root.join("docs").join("api-frozen.toml").is_file() {
+        let control = Control::read(&root)?;
+        let surface = Surface::read(&root)?;
+        control.resolve_against(&surface)?;
+        report(&control, &surface);
+        check_readability(&surface, &mut violations);
+        check_exhaustiveness(&control, &surface, &mut violations);
+        check_projections(&control, &surface, &mut violations);
+        check_construction(&surface, &mut violations);
+        check_forbidden_names(&control, &surface, &mut violations);
+        check_forbidden_signatures(&control, &surface, &mut violations);
+        if let Some(derived) = derived_questions(&root)? {
+            violations.extend(check_closed_choices(&control, &derived));
+        }
+    }
+    check_policy_space(&root, &mut violations)?;
     check_one_point_zero_allowlist(&root, &mut violations)?;
+    println!("api: checked the sole public Rust crate against docs/api-1.0.toml");
     Ok(violations)
 }
 
@@ -2630,11 +2621,7 @@ const POLICY_SPACE: &str = "spec/derived/questions.tsv";
 ///
 /// Neither file being absent is treated as a pass: the census says which side was missing and
 /// what could therefore not be subtracted.
-fn check_policy_space(
-    root: &Path,
-    control: &Control,
-    violations: &mut Vec<String>,
-) -> io::Result<()> {
+fn check_policy_space(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
     let mappings = style_choice_mappings(root)?;
     let modules = allowed_modules(root)?;
     let style_items = modules
@@ -2652,7 +2639,6 @@ fn check_policy_space(
         &derived,
         style_items,
     ));
-    violations.extend(check_closed_choices(control, &derived));
     println!(
         "api: docs/api-1.0.toml maps {mappings} typed Style choice(s) onto {rows} generated JLReq question(s).",
         mappings = mappings.len(),
@@ -2779,23 +2765,14 @@ fn declared(surface: &Surface, path: &TypePath) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AllowedModule, ClosedChoices, Construction, Control, DerivedQuestion, Kind, Openness,
-        Receiver, StyleChoiceMapping, Surface, TypePath, Visibility, answers_a_closed_set,
-        check_allowed_items, check_closed_choices, check_construction, check_exhaustiveness,
-        check_forbidden_names, check_forbidden_signatures, check_projections, check_readability,
-        check_style_choice_mappings, code_only, declarations_of, entries_of, obtainable_types,
-        parse_signature_spec, reexported_names, results_in, tokenize,
+        AllowedModule, ClosedChoices, Construction, Control, DerivedQuestion, Forbidden, Kind,
+        Openness, Receiver, StyleChoiceMapping, Surface, TypePath, Visibility,
+        answers_a_closed_set, check_allowed_items, check_closed_choices, check_construction,
+        check_exhaustiveness, check_forbidden_names, check_forbidden_signatures, check_projections,
+        check_readability, check_style_choice_mappings, code_only, declarations_of, entries_of,
+        obtainable_types, parse_signature_spec, reexported_names, results_in, tokenize,
     };
     use std::collections::BTreeSet;
-    use std::path::{Path, PathBuf};
-
-    /// The workspace root, so the tests read the same repository the gate does.
-    fn test_root() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_default()
-    }
 
     /// Read one fixture source as if it were a crate's only file.
     fn read(source: &str) -> Vec<super::Declaration> {
@@ -2872,18 +2849,35 @@ mod tests {
         }
     }
 
-    /// The control file this repository actually ships, so the fixtures are checked
-    /// against the real decisions rather than against a copy that could drift.
+    /// A compact historical fixture for the parser checks below. The retired control file
+    /// is intentionally not part of the repository or the production gate.
     fn control() -> Control {
-        Control::read(&test_root()).expect("docs/api-frozen.toml is readable")
-    }
-
-    #[test]
-    fn the_shipped_control_file_names_only_workspace_crates() {
-        let surface = Surface::read(&test_root()).expect("the workspace is readable");
-        control()
-            .resolve_against(&surface)
-            .expect("every crate the frozen file names is a member");
+        Control {
+            frozen: vec![(
+                TypePath::parse("jlreq_spec::Provenance").expect("fixture type path"),
+                vec!["is_specified".to_owned()],
+            )],
+            exempt: vec![(
+                TypePath::parse("jlreq_unit::Direction").expect("fixture type path"),
+                "the fixture closes the two directions".to_owned(),
+            )],
+            forbidden: vec![
+                Forbidden {
+                    crates: vec!["jlreq-line".to_owned()],
+                    item_names: vec!["measure".to_owned()],
+                    signature: None,
+                },
+                Forbidden {
+                    crates: vec!["jlreq-class".to_owned()],
+                    item_names: Vec::new(),
+                    signature: Some("(char) -> Class".to_owned()),
+                },
+            ],
+            closed_choices: vec![ClosedChoices {
+                question: "kinsoku.level".to_owned(),
+                count: 4,
+            }],
+        }
     }
 
     #[test]
@@ -3432,15 +3426,7 @@ mod tests {
 
     #[test]
     fn the_repository_itself_holds_every_check() {
-        let control = control();
-        let surface = Surface::read(&test_root()).expect("the workspace is readable");
-        let mut violations = Vec::new();
-        check_readability(&surface, &mut violations);
-        check_exhaustiveness(&control, &surface, &mut violations);
-        check_projections(&control, &surface, &mut violations);
-        check_construction(&surface, &mut violations);
-        check_forbidden_names(&control, &surface, &mut violations);
-        check_forbidden_signatures(&control, &surface, &mut violations);
+        let violations = super::run(&[]).expect("the 1.0 API gate runs");
         assert!(violations.is_empty(), "{violations:#?}");
     }
 }

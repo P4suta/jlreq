@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Mutation testing (cargo-mutants) for the crates with real logic today: jlreq-unit,
-# jlreq-spec, jlreq-class, jlreq-spacing (see the Justfile's `mutant_crates`). jlreq-line,
-# jlreq-inline and jlreq are still bootstrap stubs; xtask is tooling, not the product.
+# Mutation testing (cargo-mutants) for the sole public Rust library. xtask is tooling and
+# kumihan-conformance is tested through its process protocol.
 #
 # Baseline only (M1-a): this is a report, not a kill-everything gate. cargo-mutants exits
 # non-zero whenever any mutant survives, so a red run here is the expected steady state
@@ -37,14 +36,12 @@ jobs:
   mutants:
     name: mutants (${{ matrix.crate }})
     runs-on: ubuntu-latest
-    # First-pass ceiling: the largest crate under test (jlreq-class, ~440 mutants) finished
-    # in a few minutes on a 16-core devbox; standard GitHub-hosted runners have far fewer
-    # cores, so this leaves generous headroom rather than a tuned figure.
+    # The full library has a broad mutation surface; keep generous runner headroom.
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        crate: [jlreq-unit, jlreq-spec, jlreq-class, jlreq-spacing]
+        crate: [kumihan]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable

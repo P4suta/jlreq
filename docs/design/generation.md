@@ -62,35 +62,16 @@ spec/
     table1.en.tsv            transcribed from tables/table_en2.pdf
     table1.ja.tsv            transcribed from tables/table_ja2.pdf
     ...                      through table6
-    figures.tsv              the arrangements published only as images (§3.4.3, §3.7.2)
-    invariants.tsv           each cross-table check, with the sentence justifying it
   upstream/                  gitignored; the PDFs, if a developer fetched them
-crates/*/src/generated/*.rs  committed output of stage 2
+crates/kumihan/src/generated/*.rs  committed output of stage 2
 data/manifest.toml           SHA-256 of every file the pipeline reads or writes
 docs/decisions/*.md          this project's published readings of silences
 ```
 
-An earlier revision of this document said `jlreq-spec` would take its two generated tables
-in modules of their own — the rule inventory emitted into `src/rule.rs` and the policy space
-into `src/policy.rs`, beside the vocabulary that indexes each — on the grounds that a rule
-address, its inventory and the identifier that reads it are one module's worth of subject.
-That is not how it is built, for two reasons that only appeared once the emitter existed.
-`src/rule.rs` holds the hand-written `const fn` address parser, `Standing`, `Detail` and
-`Section`, so it cannot be *wholly* generated and a partly-generated file is one no
-byte-identity gate can check. And `generate`'s own `check_declarations` refuses any output
-outside `crates/<crate>/src/generated/<module>.rs`, which is what lets its scan for
-unclaimed modules find a hand-written file hiding among machine-written ones.
-
-So `jlreq-spec` takes the same shape every other crate does. The inventory is emitted into
-`src/generated/inventory.rs` and `src/rule.rs` reads `RULES` from it; `src/generated.rs`
-declares the module beside the directory and holds, by hand, the figures the inventory was
-measured against. The policy space will arrive the same way. `docs/design/api-spine.md`'s
-file maps state the same layout this list does.
-
-`spec/captured/figures.tsv` emits to `crates/jlreq-line/src/generated/figures.rs`, which is
-the module the earlier revision of this document did not name. The arrangements of §3.4.3
-and §3.7.2 are consumed by the segment code, so they belong beside the line layer's other
-generated data and are byte-checked by `generate --check` like every other emitted file.
+The active stage-2 outputs are Appendix A membership, compatibility folding, ideograph and
+script ranges, plus Tables 1 through 6, all under `crates/kumihan/src/generated/`. Rule and
+policy inventories remain derived TSV inputs for repository gates; internal runtime rule
+identifiers are deliberately not generated into the public library.
 
 Note the filename hazard, which is recorded rather than absorbed: the PDF for Table 1 is
 `table_en2.pdf`, off by one, and the HTML legend anchors are off by one in the same
@@ -104,16 +85,8 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 **Stage 1**, `cargo run -p xtask -- derive`, reads `spec/snapshot/` and emits
 `spec/derived/*.tsv` and nothing else.
 
-**Stage 2**, `cargo run -p xtask -- generate`, emits `crates/*/src/generated/*.rs` from
+**Stage 2**, `cargo run -p xtask -- generate`, emits `crates/kumihan/src/generated/*.rs` from
 `spec/derived/` and `spec/captured/`.
-
-During the 1.0 migration, the Appendix A, compatibility-folding, ideograph, kana-script,
-and Tables 1 through 6 units deliberately emit the same facts into both the unpublished legacy
-regression assets and `kumihan`'s private `src/generated/` boundary. Both outputs share one
-parser and one input; this is migration duplication, not a second transcription. The old
-output is removed with the legacy crates only after the black-box differential migration is
-complete. The dependency-free projection records rule references as private JLReq strings
-rather than importing the legacy `RuleId` vocabulary.
 
 Both are byte-identity gates, both are dependency-free, and both run in CI on every commit.
 Adding a derived file is one entry in `DERIVATIONS`; adding a generated one is one entry in
@@ -227,9 +200,9 @@ laundered into a requirement on the way to the generated table.
 Three further controls hold that file. `docs/design/api-spine.md` publishes one `Question`
 constant per row and the `api` gate subtracts the two lists in both directions, so a
 constant nobody read the specification for and a row no caller can name each fail the build.
-`docs/api-frozen.toml`'s `[[closed_choices]]` states, for every one of the twenty-two
-questions, how many answers its set may hold and what closes it there, and the same gate
-holds the derived counts to them. And a `divergent` row is checked for still diverging: the
+`docs/api-1.0.toml` maps every one of the twenty-two questions to a dedicated public enum
+and records its answer count; the API gate holds those mappings against the derived rows in
+both directions. A `divergent` row is also checked for still diverging: the
 derivation compares the character classes the two renderings of its address cite and refuses
 to publish the permission if they ever agree. No row carries that value today. §B.2 note 7
 was read as one and is not: its English half states all four answers in so many words, which
@@ -341,21 +314,10 @@ redundancy is published rather than private.
     an earlier revision of this document asserted the contradiction and pre-committed the
     rule to [`Standing::Adjudicated`], which would have published an alternative JLReq does
     not permit.
-16. Every cell any conformance case exercises agrees with that case. A boundary case may
-    declare which coordinates it exercises through `cells`, a case-level, optional,
-    list-valued field of `{table, before, after}` objects — spelled the way
-    `spec/captured/table<N>.<locale>.tsv` and this file's own `MATRIX_COLUMNS` key a cell,
-    not through the `address` grammar's `@` suffix, which cannot name one cell where a
-    legend section covers several tables (§D.1 is the legend of Tables 3, 4 and 5 at once).
-    The checker asserts existence, at every table a case names, and — for Table 1 alone —
-    that a case's default-policy (`policy: {}`) boundary answer agrees in units with the
-    captured cell. 21 of the suite's 72 boundary cases declare a coordinate this way today
-    (`{B,B.2,D.1,D.2,E,E.2}.json`, 43 coordinates in all); the remaining 51 — every `A.*` and
-    `3.x` boundary case, and `C.json`'s and `C.2.json`'s own Table 2 coordinates, which carry
-    no amount to compare — are the invariant's own named remainder, because turning a case's
-    `text` into the class pair a cell is keyed on would re-derive Appendix A's classification
-    inside a gate that has no dependencies, a second implementation of a fact `jlreq-class`
-    owns (ADR 0019).
+16. A historical differential case that explicitly declares a `{table, before, after}`
+    coordinate agrees with the captured cell. Protocol-v1 deliberately exposes only
+    pre-shaped input and observable placement output, so current black-box cases do not
+    require an implementation to reveal matrix coordinates.
 17. Every amount in every table, note and ladder is an exact multiple of 1/720 em. 720 was
     chosen for exactly that property ([ADR 0007](../adr/0007-two-scalars-and-the-fixed-point-unit.md)),
     and nothing checked it: an appendix note naming a thirty-second would otherwise have rounded
@@ -499,7 +461,7 @@ recorded date to equal it, and to equal the `published` field of the snapshot's 
 
 `data/manifest.toml` accordingly records every file the pipeline reads or writes: every
 generated module, every derived table — including those no generation unit consumes yet,
-which `spec-links`, `attest`, `api` and `conform` nonetheless read — the four vendored
+which `attest`, `api` and `conform` nonetheless read — the four vendored
 documents, and every `xtask` module that produces one. The list is not written out here
 because it is not maintained here: `generate` builds it from `DERIVATIONS` and `UNITS`, so a
 derivation added without a manifest entry is a failure rather than a documentation lapse. A

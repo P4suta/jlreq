@@ -8,7 +8,7 @@
 # CONTRIBUTING.md states that a rule without a case is incomplete, and
 # docs/adr/0013-rules-are-addressed-by-specification-address.md makes that arithmetic: the
 # `conform` gate subtracts the rules the cases declare from the rules the inventory names,
-# and the `spec-links` gate subtracts them from the rules the layout core cites. The
+# and the protocol coverage pass checks every observable rule directly. The
 # inventory is generated whole — spec/derived/rules.tsv names every rule of § 3 and of
 # Appendices B through F at once — while the suite is written milestone by milestone. Both
 # subtractions therefore have a remainder that is nothing but the schedule.
@@ -18,9 +18,7 @@
 # workspace is broken, by failing over a milestone that has not happened yet. Neither is
 # true, so a third state is written down instead. A rule is
 #
-#   covered   — a case in crates/jlreq-conform/cases or
-#               crates/kumihan-conformance/suite.ndjson names it, or a `covers` family
-#               credits it; or
+#   covered   — a case in crates/kumihan-conformance/suite.ndjson names it;
 #   deferred       — a `[[deferred]]` table names it and the milestone that will cover it;
 #   editorial      — an evidence-bearing `[[editorial]]` table shows that it advises an
 #                    editor rather than requiring observable layout output;
@@ -29,8 +27,7 @@
 #   uncovered      — none of these, which fails `conform` and names the rule.
 #
 # Deferred is not exempt. Every `conform` run prints the count of deferred rules and the
-# count per milestone, so the debt is stated in numbers on a green run, and `spec-links`
-# reports how many of the cited rules it passed over for this reason. The entry expires by
+# count per milestone, so the debt is stated in numbers on a green run. The entry expires by
 # itself: the moment any case names the rule, the rule is covered and the entry is a
 # violation, because a deferral that outlived its milestone is a claim about the future
 # that the present has already answered. Deleting the entry is the reviewable act that says
@@ -53,7 +50,7 @@
 # `milestone` because they are not implementation work scheduled for later:
 #
 #   rule       The specification address of an inventoried rule, in the canonical rendering
-#              of `jlreq_spec::Address` — `3.1.9`, `B.2#3`, `B.1@cl-05,cl-05` — with no
+#              of the address grammar — `3.1.9`, `B.2#3`, `B.1@cl-05,cl-05` — with no
 #              section sign. One table per rule across both tables, and the address must be
 #              one spec/derived/rules.tsv carries: deferring a rule the inventory does not
 #              name defers nothing.
@@ -62,31 +59,24 @@
 #              this file only names one, and `conform` rejects a name that document does not
 #              declare. On an `[[owned]]` entry it names the milestone whose *layer* answers
 #              the rule, which is not always the milestone that wrote the case: a boundary
-#              case published at M0-b for a rule `jlreq-spacing` answers at M1 is covered
-#              now and attempted by nothing, and the entry says both.
-#   why        Which answer the rule states and which crate produces it, in a sentence a
+#   why        Which observable answer the rule states and which private pipeline behavior
+#              produces it, in a sentence a
 #              reviewer can disagree with. A final `[[editorial]]` or `[[non-observable]]`
 #              classification must cite `spec/snapshot/index.html`, the vendored primary
 #              text the gate requires a reviewer to be able to inspect. On an `[[owned]]`
-#              entry whose cases no layer of
-#              this workspace answers yet, it says that too, because a published case that is
-#              never attempted is a statement to another implementation rather than a
-#              measurement of this one.
+#              entry, `why` records the historical ownership decision and the observable
+#              behavior now exercised through protocol v1.
 #
-# The assignment below follows one principle, so that disagreeing with an entry is
-# disagreeing with something: a rule is deferred to the milestone that builds the crate
-# whose answer the rule states. Line breaking, line adjustment, indents and tab positions
-# are `jlreq-line` and arrive at M1, together with Appendices C, D and E, which are the
-# tables that layer reads. Inter-character spacing amounts are `jlreq-spacing` and arrive at
-# M2, together with Appendix B. A whole-paragraph decision arrives at M3, the nine inline
-# constructs and Appendix F at M4, and a rule whose subject exists only in vertical
-# composition at M5.
+# The milestone assignments are stable history: M0 classified specification data, M1
+# handled breaking and adjustment, M2 spacing, M3 whole-paragraph composition, M4 inline
+# constructs and Appendix F, and M5 vertical composition. All are now private stages of
+# the unified pipeline; the headings remain in ROADMAP.md so the ledger keys stay stable.
 #
 # The rules M0 answers are not deferred; they are recorded under `[[owned]]` at the foot of
 # this file, which is where the sentence that used to sit here became something a gate can
 # read. § 3.9.1 and § 3.9.2 state the classification itself; § C.3, § C.2 notes 1 to 3,
 # § B.2 notes 14 to 16 and § E.2 notes 1 to 3 state the class an occurrence at a line head is
-# treated as belonging to, which is the reclassification `jlreq-class` answers; § 3.1.2,
+# treated as belonging to, which is the private classifier's answer; § 3.1.2,
 # § 3.2.4 and § 3.2.6 are the three sentences outside Appendix A that a declared frame fires,
 # and M0-b's cases declare them where their own rationale already argued from them. If a case
 # for one of them is deleted, the `[[owned]]` entry is what fails.

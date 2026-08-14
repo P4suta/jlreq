@@ -5,54 +5,22 @@
 //! The `conform` gate.
 //!
 //! The conformance suite is the deliverable [ADR
-//! 0006](../../docs/adr/0006-conformance-suite-as-artifact.md) says is worth more than the
-//! implementation, so it is validated as a published artifact rather than as a test
-//! directory. `conform --check` reads every retained case under
-//! `crates/jlreq-conform/cases` and every protocol-v1 case in
-//! `crates/kumihan-conformance/suite.ndjson`, then subtracts their declared rules from the
-//! rule inventory.
+//! 0006](../../docs/adr/0006-conformance-suite-as-artifact.md) treats as a published
+//! artifact. `conform --check` validates the protocol-v1 schema and every case in
+//! `crates/kumihan-conformance/suite.ndjson`, then subtracts their declared coverage from
+//! `spec/derived/rules.tsv`.
 //!
-//! Everything checked here is a property of a *well-formed case* rather than of an
-//! implementation's answer. A case whose input the library would refuse to build tests
-//! nothing; a case recording an alternative without saying which policy selects it cannot
-//! be evaluated against an implementation at all; and a rule with no case is the one
-//! failure CONTRIBUTING.md's "every rule gets a conformance case" has never been able to
-//! see. The dynamic half — running the cases and asserting that the rules the evaluator
-//! *fires* equal the ones the cases name — is a test inside `jlreq-conform` and arrives
-//! with the evaluator.
+//! Each case is checked as a language-independent black-box request and expected response:
+//! protocol and specification identifiers are pinned, inputs use pre-shaped clusters and
+//! UTF-8 byte ranges, and outputs expose only lines, placements and diagnostics. The CLI's
+//! integration tests provide the dynamic half by running those requests through an external
+//! engine process.
 //!
-//! Two data sets sit outside the suite and this gate reads both where they exist. The rule
-//! inventory `spec/derived/rules.tsv` is what `RuleId::ALL` is generated from, and
-//! `spec/derived/questions.tsv` is what the policy question paths are generated from
-//! (`docs/design/generation.md`). This program cannot link `jlreq-spec` — it keeps an empty
-//! dependency table, because the tool that enforces "the layout core has no outside
-//! dependencies" should not have any — so it reads the generator's own input rather than
-//! the generated Rust, and `generate --check` is what holds the two in step. Where a data
-//! set has not been generated, the census below says so and the checks that need it
-//! degrade to the part that is still decidable, rather than reporting that they passed.
-//!
-//! The subtraction has a third answer besides covered and uncovered, and
-//! `crate::deferral` is where it is written down. The inventory is generated whole while
-//! the suite is written milestone by milestone, so most of what a run finds uncovered today
-//! is nothing but the schedule; `docs/conformance-deferrals.toml` names each such rule and
-//! the milestone whose cases close it, this gate holds every entry to the inventory and to
-//! `ROADMAP.md`, fails the ones a case has already answered, and counts the rest out loud on
-//! every run. Deferred is therefore a state rather than an exemption: it is declared, it is
-//! checked, it is reported in numbers, and it ends by itself.
-//!
-//! The suite itself is read the same way, because declared coverage is a subtraction and
-//! either operand can be the one that does not exist yet. A `cases` directory holding no
-//! case is a suite someone has started, and every inventoried rule is subtracted from it;
-//! no directory at all is the state before that, and then the subtraction does not run and
-//! the census names it as the check that did not, together with how many rules it would
-//! have closed over. What is *not* deferred is everything decidable without the suite: the
-//! schema, the two inventories, and every property of each case that exists.
-//!
-//! The reader is hand-rolled for the same reason `jlreq-conform`'s is: the subset is small
-//! and unusually safe to own, because [ADR
-//! 0005](../../docs/adr/0005-integer-layout-units.md) already guarantees that every number
-//! in a case is an integer inside 2^53 — the genuinely hard part of JSON is the part this
-//! format does not contain.
+//! `docs/conformance-deferrals.toml` classifies the subtraction's remainder. A machine-
+//! observable rule must be covered; only evidence-backed `editorial` and `non-observable`
+//! rows may remain, and a stale classification fails once a case covers it. The old
+//! Rust-only corpus reader remains below solely for historical fixtures; the absence of its
+//! deleted directory is the expected 1.0 state and never weakens protocol-v1 coverage.
 //!
 //! See `docs/design/conformance.md`, `docs/adr/0006` and `docs/adr/0013`.
 
@@ -85,6 +53,7 @@ pub(crate) const GATE: Gate = Gate {
 pub(crate) const CASES_DIR: &str = "crates/jlreq-conform/cases";
 /// The language-independent black-box suite for the unified product.
 pub(crate) const PROTOCOL_CASES_FILE: &str = "crates/kumihan-conformance/suite.ndjson";
+const PROTOCOL_SCHEMA_FILE: &str = "crates/kumihan-conformance/protocol.schema.json";
 const PROTOCOL: &str = "kumihan.conformance/1";
 const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// The committed schema, published so nobody else has to use our reader.
@@ -99,7 +68,7 @@ const QUESTIONS_INVENTORY: &str = "spec/derived/questions.tsv";
 /// and never a rule a case may cover.
 const ANCHORS_INVENTORY: &str = "spec/derived/anchors.tsv";
 /// The crate that declares the fixed-point denominator.
-const UNIT_CRATE: &str = "crates/jlreq-unit/src";
+const UNIT_CRATE: &str = "crates/kumihan/src";
 
 /// Validate the conformance suite and report one message per malformed thing.
 fn run(arguments: &[String]) -> io::Result<Vec<String>> {
@@ -140,6 +109,8 @@ struct Suite {
     files: Vec<(String, String)>,
     /// The protocol-v1 NDJSON suite, when present.
     protocol_cases: Option<String>,
+    /// The committed JSON Schema for the language-independent protocol.
+    protocol_schema: Option<String>,
     /// The committed JSON Schema, once it is written.
     schema: Option<String>,
     /// Every address in the rule inventory, once it is generated.
@@ -169,6 +140,7 @@ impl Suite {
             directory_exists: directory.is_dir(),
             files,
             protocol_cases: read_if_present(&root.join(PROTOCOL_CASES_FILE))?,
+            protocol_schema: read_if_present(&root.join(PROTOCOL_SCHEMA_FILE))?,
             schema: read_if_present(&root.join(SCHEMA_FILE))?,
             rules: read_inventory(&root.join(RULES_INVENTORY), "address")?,
             questions: read_questions(&root.join(QUESTIONS_INVENTORY))?,
@@ -205,6 +177,10 @@ impl Suite {
         violations.extend(frame_pairs(&cases));
         violations.extend(self.coverage(&cases));
         violations.extend(self.protocol_coverage(&cases));
+        violations.extend(check_protocol_schema(
+            self.protocol_schema.as_deref(),
+            self.protocol_cases.is_some(),
+        ));
         violations.extend(self.deferrals.examine(deferral::Reference {
             inventory: self.rules.as_ref(),
             covered: Some(&self.covered(&cases)),
@@ -334,7 +310,7 @@ impl Suite {
                     count = self.files.len()
                 )
             } else {
-                format!("{CASES_DIR} does not exist yet, so the suite is the empty set")
+                "the retired Rust-only differential corpus is absent; protocol-v1 is the authoritative suite".to_owned()
             },
             match &self.protocol_cases {
                 Some(source) => format!(
@@ -378,16 +354,18 @@ impl Suite {
                      checked for shape and not for existence"
                 ),
             },
-            match (self.schema.is_some(), self.units_per_em) {
+            match (self.protocol_schema.is_some(), self.units_per_em) {
                 (true, Some(per_em)) => {
-                    format!("{SCHEMA_FILE} is committed; one em is {per_em} units")
+                    format!("{PROTOCOL_SCHEMA_FILE} is committed; one em is {per_em} units")
                 },
-                (true, None) => format!("{SCHEMA_FILE} is committed; no em denominator found"),
+                (true, None) => {
+                    format!("{PROTOCOL_SCHEMA_FILE} is committed; no em denominator found")
+                },
                 (false, Some(per_em)) => {
-                    format!("{SCHEMA_FILE} is not written yet; one em is {per_em} units")
+                    format!("{PROTOCOL_SCHEMA_FILE} is missing; one em is {per_em} units")
                 },
                 (false, None) => {
-                    format!("{SCHEMA_FILE} is not written yet and no em denominator was found")
+                    format!("{PROTOCOL_SCHEMA_FILE} is missing and no em denominator was found")
                 },
             },
         ];
@@ -423,6 +401,24 @@ impl Suite {
         }
         lines
     }
+}
+
+/// Require the shipped protocol schema whenever the protocol suite is present.
+fn check_protocol_schema(schema: Option<&str>, required: bool) -> Vec<String> {
+    let Some(source) = schema else {
+        return required
+            .then(|| format!("{PROTOCOL_SCHEMA_FILE} is missing beside the protocol suite"))
+            .into_iter()
+            .collect();
+    };
+    if let Err(error) = Json::parse(source) {
+        return vec![format!("{PROTOCOL_SCHEMA_FILE}: {}", error.message())];
+    }
+    [PROTOCOL, SPECIFICATION]
+        .into_iter()
+        .filter(|value| !source.contains(value))
+        .map(|value| format!("{PROTOCOL_SCHEMA_FILE} does not pin `{value}`"))
+        .collect()
 }
 
 /// The "`{cases}` case(s) naming `{rules}` distinct rule address(es): ..." line, as its own
@@ -3662,6 +3658,7 @@ mod tests {
             directory_exists: false,
             files: Vec::new(),
             protocol_cases: None,
+            protocol_schema: None,
             schema: None,
             rules: None,
             questions: None,
@@ -4312,7 +4309,7 @@ mod tests {
     }
 
     #[test]
-    fn coverage_over_nothing_is_vacuous_and_says_so() {
+    fn historical_empty_inputs_do_not_impersonate_the_protocol_suite() {
         let suite = bare_suite();
         assert!(suite.coverage(&[]).is_empty());
         let census = suite.census(&[]);
@@ -4323,7 +4320,9 @@ mod tests {
             "{census:#?}"
         );
         assert!(
-            census.iter().any(|line| line.contains("the empty set")),
+            census
+                .iter()
+                .any(|line| line.contains("protocol-v1 is the authoritative suite")),
             "{census:#?}"
         );
     }

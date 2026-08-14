@@ -8,16 +8,11 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 export RUSTDOCFLAGS := "-D warnings"
 
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
-core_crates := "-p kumihan -p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing -p jlreq-line -p jlreq-inline -p jlreq"
+core_crates := "-p kumihan"
 
-# The crates with real logic to mutate today: jlreq-line, jlreq-inline and jlreq are still
-# bootstrap stubs (ROADMAP.md M1/M3+), and xtask is repository tooling, not the product
-# (docs/design/api-spine.md). Each crate's `src/generated/` tables are left in scope rather
-# than excluded by glob: most (jlreq-spec, jlreq-spacing) are pure data with no function
-# body for cargo-mutants to touch, and the few it finds elsewhere (jlreq-class's bitflag
-# combinators) are cheap to run. Either way their correctness is `generate-check` and
-# `attest`'s job, not this gate's.
-mutant_crates := "-p jlreq-unit -p jlreq-spec -p jlreq-class -p jlreq-spacing"
+# Mutation testing targets the sole public library; xtask is repository tooling and the
+# conformance product is an external black-box runner.
+mutant_crates := "-p kumihan"
 
 # List the available development commands.
 default:
@@ -83,27 +78,16 @@ fuzz-check:
 purity:
     cargo run --quiet -p xtask -- purity
 
-# Hold the listed types to the operator, constructor, and scalar-channel tables of
-# docs/api-frozen.toml (docs/adr/0011, docs/adr/0012).
-ops:
-    cargo run --quiet -p xtask -- ops
-
 # Reject unwritten bodies and suppressed lints in the layout core (CONTRIBUTING.md).
 placeholder:
     cargo run --quiet -p xtask -- placeholder
 
-# Hold kumihan to docs/api-1.0.toml and the retained migration API to its temporary frozen
-# control (docs/adr/0012).
+# Hold kumihan to the exact 1.0 surface and all 22 typed Style mappings.
 api:
     cargo run --quiet -p xtask -- api
 
-# Require every public item of the core to cite a specification address that resolves and
-# is tested, as far as the inventory and the conformance cases exist (docs/adr/0013).
-spec-links:
-    cargo run --quiet -p xtask -- spec-links
-
-# Require the rules that read the writing direction to be exactly the rules the inventory
-# marks direction-conditional (docs/adr/0011).
+# Require the private implementation modules to follow the one-way architecture in
+# ARCHITECTURE.md.
 direction:
     cargo run --quiet -p xtask -- direction
 
@@ -168,22 +152,11 @@ zizmor:
 msrv:
     cargo msrv verify --path crates/kumihan
     cargo msrv verify --path crates/kumihan-conformance
-    cargo msrv verify --path crates/jlreq-unit
-    cargo msrv verify --path crates/jlreq-spec
-    cargo msrv verify --path crates/jlreq-class
-    cargo msrv verify --path crates/jlreq-spacing
-    cargo msrv verify --path crates/jlreq-line
-    cargo msrv verify --path crates/jlreq-inline
-    cargo msrv verify --path crates/jlreq
-    cargo msrv verify --path crates/jlreq-conform
     cargo msrv verify --path xtask
 
 # Mutation-test the crates with real logic against their own `#[cfg(test)]` suites, or one
-# crate if `crate` is given (e.g. `just mutants jlreq-spacing`). Baseline only today: M1-a
-# stands the gate up with a report, not a kill-everything threshold — that discipline, and
-# the independently-authored cases it needs, arrive with M1-b. Not part of `check`, `ci` or
-# `design` yet for the same reason (see the CI workflow's own `mutants` job for where it
-# does run: `workflow_dispatch` and a weekly schedule, outside `ci-required`).
+# crate if `crate` is given (e.g. `just mutants kumihan`). It remains a scheduled report
+# outside `ci-required` because a full mutation run is intentionally slow.
 #
 # `--test-tool nextest` matches `just test`. No `-D warnings` here unlike the other gates:
 # `[workspace.lints]` sets these at `warn`, not `deny`, and CI only escalates them to errors
@@ -199,7 +172,7 @@ mutants crate="":
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
-design: purity ops placeholder api spec-links direction derive-check generate-check attest conform
+design: purity placeholder api direction derive-check generate-check attest conform
     @echo "design gates passed"
 
 # Fast deterministic checks used during the edit/commit loop.

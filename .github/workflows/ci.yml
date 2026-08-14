@@ -5,14 +5,8 @@
 # CI for kumihan (Japanese line composition following JLReq and JIS X 4051).
 #
 # Layout under test:
-#   - jlreq-unit     no_std, no alloc. Quantities, axes, and the item vocabulary.
-#   - jlreq-spec     no_std, no alloc. Rule addresses, provenance, and policy.
-#   - jlreq-class    no_std, no alloc. JLReq character classes.
-#   - jlreq-spacing  no_std, no alloc. Mojikumi spacing amounts.
-#   - jlreq-line     no_std. Kinsoku and line adjustment.
-#   - jlreq-inline   no_std. Ruby, tate-chu-yoko, emphasis dots, warichu.
-#   - jlreq          no_std. The facade callers depend on.
-#   - jlreq-conform  the published conformance suite (docs/adr/0006).
+#   - kumihan              dependency-free no_std + alloc public library.
+#   - kumihan-conformance  binary-only protocol runner and sample engine.
 #   - xtask          repository policy checks shared by Just and CI.
 #
 # Policy:

@@ -28,13 +28,11 @@ mod derive;
 mod direction;
 mod generate;
 mod inventory;
-mod ops;
 mod placeholder;
 mod policy;
 mod purity;
 mod shared;
 mod spacing;
-mod spec_links;
 
 use std::process::ExitCode;
 
@@ -43,10 +41,8 @@ use crate::shared::Gate;
 /// Every task, in the order a reader meets them in `docs/design/api-spine.md`.
 const GATES: &[Gate] = &[
     purity::GATE,
-    ops::GATE,
     placeholder::GATE,
     api::GATE,
-    spec_links::GATE,
     direction::GATE,
     derive::GATE,
     generate::GATE,

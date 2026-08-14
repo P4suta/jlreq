@@ -4,8 +4,8 @@ This is the human-readable contract for the only public Rust library, `kumihan`.
 directly exported names and the 22 Style mappings are machine-readable in
 [`docs/api-1.0.toml`](../api-1.0.toml) and checked in both directions by `xtask api`.
 
-This document describes the 1.0 target while publication remains disabled. The old
-multi-crate API is not carried forward and has no compatibility facade.
+This document describes the released 1.0 contract. The old multi-crate API is not carried
+forward and has no compatibility facade.
 
 ## Principles
 
@@ -137,5 +137,4 @@ conflict code.
 `Style::default()` never changes meaning. A new specification revision adds a dated profile
 and a new specification identifier. The process protocol is versioned separately.
 
-The candidate release has no compatibility layer for the former `jlreq-*` API. Those
-crates remain unpublished regression assets only until differential migration is complete.
+The 1.0 release has no compatibility layer for the former pre-1.0 API.

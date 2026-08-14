@@ -2,9 +2,8 @@
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Stage 2 generation for `jlreq-spacing`: the six captured matrices of Appendices B
-//! through E, turned into the `static` arrays `crates/jlreq-spacing/src/generated/table1.rs`
-//! through `table6.rs` hold.
+//! Stage 2 generation for the unified engine: the six captured matrices of Appendices B
+//! through E, turned into private `static` arrays under `crates/kumihan/src/generated/`.
 //!
 //! `spec/captured/table<N>.en.tsv` is the input for each unit. The Japanese rendering,
 //! `table<N>.ja.tsv`, is not: `generate`'s own `Unit` reads one file, and the control that
@@ -15,24 +14,22 @@
 //! keyed Japanese one — which is the resolution `docs/design/generation.md` and ADR-0009
 //! call for: the transcription in `spec/captured/` is the one primary source, and the
 //! generated module is its sole machine-written projection, not a second copy of the data
-//! (see the crate's own `src/lib.rs` for the fuller statement of this).
+//! (see the library's own `src/lib.rs` for the fuller statement of this).
 //!
 //! Every cell's citing rule is the qualifying appendix note (`B.2#3` reads as
 //! `RuleId::B_2_NOTE_3`) when the `note` column names one, and the appendix's own legend
 //! rule otherwise (`RuleId::SPACING_BETWEEN_CHARACTERS` for Table 1, and so on) — so every
-//! emitted cell cites something, never nothing. The name is assembled as text: this program
-//! declares no dependency on `jlreq-spec` (`xtask` has an empty dependency table by design),
-//! so the identifier is written into the generated source and resolved when `jlreq-spacing`
-//! is compiled against it, the same way `xtask/src/classes.rs` and `xtask/src/inventory.rs`
-//! already emit references to types they do not import.
+//! emitted cell cites something, never nothing. The name is assembled as text: `xtask`
+//! deliberately reads the derived inventory rather than linking the layout library, so
+//! generated data remains a reproducible projection of the snapshot.
 //!
 //! The token grammar is the one `xtask/src/attest.rs`'s module doc comment publishes.
 //! Reading it here is a second, independent implementation of that grammar rather than a
 //! shared one, because `attest`'s `Value` and this module's raw cell shapes serve different
 //! ends — `attest` builds an abstract value it cross-checks between two renderings and
-//! against thirteen invariants, this module builds the literal `Em`, `RuleId` and stage data
-//! `jlreq-spacing`'s evaluator reads at run time — and a shared value type would have had to
-//! serve both. The two are proven to agree the same way the two locales are: `just design`
+//! against the registered invariants, this module builds the integer stage data the unified
+//! evaluator reads at run time — and a shared value type would have had to serve both. The
+//! two are proven to agree the same way the two locales are: `just design`
 //! runs `attest` and `generate --check` together, over the same committed files, so a
 //! divergent reading of one cell fails one gate or the other rather than neither.
 

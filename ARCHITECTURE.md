@@ -1,8 +1,6 @@
 # Architecture
 
-This document describes the 1.0 target and the invariants enforced during migration. The
-older `jlreq-*` decomposition remains only as unpublished specification data,
-implementation, and regression assets.
+This document describes the 1.0 implementation and its mechanically enforced invariants.
 
 ## Boundary in the text stack
 
@@ -27,30 +25,30 @@ There are two public contracts:
 2. `kumihan-conformance`, a binary-only product that communicates with any engine through
    the versioned NDJSON protocol.
 
-`xtask` is repository tooling. The eight old crates are `publish = false` migration assets;
-the new library does not depend on any of them. Publication stays disabled until the
-release criteria in `ROADMAP.md` hold.
+`xtask` is repository tooling and is not a product crate.
 
 ## Logical pipeline
 
 The implementation is one directional pipeline:
 
 ```text
-model → specification/style → normalize/rules → construct → compose → place → API views
+model → spec → normalize/rules → construct → compose → place → pipeline → API
 ```
 
 The present source groups some adjacent stages into files, but ownership follows this
 direction:
 
-- `model` owns caller-unit sizes, frames, writing modes, shaped clusters, and source bytes;
+- `model` owns caller-unit sizes, frames, writing modes, shaped clusters, and input errors;
 - `style` owns the 22 typed decisions and dated profiles;
-- normalization joins Appendix A two-code-point keys without losing original cluster
+- `generated` contains reproducible tables, while `spec` gives them private queries;
+- `normalize` validates shaped text and joins Appendix A two-code-point keys without losing original cluster
   attribution;
-- private classification and spacing select specification behavior;
-- `construct` validates and lowers the nine document structures;
-- composition performs one whole-paragraph dynamic-programming search;
-- placement creates renderer-ready base and attachment views;
-- the crate root re-exports only names listed in `docs/api-1.0.toml`.
+- `construct` owns the nine opaque document structures;
+- `paragraph` jointly validates breaks, constructs, tabs, and paragraph policy;
+- `layout` owns renderer-facing read-only result views;
+- `pipeline` performs private classification, spacing, construct lowering, optimal
+  composition, and placement;
+- `lib` is the only API layer and re-exports exactly `docs/api-1.0.toml`.
 
 No classification, seam, adjustment stage, feasibility score, ladder, badness, or rule ID is
 public. A caller builds `ShapedText`, validates a `Paragraph`, calls `compose`, and draws the
@@ -125,16 +123,15 @@ cannot accidentally be judged against a new suite.
 
 - `purity`: no `std`, I/O, font dependency, floating point, or undeclared dependency edge
   in the core;
-- `api`: open public types, constructibility, forbidden shapes, exact 1.0 exports, and the
-  22 typed Style mappings;
+- `api`: exact 1.0 exports and the 22 typed Style mappings;
+- `direction`: the private module graph follows the declared one-way layers;
 - `placeholder`: no unwritten body or lint suppression in core code;
 - `derive`, `generate`, `attest`: reproducible specification derivation and transcription
   provenance;
-- `spec-links`, `direction`, `conform`: legacy rule attribution and differential assets
-  remain intact while their behavior moves behind the new black-box API;
+- `conform`: every observable inventoried rule has a protocol-v1 black-box case, and every
+  excluded rule has an evidence-backed editorial/non-observable classification;
 - normal Rust tests: invalid input, all style choices, all constructs in both directions,
   paragraph search, placement, and protocol behavior.
 
-The old `docs/api-frozen.toml` remains temporarily as a control over migration assets used
-by `ops` and legacy tests. It is not the public 1.0 contract; it is removed together with
-those crates after differential migration is complete.
+The gate rejects additions and removals from the public surface unless
+`docs/api-1.0.toml` changes deliberately.

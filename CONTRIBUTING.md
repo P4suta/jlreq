@@ -35,8 +35,7 @@ from `fuzz/`.
   instead of suppressing the finding. If a lint is genuinely wrong for this codebase,
   change the shared configuration and say why in the commit message.
 
-- **The core stays pure.** `jlreq-unit`, `jlreq-spec`, `jlreq-class`, `jlreq-spacing`,
-  `jlreq-line`, `jlreq-inline`, and `jlreq` must not gain `std`, I/O, font, or
+- **The core stays pure.** `kumihan` must not gain `std`, I/O, font, or
   floating-point dependencies. `mise exec -- just purity` enforces this; see
   [ADR 0001](docs/adr/0001-no-std-no-io-no-font-in-core.md),
   [ADR 0005](docs/adr/0005-integer-layout-units.md), and
@@ -81,14 +80,11 @@ from `fuzz/`.
   present itself as machine-derived. [generation.md](docs/design/generation.md) is the
   pipeline.
 
-- **Every rule gets a conformance case.** A rule without an entry in `jlreq-conform`
-  addressed to the JLReq section it implements is incomplete. The rule inventory is
-  generated whole while the suite is written milestone by milestone, so a rule whose case a
-  later milestone writes is declared in
-  [docs/conformance-deferrals.toml](docs/conformance-deferrals.toml) with that milestone and
-  a reason — and a rule that is neither covered nor declared there fails `just conform`,
-  which counts what is deferred, per milestone, on every run. Deferring is not exempting:
-  the entry is a violation the moment a case covers the rule, so it ends by itself.
+- **Every observable rule gets a protocol case.** A mechanically observable rule without a
+  request/response case in `crates/kumihan-conformance/suite.ndjson` is incomplete. Editorial
+  or non-observable statements belong in
+  [docs/conformance-deferrals.toml](docs/conformance-deferrals.toml) with primary evidence;
+  an empty case is not coverage. `just conform` checks the inventory in both directions.
 
 ## Code and comments are in English
 
@@ -102,11 +98,8 @@ English translation instead carries the kanji and the romanization — "hanging 
 (ぶら下げ, burasage)" — and a term introduced as a loanword carries the kanji alone —
 "warichu (割注)".
 
-An architecture decision record is cited as `ADR-0013` inside a doc comment and in a
-`JLReq:` line, because that is the token the `spec-links` grammar reads as a reference. The
-path form, `docs/adr/0013`, is for module-level `//!` prose and for Markdown, where it is a
-link rather than a citation. One fact, one spelling: the whole argument for the citation
-habit is that a reader can index the crate by it.
+Use `ADR-0013` inside source comments and a Markdown link such as `docs/adr/0013` in prose.
+Use canonical JLReq addresses from `spec/derived/rules.tsv` in protocol case metadata.
 
 ## Commits
 
@@ -120,6 +113,6 @@ docs(adr): record the integer-unit decision
 
 ## Where discussion belongs
 
-Disagreements about what JLReq requires belong in `jlreq-conform` as a test case with the
-section reference, not in an issue thread. Where JLReq permits alternatives, the answer is
-a caller-visible option, not a default chosen in code review.
+Disagreements about what JLReq requires belong in the protocol-v1 suite as a black-box case
+with the section reference, not only in an issue thread. Where JLReq permits alternatives,
+the answer is a typed caller-visible option, not a default chosen in code review.

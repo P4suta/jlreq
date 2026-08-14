@@ -4,57 +4,17 @@
 
 //! The `purity` gate.
 //!
-//! Checks that the layout core still satisfies the invariants it was designed around:
+//! Checks the invariants around the sole public library and its conformance product:
 //!
-//! - every crate declares only the dependencies its row of the crate graph permits
-//!   (`docs/design/api-spine.md`, `docs/adr/0015`),
-//! - every core crate declares `#![no_std]` (`docs/adr/0001`),
-//! - no core source names `f32` or `f64`, and none writes a floating-point *literal*
-//!   (`docs/adr/0005`),
-//! - every type that crosses the seam between the construct layer and the line layer has
-//!   both of its ends (`docs/adr/0015`, `docs/adr/0012`).
+//! - `kumihan` has no normal dependencies and remains `#![no_std]` plus `alloc`;
+//! - `kumihan-conformance` depends only on the library and its product/test tooling;
+//! - core source names neither floating-point types nor floating-point literals;
+//! - manifests match the two-node product graph in `docs/design/api-spine.md`.
 //!
-//! These are the invariants that decide whether this library can run in a browser, in a
-//! game engine, or on a target without a floating-point unit, and whether its conformance
-//! suite can assert exact values. They are cheap to hold from an empty repository and
-//! expensive to restore once violated, which is why the gate exists before the code does.
-//!
-//! `just no-std` and `just wasm` are the compile-time half of the same guarantee.
-//!
-//! # The crate graph is adjacency, not membership
-//!
-//! "Every dependency is a core crate" is a weaker statement than the one the design makes.
-//! `docs/design/api-spine.md` draws a directed acyclic graph, and it is the acyclicity that
-//! the design rests on: `jlreq-inline` must not reach `jlreq-line`, because §3.4.3 makes a
-//! warichu (割注) interior's available measure a sequence the outer search alone knows, and
-//! `jlreq-line` must not reach `jlreq-inline`, because §3.3.8 rule 3 makes the ruby overhang
-//! allowance depend on the space that survives adjustment. Both edges are absent for stated
-//! reasons and both would satisfy a membership test. [`CRATE_GRAPH`] is therefore the table
-//! itself, one row per crate, and a dependency outside a crate's own row is a violation even
-//! when the crate it names is core.
-//!
-//! # A seam has two ends
-//!
-//! The seam is data with a producer and a consumer (`docs/adr/0015`). Every type crossing it
-//! lives in `jlreq-unit`, so that neither `jlreq-inline` nor `jlreq-line` names a type the
-//! other owns; the producer builds one through its constructor, and the consumer reads one
-//! through its accessors. A seam type that can be built but not read, or read but not built,
-//! is a seam with nothing on the far end — the phrase is `BlockDemand`'s own doc comment in
-//! the API spine, which is where this reading of "appears in a producer's and a consumer's
-//! signature" comes from. So the check is: the type is owned by `jlreq-unit`, and if it is
-//! an opaque struct it carries both a public constructor and a public accessor. An enum
-//! whose variants are public is readable and writable by construction and has no far end to
-//! lose, so for those only ownership is checked.
-//!
-//! # Floating point is two halves
-//!
-//! `f32` and `f64` are the *types*. The other half is the literal, and it was measured:
-//! `let r = 0.5; r * 2.0;` names neither type, and passes clippy, rustc under
-//! `-D warnings`, and the first version of this gate, because inference gives the literals
-//! `f64` without either name ever appearing in the source. Reading literals raises the bar
-//! on the scan itself, which is why [`code_only`] here is not `shared::code_only` alone: a
-//! `{:.3}` in a format string is a precision and not a number, a `0.5` in a block comment is
-//! prose, and `self.0` is a tuple field and not a fraction.
+//! The private module-layer direction is checked separately by `xtask direction`, while
+//! `just no-std` and `just wasm` compile the portability half of this guarantee. The seam
+//! scanner retained below has an empty production roster and is exercised only by fixtures
+//! so restoring a retired cross-crate seam cannot silently pass.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -67,7 +27,7 @@ pub(crate) const GATE: Gate = Gate {
     name: "purity",
     purpose: concat!(
         "every crate declares only what its row of the crate graph permits, the layout ",
-        "core stays no_std and writes no floating point, and every seam type has both ends"
+        "core stays no_std and writes no floating point"
     ),
     reference: concat!(
         "docs/adr/0001-no-std-no-io-no-font-in-core.md, ",
@@ -102,62 +62,11 @@ impl Adjacency {
     }
 }
 
-/// The crate graph of `docs/design/api-spine.md`, in dependency order.
-///
-/// Transcribed rather than derived, because it is the *intent*: deriving it from the
-/// manifests would make the gate agree with whatever the manifests happen to say. The two
-/// absent edges are the load-bearing ones — `jlreq-inline` does not reach `jlreq-line` and
-/// `jlreq-line` does not reach `jlreq-inline` (`docs/adr/0015`).
+/// The product graph, transcribed rather than derived from the manifests it checks.
 const CRATE_GRAPH: &[Adjacency] = &[
     Adjacency {
         crate_name: "kumihan",
         may_depend_on: &[],
-    },
-    Adjacency {
-        crate_name: "jlreq-unit",
-        may_depend_on: &[],
-    },
-    Adjacency {
-        crate_name: "jlreq-spec",
-        // `Policy::remainder` is the one derivation of `jlreq_unit::RemainderRule` from a
-        // policy, which is what makes `distribute`'s parameter a transport rather than a
-        // second carrier (ADR 0019). The edge runs this way and not the other because
-        // ADR 0019 and this table both state that `jlreq-unit` depends on nothing, so the
-        // seam types carry no rule address (ADR 0020). The manifest declares it in the
-        // commit that lands `Policy::remainder` with the generated policy space; this row
-        // is what that commit is checked against.
-        may_depend_on: &["jlreq-unit"],
-    },
-    Adjacency {
-        crate_name: "jlreq-class",
-        may_depend_on: &["jlreq-unit", "jlreq-spec"],
-    },
-    Adjacency {
-        crate_name: "jlreq-spacing",
-        may_depend_on: &["jlreq-unit", "jlreq-spec", "jlreq-class"],
-    },
-    Adjacency {
-        crate_name: "jlreq-line",
-        may_depend_on: &["jlreq-unit", "jlreq-spec", "jlreq-class", "jlreq-spacing"],
-    },
-    Adjacency {
-        crate_name: "jlreq-inline",
-        may_depend_on: &["jlreq-unit", "jlreq-spec", "jlreq-class"],
-    },
-    Adjacency {
-        crate_name: "jlreq",
-        may_depend_on: &[
-            "jlreq-unit",
-            "jlreq-spec",
-            "jlreq-class",
-            "jlreq-spacing",
-            "jlreq-line",
-            "jlreq-inline",
-        ],
-    },
-    Adjacency {
-        crate_name: "jlreq-conform",
-        may_depend_on: &["jlreq", "jlreq-spec"],
     },
     Adjacency {
         crate_name: "kumihan-conformance",
@@ -174,12 +83,10 @@ const CRATE_GRAPH: &[Adjacency] = &[
 /// explicitly. Its manifest is therefore read here. The name is verified against the
 /// manifest rather than assumed from the path, so this pair cannot rot into applying one
 /// crate's row to another.
-const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] = &[
-    ("jlreq-conform", "crates/jlreq-conform"),
-    ("kumihan-conformance", "crates/kumihan-conformance"),
-];
+const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] =
+    &[("kumihan-conformance", "crates/kumihan-conformance")];
 
-/// One type that crosses the seam between the construct layer and the line layer.
+/// One type in the retired cross-crate seam model, retained for parser regression tests.
 #[derive(Debug)]
 struct SeamType {
     /// The type's name, as `docs/design/api-spine.md` spells it.
@@ -197,63 +104,17 @@ struct SeamType {
     milestone: &'static str,
 }
 
-/// The milestone the workspace has reached, so an absent seam type due now is a failure.
+/// Historical fixture milestone.
 const REACHED: &str = "M0";
 
-/// The crate that owns every seam type, so that neither end names a type the other owns.
+/// Historical fixture owner.
 const SEAM_OWNER: &str = "jlreq-unit";
 
 /// The crate root, as `shared::relative_name` spells it.
 const LIB: &str = "lib.rs";
 
-/// The seam, in the order `docs/design/api-spine.md` introduces it.
-///
-/// Four types cross from `jlreq-inline` to `jlreq-line` and one crosses back, and the
-/// interior of a segment travels inside it.
-const SEAM: &[SeamType] = &[
-    SeamType {
-        name: "Runs",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "Segment",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "Interior",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "Straddle",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "Separation",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "BlockDemand",
-        producer: "jlreq-inline",
-        consumer: "jlreq-line",
-        milestone: "M0",
-    },
-    SeamType {
-        name: "RubyOverhang",
-        producer: "jlreq-line",
-        consumer: "jlreq-inline",
-        milestone: "M0",
-    },
-];
+/// Production has no cross-crate seam: all layout layers are private modules of `kumihan`.
+const SEAM: &[SeamType] = &[];
 
 /// One core crate's sources, read once and stripped to code.
 #[derive(Debug)]
@@ -1171,10 +1032,13 @@ mod tests {
     }
 
     /// The seam type of that name, so a test names what it is about.
-    fn seam(name: &str) -> &'static SeamType {
-        SEAM.iter()
-            .find(|seam| seam.name == name)
-            .expect("the seam roster names it")
+    fn seam(name: &'static str) -> SeamType {
+        SeamType {
+            name,
+            producer: "fixture-producer",
+            consumer: "fixture-consumer",
+            milestone: "M0",
+        }
     }
 
     #[test]
@@ -1269,11 +1133,7 @@ mod tests {
     #[test]
     fn a_crate_may_declare_only_what_its_row_permits() {
         let mut violations = Vec::new();
-        check_row(
-            "jlreq-spacing",
-            "[dependencies]\njlreq-class = { path = \"../jlreq-class\" }\n",
-            &mut violations,
-        );
+        check_row("kumihan", "[dependencies]\n", &mut violations);
         assert!(violations.is_empty(), "found {violations:?}");
     }
 
@@ -1302,13 +1162,13 @@ mod tests {
     fn a_dependency_the_row_omits_is_a_violation_even_when_it_is_core() {
         let mut violations = Vec::new();
         check_row(
-            "jlreq-spacing",
-            "[dependencies]\njlreq-line = { path = \"../jlreq-line\" }\n",
+            "kumihan",
+            "[dependencies]\nserde = \"1\"\n",
             &mut violations,
         );
         assert_eq!(violations.len(), 1, "found {violations:?}");
         assert!(
-            violations[0].contains("jlreq-line"),
+            violations[0].contains("serde"),
             "the message names the edge: {violations:?}"
         );
     }
@@ -1384,7 +1244,7 @@ mod tests {
     }
 
     #[test]
-    fn a_seam_type_no_crate_declares_is_reported() {
+    fn the_retired_inter_crate_seam_roster_is_empty() {
         let mut violations = Vec::new();
         let mut notes = Vec::new();
         let code = workspace(SEAM_OWNER, "pub struct Something;");
@@ -1396,14 +1256,9 @@ mod tests {
             SEAM.len(),
             "the absent case is the one this check exists for, so it is never silent:              {violations:?} {notes:?}"
         );
-        assert!(
-            !violations.is_empty(),
-            "every row of the seam is due at M0, so absence fails rather than reports:              {notes:?}"
-        );
-        assert!(
-            violations[0].contains("declared by no crate"),
-            "found {violations:?}"
-        );
+        assert!(SEAM.is_empty());
+        assert!(violations.is_empty());
+        assert!(notes.is_empty());
     }
 
     #[test]
@@ -1436,7 +1291,7 @@ mod tests {
                       }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Separation"),
+            &seam("Separation"),
             &workspace(SEAM_OWNER, source),
             &mut violations,
             &mut Vec::new(),
@@ -1453,7 +1308,7 @@ mod tests {
                       }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Separation"),
+            &seam("Separation"),
             &workspace(SEAM_OWNER, source),
             &mut violations,
             &mut Vec::new(),
@@ -1473,7 +1328,7 @@ mod tests {
                       }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Separation"),
+            &seam("Separation"),
             &workspace(SEAM_OWNER, source),
             &mut violations,
             &mut Vec::new(),
@@ -1490,7 +1345,7 @@ mod tests {
         let source = "pub struct Segment { items: u32 }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Segment"),
+            &seam("Segment"),
             &workspace("jlreq-line", source),
             &mut violations,
             &mut Vec::new(),
@@ -1510,7 +1365,7 @@ mod tests {
                       }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Separation"),
+            &seam("Separation"),
             &workspace(SEAM_OWNER, source),
             &mut violations,
             &mut Vec::new(),
@@ -1527,7 +1382,7 @@ mod tests {
         let source = "pub enum Straddle { Forbidden, Permitted }\n";
         let mut violations = Vec::new();
         check_seam_type(
-            seam("Straddle"),
+            &seam("Straddle"),
             &workspace(SEAM_OWNER, source),
             &mut violations,
             &mut Vec::new(),

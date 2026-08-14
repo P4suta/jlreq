@@ -10,17 +10,16 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/appendix-a.tsv`
-//! - Source SHA-256: `e8d845a160febbba6bf64aa01b2f442c9f958366129bfc0c709eff222b60e5a6`
+//! - Source SHA-256: `319ded957224da4bce5f0d07286c9e59dc5d6ec9538bd60080c8854e4589ddf5`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `e90793dd18eefd94d19df29300833061d9e549db56b441d8a57814dccb8624cf`
+//! - Generator SHA-256: `edb1bbf8074d55b5386983a7842e187785ed3df8e6e72aeddf506d966dbb3123`
 //! - Entries: 1686
 
 /// The longest key Appendix A enumerates, in code points.
 ///
 /// Measured from the table below rather than assumed.
-/// `crates/jlreq-class/src/generated.rs`
-/// asserts the value this crate is written against, so a revision adding a
+/// `xtask attest` asserts the value this engine is written against, so a revision adding a
 /// three-code-point member is a build failure rather than a silent truncation.
 ///
 /// JLReq: §A

@@ -125,10 +125,10 @@ const RECORDED: [Defect; 12] = [
     Defect {
         id: "line-composition-note-locale-divergence",
         site: "3.1.3",
-        treatment: "Carried, not resolved: rules.tsv emits §3.1.3 in both locales and marks \
-                    it direction-conditional, which is what this note qualifies. \
-                    docs/direction-sites.toml defers the reader that must choose, so no \
-                    code has taken either half yet.",
+        treatment: "rules.tsv emits §3.1.3 in both locales and marks it \
+                    direction-conditional. The unified pipeline keeps the document's \
+                    divergence explicit and protocol cases fix the observable vertical \
+                    punctuation and construct-context behavior.",
         detect: direction_divergence,
     },
     Defect {
@@ -136,8 +136,9 @@ const RECORDED: [Defect; 12] = [
         site: "3.1.6",
         treatment: "The Japanese half resolves the reference to §B, which is where the \
                     composition rules for cl-04 and cl-03 are tabulated; notes.tsv and \
-                    rules.tsv emit both halves, and `spec-links` resolves every address \
-                    this repository cites, so the unresolved one is the document's alone.",
+                    rules.tsv emit both halves, while the conformance gate validates every \
+                    canonical address used by protocol metadata, so the unresolved one is \
+                    the document's alone.",
         detect: unresolved_cross_reference,
     },
     Defect {
@@ -152,16 +153,15 @@ const RECORDED: [Defect; 12] = [
     Defect {
         id: "reduction-step-1-locale-divergence",
         site: "3.8.3",
-        treatment: "Carried, not resolved: rules.tsv emits §3.8.3 in both locales, so both \
-                    operations are in the inventory. Which one a line of mixed character \
-                    sizes gets is a question the line-adjustment milestone must answer, not \
-                    a reading this stage may take.",
+        treatment: "rules.tsv emits §3.8.3 in both locales. The unified integer adjustment \
+                    pipeline uses the captured table stages and referent character sizes; \
+                    mixed-size protocol cases freeze that observable reading.",
         detect: reduction_step_divergence,
     },
     Defect {
         id: "bracket-class-enumeration-mismatch",
         site: "3.9.2, A.28, A.29",
-        treatment: "jlreq-class publishes the three members §A.28 and §A.29 enumerate, \
+        treatment: "kumihan's private classifier uses the three members §A.28 and §A.29 enumerate, \
                     which is the only closed statement the document makes about either \
                     class. Whether a fourth bracket belongs is a silence for \
                     docs/decisions/ rather than an answer this stage may invent.",
@@ -213,10 +213,9 @@ const RECORDED: [Defect; 12] = [
     Defect {
         id: "b2-note-11-simple-ruby-misnomer",
         site: "B.2#11",
-        treatment: "Carried, not resolved: notes.tsv emits both halves verbatim. Nothing \
-                    reads a note's class references yet; when the Appendix B cells arrive \
-                    this note qualifies a cl-23 cell, and its English term cannot be taken \
-                    at face value there.",
+        treatment: "notes.tsv emits both halves verbatim. The generated Appendix B cell is \
+                    cl-23 and the unified construct pipeline therefore applies it only to \
+                    jukugo-ruby runs; the English misnomer is never used as a class key.",
         detect: simple_ruby_misnomer,
     },
     Defect {

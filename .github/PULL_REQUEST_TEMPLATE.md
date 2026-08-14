@@ -13,7 +13,7 @@ Delete this section for changes that do not touch layout.
 
 ## Conformance
 
-- [ ] Every rule this touches has a case in `jlreq-conform` naming its JLReq section
+- [ ] Every observable rule this touches has a protocol-v1 case naming its JLReq section
 - [ ] Where JLReq permits alternatives, each permitted outcome is recorded
 - [ ] A disagreement with LaTeX's `jlreq` class or a browser is documented with reasoning
 

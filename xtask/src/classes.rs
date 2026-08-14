@@ -6,7 +6,7 @@
 //! folding, and the script property.
 //!
 //! Four derivations and four generation units, reading the vendored snapshot and emitting
-//! the tables `jlreq-class` looks up:
+//! the private tables the unified `kumihan` engine looks up:
 //!
 //! | derived | generated | what it is |
 //! | --- | --- | --- |
@@ -2086,8 +2086,7 @@ fn key_length_item(listings: &[Listing]) -> String {
         "/// The longest key Appendix A enumerates, in code points.\n\
          ///\n\
          /// Measured from the table below rather than assumed.\n\
-         /// `crates/jlreq-class/src/generated.rs`\n\
-         /// asserts the value this crate is written against, so a revision adding a\n\
+         /// `xtask attest` asserts the value this engine is written against, so a revision adding a\n\
          /// three-code-point member is a build failure rather than a silent truncation.\n\
          ///\n\
          /// JLReq: §A\n\
@@ -2324,8 +2323,8 @@ mod tests {
     use super::{
         CENSUS, CLASS_COUNT, CONSTRUCT_CLASSES, EXPECTED_LISTINGS, FRAMES, Listing, REMARKS, ROLES,
         USAGES, class_name, class_number, collapse, decompositions, deduplicate, escape,
-        frame_expression, keys, literal, property_ranges, read_class_table, remark, render_key,
-        strip_markup, unescape,
+        frame_expression, key_length_item, keys, literal, property_ranges, read_class_table,
+        remark, render_key, strip_markup, unescape,
     };
 
     /// One listing, as the derived table hands one over.
@@ -2338,6 +2337,13 @@ mod tests {
                 remark,
             },
         )
+    }
+
+    #[test]
+    fn appendix_key_length_documentation_names_the_unified_generator() {
+        let generated = key_length_item(&[listing(1, &[0x31F7, 0x309A], 0).1]);
+        assert!(generated.contains("`xtask attest`"), "{generated}");
+        assert!(!generated.contains("crates/jlreq-"), "{generated}");
     }
 
     /// Two rows of §A.1, copied out of the vendored snapshot: one carrying a Remarks cell

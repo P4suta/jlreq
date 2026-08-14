@@ -14,6 +14,8 @@ use crate::generated::ideograph::RANGES as IDEOGRAPH_RANGES;
 use crate::generated::script::{HIRAGANA, KATAKANA, RANGES as SCRIPT_RANGES};
 use crate::model::{ClusterRole, Frame, Size, WritingMode};
 
+pub(crate) const UNITS_PER_EM: i32 = 720;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RawHang {
     None,
@@ -326,8 +328,12 @@ fn last_class(classes: u32) -> Option<u8> {
 
 pub(crate) fn scale_spec_units(size: i32, units: i32) -> i32 {
     let product = i64::from(size).saturating_mul(i64::from(units));
-    let whole = product / 720;
-    let rounded = whole.saturating_add(i64::from(product % 720 != 0));
+    let denominator = i64::from(UNITS_PER_EM);
+    let whole = product.checked_div(denominator).unwrap_or(product);
+    let has_remainder = product
+        .checked_rem(denominator)
+        .is_some_and(|remainder| remainder != 0);
+    let rounded = whole.saturating_add(i64::from(has_remainder));
     i32::try_from(rounded).unwrap_or(i32::MAX)
 }
 

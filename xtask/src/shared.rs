@@ -30,8 +30,6 @@ use std::process::ExitCode;
 const NON_CORE_MEMBERS: &[&str] = &[
     // The language-independent protocol runner launches external processes and parses JSON.
     "crates/kumihan-conformance",
-    // The conformance suite is a std program that reads its own case files (ADR 0006).
-    "crates/jlreq-conform",
     // The repository's own tooling, which is this program.
     "xtask",
 ];
@@ -334,17 +332,14 @@ pub(crate) fn code_only(source: &str) -> String {
 // The address grammar
 // ---------------------------------------------------------------------------------------
 
-// One carrier for the canonical rendering docs/adr/0013 fixes, read by `spec-links` from
-// doc comments, by `conform` from case files, and by `attest` from the captured matrices.
+// One carrier for the canonical rendering docs/adr/0013 fixes, read by `conform` from
+// protocol cases and by `attest` from the captured matrices.
 // Three hand-rolled copies accepted three different languages, and the coverage gate was
 // the lax one: a case file could name a cell no inventory row can ever carry and the
 // subtraction still closed. That is the defect docs/adr/0019 names, committed inside the
 // tool that enforces it.
 //
-// `jlreq-spec` states the same grammar a second time, as a `const fn` over bytes, because
-// xtask declares no dependencies and a core crate is not one it could declare. Those two
-// are two carriers by necessity, and they are held equal by the corpus in
-// docs/design/address-corpus.tsv, which both of them read.
+// The grammar is held against the corpus in docs/design/address-corpus.tsv.
 
 /// The deepest section path an address holds: `1.2.3.4`.
 const MAX_PARTS: usize = 4;
@@ -376,8 +371,7 @@ pub(crate) enum Detail {
 ///
 /// The two coordinates are two types and not one, because the matrices are not symmetric
 /// in them: Tables 1 and 3 through 5 carry one line-head *row* and one line-end *column*
-/// and nothing else, which is the frozen reason `jlreq_spacing::Before` and
-/// `jlreq_spacing::After` are two types in docs/api-frozen.toml. A symmetric coordinate
+/// and nothing else. A symmetric coordinate
 /// makes `B.1@cl-02,line-head` — a cell no matrix has — a well-formed address, in a space
 /// docs/adr/0013 calls a one-way door.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -647,8 +641,6 @@ mod tests {
             !names.contains(&"kumihan-conformance"),
             "the process-oriented conformance product is not core: {names:?}"
         );
-        assert!(names.contains(&"jlreq-unit"), "found {names:?}");
-        assert!(names.contains(&"jlreq"), "found {names:?}");
         for exempted in NON_CORE_MEMBERS {
             let last = exempted.rsplit('/').next().unwrap_or(exempted);
             assert!(!names.contains(&last), "{exempted} is not core");

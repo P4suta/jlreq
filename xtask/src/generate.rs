@@ -7,7 +7,7 @@
 //! Stage 1 is the `derive` gate, which reads the vendored snapshot and emits
 //! `spec/derived/*.tsv`. Stage 2 is this module: it turns the tab-separated files under
 //! `spec/derived/` and `spec/captured/` into the Rust modules committed at
-//! `crates/*/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
+//! `crates/kumihan/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
 //! what keeps this program's empty dependency table intact, and the SHA-256 below is
 //! hand-written for the same reason.
 //!
@@ -28,8 +28,8 @@
 //! - `data/manifest.toml` records the SHA-256 of every file the pipeline reads or writes,
 //!   and of nothing else, so a hand edit to an input that was never regenerated from is
 //!   visible too. That is wider than the units' own outputs and inputs: it covers the
-//!   derived tables no unit consumes yet and that `spec-links`, `attest`, `api` and
-//!   `conform` nonetheless read, the vendored documents behind all of them, and the modules
+//!   derived tables that `attest`, `api` and `conform` read, the vendored documents behind
+//!   all of them, and the modules
 //!   of this program that emit them. A ledger that records part of a chain records nothing
 //!   about the rest of it.
 //!
@@ -159,29 +159,34 @@ pub(crate) struct Unit {
 /// adding a generated table touches this list and nothing else in this file. The units
 /// still to arrive are the appendix notes and the captured matrices.
 const UNITS: &[Unit] = &[
-    classes::APPENDIX_A_TABLE,
     classes::KUMIHAN_APPENDIX_A_TABLE,
+    classes::KUMIHAN_IDEOGRAPH_TABLE,
+    classes::KUMIHAN_FOLDING_TABLE,
+    classes::KUMIHAN_SCRIPT_TABLE,
+    spacing::KUMIHAN_TABLE1,
+    spacing::KUMIHAN_TABLE2,
+    spacing::KUMIHAN_TABLE3,
+    spacing::KUMIHAN_TABLE4,
+    spacing::KUMIHAN_TABLE5,
+    spacing::KUMIHAN_TABLE6,
+];
+
+/// Superseded Rust outputs whose declarations remain compiled but are no longer rendered.
+/// The derivation code they share with the unified outputs remains part of `xtask`.
+const HISTORICAL_UNITS: &[Unit] = &[
+    classes::APPENDIX_A_TABLE,
     classes::CLASS_TABLE,
     classes::IDEOGRAPH_TABLE,
-    classes::KUMIHAN_IDEOGRAPH_TABLE,
     classes::FOLDING_TABLE,
-    classes::KUMIHAN_FOLDING_TABLE,
     classes::SCRIPT_TABLE,
-    classes::KUMIHAN_SCRIPT_TABLE,
     inventory::RULE_INVENTORY,
     policy::POLICY_SPACE_UNIT,
     spacing::TABLE1,
-    spacing::KUMIHAN_TABLE1,
     spacing::TABLE2,
-    spacing::KUMIHAN_TABLE2,
     spacing::TABLE3,
-    spacing::KUMIHAN_TABLE3,
     spacing::TABLE4,
-    spacing::KUMIHAN_TABLE4,
     spacing::TABLE5,
-    spacing::KUMIHAN_TABLE5,
     spacing::TABLE6,
-    spacing::KUMIHAN_TABLE6,
 ];
 
 /// A tab-separated input, as a generator sees it.
@@ -283,6 +288,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let root = shared::workspace_root()?;
 
     let mut violations = check_declarations(UNITS);
+    violations.extend(check_declarations(HISTORICAL_UNITS));
     let rendered = render(&root, UNITS, &mut violations)?;
     let digests = digests(&root, &rendered, &mut violations)?;
 
@@ -297,8 +303,8 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     check_manifest(&digests, &recorded, &mut violations);
 
     println!(
-        "{NAME}: examined {units} generation unit(s), {modules} module(s) under \
-         {CRATES_DIRECTORY}/*/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
+        "{NAME}: examined {units} active generation unit(s), {modules} module(s) under \
+         crates/kumihan/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
          in {MANIFEST_PATH}",
         units = UNITS.len(),
         modules = found.len(),
@@ -629,9 +635,8 @@ fn compose(
 ///
 /// Not only the units' own outputs and inputs. Several derived tables — the document
 /// skeleton, the appendix notes and the policy space among them — are consumed by no
-/// generation unit yet and are load-bearing all the same: `spec-links` resolves every cited
-/// address against the first, `attest` names the second in six of its invariants, and `api`
-/// and `conform` both read the third. The vendored documents and this
+/// generation unit yet and are load-bearing all the same: `attest`, `api`, and `conform`
+/// read them as release controls. The vendored documents and this
 /// program's own reading and emitting modules are recorded for the same reason. The manifest
 /// is this repository's one ledger of what produced what, and a ledger that records part of
 /// a chain records nothing about the rest of it.
@@ -689,6 +694,26 @@ fn ledger() -> BTreeSet<String> {
     // The provenance record is an input of this stage too: `specification-date` is copied
     // into the header of every emitted file.
     paths.insert(PROVENANCE_PATH.to_owned());
+    for path in [
+        "spec/captured/table1.ja.tsv",
+        "spec/captured/table2.ja.tsv",
+        "spec/captured/table3.ja.tsv",
+        "spec/captured/table4.ja.tsv",
+        "spec/captured/table5.ja.tsv",
+        "spec/captured/table6.ja.tsv",
+        "spec/captured/invariants.tsv",
+        "xtask/src/attest.rs",
+        "docs/api-1.0.toml",
+        "xtask/src/api.rs",
+        "crates/kumihan-conformance/suite.ndjson",
+        "crates/kumihan-conformance/protocol.schema.json",
+        "docs/conformance-deferrals.toml",
+        "ROADMAP.md",
+        "xtask/src/conform.rs",
+        "xtask/src/deferral.rs",
+    ] {
+        paths.insert(path.to_owned());
+    }
     paths
 }
 
@@ -1586,7 +1611,16 @@ mod tests {
             "spec/derived/anchors.tsv",
             "spec/derived/notes.tsv",
             "spec/snapshot/index.html",
+            "spec/captured/table1.ja.tsv",
+            "spec/captured/invariants.tsv",
+            "docs/api-1.0.toml",
+            "crates/kumihan-conformance/suite.ndjson",
+            "crates/kumihan-conformance/protocol.schema.json",
+            "docs/conformance-deferrals.toml",
             "xtask/src/classes.rs",
+            "xtask/src/attest.rs",
+            "xtask/src/api.rs",
+            "xtask/src/conform.rs",
             "xtask/src/derive.rs",
             "xtask/src/generate.rs",
             "xtask/src/inventory.rs",

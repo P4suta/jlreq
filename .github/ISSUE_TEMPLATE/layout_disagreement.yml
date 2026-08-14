@@ -12,7 +12,7 @@ body:
         Use this when the output is wrong or debatable, rather than the bug report.
 
         Layout disagreements are the substance of this project, not noise. A well-formed
-        one becomes a case in `jlreq-conform` whether or not this library turns out to be
+        one becomes a protocol-v1 black-box case whether or not this library turns out to be
         the one at fault — including cases where the disagreement is with a browser or with
         LaTeX's `jlreq` class and we are the ones who are right. See
         [ADR 0006](../../docs/adr/0006-conformance-suite-as-artifact.md).

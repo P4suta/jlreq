@@ -6,12 +6,10 @@
 //!
 //! CONTRIBUTING.md states that a rule without a conformance case is incomplete, and [ADR
 //! 0013](../../docs/adr/0013-rules-are-addressed-by-specification-address.md) makes that
-//! arithmetic. Two gates do the subtraction: `conform` subtracts the rules the cases
-//! declare from the rules `spec/derived/rules.tsv` inventories, and `spec-links` subtracts
-//! them from the rules the layout core's doc comments cite. The inventory is generated
-//! whole — every rule of §3 and of Appendices B through F at once — while the suite is
-//! written milestone by milestone, so both subtractions have a remainder that is nothing
-//! but the schedule.
+//! arithmetic. The `conform` gate subtracts the rules the protocol-v1 cases declare from
+//! the rules `spec/derived/rules.tsv` inventories. The inventory is generated whole — every
+//! rule of §3 and of Appendices B through F at once — while the suite is maintained as a
+//! black-box artifact.
 //!
 //! Without a place to write that down, a gate could only choose between two false
 //! sentences: that the rules are covered, by weakening the subtraction until the remainder
@@ -57,8 +55,8 @@
 //! ends it is a case.
 //!
 //! The reader is hand-rolled for the reason `xtask` declares no dependencies at all, and
-//! its line primitives are `shared`'s, so this file and `docs/direction-sites.toml` are
-//! read in one language rather than two.
+//! its line primitives are `shared`'s, so this file uses the same small checked grammar as
+//! the other repository controls.
 //!
 //! See `docs/conformance-deferrals.toml`, `docs/design/conformance.md` and
 //! `docs/adr/0013-rules-are-addressed-by-specification-address.md`.

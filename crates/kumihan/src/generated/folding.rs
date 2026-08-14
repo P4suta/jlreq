@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/folding.tsv`
-//! - Source SHA-256: `44255c6d0c8125bdd692ba09c3ca1482212752ce590ac1db3bcf9293ffb22597`
+//! - Source SHA-256: `e95312f015eea1882b9bc45ee3176a5bacc87636b20542b935e217e54c081493`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `e90793dd18eefd94d19df29300833061d9e549db56b441d8a57814dccb8624cf`
+//! - Generator SHA-256: `edb1bbf8074d55b5386983a7842e187785ed3df8e6e72aeddf506d966dbb3123`
 //! - Entries: 226
 
 use super::appendix_a::{FRAME_FULL_EM, FRAME_HALF_EM};

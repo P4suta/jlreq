@@ -5,7 +5,7 @@
 use alloc::vec::Vec;
 use core::ops::Range;
 
-use crate::{Frame, Size, WritingMode};
+use crate::model::{Frame, Size, WritingMode};
 
 /// Attribution of a placed item to the caller's input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

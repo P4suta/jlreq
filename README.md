@@ -12,10 +12,9 @@ The public surface is deliberately limited to:
 Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
 remain the caller's responsibility.
 
-> **Release status:** the 1.0 architecture and candidate API are implemented, but every
-> product crate remains `publish = false`. The conformance inventory reports zero deferred
-> JLReq rules and six evidence-backed editorial/non-observable classifications. Publishing
-> remains intentionally disabled while the retained migration corpus is audited and removed.
+Version 1.0 implements the complete public pipeline. The conformance inventory reports zero
+mechanically implementable deferrals; three editorial and three non-observable statements
+are classified with evidence rather than represented by empty cases.
 
 ## Quick start
 
@@ -50,7 +49,7 @@ its search scratch space without lending it to the returned `Layout`.
 
 ## Scope
 
-The candidate implements one paragraph pipeline:
+The library implements one paragraph pipeline:
 
 ```text
 normalize → classify/space → lower constructs → optimize breaks → place
@@ -102,14 +101,10 @@ running. Both dependencies are test-only; neither is a `kumihan` dependency or f
 
 | Path | Role |
 | --- | --- |
-| `crates/kumihan` | only public Rust library candidate |
+| `crates/kumihan` | the only public Rust library |
 | `crates/kumihan-conformance` | binary-only black-box runner and sample engine |
 | `xtask` | specification generation and architectural gates |
-| `crates/jlreq-*`, `crates/jlreq` | unpublished migration and differential-test assets |
 | `spec/`, `data/` | vendored specification inputs, derived data, and provenance |
-
-The legacy crates are intentionally retained while their tested behavior and data are
-migrated. All are `publish = false`; none appears in a `kumihan` public signature.
 
 ## Development
 
@@ -123,7 +118,7 @@ just ci             # all practical CI checks, including no_std and WASM
 cargo run -p kumihan-conformance -- list
 ```
 
-The exact candidate names are frozen in [`docs/api-1.0.toml`](docs/api-1.0.toml). The gate
+The exact 1.0 names are frozen in [`docs/api-1.0.toml`](docs/api-1.0.toml). The gate
 checks both missing and extra exports, as well as all 22 typed Style mappings.
 
 ## License

@@ -5,7 +5,7 @@
 use alloc::vec::Vec;
 use core::ops::Range;
 
-use crate::{InputError, ShapedText};
+use crate::model::{InputError, ShapedText};
 
 /// The three ruby relationships JLReq lays out differently.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

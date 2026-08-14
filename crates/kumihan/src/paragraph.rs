@@ -5,10 +5,8 @@
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
-use crate::{
-    Construct, InputError, ShapedText, WritingMode,
-    construct::{ConstructKind, is_math_token},
-};
+use crate::construct::{Construct, ConstructKind, is_math_token};
+use crate::model::{InputError, ShapedText, WritingMode};
 
 /// The semantic kind of a caller-supplied line-break opportunity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-14
+
+### Changed
+
+- Replaced the pre-1.0 multi-crate facade with the dependency-free `no_std + alloc`
+  `kumihan` library and its single validated paragraph composition pipeline.
+- Added all nine inline constructs, horizontal and vertical placement, optimal paragraph
+  breaking, integrated tabs, diagnostics, and all 22 typed JLReq 2020 Style choices.
+- Added the binary-only `kumihan-conformance` CLI, versioned NDJSON protocol, JSON Schema,
+  sample engine, and 88 black-box cases covering all 100 observable inventoried rules.
+- Removed the eight unpublished legacy crates and their compatibility-only controls.
+
 ### Added
 
 - Workspace bootstrap: crate skeletons, quality gates, and the day-one architectural

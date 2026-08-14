@@ -13,7 +13,7 @@
 //! - Source SHA-256: `785b6275731e54b8b235efabfb9418b9e766145c5f59cdf99cda8a9e018c3519`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/spacing.rs`
-//! - Generator SHA-256: `2286eeabd107dea20daa3a058b3eeecbdcb9de3fac2e3935e011387344933a41`
+//! - Generator SHA-256: `54b3bad98259f6b290524c7c133a3d0bf7f6b0ee8c7bdc3bb017f6e737efd030`
 //! - Entries: 841
 
 use crate::spec::{RawRangedCell, em};
