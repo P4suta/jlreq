@@ -4,6 +4,7 @@
 
 [package]
 name = "kumihan-conformance"
+publish = false
 description = "Language-independent black-box conformance runner for kumihan engines"
 default-run = "kumihan-conformance"
 keywords = ["japanese", "typesetting", "jlreq", "conformance", "text-layout"]
@@ -27,7 +28,7 @@ name = "kumihan-sample-engine"
 path = "src/sample_engine.rs"
 
 [dependencies]
-kumihan = { version = "1.0.0", path = "../kumihan" }
+kumihan = { version = "0.0.0", path = "../kumihan" }
 serde_json = "1.0"
 
 [dev-dependencies]

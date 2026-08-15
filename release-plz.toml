@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Release configuration for the 1.0 library and its versioned conformance CLI.
+# Inert release configuration for the unreleased 0.0.0 development workspace.
+# Publishing, tags, releases, and changelog mutation stay disabled until a maintainer makes
+# a separate, explicit release decision.
 
 [workspace]
 dependencies_update = false
 release_always = false
-semver_check = true
+semver_check = false
 git_tag_enable = false
 git_release_enable = false
 changelog_update = false
@@ -15,13 +17,13 @@ changelog_update = false
 [[package]]
 name = "kumihan"
 version_group = "kumihan"
-changelog_update = true
+changelog_update = false
 changelog_path = "./CHANGELOG.md"
 changelog_include = ["kumihan", "kumihan-conformance"]
-git_tag_enable = true
+git_tag_enable = false
 git_tag_name = "v{{ version }}"
-git_release_enable = true
-git_release_draft = true
+git_release_enable = false
+git_release_draft = false
 
 [[package]]
 name = "kumihan-conformance"

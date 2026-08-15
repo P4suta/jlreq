@@ -22,4 +22,5 @@ an input, protocol, or engine error. The package includes `protocol.schema.json`
 built-in suite, and `kumihan-sample-engine`; it intentionally has no library target.
 
 See the [protocol design](https://github.com/P4suta/kumihan/blob/main/docs/design/conformance.md)
-and [main repository guide](https://github.com/P4suta/kumihan) for the complete contract.
+and [main repository guide](https://github.com/P4suta/kumihan) for the unreleased candidate
+contract.

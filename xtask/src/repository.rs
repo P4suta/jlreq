@@ -14,7 +14,7 @@ use crate::shared::{self, Gate};
 /// The repository-hygiene gate exposed by the dispatcher.
 pub(crate) const GATE: Gate = Gate {
     name: "repository",
-    purpose: "tracked UTF-8 files use LF and local Markdown links resolve",
+    purpose: "the workspace is unreleased, tracked UTF-8 files use LF, and local Markdown links resolve",
     reference: "CONTRIBUTING.md",
     run,
 };
@@ -32,7 +32,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let mut utf8_files = 0_usize;
     let mut documents = 0_usize;
     let mut links = 0_usize;
-    let mut violations = Vec::new();
+    let mut violations = unreleased_state_violations(&root)?;
     for file in &files {
         let bytes = fs::read(file)?;
         let Ok(source) = std::str::from_utf8(&bytes) else {
@@ -60,6 +60,57 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
         "repository: examined {utf8_files} tracked UTF-8 file(s) and {links} local link(s) \
          in {documents} Markdown file(s)",
     );
+    Ok(violations)
+}
+
+/// Refuse to let development snapshots become publishable or acquire a release version.
+fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
+    let mut violations = Vec::new();
+    let workspace = fs::read_to_string(root.join("Cargo.toml"))?;
+    if !workspace.contains("version = \"0.0.0\"") {
+        violations.push("Cargo.toml: development snapshots use version 0.0.0".to_owned());
+    }
+
+    for manifest in [
+        "crates/kumihan/Cargo.toml",
+        "crates/kumihan-conformance/Cargo.toml",
+    ] {
+        let source = fs::read_to_string(root.join(manifest))?;
+        if !source.lines().any(|line| line.trim() == "publish = false") {
+            violations.push(format!(
+                "{manifest}: development packages set publish = false"
+            ));
+        }
+    }
+
+    let conformance = fs::read_to_string(root.join("crates/kumihan-conformance/Cargo.toml"))?;
+    if !conformance.contains("kumihan = { version = \"0.0.0\", path = \"../kumihan\" }") {
+        violations.push(
+            "crates/kumihan-conformance/Cargo.toml: the local kumihan dependency uses version 0.0.0"
+                .to_owned(),
+        );
+    }
+
+    let release = fs::read_to_string(root.join("release-plz.toml"))?;
+    if release.lines().any(|line| {
+        matches!(
+            line.trim(),
+            "git_tag_enable = true" | "git_release_enable = true"
+        )
+    }) {
+        violations.push(
+            "release-plz.toml: development snapshots do not create tags or releases".to_owned(),
+        );
+    }
+
+    let changelog = fs::read_to_string(root.join("CHANGELOG.md"))?;
+    for line in changelog.lines() {
+        if line.starts_with("## [") && line != "## [Unreleased]" {
+            violations
+                .push("CHANGELOG.md: development history remains under [Unreleased]".to_owned());
+            break;
+        }
+    }
     Ok(violations)
 }
 
@@ -175,7 +226,7 @@ fn unresolved_link(root: &Path, document: &Path, target: &str) -> Option<String>
 
 #[cfg(test)]
 mod tests {
-    use super::{Link, local_links, unresolved_link};
+    use super::{Link, local_links, unreleased_state_violations, unresolved_link};
     use std::path::Path;
 
     #[test]
@@ -206,5 +257,14 @@ mod tests {
         let document = root.join("docs").join("design").join("api-spine.md");
         assert!(unresolved_link(root, &document, "../../missing.md").is_some());
         assert!(unresolved_link(root, &document, "../../README.md#usage").is_none());
+    }
+
+    #[test]
+    fn the_workspace_is_explicitly_an_unreleased_development_snapshot() -> std::io::Result<()> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("workspace root");
+        assert_eq!(unreleased_state_violations(root)?, Vec::<String>::new());
+        Ok(())
     }
 }

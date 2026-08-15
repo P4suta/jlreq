@@ -1,6 +1,7 @@
 # Architecture
 
-This document describes the 1.0 implementation and its mechanically enforced invariants.
+This document describes the candidate 1.0 implementation in the unreleased `0.0.0`
+workspace and its mechanically enforced invariants.
 
 ## Boundary in the text stack
 
@@ -123,14 +124,15 @@ cannot accidentally be judged against a new suite.
 
 - `purity`: no `std`, I/O, font dependency, floating point, or undeclared dependency edge
   in the core;
-- `api`: exact 1.0 exports and the 22 typed Style mappings;
+- `api`: candidate 1.0 exports and the 22 typed Style mappings;
 - `direction`: the private module graph follows the declared one-way layers;
 - `placeholder`: no unwritten body or lint suppression in core code;
 - `derive`, `generate`, `attest`: reproducible specification derivation and transcription
   provenance;
 - `conform`: every observable inventoried rule has a protocol-v1 black-box case, and every
   excluded rule has an evidence-backed editorial/non-observable classification;
-- `repository`: tracked UTF-8 files use LF and every local Markdown link resolves;
+- `repository`: packages remain unpublished at `0.0.0`, tracked UTF-8 files use LF, and
+  every local Markdown link resolves;
 - normal Rust tests: invalid input, all style choices, all constructs in both directions,
   paragraph search, placement, and protocol behavior.
 
