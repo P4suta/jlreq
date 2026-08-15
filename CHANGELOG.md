@@ -7,22 +7,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- Restored the §3.3.6 single-character `flush` group-ruby reading as an explicit
-  protocol-v1 black-box case, bringing the built-in suite to 89 cases.
-- Added a repository gate for broken local Markdown links, publishable-package checks in CI,
-  crate-specific package READMEs, and ADR 0022 for the unified 1.0 product boundary.
+## [1.0.0] - 2026-08-15
 
 ### Changed
 
 - Updated security support, issue forms, mutation reporting, current decision ownership,
   and CI wording to describe the 1.0 repository rather than its retired crate graph.
-
-## [1.0.0] - 2026-08-14
-
-### Changed
-
 - Replaced the pre-1.0 multi-crate facade with the dependency-free `no_std + alloc`
   `kumihan` library and its single validated paragraph composition pipeline.
 - Added all nine inline constructs, horizontal and vertical placement, optimal paragraph
@@ -33,6 +23,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Restored the §3.3.6 single-character `flush` group-ruby reading as an explicit
+  protocol-v1 black-box case, bringing the built-in suite to 89 cases.
+- Added a repository gate for broken local Markdown links, publishable-package checks in CI,
+  crate-specific package READMEs, and ADR 0022 for the unified 1.0 product boundary.
 - Workspace bootstrap: crate skeletons, quality gates, and the day-one architectural
   decision records. No layout logic yet.
 - Fourteen further decision records (0007 through 0020) and the three design notes they
