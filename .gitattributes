@@ -21,9 +21,8 @@ fuzz/corpus/** -text
 # The conformance suite is a published deliverable rather than a fixture: it is read
 # by implementations that are not this one, and `conform --check` refuses a case file
 # holding a CR. It is written with LF everywhere, on every platform.
-crates/jlreq-conform/cases.schema.json text eol=lf
-crates/jlreq-conform/cases/** text eol=lf
-crates/jlreq-conform/answers/** text eol=lf
+crates/kumihan-conformance/protocol.schema.json text eol=lf
+crates/kumihan-conformance/suite.ndjson text eol=lf
 
 # The vendored upstream snapshot is verified byte for byte against the SHA-256 in
 # spec/PROVENANCE.toml, so Git must never rewrite a line ending inside it. As

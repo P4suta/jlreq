@@ -74,6 +74,12 @@ wasm:
 fuzz-check:
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bin public_api" } else { "cargo +nightly fuzz run public_api --fuzz-dir fuzz -- -runs=10000" } }}
 
+# The install-action cargo-fuzz binary is itself built for musl. cargo-fuzz 0.13.2
+# otherwise mistakes that build triple for the fuzz target, but ASan requires the
+# dynamically linked GNU target used by GitHub's Ubuntu runner.
+fuzz-check-linux-ci:
+    cargo +nightly fuzz run public_api --fuzz-dir fuzz --target x86_64-unknown-linux-gnu -- -runs=10000
+
 # Reject std, I/O, and font dependencies in the layout core (docs/adr/0001).
 purity:
     cargo run --quiet -p xtask -- purity

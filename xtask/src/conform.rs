@@ -469,6 +469,11 @@ fn kind_census(cases: &[Case]) -> String {
 fn examine_protocol_suite(name: &str, source: &str) -> (Vec<String>, Vec<Case>) {
     let mut problems = Vec::new();
     let mut cases = Vec::new();
+    if source.as_bytes().contains(&b'\r') {
+        problems.push(format!(
+            "{name}: the published protocol suite must use LF only; CR is not permitted"
+        ));
+    }
     for (offset, line) in source.lines().enumerate() {
         if line.trim().is_empty() {
             continue;
@@ -3711,6 +3716,21 @@ mod tests {
                 .iter()
                 .any(|message| message.contains("non-empty rules")),
             "{found:#?}"
+        );
+    }
+
+    #[test]
+    fn protocol_suite_rejects_carriage_returns() {
+        let source = concat!(
+            "{\"protocol\":\"kumihan.conformance/1\",",
+            "\"spec\":\"jlreq-2020-08-11+unicode-17.0.0\",",
+            "\"id\":\"external/crlf\",\"rules\":[\"3.1.9\"],",
+            "\"request\":{},\"expected\":{}}\r\n",
+        );
+        let (found, _) = examine_protocol_suite("suite.ndjson", source);
+        assert!(
+            found.iter().any(|message| message.contains("LF only")),
+            "a published byte-exact suite must reject CRLF: {found:#?}"
         );
     }
 
