@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Reading: what `flush` does for a group-ruby run of exactly one ruby character
 
-- Applies to: `jlreq_inline::place` (`place_group_run`'s own `flush` branch,
-  `Question::GROUP_RUBY_DISTRIBUTION`).
+- Applies to: the private ruby placement round in
+  [`pipeline`](../../crates/kumihan/src/pipeline.rs), selected by the typed
+  `GroupRubyDistribution::Flush` style setting.
 - Standing: `Unstated`
 - JLReq: §3.3.6
 
@@ -34,20 +35,18 @@ with the surplus that neither alignment nor an interior gap can hold.
 ## The reading
 
 **`flush` places a group-ruby run of exactly one ruby character at its base's own start,
-with the entire surplus left unapplied.** `place_group_run` computes this by construction
+with the entire surplus left unapplied.** `place_ruby_span` computes this by construction
 rather than by a special case: `flush`'s own leading offset is `InlineExtent::ZERO` always,
 never derived from `distribute`, and its own interior weights are built over the run's
 `count - 1` interior sites. At `count == 1` that is zero sites, so
-[`group_flush_weights`](../../crates/jlreq-inline/src/place.rs) returns an empty slice,
-[`distribute`](../../crates/jlreq-unit/src/arith.rs) yields no shares at all
-(`jlreq_unit::distribute`'s own doc: "with **no** weights there is no site to place anything
-at"), and the run's one character is placed exactly at the base's own start with nothing
-consumed from the surplus in either direction.
+the `flush` weight vector in
+[`pipeline.rs`](../../crates/kumihan/src/pipeline.rs) is empty and `proportional_shares`
+yields no shares at all. The run's one character is therefore placed exactly at the base's
+own start with nothing consumed from the surplus in either direction.
 
 This is inline-axis geometry throughout, and direction-independent: nothing above reads
-writing mode, and `jlreq_inline::place` branches on no `Direction` anywhere in
-`place_group_run` or the helpers this reading governs. No `docs/direction-sites.toml` entry
-is expected for this reading or for the round that implements it.
+writing mode, and the logical placement calculation branches on no writing mode. Physical
+horizontal/vertical mapping happens only after this position has been fixed.
 
 ## Why
 
@@ -81,8 +80,7 @@ A revision of JLReq, or a JIS X 4051 commentary, that states what a single-chara
 push it entirely to one side, or confirm that it is left unapplied, as this reading
 holds — would settle the question outright and this reading would be revisited to match it.
 
-Task #85, the independently authored conformance phase for this round's group-ruby
-placement (ADR-0006), is what would first publish a case exercising this reading against
-both of `Question::GROUP_RUBY_DISTRIBUTION`'s answers side by side, the way
-`docs/decisions/mono-ruby-separation-split.md`'s own readings are exercised by
-`crates/jlreq-conform/cases/3.3.8.json`.
+Protocol-v1 case
+`3.3.6/group-ruby-single-character-flush-start-aligned` in the bundled
+[`suite.ndjson`](../../crates/kumihan-conformance/suite.ndjson) fixes the observable result;
+the public Rust tests independently compare the `jis` and `flush` positions.

@@ -19,7 +19,7 @@ sha256 = "cec3039f54f291e4fc058732bebb8ae23e66c6460ad83931253ec1a524151176"
 
 [[file]]
 path = "crates/kumihan-conformance/suite.ndjson"
-sha256 = "7bac55107af0e092d9b76767b9678b4c3f01e548b29502d3eb5be1dc9ed0a2bf"
+sha256 = "7fadf51b3c159f4e2b466e80601a4232c999aa1b514b7558ff5281e026de17db"
 
 [[file]]
 path = "crates/kumihan/src/generated/appendix_a.rs"

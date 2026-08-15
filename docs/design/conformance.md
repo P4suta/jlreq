@@ -106,7 +106,7 @@ to an engine, and protocol requests or responses without `expected` reject the f
 
 ## Coverage and release status
 
-The generated inventory contains 106 rules: the built-in protocol-v1 suite has 88 non-empty
+The generated inventory contains 106 rules: the built-in protocol-v1 suite has 89 non-empty
 black-box cases that directly name all 100 mechanically observable rules, three rules are
 classified editorial, three are classified non-observable, and none is deferred.
 

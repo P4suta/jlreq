@@ -1180,6 +1180,36 @@ fn group_ruby_distribution_changes_leading_and_interior_shares() {
 }
 
 #[test]
+fn single_character_group_ruby_flush_stays_at_the_base_start() {
+    let annotation = shaped("に", Frame::FullEm, 300).expect("valid one-character reading");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..3)],
+    )
+    .expect("valid one-character group ruby");
+    let compose_with = |distribution| {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid group base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("consistent group-ruby style");
+        kumihan::compose(&paragraph, &style).lines()[0].attachments()[0].inline()
+    };
+
+    assert_eq!(compose_with(GroupRubyDistribution::Jis), 850);
+    assert_eq!(compose_with(GroupRubyDistribution::Flush), 0);
+}
+
+#[test]
 fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
     let compose_with = |distribution| {
         let annotation = shaped("にほんごかな", Frame::FullEm, 500).expect("valid long reading");

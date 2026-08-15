@@ -28,6 +28,17 @@ fn sample_engine_matches_the_builtin_black_box_suite() {
 }
 
 #[test]
+fn builtin_suite_publishes_the_single_character_flush_ruby_reading() {
+    let case = include_str!("../suite.ndjson")
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).expect("suite case is JSON"))
+        .find(|case| case["id"] == "3.3.6/group-ruby-single-character-flush-start-aligned")
+        .expect("the published single-character flush reading has a black-box case");
+
+    assert_eq!(case["expected"]["lines"][0]["attachments"][0]["inline"], 0);
+}
+
+#[test]
 fn sample_engine_reports_builder_input_errors_with_exit_two() {
     let mut child = Command::new(env!("CARGO_BIN_EXE_kumihan-sample-engine"))
         .stdin(Stdio::piped())
