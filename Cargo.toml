@@ -4,20 +4,12 @@
 
 [workspace]
 resolver = "3"
-members = [
-  "crates/jlreq-class",
-  "crates/jlreq-spacing",
-  "crates/jlreq-line",
-  "crates/jlreq-inline",
-  "crates/jlreq",
-  "crates/jlreq-conform",
-  "xtask",
-]
+members = ["crates/kumihan", "crates/kumihan-conformance", "xtask"]
 # cargo-fuzz requires nightly and a sanitizer runtime.
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.0.0"
+version = "1.0.0"
 edition = "2024"
 # Floor imposed by edition 2024.
 rust-version = "1.85"

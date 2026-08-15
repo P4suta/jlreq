@@ -30,9 +30,14 @@ pre-commit:
       run: mise exec -- taplo fmt
       stage_fixed: true
 
+    # `--force-exclude` is load-bearing: without it typos ignores the `extend-exclude`
+    # of typos.toml for paths named on the command line, and `{staged_files}` names every
+    # path. `--write-changes` would then "correct" the vendored specification snapshot and
+    # break the digests that prove it is upstream's (docs/design/generation.md). The
+    # exclusion policy stays in typos.toml alone; this flag makes the hook obey it.
     typos:
       tags: spell
-      run: mise exec -- typos --write-changes {staged_files}
+      run: mise exec -- typos --force-exclude --write-changes {staged_files}
       stage_fixed: true
 
     clippy:

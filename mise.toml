@@ -26,6 +26,8 @@ cargo-binstall = "1.21.1"
 "cargo:cargo-hack" = "0.6.45"
 "cargo:cargo-nextest" = "0.9.140"
 "cargo:cargo-shear" = "1.13.3"
+"cargo:cargo-mutants" = "27.1.0"
+"cargo:cargo-fuzz" = "0.13.2"
 
 [settings.cargo]
 binstall = true

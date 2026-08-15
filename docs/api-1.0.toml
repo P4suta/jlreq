@@ -1,0 +1,188 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Exact public names for the only Rust library released as kumihan 1.0. Signatures and
+# openness are checked by xtask's structural API pass; this file makes additions and
+# removals deliberate. Implementation modules remain private.
+
+[[module]]
+path = "kumihan"
+items = [
+  "Alignment",
+  "Attachment",
+  "Break",
+  "Cluster",
+  "ClusterPlacement",
+  "ClusterRole",
+  "Composer",
+  "Construct",
+  "CoordinateTransform",
+  "Diagnostic",
+  "Frame",
+  "InputError",
+  "Layout",
+  "Line",
+  "Paragraph",
+  "ParagraphBuilder",
+  "PlacementOrigin",
+  "Ruby",
+  "RubyKind",
+  "RubyRun",
+  "SPECIFICATION",
+  "Severity",
+  "ShapedText",
+  "Size",
+  "Style",
+  "StyleBuilder",
+  "StyleError",
+  "TabAlignment",
+  "TabStop",
+  "Widow",
+  "WritingMode",
+  "compose",
+  "style",
+]
+
+[[module]]
+path = "kumihan::style"
+items = [
+  "AdjustmentPreference",
+  "AmbiguousContext",
+  "ExpansionOrder",
+  "GroupRubyDistribution",
+  "GroupedNumeralBeforeWestern",
+  "GroupedNumeralQualification",
+  "HangingPunctuation",
+  "IterationMarkAtLineHead",
+  "JapaneseLatinExpansionCeiling",
+  "JukugoRubyLayout",
+  "KinsokuLevel",
+  "LineEndFullStopComma",
+  "LineEndPunctuation",
+  "LineHeadOpeningBracket",
+  "ReductionTable",
+  "RelaxationMechanism",
+  "Remainder",
+  "RubyAlignment",
+  "RubyOverhangIndent",
+  "RubyOverhangKana",
+  "SentenceMedialDividingMark",
+  "Style",
+  "StyleBuilder",
+  "StyleError",
+  "UnlistedCodePoint",
+]
+
+# One dedicated enum for every alternative the generated JLReq 2020 policy inventory
+# records. The count is held against `spec/derived/questions.tsv` in both directions.
+
+[[style_choice]]
+question = "kinsoku.level"
+type = "KinsokuLevel"
+count = 4
+
+[[style_choice]]
+question = "adjustment.reduction_table"
+type = "ReductionTable"
+count = 3
+
+[[style_choice]]
+question = "spacing.line_end_punctuation"
+type = "LineEndPunctuation"
+count = 2
+
+[[style_choice]]
+question = "spacing.line_end_full_stop_comma"
+type = "LineEndFullStopComma"
+count = 2
+
+[[style_choice]]
+question = "spacing.line_head_opening_bracket"
+type = "LineHeadOpeningBracket"
+count = 3
+
+[[style_choice]]
+question = "ruby.overhang_kana"
+type = "RubyOverhangKana"
+count = 4
+
+[[style_choice]]
+question = "ruby.overhang_indent"
+type = "RubyOverhangIndent"
+count = 2
+
+[[style_choice]]
+question = "ruby.alignment"
+type = "RubyAlignment"
+count = 2
+
+[[style_choice]]
+question = "ruby.group_distribution"
+type = "GroupRubyDistribution"
+count = 2
+
+[[style_choice]]
+question = "ruby.jukugo_layout"
+type = "JukugoRubyLayout"
+count = 2
+
+[[style_choice]]
+question = "kinsoku.iteration_mark_at_line_head"
+type = "IterationMarkAtLineHead"
+count = 3
+
+[[style_choice]]
+question = "adjustment.hanging_punctuation"
+type = "HangingPunctuation"
+count = 2
+
+[[style_choice]]
+question = "kinsoku.grouped_numeral_before_western"
+type = "GroupedNumeralBeforeWestern"
+count = 2
+
+[[style_choice]]
+question = "spacing.sentence_medial_dividing_mark"
+type = "SentenceMedialDividingMark"
+count = 2
+
+[[style_choice]]
+question = "adjustment.japanese_latin_expansion_ceiling"
+type = "JapaneseLatinExpansionCeiling"
+count = 3
+
+[[style_choice]]
+question = "adjustment.expansion_order"
+type = "ExpansionOrder"
+count = 2
+
+[[style_choice]]
+question = "adjustment.preference"
+type = "AdjustmentPreference"
+count = 2
+
+[[style_choice]]
+question = "adjustment.remainder"
+type = "Remainder"
+count = 2
+
+[[style_choice]]
+question = "classification.unlisted_code_point"
+type = "UnlistedCodePoint"
+count = 2
+
+[[style_choice]]
+question = "classification.ambiguous_context"
+type = "AmbiguousContext"
+count = 2
+
+[[style_choice]]
+question = "classification.grouped_numeral_qualification"
+type = "GroupedNumeralQualification"
+count = 2
+
+[[style_choice]]
+question = "kinsoku.relaxation_mechanism"
+type = "RelaxationMechanism"
+count = 2

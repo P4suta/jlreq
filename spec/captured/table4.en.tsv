@@ -1,0 +1,868 @@
+# [capture]
+# author = "appendix-d-table4-en-transcriber"
+# date = "2026-08-07"
+# Reconciliation note: row cl-02, column cl-26 is a genuine divergence between the English
+# and Japanese renderings of Table 4, not a transcription slip. The English rendering leaves
+# the cell blank (confirmed at 300 dpi: no glyph, no cell background color, at the cl-26
+# column position). The Japanese rendering prints a literal footnote marker "注1）" (note 1)
+# at that coordinate (confirmed at 300 dpi: the marker sits at the cl-26 column center, not
+# cl-25 or cl-27). D.2#1's text, in both locales, describes only a cl-05-followed-by-cl-05
+# adjacency and states nothing about cl-02 or cl-26, so the marker does not yield a readable
+# rule for this cell. Recorded as blank on both sides rather than fabricated as a value
+# D.2#1 does not state; proposed as a recorded defect for the milestone owner to wire into
+# spec/derived/defects.tsv (id candidate: appendix-d-table4-cl02-cl26-locale-divergence).
+#
+# cl-07,cl-05 (D.2#3): D.2#3's text distinguishes Table 3 from Table 4 explicitly -- the
+# English half's own parenthetical reads "in Table 4, the conditional half space
+# accompanying preceding comma (cl-07) and the conditional quarter space accompanying
+# trailing middle dot (cl-05) can be reduced to solid setting", but the Japanese half is
+# narrower and is treated as authoritative here: Table 4 reduces only the TRAILING middle
+# dot's quarter em, not the comma's half em, matching D.2#3's own priority sentence, which
+# gives cl-05 a Table 4 stage ("second") and gives cl-07 none at all in Table 4 (only
+# "fifth" in Table 3 and "third" in Table 5). The English parenthetical's "and" reads as
+# an EN/JA translation divergence against the Japanese original and against the priority
+# sentence, and is not followed here. Recorded as 3/4-1/2 stage 2 (only the middle dot's
+# component reduces, the comma's half em stays), not 3/4-0 -- the same floor cl-06,cl-05's
+# own Table 4 cell already uses for the identical one-part shape.
+source	table	before	after	token	note
+table_en5.pdf	4	cl-01	cl-01	blank	
+table_en5.pdf	4	cl-01	cl-02	blank	
+table_en5.pdf	4	cl-01	cl-03	blank	
+table_en5.pdf	4	cl-01	cl-04	blank	
+table_en5.pdf	4	cl-01	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-01	cl-06	blank	
+table_en5.pdf	4	cl-01	cl-07	blank	
+table_en5.pdf	4	cl-01	cl-08	blank	
+table_en5.pdf	4	cl-01	cl-09	blank	
+table_en5.pdf	4	cl-01	cl-10	blank	
+table_en5.pdf	4	cl-01	cl-11	blank	
+table_en5.pdf	4	cl-01	cl-12	blank	
+table_en5.pdf	4	cl-01	cl-13	blank	
+table_en5.pdf	4	cl-01	cl-14	blank	
+table_en5.pdf	4	cl-01	cl-15	blank	
+table_en5.pdf	4	cl-01	cl-16	blank	
+table_en5.pdf	4	cl-01	cl-19	blank	
+table_en5.pdf	4	cl-01	cl-20	blank	
+table_en5.pdf	4	cl-01	cl-21	blank	
+table_en5.pdf	4	cl-01	cl-22	blank	
+table_en5.pdf	4	cl-01	cl-23	blank	
+table_en5.pdf	4	cl-01	cl-24	blank	
+table_en5.pdf	4	cl-01	cl-25	blank	
+table_en5.pdf	4	cl-01	cl-26	blank	
+table_en5.pdf	4	cl-01	cl-27	blank	
+table_en5.pdf	4	cl-01	cl-28	blank	
+table_en5.pdf	4	cl-01	cl-29	×	
+table_en5.pdf	4	cl-01	cl-30	blank	
+table_en5.pdf	4	cl-01	line-end	×	
+table_en5.pdf	4	cl-02	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-02	blank	
+table_en5.pdf	4	cl-02	cl-03	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-04	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-02	cl-06	blank	
+table_en5.pdf	4	cl-02	cl-07	blank	
+table_en5.pdf	4	cl-02	cl-08	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-09	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-10	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-11	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-12	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-13	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-14	blank	
+table_en5.pdf	4	cl-02	cl-15	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-16	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-19	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-20	blank	
+table_en5.pdf	4	cl-02	cl-21	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-22	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-23	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-24	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-25	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-26	blank	
+table_en5.pdf	4	cl-02	cl-27	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-28	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	cl-29	blank	
+table_en5.pdf	4	cl-02	cl-30	1/2-0 stage 3	
+table_en5.pdf	4	cl-02	line-end	blank	
+table_en5.pdf	4	cl-03	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-03	cl-02	blank	
+table_en5.pdf	4	cl-03	cl-03	blank	
+table_en5.pdf	4	cl-03	cl-04	blank	
+table_en5.pdf	4	cl-03	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-03	cl-06	blank	
+table_en5.pdf	4	cl-03	cl-07	blank	
+table_en5.pdf	4	cl-03	cl-08	blank	
+table_en5.pdf	4	cl-03	cl-09	blank	
+table_en5.pdf	4	cl-03	cl-10	blank	
+table_en5.pdf	4	cl-03	cl-11	blank	
+table_en5.pdf	4	cl-03	cl-12	blank	
+table_en5.pdf	4	cl-03	cl-13	blank	
+table_en5.pdf	4	cl-03	cl-14	blank	
+table_en5.pdf	4	cl-03	cl-15	blank	
+table_en5.pdf	4	cl-03	cl-16	blank	
+table_en5.pdf	4	cl-03	cl-19	blank	
+table_en5.pdf	4	cl-03	cl-20	blank	
+table_en5.pdf	4	cl-03	cl-21	blank	
+table_en5.pdf	4	cl-03	cl-22	blank	
+table_en5.pdf	4	cl-03	cl-23	blank	
+table_en5.pdf	4	cl-03	cl-24	blank	
+table_en5.pdf	4	cl-03	cl-25	blank	
+table_en5.pdf	4	cl-03	cl-26	blank	
+table_en5.pdf	4	cl-03	cl-27	blank	
+table_en5.pdf	4	cl-03	cl-28	blank	
+table_en5.pdf	4	cl-03	cl-29	blank	
+table_en5.pdf	4	cl-03	cl-30	blank	
+table_en5.pdf	4	cl-03	line-end	blank	
+table_en5.pdf	4	cl-04	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-04	cl-02	blank	
+table_en5.pdf	4	cl-04	cl-03	blank	
+table_en5.pdf	4	cl-04	cl-04	blank	
+table_en5.pdf	4	cl-04	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-04	cl-06	blank	
+table_en5.pdf	4	cl-04	cl-07	blank	
+table_en5.pdf	4	cl-04	cl-08	blank	
+table_en5.pdf	4	cl-04	cl-09	blank	
+table_en5.pdf	4	cl-04	cl-10	blank	
+table_en5.pdf	4	cl-04	cl-11	blank	
+table_en5.pdf	4	cl-04	cl-12	blank	
+table_en5.pdf	4	cl-04	cl-13	blank	
+table_en5.pdf	4	cl-04	cl-14	blank	
+table_en5.pdf	4	cl-04	cl-15	blank	
+table_en5.pdf	4	cl-04	cl-16	blank	
+table_en5.pdf	4	cl-04	cl-19	blank	
+table_en5.pdf	4	cl-04	cl-20	blank	
+table_en5.pdf	4	cl-04	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-04	cl-22	blank	
+table_en5.pdf	4	cl-04	cl-23	blank	
+table_en5.pdf	4	cl-04	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-04	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-04	cl-26	blank	
+table_en5.pdf	4	cl-04	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-04	cl-28	blank	
+table_en5.pdf	4	cl-04	cl-29	blank	
+table_en5.pdf	4	cl-04	cl-30	blank	
+table_en5.pdf	4	cl-04	line-end	blank	
+table_en5.pdf	4	cl-05	cl-01	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-02	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-03	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-04	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-05	1/2-0 stage 2	D.2#1
+table_en5.pdf	4	cl-05	cl-06	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-07	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-08	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-09	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-10	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-11	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-12	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-13	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-14	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-15	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-16	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-19	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-20	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-21	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-22	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-23	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-24	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-25	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-26	blank	
+table_en5.pdf	4	cl-05	cl-27	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-28	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-29	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	cl-30	1/4-0 stage 2	
+table_en5.pdf	4	cl-05	line-end	blank	
+table_en5.pdf	4	cl-06	cl-01	1/2	
+table_en5.pdf	4	cl-06	cl-02	blank	
+table_en5.pdf	4	cl-06	cl-03	1/2	
+table_en5.pdf	4	cl-06	cl-04	1/2	
+table_en5.pdf	4	cl-06	cl-05	3/4-1/2 stage 2	D.2#2
+table_en5.pdf	4	cl-06	cl-06	blank	
+table_en5.pdf	4	cl-06	cl-07	blank	
+table_en5.pdf	4	cl-06	cl-08	1/2	
+table_en5.pdf	4	cl-06	cl-09	1/2	
+table_en5.pdf	4	cl-06	cl-10	1/2	
+table_en5.pdf	4	cl-06	cl-11	1/2	
+table_en5.pdf	4	cl-06	cl-12	1/2	
+table_en5.pdf	4	cl-06	cl-13	1/2	
+table_en5.pdf	4	cl-06	cl-14	1/2	
+table_en5.pdf	4	cl-06	cl-15	1/2	
+table_en5.pdf	4	cl-06	cl-16	1/2	
+table_en5.pdf	4	cl-06	cl-19	1/2	
+table_en5.pdf	4	cl-06	cl-20	blank	
+table_en5.pdf	4	cl-06	cl-21	1/2	
+table_en5.pdf	4	cl-06	cl-22	1/2	
+table_en5.pdf	4	cl-06	cl-23	1/2	
+table_en5.pdf	4	cl-06	cl-24	1/2	
+table_en5.pdf	4	cl-06	cl-25	1/2	
+table_en5.pdf	4	cl-06	cl-26	blank	
+table_en5.pdf	4	cl-06	cl-27	1/2	
+table_en5.pdf	4	cl-06	cl-28	1/2	
+table_en5.pdf	4	cl-06	cl-29	1/2	
+table_en5.pdf	4	cl-06	cl-30	1/2	
+table_en5.pdf	4	cl-06	line-end	1/2	
+table_en5.pdf	4	cl-07	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-02	blank	
+table_en5.pdf	4	cl-07	cl-03	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-04	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-05	3/4-1/2 stage 2	D.2#3
+table_en5.pdf	4	cl-07	cl-06	blank	
+table_en5.pdf	4	cl-07	cl-07	blank	
+table_en5.pdf	4	cl-07	cl-08	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-09	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-10	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-11	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-12	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-13	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-14	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-15	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-16	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-19	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-20	blank	
+table_en5.pdf	4	cl-07	cl-21	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-22	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-23	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-24	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-25	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-26	blank	
+table_en5.pdf	4	cl-07	cl-27	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-28	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-29	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	cl-30	1/2-0 stage 3	
+table_en5.pdf	4	cl-07	line-end	blank	
+table_en5.pdf	4	cl-08	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-08	cl-02	blank	
+table_en5.pdf	4	cl-08	cl-03	blank	
+table_en5.pdf	4	cl-08	cl-04	blank	
+table_en5.pdf	4	cl-08	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-08	cl-06	blank	
+table_en5.pdf	4	cl-08	cl-07	blank	
+table_en5.pdf	4	cl-08	cl-08	blank	
+table_en5.pdf	4	cl-08	cl-09	blank	
+table_en5.pdf	4	cl-08	cl-10	blank	
+table_en5.pdf	4	cl-08	cl-11	blank	
+table_en5.pdf	4	cl-08	cl-12	blank	
+table_en5.pdf	4	cl-08	cl-13	blank	
+table_en5.pdf	4	cl-08	cl-14	blank	
+table_en5.pdf	4	cl-08	cl-15	blank	
+table_en5.pdf	4	cl-08	cl-16	blank	
+table_en5.pdf	4	cl-08	cl-19	blank	
+table_en5.pdf	4	cl-08	cl-20	blank	
+table_en5.pdf	4	cl-08	cl-21	blank	
+table_en5.pdf	4	cl-08	cl-22	blank	
+table_en5.pdf	4	cl-08	cl-23	blank	
+table_en5.pdf	4	cl-08	cl-24	blank	
+table_en5.pdf	4	cl-08	cl-25	blank	
+table_en5.pdf	4	cl-08	cl-26	blank	
+table_en5.pdf	4	cl-08	cl-27	blank	
+table_en5.pdf	4	cl-08	cl-28	blank	
+table_en5.pdf	4	cl-08	cl-29	blank	
+table_en5.pdf	4	cl-08	cl-30	blank	
+table_en5.pdf	4	cl-08	line-end	blank	
+table_en5.pdf	4	cl-09	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-09	cl-02	blank	
+table_en5.pdf	4	cl-09	cl-03	blank	
+table_en5.pdf	4	cl-09	cl-04	blank	
+table_en5.pdf	4	cl-09	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-09	cl-06	blank	
+table_en5.pdf	4	cl-09	cl-07	blank	
+table_en5.pdf	4	cl-09	cl-08	blank	
+table_en5.pdf	4	cl-09	cl-09	blank	
+table_en5.pdf	4	cl-09	cl-10	blank	
+table_en5.pdf	4	cl-09	cl-11	blank	
+table_en5.pdf	4	cl-09	cl-12	blank	
+table_en5.pdf	4	cl-09	cl-13	blank	
+table_en5.pdf	4	cl-09	cl-14	blank	
+table_en5.pdf	4	cl-09	cl-15	blank	
+table_en5.pdf	4	cl-09	cl-16	blank	
+table_en5.pdf	4	cl-09	cl-19	blank	
+table_en5.pdf	4	cl-09	cl-20	blank	
+table_en5.pdf	4	cl-09	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-09	cl-22	blank	
+table_en5.pdf	4	cl-09	cl-23	blank	
+table_en5.pdf	4	cl-09	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-09	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-09	cl-26	blank	
+table_en5.pdf	4	cl-09	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-09	cl-28	blank	
+table_en5.pdf	4	cl-09	cl-29	blank	
+table_en5.pdf	4	cl-09	cl-30	blank	
+table_en5.pdf	4	cl-09	line-end	blank	
+table_en5.pdf	4	cl-10	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-10	cl-02	blank	
+table_en5.pdf	4	cl-10	cl-03	blank	
+table_en5.pdf	4	cl-10	cl-04	blank	
+table_en5.pdf	4	cl-10	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-10	cl-06	blank	
+table_en5.pdf	4	cl-10	cl-07	blank	
+table_en5.pdf	4	cl-10	cl-08	blank	
+table_en5.pdf	4	cl-10	cl-09	blank	
+table_en5.pdf	4	cl-10	cl-10	blank	
+table_en5.pdf	4	cl-10	cl-11	blank	
+table_en5.pdf	4	cl-10	cl-12	blank	
+table_en5.pdf	4	cl-10	cl-13	blank	
+table_en5.pdf	4	cl-10	cl-14	blank	
+table_en5.pdf	4	cl-10	cl-15	blank	
+table_en5.pdf	4	cl-10	cl-16	blank	
+table_en5.pdf	4	cl-10	cl-19	blank	
+table_en5.pdf	4	cl-10	cl-20	blank	
+table_en5.pdf	4	cl-10	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-10	cl-22	blank	
+table_en5.pdf	4	cl-10	cl-23	blank	
+table_en5.pdf	4	cl-10	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-10	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-10	cl-26	blank	
+table_en5.pdf	4	cl-10	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-10	cl-28	blank	
+table_en5.pdf	4	cl-10	cl-29	blank	
+table_en5.pdf	4	cl-10	cl-30	blank	
+table_en5.pdf	4	cl-10	line-end	blank	
+table_en5.pdf	4	cl-11	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-11	cl-02	blank	
+table_en5.pdf	4	cl-11	cl-03	blank	
+table_en5.pdf	4	cl-11	cl-04	blank	
+table_en5.pdf	4	cl-11	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-11	cl-06	blank	
+table_en5.pdf	4	cl-11	cl-07	blank	
+table_en5.pdf	4	cl-11	cl-08	blank	
+table_en5.pdf	4	cl-11	cl-09	blank	
+table_en5.pdf	4	cl-11	cl-10	blank	
+table_en5.pdf	4	cl-11	cl-11	blank	
+table_en5.pdf	4	cl-11	cl-12	blank	
+table_en5.pdf	4	cl-11	cl-13	blank	
+table_en5.pdf	4	cl-11	cl-14	blank	
+table_en5.pdf	4	cl-11	cl-15	blank	
+table_en5.pdf	4	cl-11	cl-16	blank	
+table_en5.pdf	4	cl-11	cl-19	blank	
+table_en5.pdf	4	cl-11	cl-20	blank	
+table_en5.pdf	4	cl-11	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-11	cl-22	blank	
+table_en5.pdf	4	cl-11	cl-23	blank	
+table_en5.pdf	4	cl-11	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-11	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-11	cl-26	blank	
+table_en5.pdf	4	cl-11	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-11	cl-28	blank	
+table_en5.pdf	4	cl-11	cl-29	blank	
+table_en5.pdf	4	cl-11	cl-30	blank	
+table_en5.pdf	4	cl-11	line-end	blank	
+table_en5.pdf	4	cl-12	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-12	cl-02	blank	
+table_en5.pdf	4	cl-12	cl-03	blank	
+table_en5.pdf	4	cl-12	cl-04	blank	
+table_en5.pdf	4	cl-12	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-12	cl-06	blank	
+table_en5.pdf	4	cl-12	cl-07	blank	
+table_en5.pdf	4	cl-12	cl-08	blank	
+table_en5.pdf	4	cl-12	cl-09	blank	
+table_en5.pdf	4	cl-12	cl-10	blank	
+table_en5.pdf	4	cl-12	cl-11	blank	
+table_en5.pdf	4	cl-12	cl-12	blank	
+table_en5.pdf	4	cl-12	cl-13	blank	
+table_en5.pdf	4	cl-12	cl-14	blank	
+table_en5.pdf	4	cl-12	cl-15	blank	
+table_en5.pdf	4	cl-12	cl-16	blank	
+table_en5.pdf	4	cl-12	cl-19	blank	
+table_en5.pdf	4	cl-12	cl-20	blank	
+table_en5.pdf	4	cl-12	cl-21	blank	
+table_en5.pdf	4	cl-12	cl-22	blank	
+table_en5.pdf	4	cl-12	cl-23	blank	
+table_en5.pdf	4	cl-12	cl-24	blank	
+table_en5.pdf	4	cl-12	cl-25	blank	
+table_en5.pdf	4	cl-12	cl-26	blank	
+table_en5.pdf	4	cl-12	cl-27	blank	
+table_en5.pdf	4	cl-12	cl-28	blank	
+table_en5.pdf	4	cl-12	cl-29	×	
+table_en5.pdf	4	cl-12	cl-30	blank	
+table_en5.pdf	4	cl-12	line-end	×	
+table_en5.pdf	4	cl-13	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-13	cl-02	blank	
+table_en5.pdf	4	cl-13	cl-03	blank	
+table_en5.pdf	4	cl-13	cl-04	blank	
+table_en5.pdf	4	cl-13	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-13	cl-06	blank	
+table_en5.pdf	4	cl-13	cl-07	blank	
+table_en5.pdf	4	cl-13	cl-08	blank	
+table_en5.pdf	4	cl-13	cl-09	blank	
+table_en5.pdf	4	cl-13	cl-10	blank	
+table_en5.pdf	4	cl-13	cl-11	blank	
+table_en5.pdf	4	cl-13	cl-12	blank	
+table_en5.pdf	4	cl-13	cl-13	blank	
+table_en5.pdf	4	cl-13	cl-14	blank	
+table_en5.pdf	4	cl-13	cl-15	blank	
+table_en5.pdf	4	cl-13	cl-16	blank	
+table_en5.pdf	4	cl-13	cl-19	blank	
+table_en5.pdf	4	cl-13	cl-20	blank	
+table_en5.pdf	4	cl-13	cl-21	blank	
+table_en5.pdf	4	cl-13	cl-22	blank	
+table_en5.pdf	4	cl-13	cl-23	blank	
+table_en5.pdf	4	cl-13	cl-24	blank	
+table_en5.pdf	4	cl-13	cl-25	blank	
+table_en5.pdf	4	cl-13	cl-26	blank	
+table_en5.pdf	4	cl-13	cl-27	blank	
+table_en5.pdf	4	cl-13	cl-28	blank	
+table_en5.pdf	4	cl-13	cl-29	blank	
+table_en5.pdf	4	cl-13	cl-30	blank	
+table_en5.pdf	4	cl-13	line-end	blank	
+table_en5.pdf	4	cl-14	cl-01	blank	
+table_en5.pdf	4	cl-14	cl-02	blank	
+table_en5.pdf	4	cl-14	cl-03	blank	
+table_en5.pdf	4	cl-14	cl-04	blank	
+table_en5.pdf	4	cl-14	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-14	cl-06	blank	
+table_en5.pdf	4	cl-14	cl-07	blank	
+table_en5.pdf	4	cl-14	cl-08	blank	
+table_en5.pdf	4	cl-14	cl-09	blank	
+table_en5.pdf	4	cl-14	cl-10	blank	
+table_en5.pdf	4	cl-14	cl-11	blank	
+table_en5.pdf	4	cl-14	cl-12	blank	
+table_en5.pdf	4	cl-14	cl-13	blank	
+table_en5.pdf	4	cl-14	cl-14	blank	
+table_en5.pdf	4	cl-14	cl-15	blank	
+table_en5.pdf	4	cl-14	cl-16	blank	
+table_en5.pdf	4	cl-14	cl-19	blank	
+table_en5.pdf	4	cl-14	cl-20	blank	
+table_en5.pdf	4	cl-14	cl-21	blank	
+table_en5.pdf	4	cl-14	cl-22	blank	
+table_en5.pdf	4	cl-14	cl-23	blank	
+table_en5.pdf	4	cl-14	cl-24	blank	
+table_en5.pdf	4	cl-14	cl-25	blank	
+table_en5.pdf	4	cl-14	cl-26	blank	
+table_en5.pdf	4	cl-14	cl-27	blank	
+table_en5.pdf	4	cl-14	cl-28	blank	
+table_en5.pdf	4	cl-14	cl-29	blank	
+table_en5.pdf	4	cl-14	cl-30	blank	
+table_en5.pdf	4	cl-14	line-end	blank	
+table_en5.pdf	4	cl-15	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-15	cl-02	blank	
+table_en5.pdf	4	cl-15	cl-03	blank	
+table_en5.pdf	4	cl-15	cl-04	blank	
+table_en5.pdf	4	cl-15	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-15	cl-06	blank	
+table_en5.pdf	4	cl-15	cl-07	blank	
+table_en5.pdf	4	cl-15	cl-08	blank	
+table_en5.pdf	4	cl-15	cl-09	blank	
+table_en5.pdf	4	cl-15	cl-10	blank	
+table_en5.pdf	4	cl-15	cl-11	blank	
+table_en5.pdf	4	cl-15	cl-12	blank	
+table_en5.pdf	4	cl-15	cl-13	blank	
+table_en5.pdf	4	cl-15	cl-14	blank	
+table_en5.pdf	4	cl-15	cl-15	blank	
+table_en5.pdf	4	cl-15	cl-16	blank	
+table_en5.pdf	4	cl-15	cl-19	blank	
+table_en5.pdf	4	cl-15	cl-20	blank	
+table_en5.pdf	4	cl-15	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-15	cl-22	blank	
+table_en5.pdf	4	cl-15	cl-23	blank	
+table_en5.pdf	4	cl-15	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-15	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-15	cl-26	blank	
+table_en5.pdf	4	cl-15	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-15	cl-28	blank	
+table_en5.pdf	4	cl-15	cl-29	blank	
+table_en5.pdf	4	cl-15	cl-30	blank	
+table_en5.pdf	4	cl-15	line-end	blank	
+table_en5.pdf	4	cl-16	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-16	cl-02	blank	
+table_en5.pdf	4	cl-16	cl-03	blank	
+table_en5.pdf	4	cl-16	cl-04	blank	
+table_en5.pdf	4	cl-16	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-16	cl-06	blank	
+table_en5.pdf	4	cl-16	cl-07	blank	
+table_en5.pdf	4	cl-16	cl-08	blank	
+table_en5.pdf	4	cl-16	cl-09	blank	
+table_en5.pdf	4	cl-16	cl-10	blank	
+table_en5.pdf	4	cl-16	cl-11	blank	
+table_en5.pdf	4	cl-16	cl-12	blank	
+table_en5.pdf	4	cl-16	cl-13	blank	
+table_en5.pdf	4	cl-16	cl-14	blank	
+table_en5.pdf	4	cl-16	cl-15	blank	
+table_en5.pdf	4	cl-16	cl-16	blank	
+table_en5.pdf	4	cl-16	cl-19	blank	
+table_en5.pdf	4	cl-16	cl-20	blank	
+table_en5.pdf	4	cl-16	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-16	cl-22	blank	
+table_en5.pdf	4	cl-16	cl-23	blank	
+table_en5.pdf	4	cl-16	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-16	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-16	cl-26	blank	
+table_en5.pdf	4	cl-16	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-16	cl-28	blank	
+table_en5.pdf	4	cl-16	cl-29	blank	
+table_en5.pdf	4	cl-16	cl-30	blank	
+table_en5.pdf	4	cl-16	line-end	blank	
+table_en5.pdf	4	cl-19	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-19	cl-02	blank	
+table_en5.pdf	4	cl-19	cl-03	blank	
+table_en5.pdf	4	cl-19	cl-04	blank	
+table_en5.pdf	4	cl-19	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-19	cl-06	blank	
+table_en5.pdf	4	cl-19	cl-07	blank	
+table_en5.pdf	4	cl-19	cl-08	blank	
+table_en5.pdf	4	cl-19	cl-09	blank	
+table_en5.pdf	4	cl-19	cl-10	blank	
+table_en5.pdf	4	cl-19	cl-11	blank	
+table_en5.pdf	4	cl-19	cl-12	blank	
+table_en5.pdf	4	cl-19	cl-13	blank	
+table_en5.pdf	4	cl-19	cl-14	blank	
+table_en5.pdf	4	cl-19	cl-15	blank	
+table_en5.pdf	4	cl-19	cl-16	blank	
+table_en5.pdf	4	cl-19	cl-19	blank	
+table_en5.pdf	4	cl-19	cl-20	blank	
+table_en5.pdf	4	cl-19	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-19	cl-22	blank	
+table_en5.pdf	4	cl-19	cl-23	blank	
+table_en5.pdf	4	cl-19	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-19	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-19	cl-26	blank	
+table_en5.pdf	4	cl-19	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-19	cl-28	blank	
+table_en5.pdf	4	cl-19	cl-29	blank	
+table_en5.pdf	4	cl-19	cl-30	blank	
+table_en5.pdf	4	cl-19	line-end	blank	
+table_en5.pdf	4	cl-20	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-20	cl-02	blank	
+table_en5.pdf	4	cl-20	cl-03	blank	
+table_en5.pdf	4	cl-20	cl-04	blank	
+table_en5.pdf	4	cl-20	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-20	cl-06	blank	
+table_en5.pdf	4	cl-20	cl-07	blank	
+table_en5.pdf	4	cl-20	cl-08	blank	
+table_en5.pdf	4	cl-20	cl-09	blank	
+table_en5.pdf	4	cl-20	cl-10	blank	
+table_en5.pdf	4	cl-20	cl-11	blank	
+table_en5.pdf	4	cl-20	cl-12	blank	
+table_en5.pdf	4	cl-20	cl-13	blank	
+table_en5.pdf	4	cl-20	cl-14	blank	
+table_en5.pdf	4	cl-20	cl-15	blank	
+table_en5.pdf	4	cl-20	cl-16	blank	
+table_en5.pdf	4	cl-20	cl-19	blank	
+table_en5.pdf	4	cl-20	cl-20	blank	
+table_en5.pdf	4	cl-20	cl-21	blank	
+table_en5.pdf	4	cl-20	cl-22	blank	
+table_en5.pdf	4	cl-20	cl-23	blank	
+table_en5.pdf	4	cl-20	cl-24	blank	
+table_en5.pdf	4	cl-20	cl-25	blank	
+table_en5.pdf	4	cl-20	cl-26	blank	
+table_en5.pdf	4	cl-20	cl-27	blank	
+table_en5.pdf	4	cl-20	cl-28	blank	
+table_en5.pdf	4	cl-20	cl-29	blank	
+table_en5.pdf	4	cl-20	cl-30	blank	
+table_en5.pdf	4	cl-20	line-end	blank	
+table_en5.pdf	4	cl-21	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-21	cl-02	blank	
+table_en5.pdf	4	cl-21	cl-03	blank	
+table_en5.pdf	4	cl-21	cl-04	blank	
+table_en5.pdf	4	cl-21	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-21	cl-06	blank	
+table_en5.pdf	4	cl-21	cl-07	blank	
+table_en5.pdf	4	cl-21	cl-08	blank	
+table_en5.pdf	4	cl-21	cl-09	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-10	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-11	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-12	blank	
+table_en5.pdf	4	cl-21	cl-13	blank	
+table_en5.pdf	4	cl-21	cl-14	blank	
+table_en5.pdf	4	cl-21	cl-15	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-16	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-19	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-20	blank	
+table_en5.pdf	4	cl-21	cl-21	blank	
+table_en5.pdf	4	cl-21	cl-22	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-23	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-24	blank	
+table_en5.pdf	4	cl-21	cl-25	blank	
+table_en5.pdf	4	cl-21	cl-26	blank	
+table_en5.pdf	4	cl-21	cl-27	blank	
+table_en5.pdf	4	cl-21	cl-28	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	cl-29	blank	
+table_en5.pdf	4	cl-21	cl-30	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-21	line-end	blank	
+table_en5.pdf	4	cl-22	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-22	cl-02	blank	
+table_en5.pdf	4	cl-22	cl-03	blank	
+table_en5.pdf	4	cl-22	cl-04	blank	
+table_en5.pdf	4	cl-22	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-22	cl-06	blank	
+table_en5.pdf	4	cl-22	cl-07	blank	
+table_en5.pdf	4	cl-22	cl-08	blank	
+table_en5.pdf	4	cl-22	cl-09	blank	
+table_en5.pdf	4	cl-22	cl-10	blank	
+table_en5.pdf	4	cl-22	cl-11	blank	
+table_en5.pdf	4	cl-22	cl-12	blank	
+table_en5.pdf	4	cl-22	cl-13	blank	
+table_en5.pdf	4	cl-22	cl-14	blank	
+table_en5.pdf	4	cl-22	cl-15	blank	
+table_en5.pdf	4	cl-22	cl-16	blank	
+table_en5.pdf	4	cl-22	cl-19	blank	
+table_en5.pdf	4	cl-22	cl-20	blank	
+table_en5.pdf	4	cl-22	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-22	cl-22	blank	
+table_en5.pdf	4	cl-22	cl-23	blank	
+table_en5.pdf	4	cl-22	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-22	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-22	cl-26	blank	
+table_en5.pdf	4	cl-22	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-22	cl-28	blank	
+table_en5.pdf	4	cl-22	cl-29	×	
+table_en5.pdf	4	cl-22	cl-30	blank	
+table_en5.pdf	4	cl-22	line-end	blank	
+table_en5.pdf	4	cl-23	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-23	cl-02	blank	
+table_en5.pdf	4	cl-23	cl-03	blank	
+table_en5.pdf	4	cl-23	cl-04	blank	
+table_en5.pdf	4	cl-23	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-23	cl-06	blank	
+table_en5.pdf	4	cl-23	cl-07	blank	
+table_en5.pdf	4	cl-23	cl-08	blank	
+table_en5.pdf	4	cl-23	cl-09	blank	
+table_en5.pdf	4	cl-23	cl-10	blank	
+table_en5.pdf	4	cl-23	cl-11	blank	
+table_en5.pdf	4	cl-23	cl-12	blank	
+table_en5.pdf	4	cl-23	cl-13	blank	
+table_en5.pdf	4	cl-23	cl-14	blank	
+table_en5.pdf	4	cl-23	cl-15	blank	
+table_en5.pdf	4	cl-23	cl-16	blank	
+table_en5.pdf	4	cl-23	cl-19	blank	
+table_en5.pdf	4	cl-23	cl-20	blank	
+table_en5.pdf	4	cl-23	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-23	cl-22	blank	
+table_en5.pdf	4	cl-23	cl-23	blank	
+table_en5.pdf	4	cl-23	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-23	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-23	cl-26	blank	
+table_en5.pdf	4	cl-23	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-23	cl-28	blank	
+table_en5.pdf	4	cl-23	cl-29	×	
+table_en5.pdf	4	cl-23	cl-30	blank	
+table_en5.pdf	4	cl-23	line-end	blank	
+table_en5.pdf	4	cl-24	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-24	cl-02	blank	
+table_en5.pdf	4	cl-24	cl-03	blank	
+table_en5.pdf	4	cl-24	cl-04	blank	
+table_en5.pdf	4	cl-24	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-24	cl-06	blank	
+table_en5.pdf	4	cl-24	cl-07	blank	
+table_en5.pdf	4	cl-24	cl-08	blank	
+table_en5.pdf	4	cl-24	cl-09	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-10	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-11	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-12	blank	
+table_en5.pdf	4	cl-24	cl-13	blank	
+table_en5.pdf	4	cl-24	cl-14	blank	
+table_en5.pdf	4	cl-24	cl-15	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-16	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-19	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-20	blank	
+table_en5.pdf	4	cl-24	cl-21	blank	
+table_en5.pdf	4	cl-24	cl-22	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-23	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-24	blank	
+table_en5.pdf	4	cl-24	cl-25	1/4	
+table_en5.pdf	4	cl-24	cl-26	blank	
+table_en5.pdf	4	cl-24	cl-27	blank	
+table_en5.pdf	4	cl-24	cl-28	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	cl-29	blank	
+table_en5.pdf	4	cl-24	cl-30	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-24	line-end	blank	
+table_en5.pdf	4	cl-25	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-25	cl-02	blank	
+table_en5.pdf	4	cl-25	cl-03	blank	
+table_en5.pdf	4	cl-25	cl-04	blank	
+table_en5.pdf	4	cl-25	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-25	cl-06	blank	
+table_en5.pdf	4	cl-25	cl-07	blank	
+table_en5.pdf	4	cl-25	cl-08	blank	
+table_en5.pdf	4	cl-25	cl-09	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-10	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-11	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-12	blank	
+table_en5.pdf	4	cl-25	cl-13	blank	
+table_en5.pdf	4	cl-25	cl-14	blank	
+table_en5.pdf	4	cl-25	cl-15	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-16	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-19	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-20	blank	
+table_en5.pdf	4	cl-25	cl-21	blank	
+table_en5.pdf	4	cl-25	cl-22	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-23	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-25	blank	
+table_en5.pdf	4	cl-25	cl-26	blank	
+table_en5.pdf	4	cl-25	cl-27	blank	
+table_en5.pdf	4	cl-25	cl-28	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	cl-29	blank	
+table_en5.pdf	4	cl-25	cl-30	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-25	line-end	blank	
+table_en5.pdf	4	cl-26	cl-01	blank	
+table_en5.pdf	4	cl-26	cl-02	blank	
+table_en5.pdf	4	cl-26	cl-03	blank	
+table_en5.pdf	4	cl-26	cl-04	blank	
+table_en5.pdf	4	cl-26	cl-05	blank	
+table_en5.pdf	4	cl-26	cl-06	blank	
+table_en5.pdf	4	cl-26	cl-07	blank	
+table_en5.pdf	4	cl-26	cl-08	blank	
+table_en5.pdf	4	cl-26	cl-09	blank	
+table_en5.pdf	4	cl-26	cl-10	blank	
+table_en5.pdf	4	cl-26	cl-11	blank	
+table_en5.pdf	4	cl-26	cl-12	blank	
+table_en5.pdf	4	cl-26	cl-13	blank	
+table_en5.pdf	4	cl-26	cl-14	blank	
+table_en5.pdf	4	cl-26	cl-15	blank	
+table_en5.pdf	4	cl-26	cl-16	blank	
+table_en5.pdf	4	cl-26	cl-19	blank	
+table_en5.pdf	4	cl-26	cl-20	blank	
+table_en5.pdf	4	cl-26	cl-21	blank	
+table_en5.pdf	4	cl-26	cl-22	blank	
+table_en5.pdf	4	cl-26	cl-23	blank	
+table_en5.pdf	4	cl-26	cl-24	blank	
+table_en5.pdf	4	cl-26	cl-25	blank	
+table_en5.pdf	4	cl-26	cl-26	blank	
+table_en5.pdf	4	cl-26	cl-27	blank	
+table_en5.pdf	4	cl-26	cl-28	blank	
+table_en5.pdf	4	cl-26	cl-29	blank	D.2#4
+table_en5.pdf	4	cl-26	cl-30	blank	
+table_en5.pdf	4	cl-26	line-end	blank	D.2#4
+table_en5.pdf	4	cl-27	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-27	cl-02	blank	
+table_en5.pdf	4	cl-27	cl-03	blank	
+table_en5.pdf	4	cl-27	cl-04	blank	
+table_en5.pdf	4	cl-27	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-27	cl-06	blank	
+table_en5.pdf	4	cl-27	cl-07	blank	
+table_en5.pdf	4	cl-27	cl-08	blank	
+table_en5.pdf	4	cl-27	cl-09	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-10	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-11	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-12	blank	
+table_en5.pdf	4	cl-27	cl-13	blank	
+table_en5.pdf	4	cl-27	cl-14	blank	
+table_en5.pdf	4	cl-27	cl-15	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-16	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-19	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-20	blank	
+table_en5.pdf	4	cl-27	cl-21	blank	
+table_en5.pdf	4	cl-27	cl-22	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-23	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-24	blank	
+table_en5.pdf	4	cl-27	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-26	blank	
+table_en5.pdf	4	cl-27	cl-27	blank	
+table_en5.pdf	4	cl-27	cl-28	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	cl-29	blank	
+table_en5.pdf	4	cl-27	cl-30	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-27	line-end	blank	
+table_en5.pdf	4	cl-28	cl-01	blank	
+table_en5.pdf	4	cl-28	cl-02	×	
+table_en5.pdf	4	cl-28	cl-03	×	
+table_en5.pdf	4	cl-28	cl-04	×	
+table_en5.pdf	4	cl-28	cl-05	×	
+table_en5.pdf	4	cl-28	cl-06	×	
+table_en5.pdf	4	cl-28	cl-07	×	
+table_en5.pdf	4	cl-28	cl-08	blank	
+table_en5.pdf	4	cl-28	cl-09	×	
+table_en5.pdf	4	cl-28	cl-10	×	
+table_en5.pdf	4	cl-28	cl-11	×	
+table_en5.pdf	4	cl-28	cl-12	blank	
+table_en5.pdf	4	cl-28	cl-13	blank	
+table_en5.pdf	4	cl-28	cl-14	blank	
+table_en5.pdf	4	cl-28	cl-15	blank	
+table_en5.pdf	4	cl-28	cl-16	blank	
+table_en5.pdf	4	cl-28	cl-19	blank	
+table_en5.pdf	4	cl-28	cl-20	×	
+table_en5.pdf	4	cl-28	cl-21	blank	
+table_en5.pdf	4	cl-28	cl-22	×	
+table_en5.pdf	4	cl-28	cl-23	×	
+table_en5.pdf	4	cl-28	cl-24	blank	
+table_en5.pdf	4	cl-28	cl-25	blank	
+table_en5.pdf	4	cl-28	cl-26	blank	D.2#4
+table_en5.pdf	4	cl-28	cl-27	blank	
+table_en5.pdf	4	cl-28	cl-28	×	
+table_en5.pdf	4	cl-28	cl-29	×	
+table_en5.pdf	4	cl-28	cl-30	blank	
+table_en5.pdf	4	cl-28	line-end	×	
+table_en5.pdf	4	cl-29	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-29	cl-02	blank	
+table_en5.pdf	4	cl-29	cl-03	blank	
+table_en5.pdf	4	cl-29	cl-04	blank	
+table_en5.pdf	4	cl-29	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-29	cl-06	blank	
+table_en5.pdf	4	cl-29	cl-07	blank	
+table_en5.pdf	4	cl-29	cl-08	blank	
+table_en5.pdf	4	cl-29	cl-09	blank	
+table_en5.pdf	4	cl-29	cl-10	blank	
+table_en5.pdf	4	cl-29	cl-11	blank	
+table_en5.pdf	4	cl-29	cl-12	blank	
+table_en5.pdf	4	cl-29	cl-13	blank	
+table_en5.pdf	4	cl-29	cl-14	blank	
+table_en5.pdf	4	cl-29	cl-15	blank	
+table_en5.pdf	4	cl-29	cl-16	blank	
+table_en5.pdf	4	cl-29	cl-19	blank	
+table_en5.pdf	4	cl-29	cl-20	blank	
+table_en5.pdf	4	cl-29	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-29	cl-22	blank	
+table_en5.pdf	4	cl-29	cl-23	blank	
+table_en5.pdf	4	cl-29	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-29	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-29	cl-26	blank	
+table_en5.pdf	4	cl-29	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-29	cl-28	blank	
+table_en5.pdf	4	cl-29	cl-29	×	
+table_en5.pdf	4	cl-29	cl-30	blank	
+table_en5.pdf	4	cl-29	line-end	blank	
+table_en5.pdf	4	cl-30	cl-01	1/2-0 stage 3	
+table_en5.pdf	4	cl-30	cl-02	blank	
+table_en5.pdf	4	cl-30	cl-03	blank	
+table_en5.pdf	4	cl-30	cl-04	blank	
+table_en5.pdf	4	cl-30	cl-05	1/4-0 stage 2	
+table_en5.pdf	4	cl-30	cl-06	blank	
+table_en5.pdf	4	cl-30	cl-07	blank	
+table_en5.pdf	4	cl-30	cl-08	blank	
+table_en5.pdf	4	cl-30	cl-09	blank	
+table_en5.pdf	4	cl-30	cl-10	blank	
+table_en5.pdf	4	cl-30	cl-11	blank	
+table_en5.pdf	4	cl-30	cl-12	blank	
+table_en5.pdf	4	cl-30	cl-13	blank	
+table_en5.pdf	4	cl-30	cl-14	blank	
+table_en5.pdf	4	cl-30	cl-15	blank	
+table_en5.pdf	4	cl-30	cl-16	blank	
+table_en5.pdf	4	cl-30	cl-19	blank	
+table_en5.pdf	4	cl-30	cl-20	blank	
+table_en5.pdf	4	cl-30	cl-21	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-30	cl-22	blank	
+table_en5.pdf	4	cl-30	cl-23	blank	
+table_en5.pdf	4	cl-30	cl-24	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-30	cl-25	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-30	cl-26	blank	
+table_en5.pdf	4	cl-30	cl-27	1/4-1/8 stage 4	
+table_en5.pdf	4	cl-30	cl-28	blank	
+table_en5.pdf	4	cl-30	cl-29	blank	
+table_en5.pdf	4	cl-30	cl-30	blank	
+table_en5.pdf	4	cl-30	line-end	blank	
+table_en5.pdf	4	line-head	cl-01	blank	
+table_en5.pdf	4	line-head	cl-02	×	
+table_en5.pdf	4	line-head	cl-03	×	
+table_en5.pdf	4	line-head	cl-04	×	
+table_en5.pdf	4	line-head	cl-05	×	
+table_en5.pdf	4	line-head	cl-06	×	
+table_en5.pdf	4	line-head	cl-07	×	
+table_en5.pdf	4	line-head	cl-08	blank	
+table_en5.pdf	4	line-head	cl-09	×	
+table_en5.pdf	4	line-head	cl-10	×	
+table_en5.pdf	4	line-head	cl-11	×	
+table_en5.pdf	4	line-head	cl-12	blank	
+table_en5.pdf	4	line-head	cl-13	blank	
+table_en5.pdf	4	line-head	cl-14	blank	
+table_en5.pdf	4	line-head	cl-15	blank	
+table_en5.pdf	4	line-head	cl-16	blank	
+table_en5.pdf	4	line-head	cl-19	blank	
+table_en5.pdf	4	line-head	cl-20	×	
+table_en5.pdf	4	line-head	cl-21	blank	
+table_en5.pdf	4	line-head	cl-22	blank	
+table_en5.pdf	4	line-head	cl-23	blank	
+table_en5.pdf	4	line-head	cl-24	blank	
+table_en5.pdf	4	line-head	cl-25	blank	
+table_en5.pdf	4	line-head	cl-26	blank	D.2#4
+table_en5.pdf	4	line-head	cl-27	blank	
+table_en5.pdf	4	line-head	cl-28	blank	
+table_en5.pdf	4	line-head	cl-29	×	
+table_en5.pdf	4	line-head	cl-30	blank	
+table_en5.pdf	4	line-head	line-end	×	

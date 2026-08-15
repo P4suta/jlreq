@@ -1,0 +1,19 @@
+id	citation	sentence
+prohibition-agrees-across-tables	§B.1, §C.1, §D.1, §E.1	A prohibited coordinate remains prohibited in every table that defines it.
+table6-blank-faces-table2-not	§E.1	A blank Table 6 cell faces a prohibited Table 2 break.
+unadjusted-amount-is-table1	§D.1	The unadjusted amounts in Tables 3 through 5 equal Table 1.
+no-reduction-at-the-line-head	§D.1	No reduction opportunity exists at a line head.
+table4-no-reduction-at-the-line-end	§D.1	Table 4 offers no reduction at a line end.
+line-edge-axes-only-where-they-exist	§C.1, §E.1	Tables 2 and 6 contain no line-edge axes.
+table2-prohibited-at-all-levels	§C.3	The preamble classes remain prohibited at all four levels.
+line-start-prohibited-classes	§3.1.7, §C.3	Exactly the ten named classes are line-start prohibited at the strictest level.
+line-end-prohibited-classes	§3.1.8	Exactly cl-01 and cl-28 are line-end prohibited.
+punctuation-pattern-holds-three-times	§3.2.4, §3.2.5, §3.2.6	The published punctuation pattern holds for ideographs, tate-chu-yoko, and Western text.
+hang-sits-on-a-space	§B.1	A hang token is attached only to a space or the documented solid ruby case.
+table4-line-end-follows-the-jis-reading	§3.1.9	Table 4 carries the line-end amounts of the JIS reading recorded by JLReq.
+stage-ordinals-are-contiguous	§3.8.3, §3.8.4	Adjustment stage ordinals stay within their ladder and contain no gap.
+priority-ordinals-agree-with-the-notes	§D.2	The stage colors of note-qualified cells agree with the prose ordinals.
+conformance-cases-agree-with-the-cells	ADR 0006	Any historical case that declares a matrix cell agrees with the transcription.
+amounts-are-multiples-of-the-unit	ADR 0007	Every captured amount is exactly representable in 1/720 em.
+at-most-one-space-per-referent	ADR 0014	A boundary contributes at most one conditional space per neighbor.
+expansion-needs-no-referent	ADR 0014, ADR 0021	An expansion coordinate never needs to choose between two spacing referents.

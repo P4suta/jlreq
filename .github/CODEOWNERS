@@ -13,3 +13,7 @@
 
 # The gate that keeps the layout core free of std, I/O, font, and float dependencies.
 /xtask/ @P4suta
+
+# The release controls the gates read. Relaxing one is a review, never an edit in passing.
+/docs/api-1.0.toml @P4suta
+/docs/conformance-deferrals.toml @P4suta

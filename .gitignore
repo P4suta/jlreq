@@ -18,6 +18,13 @@
 /mutants.out.old/
 /mutants-*
 
+# The six matrices of Appendices B through E are published only as PDF, and a PDF is
+# not a source this project derives anything from (docs/adr/0009). A developer
+# transcribing one fetches the file here; spec/PROVENANCE.toml records its digest, so
+# `attest --digests` can prove the bytes are the ones this repository was written
+# against without the PDF ever entering the history.
+/spec/upstream/
+
 # mise local overrides (per-developer, never committed)
 /mise.local.toml
 /.mise.local.toml

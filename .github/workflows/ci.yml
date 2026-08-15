@@ -2,15 +2,12 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# CI for kumihan (Japanese line composition following JLReq and JIS X 4051).
+# CI for kumihan (JLReq 2020 Japanese line composition, including the JIS X 4051
+# alternatives JLReq records; complete JIS X 4051 conformance is not claimed).
 #
 # Layout under test:
-#   - jlreq-class    no_std, no alloc. JLReq character classes.
-#   - jlreq-spacing  no_std, no alloc. Mojikumi spacing amounts.
-#   - jlreq-line     no_std. Kinsoku and line adjustment.
-#   - jlreq-inline   no_std. Ruby, tate-chu-yoko, emphasis dots, warichu.
-#   - jlreq          no_std. The facade callers depend on.
-#   - jlreq-conform  the published conformance suite (docs/adr/0006).
+#   - kumihan              dependency-free no_std + alloc public library.
+#   - kumihan-conformance  binary-only protocol runner and sample engine.
 #   - xtask          repository policy checks shared by Just and CI.
 #
 # Policy:
@@ -162,6 +159,23 @@ jobs:
       # test of whether the boundary in docs/adr/0003 still holds.
       - run: just wasm
 
+  fuzz:
+    name: fuzz (public API invariants)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # nightly
+        with:
+          toolchain: nightly
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0,cargo-fuzz@0.13.2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: fuzz -> target
+      - run: just fuzz-check-linux-ci
+
   purity:
     name: purity (no std, I/O, font, or float in the core)
     runs-on: ubuntu-latest
@@ -176,6 +190,29 @@ jobs:
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       - run: just purity
 
+  design:
+    # The gates that hold the frozen design (docs/design/api-spine.md). Each reads the
+    # tree and none needs the network, so they run together in one job. `purity` runs
+    # above on its own because branch protection already names it.
+    name: design (the frozen design holds mechanically)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      # One recipe rather than the steps enumerated by hand. The two drifted once already:
+      # `derive-check` — the only gate that binds spec/derived/ to the vendored W3C document
+      # — was added to the `design` aggregate and never to this list, so for as long as that
+      # lasted a transcribed derived table and a generated one were indistinguishable to the
+      # enforcement path that gates a merge. A job that runs the aggregate cannot drift from
+      # it.
+      - run: just design
+
   doc:
     name: doc (rustdoc, warnings are errors)
     runs-on: ubuntu-latest
@@ -189,6 +226,18 @@ jobs:
       - env:
           RUSTDOCFLAGS: -D warnings
         run: just doc
+
+  package:
+    name: cargo package (release readiness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - run: just package
 
   typos:
     name: typos
@@ -279,8 +328,11 @@ jobs:
       - feature-matrix
       - no_std
       - wasm
+      - fuzz
       - purity
+      - design
       - doc
+      - package
       - typos
       - msrv
       - reuse

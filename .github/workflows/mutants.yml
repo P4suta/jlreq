@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Mutation testing (cargo-mutants) for the sole public Rust library. xtask is tooling and
+# kumihan-conformance is tested through its process protocol.
+#
+# This is a scheduled report rather than a required gate: a complete mutation run is slow,
+# and surviving mutants are evidence for the next independently-authored test rather than a
+# reason to hide the report behind a permanently red workflow. The command outcome and full
+# report remain visible in the job summary and artifact.
+#
+# Each matrix leg runs `just mutants <crate>`, scoped to one package the way `-p` scopes
+# every other per-crate gate in this repository (see `just msrv`).
+name: Mutants
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly (Thu 04:38 UTC, offset from codeql.yml's Mon 03:27 UTC) so the baseline tracks
+    # the test suite even between direct changes to the public library.
+    - cron: "38 4 * * 4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  mutants:
+    name: mutants (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    # The full library has a broad mutation surface; keep generous runner headroom.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [kumihan]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      # Deliberately no `RUSTFLAGS: -D warnings` (unlike clippy/test/design/etc. in
+      # ci.yml): that env var, not the workspace lint levels themselves, is what turns a
+      # warning into a build failure elsewhere in this repo, and mutated code that merely
+      # provokes a new lint should still build and run against the tests here. See the
+      # Justfile's `mutants` recipe for the fuller version of this reasoning.
+      - name: cargo mutants
+        id: cargo_mutants
+        continue-on-error: true
+        run: just mutants ${{ matrix.crate }}
+      - name: summarize mutation result
+        if: always()
+        env:
+          MUTANTS_OUTCOME: ${{ steps.cargo_mutants.outcome }}
+        run: |-
+          echo "## cargo-mutants: $MUTANTS_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MUTANTS_OUTCOME" != "success" ]; then
+            echo "Surviving mutants or a runner error were reported; inspect the artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: upload mutants.out
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutants.out-${{ matrix.crate }}
+          path: mutants.out/
+          retention-days: 14

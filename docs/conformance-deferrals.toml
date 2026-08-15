@@ -1,0 +1,625 @@
+# SPDX-FileCopyrightText: 2026 kumihan contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The conformance deferral ledger: the inventoried rules whose conformance case a later
+# milestone writes, each naming that milestone.
+#
+# CONTRIBUTING.md states that a rule without a case is incomplete, and
+# docs/adr/0013-rules-are-addressed-by-specification-address.md makes that arithmetic: the
+# `conform` gate subtracts the rules the cases declare from the rules the inventory names,
+# and the protocol coverage pass checks every observable rule directly. The
+# inventory is generated whole — spec/derived/rules.tsv names every rule of § 3 and of
+# Appendices B through F at once — while the suite is written milestone by milestone. Both
+# subtractions therefore have a remainder that is nothing but the schedule.
+#
+# Without this file a gate could only choose between two false sentences: that the rules
+# are covered, by weakening the subtraction until the remainder disappeared, or that the
+# workspace is broken, by failing over a milestone that has not happened yet. Neither is
+# true, so a third state is written down instead. A rule is
+#
+#   covered   — a case in crates/kumihan-conformance/suite.ndjson names it;
+#   deferred       — a `[[deferred]]` table names it and the milestone that will cover it;
+#   editorial      — an evidence-bearing `[[editorial]]` table shows that it advises an
+#                    editor rather than requiring observable layout output;
+#   non-observable — an evidence-bearing `[[non-observable]]` table shows that the protocol
+#                    cannot distinguish a required answer because JLReq leaves it open; or
+#   uncovered      — none of these, which fails `conform` and names the rule.
+#
+# Deferred is not exempt. Every `conform` run prints the count of deferred rules and the
+# count per milestone, so the debt is stated in numbers on a green run. The entry expires by
+# itself: the moment any case names the rule, the rule is covered and the entry is a
+# violation, because a deferral that outlived its milestone is a claim about the future
+# that the present has already answered. Deleting the entry is the reviewable act that says
+# the rule now has a case; nothing is switched on by hand.
+#
+# The other half of the subtraction is written here too, because a schedule with only one
+# direction is not an accounting. A `[[deferred]]` table says which milestone *will* cover a
+# rule; an `[[owned]]` table says which milestone's cases already *do*, and it is held to the
+# opposite invariant — the rule must be covered now, and it must not be deferred by anything.
+# Until M0-b the rules M0 answers were named in this header and nowhere a gate could read, so
+# one of them could be dropped from the cases and given a `[[deferred]]` entry naming a later
+# milestone with every gate staying green; that is measured and closed. `conform` also fails
+# a rule a case covers that no `[[owned]]` entry names, so a case cannot credit a rule to
+# nobody — which is the route a `kind: "boundary"` case took, published for a layer that
+# answers nothing yet and crediting its rules to the coverage gate with no reviewer in the
+# path. Both routes now end at the same file, the same `milestone` and the same `why`.
+#
+# Schema. One `[[deferred]]`, `[[owned]]`, `[[editorial]]`, or `[[non-observable]]` table
+# per rule. `deferred` and `owned` use all three keys; final classifications omit
+# `milestone` because they are not implementation work scheduled for later:
+#
+#   rule       The specification address of an inventoried rule, in the canonical rendering
+#              of the address grammar — `3.1.9`, `B.2#3`, `B.1@cl-05,cl-05` — with no
+#              section sign. One table per rule across both tables, and the address must be
+#              one spec/derived/rules.tsv carries: deferring a rule the inventory does not
+#              name defers nothing.
+#   milestone  (`deferred`/`owned` only.) The milestone whose conformance cases close it, or have closed it, spelled as
+#              ROADMAP.md heads it: `M0` through `M6`. ROADMAP.md is what a milestone *is*;
+#              this file only names one, and `conform` rejects a name that document does not
+#              declare. On an `[[owned]]` entry it names the milestone whose *layer* answers
+#              the rule, which is not always the milestone that wrote the case: a boundary
+#   why        Which observable answer the rule states and which private pipeline behavior
+#              produces it, in a sentence a
+#              reviewer can disagree with. A final `[[editorial]]` or `[[non-observable]]`
+#              classification must cite `spec/snapshot/index.html`, the vendored primary
+#              text the gate requires a reviewer to be able to inspect. On an `[[owned]]`
+#              entry, `why` records the historical ownership decision and the observable
+#              behavior now exercised through protocol v1.
+#
+# The milestone assignments are stable history: M0 classified specification data, M1
+# handled breaking and adjustment, M2 spacing, M3 whole-paragraph composition, M4 inline
+# constructs and Appendix F, and M5 vertical composition. All are now private stages of
+# the unified pipeline; the headings remain in ROADMAP.md so the ledger keys stay stable.
+#
+# The rules M0 answers are not deferred; they are recorded under `[[owned]]` at the foot of
+# this file, which is where the sentence that used to sit here became something a gate can
+# read. § 3.9.1 and § 3.9.2 state the classification itself; § C.3, § C.2 notes 1 to 3,
+# § B.2 notes 14 to 16 and § E.2 notes 1 to 3 state the class an occurrence at a line head is
+# treated as belonging to, which is the private classifier's answer; § 3.1.2,
+# § 3.2.4 and § 3.2.6 are the three sentences outside Appendix A that a declared frame fires,
+# and M0-b's cases declare them where their own rationale already argued from them. If a case
+# for one of them is deleted, the `[[owned]]` entry is what fails.
+#
+# § 3.9.3 was in that list until M0-b read it against the document and found it is not a
+# classification rule at all. Its matrix statements are now classified below as
+# non-observable independently of the concrete Appendix B through E cells they introduce.
+#
+# What this file cannot check is named rather than glossed. Nothing here reads which
+# milestone the workspace is writing, so an entry naming a milestone already under way is
+# not a violation; what makes such an entry visible is the per-milestone census on every
+# run, and what ends it is a case. And no gate can know that the milestone named is the
+# right one — that is the reviewer's judgment, which is what `why` is for and why this file
+# is owned by the code owners in .github/CODEOWNERS.
+#
+# The order is the inventory's own: § 3 in section order, then the appendix sections, then
+# the appendix notes, so this file and spec/derived/rules.tsv can be read side by side.
+
+[[editorial]]
+rule = "3.1.1"
+why = "The primary text at spec/snapshot/index.html, §3.1.1 Differences in Vertical and Horizontal Composition in Use of Punctuation Marks, describes which source characters an editor may choose: IDEOGRAPHIC FULL STOP and IDEOGRAPHIC COMMA in vertical text; three alternative comma/full-stop conventions in horizontal text; corner brackets versus quotation marks; vertical-only double-prime quotation marks; and direction-specific iteration marks. It states no spacing, break, adjustment, transform, or placement result for a supplied character. The black-box protocol receives the caller's already-chosen UTF-8 string and shaped clusters, while font choice, shaping, and authoring are permanently outside kumihan's scope. Rejecting or rewriting one of the listed characters would turn usage guidance into an engine requirement the section does not state. Direction-dependent glyph treatment of Western punctuation, when a caller has chosen it, is covered mechanically by §§3.2.3 and 3.2.5 rather than by crediting this source-selection section twice."
+
+[[owned]]
+rule = "3.1.3"
+milestone = "M5"
+why = "The unified pipeline ports the already-tested role distinction into the public shaped-cluster contract and makes the result observable as geometry. A normal IDEOGRAPHIC COMMA contributes its following half em and a normal KATAKANA MIDDLE DOT contributes a quarter em on each side; in vertical-rl, DigitGroupSeparator withdraws the comma contribution and DecimalPoint withdraws both middle-dot contributions. Protocol-v1 cases 3.1.3/vertical-digit-group-comma-withdraws-half-em and 3.1.3/vertical-decimal-middle-dot-withdraws-quarter-ems each place an exceptional and an ordinary occurrence in one response so zero cannot pass by an implementation that never supplied the normal spacing. Case 3.1.3/decimal-middle-dot-exception-is-vertical-only fixes the main lists direction condition. The closing Note has a recorded locale defect in spec/derived/defects.tsv: its English half says vertical and its Japanese half says horizontal for unit-symbol, grouped-numeral, and formula middle dots. Both halves state only a positive solid-setting requirement and neither requires spacing in the other direction, so the implementation takes their non-conflicting union and suppresses those three role-scoped contributions in both modes; 3.1.3/construct-middle-dots-are-solid-in-locale-union measures all three roles through an external process. Caller-shaped advances remain untouched; only the JLReq boundary contribution is withdrawn."
+
+[[editorial]]
+rule = "3.2.1"
+why = "The primary text at spec/snapshot/index.html, §3.2.1 Composition of Japanese and Western Mixed Texts, enumerates authoring examples — a Latin symbol, a Western word, an acronym, a Western title, whole quoted paragraphs, and choosing katakana unit names in vertical text versus SI spellings in horizontal text — but states no spacing, break, adjustment, or placement result. Those choices change the source string before shaping; the black-box protocol intentionally receives that already-chosen string and cannot decide whether an author should have written センチメートル or cm. Its final Note merely points readers to JIS X 4051 4.7. The one engine fact suggested by the examples, that proportional Western characters are cl-27, is stated mechanically by §3.2.6 and already covered there. A duplicate case crediting §3.2.1 would therefore test §3.2.6 again, while an engine that rewrote the caller's content would exceed kumihan's scope. This rule is editorial input guidance, not deferred layout work."
+
+[[owned]]
+rule = "3.2.3"
+milestone = "M5"
+why = "The unified placement view exposes all three methods §3.2.3 enumerates for Western text in vertical composition without owning font selection or shaping: a full-em cluster stays upright in vertical-rl, proportional Western clusters carry the rotate-clockwise transform, and an explicitly declared tate-chu-yoko range switches to horizontal-tb with the tate-chu-yoko transform. Protocol-v1 cases 3.2.3/vertical-full-em-western-upright, 3.2.3/vertical-proportional-western-rotated, and 3.2.3/vertical-two-digits-tate-chu-yoko measure those three results through an external process; vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods independently fixes the Rust view. The caller still chooses the already-shaped font/frame and whether a range is tate-chu-yoko, matching kumihan's declared boundary around shaping and authoring rather than guessing from source characters. Detailed solid-setting geometry and punctuation spacing for the third method are covered separately by §3.2.5."
+
+[[owned]]
+rule = "3.2.5"
+milestone = "M4"
+why = "The unified pipeline treats an explicitly declared vertical tate-chu-yoko range as one indivisible logical line item while retaining every caller-shaped cluster for drawing: member advances remain horizontal and solid, all members share the group's vertical inline origin, their block coordinates advance left-to-right from the centered group edge, the group's vertical consumption is its largest local block size, and a run wider than the line's ordinary em widens the line's physical block demand. 3.2.5/tate-chu-yoko-solid-centered-group measures that geometry and solid ideographic neighbors; 3.2.5/tate-chu-yoko-hiragana-katakana-neighbors-solid measures the other two neighbor classes named by the text. The four directional punctuation clauses are all distinguished rather than generalized: 3.2.5/tate-chu-yoko-half-em-punctuation-boundaries measures a closing bracket before and an opening bracket after the group, 3.2.5/tate-chu-yoko-full-stop-and-comma-before-half-em measures the remaining full-stop and comma predecessors while also observing the reverse comma boundary as solid, and 3.2.5/tate-chu-yoko-reverse-punctuation-boundaries-solid measures the reverse opening/closing pair. 3.2.5/tate-chu-yoko-full-stop-at-line-end-keeps-half-em forces the break between a full stop and its following group and observes that the half em remains on the preceding line. The public tests tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line and tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules additionally pin justification, mixed group width, all eight punctuation directions, and line-to-line block progression. Font choice and shaping remain caller inputs, as the architecture requires."
+
+[[owned]]
+rule = "3.3.1"
+milestone = "M4"
+why = "The unified Ruby input and placement pipeline now preserves the section's three mechanically distinct relationships instead of treating RubyKind as metadata: mono runs are positioned against each declared base run, group ruby is positioned whole-to-whole and ParagraphBuilder rejects an interior break, and jukugo keeps its per-base run associations while permitting a break at a declared run boundary and placing only the annotation fragment belonging to each resulting line. Protocol-v1 cases 3.3.1/mono-ruby-preserves-per-base-associations, 3.3.1/group-ruby-preserves-whole-word-association, and 3.3.1/jukugo-ruby-splits-only-at-run-boundary distinguish those outputs. The section's own Note states a second observable difference: line adjustment may expand the base boundary between mono-ruby characters but not one inside a jukugo compound; 3.3.1/mono-ruby-internal-boundary-expands and 3.3.1/jukugo-ruby-internal-boundary-does-not-expand exercise the two sides through an external process, while ruby_kinds_preserve_base_associations_and_break_semantics also checks group rigidity and the stable InputError for its forbidden break. The physical right/above side is owned by §3.3.4, and the detailed placement arithmetic and phonetic method are owned or deferred under §§3.3.5–3.3.7 and Appendix F rather than duplicated here. The remaining passages in spec/snapshot/index.html §3.3.1 describe editorial purposes, frequency, vocabulary, and choices of which meaning or reading to annotate; they alter the Ruby, RubyKind, and RubyRun inputs the caller supplies but state no additional layout result for the engine to infer."
+
+[[editorial]]
+rule = "3.3.2"
+why = "Read against the specification's own words (spec/snapshot/index.html, the second 'Choice of Base Characters to be Annotated by Ruby' section) rather than against what this crate happens to compute, this rule is not about lowering at all, and the blocker its own former entry named — that no conformance kind observed a `Contribution` — is retracted rather than merely closed now that `lower` cases exist (task #74), because closing it would not have reached this rule regardless. §3.3.2's body states three editorial methods an author chooses among before ever declaring a `Ruby` — general-ruby (総ルビ, annotating every cl-19 occurrence), para-ruby (パラルビ, annotating only the difficult ones), and para-ruby's own further split between annotating every occurrence and only the first, itself subdivided by whether 'first' is counted per book, per chapter, or per spread — plus a closing recommendation that a compound word (熟語) should receive ruby on *all* its cl-19 characters rather than only some, illustrated by Figure 113's own contrast of a recommended and a not-recommended layout. Every one of the first three is a choice the caller makes before calling `Ruby::new` at all: `Constructs::with_ruby`'s own input is `base` already chosen, and no fact upstream of that choice is `jlreq_inline::lower`'s to compute or a `Contribution` to report — a `lower` case could only ever observe the *consequence* of an editorial choice already made, never adjudicate whether the caller made the recommended one. The closing sentence is likewise explicit editorial guidance: it says that partial ruby on a compound is “not recommended” / 望ましくない, not that a layout engine must reject, reposition, or diagnose it. Inventing a future layout diagnostic would turn advice into an engine requirement JLReq does not state. The rule is therefore `[[editorial]]`, with no empty conformance case and no implementation milestone."
+
+[[non-observable]]
+rule = "3.3.3"
+why = "The primary text at spec/snapshot/index.html, §3.3.3 Choice of Size for Ruby Characters, says half the base size only 'in principle', then explicitly permits anisotropic one-third ruby, generally smaller-than-half ruby for headings at twelve points or more, half-size ruby for some twelve-point body text, and replacing ruby with another annotation method when the base is very small. These choices require font point size, document role, audience, and glyph legibility, none of which the layout protocol observes. More fundamentally, the public contract receives the annotation as an already-shaped ShapedText whose Size, per-cluster size overrides, and advances the caller has already selected are mandatory input; font selection and shaping are permanently out of scope. A case supplying a half-size annotation and seeing that same size in Attachment would pass an engine that never read §3.3.3 and merely preserved caller metrics, while a case supplying one-third or smaller ruby could be equally valid under the section's own alternatives. The protocol therefore has no unchosen size whose required value can distinguish implementation of this rule, so it is non-observable rather than unfinished placement work."
+
+[[owned]]
+rule = "3.3.4"
+milestone = "M4"
+why = "The unified kumihan placement stage now makes the section's principal physical-side rule observable in caller coordinates: ruby attachments are above their base in horizontal-tb and to its right in vertical-rl, and line progression reserves the largest actual annotation size. Protocol-v1 cases 3.3.4/ruby-above-horizontal-mixed-size and 3.3.4/ruby-right-vertical-mixed-size measure both directions through an external process with unequal annotation sizes; ruby_is_on_block_start_and_reserves_the_largest_annotation_size independently measures the public Rust view. The primary text at spec/snapshot/index.html calls left/below and dual-sided ruby very rare special examples, while its closing paragraph explicitly fixes right/above as the assumption for the composition rules that follow; this ownership covers that stated principal behavior and does not invent a style choice absent from the document's 22 machine-derived questions."
+
+[[owned]]
+rule = "3.4.1"
+milestone = "M4"
+why = "The unified paragraph pipeline lowers a declared warichu range into one logical inline item whose caller-shaped interior is split over two balanced sublines. Protocol-v1 cases 3.4.1/warichu-two-balanced-sublines-horizontal and 3.4.1/warichu-two-balanced-sublines-vertical distinguish both physical writing modes: opening and closing brackets remain on the main line, both small-character lanes share one inline measure with zero block gap, and vertical-rl reverses the second lane along the block axis without changing its logical inline order. The public Rust acceptance test warichu_builds_two_balanced_sublines_and_can_straddle_main_lines independently pins the same read-only placement view."
+
+
+[[owned]]
+rule = "3.4.3"
+milestone = "M4"
+why = "Long warichu participate in the same whole-paragraph dynamic program as ordinary clusters. A declared internal opportunity may become a main-line break; each resulting segment is balanced independently, the opening and closing brackets stay with the outer segments, and every original shaped cluster is emitted exactly once. Protocol-v1 case 3.4.3/warichu-straddles-balanced-main-lines forces a ten-cluster note over two equal main-line segments, while the public Rust acceptance test verifies the ranges and original-source order."
+
+[[owned]]
+rule = "3.7.2"
+milestone = "M4"
+why = "The opaque furawake construct now carries the section's required subline count and caller-selected block-axis line gap, while paragraph break offsets strictly inside its range declare the exact subline boundaries. The builder rejects a missing or surplus split, and those offsets are consumed by construct lowering rather than exposed to the outer paragraph search, enforcing the prohibition on straddling main-text lines. Protocol-v1 cases 3.7.2/furawake-declared-sublines-horizontal and 3.7.2/furawake-declared-sublines-vertical measure the shared inline start, longest-subline logical advance, explicit 200-unit gap, centered 2200-unit block demand, and both physical writing directions. Character size and optional surrounding brackets remain caller-shaped inputs as the section requires."
+
+[[owned]]
+rule = "3.7.4"
+milestone = "M4"
+why = "The formula construct now applies the machine-observable principal method throughout the unified pipeline. Appendix A cl-17 math symbols and cl-18 operators consume one local em regardless of their supplied glyph advance. Inline formula interiors are solid, while proportional or grouped-numeral endpoints receive quarter-em boundaries against Japanese text. A formula occupying the complete paragraph uses quarter-em spacing on both sides of cl-17 and solid spacing beside cl-18; declared breaks are accepted only adjacent to those tokens, actual line breaks discard the crossed spacing, and the paragraph optimizer prefers a feasible break before cl-17 over one before cl-18. Protocol-v1 cases 3.7.4/inline-formula-full-em-symbol-and-outer-quarter-ems, 3.7.4/display-formula-equality-quarter-em-operator-solid, and 3.7.4/display-formula-prefers-break-before-equality distinguish these results. The section explicitly excludes fractions, roots, integrals, summations, and general mathematical notation; its alternative display-spacing methods and common alignment examples have no corresponding choice among JLReq 2020's 22 derived settings and are not invented as public knobs."
+
+[[non-observable]]
+rule = "3.9.3"
+why = "The primary text at spec/snapshot/index.html, §3.9.3 Positioning Methods for each Character Class, explains that line-edge permission, adjacent spacing, breakability, reduction, and expansion can be described in two-dimensional class-pair tables, then delegates the concrete answers to Appendices B, C, D, and E. A black-box layout can observe every delegated cell, and those cells have their own inventoried addresses and cases, but it cannot distinguish an implementation that indexes a two-dimensional table from one that computes identical results with match expressions, generated code, or another equivalent representation. The section's Notes about how JIS X 4051 prints X marks and separates line-head and line-end rows likewise prescribe documentation shape, not output. No case can uniquely observe this introductory representation statement without merely duplicating an Appendix rule, so it is non-observable rather than unfinished matrix implementation."
+
+[[owned]]
+rule = "F"
+milestone = "M4"
+why = "The unified pipeline reads the typed JukugoRubyLayout::Phonetic answer and the caller-declared RubyRun associations directly, so Appendix F is now observable without exposing any lowering representation. Protocol-v1 cases F.1/two-or-fewer-stay-with-base, F.2/following-overhang-precedes-expansion, F.3/expansion-is-proportional-to-reading-length, and F.4/four-ruby-run-expands-only-eligible-base exercise the katatsuki vertical-writing premise through only the versioned request and placement response. The retained legacy jlreq-inline decline remains migration history; it is not in the public kumihan call path."
+
+[[owned]]
+rule = "F.1"
+milestone = "M4"
+why = "F.1/two-or-fewer-stay-with-base distinguishes phonetic association from whole-compound placement: one ruby character stays katatsuki on the first base and two stay on the second at inline coordinates 1000 and 1500. F.2/following-overhang-precedes-expansion additionally observes the one-ruby-em internal ceiling and the §3.3.8 neighbor permission selected by the typed style."
+
+[[owned]]
+rule = "F.2"
+milestone = "M4"
+why = "The phonetic constraint solver preserves annotation order while trying each run at its own base start, allows at most one local ruby em over the adjacent base, prefers the following side, and solves backward when only the preceding external character permits overhang. F.2/following-overhang-precedes-expansion observes the preferred forward path in vertical writing; the public phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps test also fixes the backward fallback and proves that neither path inserts base spacing while overhang suffices."
+
+[[owned]]
+rule = "F.3"
+milestone = "M4"
+why = "Only runs carrying more than two annotation clusters enter the expansion pool. The pipeline finds the smallest integer expansion after exhausting internal and permitted external overhang, apportions it by solid annotation length, splits each assigned amount before and after the eligible base using the typed remainder direction, and feeds those exact gaps into paragraph search, tab measurement, base placement, and attachment placement. F.3/expansion-is-proportional-to-reading-length observes a 3:4 allocation, including the leading integer remainder. The public acceptance test also fixes the line-head all-after and line-end all-before exceptions in both writing modes."
+
+[[owned]]
+rule = "F.4"
+milestone = "M4"
+why = "F.4/four-ruby-run-expands-only-eligible-base reproduces the appendix's four-ruby-character shape: the one-character run remains ineligible, the four-character run receives the remaining one-ruby-character expansion, and its two boundaries each gain a quarter base em. The response exposes advances 1250 and 1250, base coordinates 1000 and 2250, and five contiguous ruby placements, so an implementation that merely centers the whole compound cannot pass."
+
+[[owned]]
+rule = "B.2#1"
+milestone = "M4"
+why = "The integrated overhang budget recognizes a preceding cl-01 opening bracket as JLReq's preferred full-ruby-em permission instead of treating it as cl-19. Protocol-v1 case B.2-note-1/opening-bracket-allows-ruby-overhang places 1500 units of ruby over a 1000-unit base: the annotation begins at 750 and overlaps the bracket by 250, while the forbidden trailing ideographic overlap becomes 250 units of base separation. The result is observed through the versioned process protocol, including both base and annotation coordinates."
+
+[[owned]]
+rule = "B.2#8"
+milestone = "M4"
+why = "Protocol-v1 case B.2-note-8/ideographic-space-allows-ruby-overhang distinguishes cl-14 from a visually equal cl-19 neighbor: the long annotation overlaps the ideographic space by 250 units without moving its base. The two paragraph-indent cases exercise both typed answers to ruby.overhang_indent on identical input. The preferred profile keeps the base at the declared 1000-unit indent and lets ruby begin at 750; the prohibited answer adds a 250-unit leading separation, moving the base to 1250 and the annotation to 1000."
+
+[[owned]]
+rule = "B.2#9"
+milestone = "M4"
+why = "The unified pipeline resolves cl-21 membership from each opaque Script construct before adjustment. Protocol-v1 case B.2-note-9/ornamented-complex-run-aware-expansion puts two bases inside one Script and the following base in a distinct Script: the first boundary stays solid under justification, while the distinct-run boundary receives the third-order quarter-em opportunity before the following residual boundary. Its attachment coordinates also distinguish whole-complex placement from two unrelated annotations."
+
+
+[[owned]]
+rule = "B.2#11"
+milestone = "M4"
+why = "Jukugo Ruby constructs now retain one private complex identity across all of their base runs while adjacent Jukugo constructs receive distinct identities. Protocol-v1 case B.2-note-11/jukugo-ruby-complex-run-aware-expansion observes solid base placement inside one compound, a quarter-em adjustment only at the boundary to the next compound, and per-run annotation attachments from the same black-box response."
+
+[[owned]]
+rule = "B.2#13"
+milestone = "M4"
+why = "The unified pipeline now measures the note's supplied-advance suppression in both scopes it names. Protocol-v1 cases 3.2.2/western-word-space-collapses-at-line-edges and 3.2.2/western-word-space-restores-supplied-interior-width distinguish zero advance at actual paragraph-line edges from the caller-supplied width in an interior position. B.2-note-13/warichu-word-spaces-collapse-at-subline-edges applies the same rule independently to the head and end of each balanced warichu subline: all three edge spaces have zero placement advance while both interior letters retain their metrics. Justification explicitly excludes suppressed spaces, so adjustment cannot reopen them."
+
+[[owned]]
+rule = "D.2#4"
+milestone = "M4"
+why = "The observable consequence of this reduction note is now checked at every position where the corresponding visible Western word space is absent. Protocol-v1 cases 3.2.2/western-word-space-collapses-at-line-edges and B.2-note-13/warichu-word-spaces-collapse-at-subline-edges report zero cluster advance at main-line and warichu-subline edges respectively, so there is no residual width for the reduction ladder to remove; the public word-space and warichu acceptance tests also verify that paragraph justification does not recreate such width."
+
+[[owned]]
+rule = "E.2#5"
+milestone = "M4"
+why = "The integrated composer, rather than the construct-blind legacy boundary adapter, now supplies the run identity this note requires. B.2-note-9/ornamented-complex-run-aware-expansion holds four full-em bases on a justified non-final line with 250 units left: the boundary inside one Script remains at 1000, the boundary between two Script constructs advances from 2000 to 2250, and the later residual boundary receives nothing. This simultaneously observes the third-order precedence, the quarter-em ceiling at the amount exercised, and the same-run withdrawal through the versioned process protocol."
+
+[[owned]]
+rule = "E.2#6"
+milestone = "M4"
+why = "Simple-ruby identity is now computed inside the integrated composer: a Group Ruby is one complex, and each Mono Ruby association is a distinct simple-ruby complex even when several associations share one public Ruby value. Protocol-v1 case E.2-note-6/simple-ruby-complex-run-aware-expansion places two bases under one Group Ruby followed by a separate Group Ruby and a residual boundary. Only the different-complex boundary receives the available 250 units; the public acceptance test independently checks that two Mono runs take the same distinct-complex path."
+
+[[owned]]
+rule = "E.2#7"
+milestone = "M4"
+why = "The new paragraph pipeline carries one Jukugo complex identity across every RubyRun in a compound and a new identity for the next Jukugo construct. Protocol-v1 case B.2-note-11/jukugo-ruby-complex-run-aware-expansion therefore keeps the first internal base boundary solid, assigns all 250 available units to the following different-compound boundary at stage three, and leaves the residual boundary untouched. The response includes both base placements and annotation attachments, so the result is checked entirely through the black-box contract."
+
+[[non-observable]]
+rule = "E.2#11"
+why = "The note offers an alternative way to give a fourth order expansion opportunity between two Western characters, but — unlike E.2#8's and E.2#9's own alternatives, each of which states a concrete ceiling (E.2#9's own words: 'to take up to a maximum of a quarter em space') — it states no ceiling at all: 'fourth order' is §3.8.4 step (d)'s own residual stage, the one `Expansion::Residual` represents, open-ended by definition rather than merely uncaptured. That distinction is what this round's decision turns on, not reachability, which is no longer the blocker (ADR-0021). Table 6's own cl-27-against-cl-27 cell states `limit: None` as its own captured default, confirmed directly against `spec/captured/table6.en.tsv`'s own reconciliation note, which records that 'note 11 -- on a *white* cell -- offers \"an alternative way to give a fourth order opportunity\" only as a deviation from the table's own default reading of \"blank\"' — the blank cell is what the source PDF's own fill color states, not a placeholder standing in for an unresolved note. `Boundary::expansion_rule()` reads `Some(RuleId::E_2_NOTE_11)` at this coordinate regardless of that default (ADR-0021's own amendment, 2026-08-09), and no question in `spec/derived/questions.tsv` is addressed to `E.2#11` (checked directly).\n\nThe classification decision: no case is authored, and this rule is `[[non-observable]]` because the cited provision leaves no single required black-box result. §3.8.4 step (d)'s own Note — the only other place in the document that discusses a fourth-order opportunity at this identical class pair, naming 'the spacing between Western characters (cl-27)' explicitly — attributes the residual expansion this coordinate would carry to a JIS X 4051 provision that JIS itself calls 処理系定義 (implementation-defined): 'it depends on each layout processing system whether inter-character spacing should be added equally. This includes the spacing between Western characters (cl-27)' (spec/snapshot/index.html, the Note under §3.8.4 item (d), id 'n173'). This connection is an inference from coordinate coincidence rather than a citation E.2 note 11's own sentence states directly — note 11's own text (spec/snapshot/index.html, list item id668) reads exactly as concretely as note 9's, 'There is an alternative way to give a fourth order opportunity...', with no reference to JIS X 4051 or to any standard's own discretion — but step (d)'s Note is the only sentence anywhere in JLReq that discusses a residual, fourth-stage opportunity at cl-27-against-cl-27, and it is explicit that the specification JLReq is itself built on treats the question as outside its own scope to answer, for exactly this class pair. A case asserting `expansion: { kind: \"none\", rule: \"E.2#11\" }` would consequently not be making the same kind of claim the cases under `E.2#8` and `E.2#9` above make: those assert a real captured default (a real Table 6 cell) against a concrete, textually stated alternative this workspace's policy space merely cannot yet select; this coordinate's alternative is one JLReq's own citation says no single answer is required for at all, residual and open-ended rather than a stated ceiling, so a `kind: \"none\"` case here would assert a JLReq requirement that, on this coordinate's own evidence, does not exist to assert — measuring kumihan's own bookkeeping choice to leave the JIS X 4051 alternative unimplemented rather than anything JLReq's own text requires of a conforming engine."
+
+[[owned]]
+rule = "E.2#12"
+milestone = "M4"
+why = "Tate-chu-yoko run identity now flows through vertical composition and line adjustment together. Protocol-v1 case E.2-note-12/tate-chu-yoko-run-aware-expansion places two full-em clusters in one horizontal-in-vertical run, a third cluster in a distinct run, and one ordinary following cluster. The first two placements share inline coordinate zero, the distinct run starts at 1250 after receiving the 250-unit third-stage opportunity, and the residual boundary remains unexpanded."
+
+# The rules a milestone already covers. See the header: an entry is held to the opposite
+# invariant from a deferral, so removing the case fails rather than passing.
+
+[[owned]]
+rule = "3.1.2"
+milestone = "M0"
+why = "The rule states the character advance of cl-01, cl-02, cl-05, cl-06 and cl-07 as half-width, which is what separates those listings from §A.27's on a declared frame, and it is the reason `Text::new` requires a frame on their keys at all (ADR 0018). Forty-two classification cases rest their answer on it. The conditional space the same section states is Table 1 data and arrives with `jlreq-spacing`; the coverage gate is per rule, and a later milestone adding composition cases to a covered rule is not a state this file records."
+
+[[owned]]
+rule = "3.2.4"
+milestone = "M0"
+why = "The rule and its Note put full-width and fixed-width Latin letters and European numerals with the ideographs (cl-19), which is one of the three answers a declared frame gives a key both §A.19 and §A.27 name; twenty-seven classification cases turn on it."
+
+[[owned]]
+rule = "3.2.6"
+milestone = "M0"
+why = "The Note states the other two: proportional Western text is cl-27, and a half-width European numeral mixed with Japanese text is cl-24. It is the one sentence outside Appendix A that gives an occurrence to a class which is membership in a construct, and twenty-three classification cases turn on it."
+
+[[owned]]
+rule = "3.9.1"
+milestone = "M0"
+why = "The rule states that positioning varies with the character class, the writing mode, the neighbors and the adjustment in force, which is why a class is a property of an occurrence rather than of a code point (ADR 0008); ninety-nine classification cases cite it beside the table they read."
+
+[[owned]]
+rule = "3.9.2"
+milestone = "M0"
+why = "Appendix A classification remains private but all three caller-selectable ambiguity decisions are observable through layout. Protocol-v1 cases 3.9.2/unlisted-code-point-ideographic-override, 3.9.2/ambiguous-context-highest-class-override, and 3.9.2/grouped-numeral-by-role-without-role-is-western distinguish the non-default answers by spacing or break choice. `classification_choices_change_black_box_spacing_and_breaks` independently exercises the same typed Rust settings without exposing a class identifier."
+
+[[owned]]
+rule = "3.7.1"
+milestone = "M0"
+why = "The rule states that a mathematical formula is set as Western text, which is what puts its characters in cl-27 rather than in the class the same key carries in Japanese running text; ten classification cases read it."
+
+[[owned]]
+rule = "3.1.10"
+milestone = "M0"
+why = "The rule states that a line may not break inside a grouped numeral (連数字), a unit symbol or a Western word, which is what makes cl-24, cl-25 and cl-27 runs rather than per-occurrence answers; six classification cases read it as the reason a construct is what decides those classes."
+
+[[owned]]
+rule = "C.3"
+milestone = "M0"
+why = "The addendum states the four levels of line-breaking convention and the classes each relaxes, and §C.2's notes define the strictest by reference to it, so it is the selector the reclassification reads (`kinsoku.level`, `kinsoku.relaxation_mechanism`); thirty classification cases record the readings it permits."
+
+[[owned]]
+rule = "C.2#1"
+milestone = "M0"
+why = "The note moves an iteration mark (cl-09) at a line head into cl-19 and says to read the ideographic cells, which is a change of class rather than of permission and therefore `jlreq-class`'s answer."
+
+[[owned]]
+rule = "C.2#2"
+milestone = "M0"
+why = "The note treats a prolonged sound mark (cl-10) as katakana (cl-16) under the relaxed conventions, which is the same mechanism read over §A.10's key."
+
+[[owned]]
+rule = "C.2#3"
+milestone = "M0"
+why = "The note treats a small kana (cl-11) as the full-size kana, which is the same mechanism read over §A.11's forty keys and the reason `spec/derived/scripts.tsv` is generated."
+
+[[owned]]
+rule = "B.2#14"
+milestone = "M0"
+why = "The note states the three ways an iteration mark at a line head may be dealt with, one of which is the reclassification §C.2 note 1 states; it is the permission `Question::ITERATION_MARK_AT_LINE_HEAD` carries."
+
+[[owned]]
+rule = "B.2#15"
+milestone = "M0"
+why = "The note is §C.2 note 2's spacing half, and the class it names is what `jlreq-class` answers when the relaxation is in force."
+
+[[owned]]
+rule = "B.2#16"
+milestone = "M0"
+why = "The note is §C.2 note 3's spacing half, over the small kana."
+
+[[owned]]
+rule = "E.2#1"
+milestone = "M0"
+why = "The note is §C.2 note 1's expansion half; the class an iteration mark is treated as belonging to is the same answer read from the other ladder."
+
+[[owned]]
+rule = "E.2#2"
+milestone = "M0"
+why = "The note is §C.2 note 2's expansion half, over the prolonged sound mark."
+
+[[owned]]
+rule = "E.2#3"
+milestone = "M0"
+why = "The note is §C.2 note 3's expansion half, over the small kana."
+
+[[owned]]
+rule = "3.1.7"
+milestone = "M1"
+why = "The line-head prohibition is `jlreq-line`'s answer and no layer of this workspace produces one yet. Its case is published now because the classification the prohibition is stated over is what M0 answers: A.6/line-start-prohibition/every-kinsoku-level asks the boundary question, is reported as not attempted, and is a statement to another implementation rather than a measurement of this one."
+
+[[owned]]
+rule = "3.1.8"
+milestone = "M1"
+why = "The line-end prohibition, published as a boundary case for the reason §3.1.7's is and answered by nothing here yet."
+
+[[owned]]
+rule = "3.1.11"
+milestone = "M1"
+why = "The rule forbids a break between two consecutive middle dots and the like; its case asks the boundary question, which `jlreq-spacing` and `jlreq-line` will answer at M1."
+
+[[owned]]
+rule = "3.3.8"
+milestone = "M1"
+why = "The legacy cases retain rule 1's forced-separation and cl-16-classification evidence. The unified pipeline now completes the observable placement side: it measures every placed ruby span against its base, splits the positive surplus by the selected integer remainder direction, subtracts the permission supplied by the actual neighboring character or first-line indent, and feeds the remaining boundary demand back into optimal line measurement before final placement. The public long_ruby_respects_neighbor_and_indent_overhang_budgets test covers long group ruby between cl-19 neighbors, all four RubyOverhangKana answers, both RubyOverhangIndent answers, opening brackets, cl-14, and a break-search fixture whose legal result changes only when candidate lines are remeasured. Protocol-v1 cases under B.2-note-1 and B.2-note-8 independently observe the bracket, ideographic-space, and indent branches through base and annotation coordinates. Rules 3, 5, and 6 use direction-specific budgets: only the realized adjacent punctuation space is available on its spacing side, middle-dot capacity is that realized space plus half a ruby em, and the punctuation glyph side permits one ruby em."
+
+[[owned]]
+rule = "3.3.5"
+milestone = "M4"
+why = "Mono-ruby placement supports both typed alignments. Nakatsuki centers a long reading. Katatsuki follows the leading edge where neighbor overhang is permitted and selects the first method explicitly allowed by §3.3.5(c), centered fallback, where adjacent script forbids overhang. `long_ruby_respects_neighbor_and_indent_overhang_budgets` measures the fallback and all neighbor and indent budgets in the unified pipeline; the specification permits the alternative asymmetric method but does not require an engine to expose a second choice beyond the 22 inventoried settings."
+
+[[owned]]
+rule = "3.3.6"
+milestone = "M4"
+why = "The unified ruby pipeline now measures all three length relations. Equal and shorter readings retain the committed legacy cases, and protocol-v1 case 3.3.6/group-ruby-flush-distributes-only-interior-space distinguishes the two shorter-reading methods. For a longer reading, 3.3.6/long-group-ruby-jis-distributes-the-base measures the 1:2:1 edge/interior distribution and 3.3.6/long-group-ruby-flush-distributes-only-the-base-interior measures aligned ends with all surplus between base characters. `group_ruby_longer_than_base_distributes_the_base_by_the_selected_method` independently fixes both Rust views, and group interior breaks and line-adjustment expansion remain prohibited. The extreme-short-reading Note recommends either one or one-and-a-half ruby em and therefore states no single mandatory black-box result for the engine to guess."
+
+[[owned]]
+rule = "3.3.7"
+milestone = "M4"
+why = "Both named jukugo layouts are implemented. Group layout preserves declared run associations and uses the JIS group distribution when a run needs three or more ruby characters. Phonetic layout executes the Appendix F fixpoint and is observed externally by F.1/two-or-fewer-stay-with-base, F.2/following-overhang-precedes-expansion, F.3/expansion-is-proportional-to-reading-length, and F.4/four-ruby-run-expands-only-eligible-base. `phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps` covers the corresponding Rust API geometry and integer remainder behavior."
+
+[[owned]]
+rule = "3.4.2"
+milestone = "M4"
+why = "The unified warichu geometry makes the section's mechanical one-line rules observable rather than crediting a hollow legacy permission case: 3.4.1/warichu-two-balanced-sublines-horizontal and 3.4.1/warichu-two-balanced-sublines-vertical verify small caller-selected sizes, zero gap between the two sublines, full-size opening and closing brackets, ordinary main-line block extent, and centered two-lane placement in both writing modes. The splitter evaluates validated caller-supplied break candidates, minimizes the lane-width difference while preferring that the second lane not exceed the first, and preserves punctuation spacing inside each lane. Caller-chosen font size and the editorial choice to include brackets remain inputs, as the section states."
+
+[[owned]]
+rule = "B.2#7"
+milestone = "M1"
+why = "The integrated long-ruby budget implements all four typed readings. The preferred profile permits one ruby em over hiragana and katakana; the JIS profile narrows that to hiragana; `none` forbids hiragana, katakana, and ideographic neighbors; and `any` permits every neighboring character after the note's punctuation-specific budgets have been applied. Public acceptance coverage compares all four answers on identical geometry. Protocol-v1 case B.2-note-7/any-ruby-overhang-includes-non-japanese-character is deliberately outside the three Japanese script groups: a full-width Latin neighbor supplies the selected overhang, proving `any` was not implemented as only the union of examples the note says it includes."
+
+[[owned]]
+rule = "B.2#10"
+milestone = "M1"
+why = "The note states the spacing at the boundary its case asks about, which `jlreq-spacing` answers at M1."
+
+[[owned]]
+rule = "C.2#6"
+milestone = "M1"
+why = "The unified ParagraphBuilder sees declared script constructs directly. `complex_break_rules_distinguish_internal_and_run_boundaries` rejects a requested break inside one ornamented complex with `input.break-inside-construct` and accepts the same byte boundary between two distinct complexes. `construct_run_boundaries_expand_at_third_order_but_not_inside_one_run` independently proves that the same run identity also suppresses internal line-adjustment expansion."
+
+[[owned]]
+rule = "C.2#7"
+milestone = "M1"
+why = "Simple-ruby run identity is part of the public Ruby input. `ruby_kinds_preserve_base_associations_and_break_semantics` rejects an interior break in group ruby, permits mono-ruby only at declared run boundaries, and verifies that the matching annotation fragment follows each resulting line. No private class or group identifier is exposed."
+
+[[owned]]
+rule = "C.2#8"
+milestone = "M1"
+why = "Jukugo-ruby keeps its per-base RubyRun associations. Protocol-v1 case 3.3.1/jukugo-ruby-splits-only-at-run-boundary, which also names C.2#8, places only the annotation fragment associated with each side of a mandatory run-boundary break. ParagraphBuilder rejects any requested break that is not a declared run boundary, so one base character and its annotation remain indivisible."
+
+[[owned]]
+rule = "C.2#9"
+milestone = "M1"
+why = "The note is read by one classification case and by two boundary cases; the classification half is answered today and the breakability half is `jlreq-line`'s at M1."
+
+[[owned]]
+rule = "C.2#13"
+milestone = "M1"
+why = "The note denies a break inside one tate-chu-yoko run and allows one between two of them, and `jlreq_line::feasible::same_run_refusal` has answered both halves since M1-b round 12. What this round closes is the remaining gap its own former `[[deferred]]` entry named: nothing in `crates/jlreq-conform` ever converted a case's declared `constructs` into a real `jlreq_unit::Runs` overlay, so no case could make the evaluator see a construct at all. The sixth published `kind`, `feasible` (`cases.schema.json`'s own `kind` enum; `crates/jlreq-conform/src/run.rs`'s `Compose::feasible`), and `crates/jlreq-conform/src/kumihan.rs`'s own `overlay_of` close it: `overlay_of` converts a declared `tate_chu_yoko` entry into a `jlreq_unit::Construct`, one fresh `RunId` per array entry, and `Kumihan::feasible` hands the resulting `Runs` straight to `jlreq_line::Feasible::compute`. `C.2/two-characters-in-one-tate-chu-yoko-run/no-break-inside` and `C.2/two-tate-chu-yoko-runs-adjacent/break-permitted` (`crates/jlreq-conform/cases/C.2.json`) exercise the note's own two sentences at a class pair (cl-15 against cl-15, ordinary hiragana) independently verified blank in Table 1, Table 2, Table 3's line-end row and Table 4's line-head row — read directly from `spec/captured/`, not inferred from this evaluator's own answer — so the refusal and the permission each case asserts can only be `same_run_refusal`'s own citation, never a class-pair prohibition coinciding by accident. What this round does not close: `overlay_of` converts only three of the schema's nine construct arrays (`ornaments`, `tate_chu_yoko`, and `ruby` when `style` is stated) and declines the other six honestly rather than guessing — `emphasis`, `jidori`, `formulae`, `warichu`, `furiwake` and `reference_marks` have no `feasible` case and none is owed one by this entry's own account, since no §C.2 note reaches any of them (`same_run_refusal`'s own doc names all six in full). §C.2#6, §C.2#7 and §C.2#8 each gained their own `feasible` cases in a later round (M1 round 12) and their own `[[owned]]` entries above now state that directly; this entry no longer speaks for what those three do or do not measure."
+
+[[owned]]
+rule = "D.2#1"
+milestone = "M1"
+why = "The note states the two quarter ems between a pair of middle dots and their independent reduction priority per table, which `jlreq-spacing`'s evaluator now answers; D.2/two-middle-dots/quarter-em-each-side-reduces-at-a-different-stage-per-table publishes all three tables' readings, but a run of this suite measures only one of them: `crates/jlreq-conform/src/run.rs`'s own `applicable()` selects the single entry whose overlay is a subset of the declared policy, and `Kumihan::default()` declares `Policy::JLREQ`, whose own default answer to `adjustment.reduction_table` is `table-3` — so the Table 4 and Table 5 entries are statements to an implementation that declares those alternatives, never the applicable entry this run selects."
+
+[[owned]]
+rule = "D.2#2"
+milestone = "M1"
+why = "The note states that a full stop's own half em never reduces at this boundary while the trailing middle dot's quarter em does, which `jlreq-spacing`'s evaluator now answers; D.2/full-stop-then-middle-dot/the-full-stops-half-em-never-reduces publishes all three tables' readings, but a run of this suite measures only the Table 3 entry: `crates/jlreq-conform/src/run.rs`'s own `applicable()` selects the single entry whose overlay is a subset of the declared policy, and `Kumihan::default()` declares `Policy::JLREQ`, whose own default answer to `adjustment.reduction_table` is `table-3` — so the Table 4 and Table 5 entries are statements to an implementation that declares those alternatives, never the applicable entry this run selects."
+
+[[owned]]
+rule = "D.2#3"
+milestone = "M1"
+why = "The note gives a comma and a following middle dot three different shapes of reduction, one per table, which `jlreq-spacing`'s evaluator now answers; D.2/comma-then-middle-dot/the-two-components-keep-independent-schedules publishes all three tables' readings, but a run of this suite measures only the Table 3 entry: `crates/jlreq-conform/src/run.rs`'s own `applicable()` selects the single entry whose overlay is a subset of the declared policy, and `Kumihan::default()` declares `Policy::JLREQ`, whose own default answer to `adjustment.reduction_table` is `table-3` — so the Table 4 and Table 5 entries are statements to an implementation that declares those alternatives, never the applicable entry this run selects."
+
+[[owned]]
+rule = "D.2#5"
+milestone = "M1"
+why = "The note states that Table 3, and only Table 3, opens a third-stage reduction of the quarter em a middle dot carries at the line end, which `jlreq-spacing`'s evaluator now answers because `Compose::boundary` reads `boundary.edge` and calls `Adjacency::at_line_end`; D.2/middle-dot-at-line-end/table-3-alone-drains-it-at-the-third-stage publishes all three tables' readings, but a run of this suite measures only the Table 3 entry: `crates/jlreq-conform/src/run.rs`'s own `applicable()` selects the single entry whose overlay is a subset of the declared policy, and `Kumihan::default()` declares `Policy::JLREQ`, whose own default answer to `adjustment.reduction_table` is `table-3` — so the Table 4 and Table 5 entries, both of which this note's own silence leaves rigid, are statements to an implementation that declares those alternatives, never the applicable entry this run selects."
+
+[[owned]]
+rule = "C"
+milestone = "M1"
+why = "Table 2's own generic citation for a cell no §C.2 note or §C.3 level names, which `jlreq_spacing::evaluate::evaluate_breakable` reads straight from the cell regardless of the breakable/prohibited answer; C/opening-bracket-then-middle-dot/an-opening-bracket-never-precedes-a-break asks for it."
+
+[[owned]]
+rule = "D.1"
+milestone = "M1"
+why = "Table 3, 4 and 5's own generic citation for a cell §D.2's numbered notes do not name, which fires whenever the selected table's own reduction is not rigid; D.1/closing-bracket-at-line-end/table-4-protects-what-table-3-and-5-drain asks for all three and the Table 4 entry, where this coordinate stays rigid, agrees with §B.2 note 2's own citation instead, exactly as the legend's own text describes."
+
+[[owned]]
+rule = "E"
+milestone = "M1"
+why = "Table 6's own generic citation for a cell no §E.2 note names. `E/dividing-punctuation-then-western/the-boundary-carries-an-independent-reduction-and-expansion` reads it at cl-04 against cl-27 across all three reduction tables, publishing `boundary.expansion` — ADR-0014's own unit of spacing data, amended by ADR-0021 to carry Table 6's opportunity on the boundary rather than on any one conditional space — as the identical `range` ceiling in every entry, because Table 6's own cell here does not depend on `Question::REDUCTION_TABLE` at all; only `spaces`, the reduction ladder Table 1's own quarter em rides on, differs across the three (a real, shrinking `range` under Table 3 and Table 4, `rigid` under Table 5). An earlier revision of this case predates ADR-0021 and consequently predates `boundary.expansion` itself: it could publish only one ladder per space, so it read `case_space_of`'s own fallback (reduction first, expansion only where rigid) to make Table 5's own entry state an expansion answer at all — an implementation detail of the case format's own translation layer at the time, not a fact about the boundary, and gone now that the format states both facts independently in every entry rather than choosing one per space."
+
+[[owned]]
+rule = "C.2#4"
+milestone = "M1"
+why = "The note's breakability half — Table 2 grants a break between a dividing punctuation mark and its ideographic-space substitute at every kinsoku level — which `jlreq-spacing`'s evaluator now answers; C.2/dividing-punctuation-then-ideographic-space/the-substitute-character-does-not-forbid-a-break asks for it."
+
+[[owned]]
+rule = "C.2#12"
+milestone = "M1"
+why = "The note denies a break between two Western characters unconditionally, which Table 2's own cl-27 row answers at every kinsoku level; C.2/two-western-characters/no-break-without-a-supplied-hyphen asks for it."
+
+[[owned]]
+rule = "C.2#5"
+milestone = "M1"
+why = "The note lists the five ordered pairs of inseparable cl-08 characters with no break opportunity between them and states that every other combination is separable; `jlreq-spacing`'s evaluator now answers both halves from the two items' own Appendix A key, which Table 2's own `(8, 8)` cell — an empty `levels` bitmask citing this note — never could state through class alone. C.2/two-em-dashes/consecutive-identical-marks-forbid-a-break and C.2/em-dash-then-horizontal-ellipsis/different-inseparable-characters-permit-a-break ask for both halves of the note's own worked example; C.2/kunojiten-crossing/the-two-different-marks-the-note-also-names-forbid-a-break asks for one of the two non-identical pairs the note also names."
+
+[[owned]]
+rule = "C.2#10"
+milestone = "M1"
+why = "The note records both readings of a break between a preceding grouped numeral (cl-24) and a trailing Western character (cl-27); `jlreq-spacing`'s evaluator now answers both from `Question::GROUPED_NUMERAL_BEFORE_WESTERN` alone, with no separate kinsoku-level guard needed because `Policy::with`'s own exclusion already refuses a `Policy` naming `breakable` alongside Very strict (`crates/jlreq-spec/src/policy.rs`'s own test). C.2/grouped-numeral-then-western/two-readings-of-the-same-boundary publishes both readings, but a run of this suite measures only one: `Kumihan::default()` declares `Policy::JLREQ`, whose own default answer is `breakable`, so the entry naming `kinsoku.grouped_numeral_before_western = unbreakable` is a statement to an implementation that declares that alternative, never the applicable entry a run of this suite selects."
+
+[[owned]]
+rule = "C.2#11"
+milestone = "M1"
+why = "The note permits a break between a Western character (cl-27) and a postfixed abbreviation (cl-13) except where the preceding Western character is used as a symbol of a quantity or a European numeral; `jlreq-spacing`'s evaluator now answers all three readings the note names. The quantity-symbol reading is `Role::QuantitySymbol`, a caller's own declaration, and C.2/western-character-then-postfixed-abbreviation/an-ordinary-western-character-permits-a-break and C.2/quantity-symbol-then-postfixed-abbreviation/a-declared-role-forbids-a-break ask for the general rule and this exception respectively. The European-numeral reading is scoped out of the case file on purpose: it has no declaration path anywhere in this workspace and is read instead from the occurrence's own Appendix A key — the one adjudicated choice this note leaves open, recorded in docs/decisions/european-numeral-by-code-point.md — and `cases.schema.json`'s own `standing` rule (ADR 0006, `xtask/src/conform.rs`'s own `check_standing`) requires an `unstated` or `adjudicated` case to publish a second, policy-selectable reading beside kumihan's own; this reading has none to publish, since the decision file rejected a caller-declared alternative outright rather than leaving one live. The behavior is real and covered by a unit test in `jlreq-spacing`'s own `evaluate.rs` test module rather than by a conformance case, which is the scope limit this entry states rather than hides."
+
+[[owned]]
+rule = "3.5.1"
+milestone = "M1"
+why = "`jlreq_line::Paragraph::with_first_line_indent` narrows the first line's own measure by the declared amount and no other line's, which is a real composition answer at M1 (`jlreq-line`'s own `# Status`); 3.5.1/three-ideographs-two-lines/only-the-first-line-carries-the-em-indent asks for it, scoped to text needing neither ladder."
+
+[[owned]]
+rule = "3.8.1"
+milestone = "M1"
+why = "The unified optimal search always returns a Layout. Lines that remain wider than the measure after generated reduction and optional hanging carry stable `layout.overfull` diagnostics while retaining drawable placements; feasible lines do not. Protocol-v1 cases D/line-end-full-stop-table-4-is-rigid and D/line-end-full-stop-table-3-reduces distinguish those outcomes, and ordinary non-last justification versus ragged last lines is covered throughout the suite."
+
+[[owned]]
+rule = "3.8.2"
+milestone = "M1"
+why = "Hanging punctuation is part of the unified reduction pipeline rather than a legacy-only ladder. After generated Tables 3 through 5 exhaust their capacity, `hanging_punctuation_closes_only_the_shortfall_reduction_leaves` proves that a full stop or comma may close only the remaining shortfall and that placement coordinates are unchanged. Protocol-v1 case 3.8.2/hanging-closes-the-post-reduction-shortfall measures the same behavior through an external process."
+
+[[owned]]
+rule = "3.8.3"
+milestone = "M1"
+why = "`ladder::reduce` drains Appendix D's reduction stages 2 through 6 in priority order, each stage split across its own sites in proportion to the referent's own character size (the Japanese reading of the rule's own recorded English/Japanese divergence over step 1, `crates/jlreq-line/src/ladder.rs`'s own `# Status`); 3.8.3/middle-dot-ideograph-middle-dot/the-fourth-stage-splits-by-character-size-not-by-site-count puts its two same-stage sites on different boundaries so each one's own share, not only their sum, is observable, and excludes the flat, equal-per-site alternative the divergence's English alone would suggest."
+
+[[owned]]
+rule = "3.8.4"
+milestone = "M1"
+why = "Generated Table 6 cells feed the unified justification ladder in stage order, followed by residual re-leveling. Protocol-v1 case 3.8.4/table-six-third-stage-relevels-the-residual composes two cl-19 clusters from a natural 2000 to a justified 2500, exceeding the captured quarter-em third-stage ceiling only through the specified final re-leveling. Closed cells, Western word-space first-stage expansion, mixed Japanese/Latin ceilings, complex-run suppression, and proportional remainder assignment are fixed by the public API regression suite."
+
+[[owned]]
+rule = "D"
+milestone = "M1"
+why = "Appendix D's own preamble states the reduction procedure runs in numbered priority order, stage by stage, which `ladder::reduce`'s own stage-ordered loop implements; D/two-differently-sized-middle-dots/a-lower-numbered-stage-drains-to-its-own-floor-before-a-higher-one-is-touched-at-all composes a line whose shortfall is closed entirely by a lower stage while a higher one, real and unused, is left untouched."
+
+[[owned]]
+rule = "3.1.12"
+milestone = "M1"
+why = "The rule's own two worked examples — a line repaired by inter-character space reduction, and a line repaired by moving a character to the next line and expanding what it left behind — are real at the line-geometry level now that `crate::Ladder` is filled; 3.1.12/two-worked-examples asks for both, scoped to placements and extent rather than to either repair mechanism (3.8.3, D and 3.8.4's own cases already cover those) or to `Line::pull_up`, which stays `None` under `Search::FirstFit` for a reason stated in that sibling case's own rationale. A third case, 3.1.12/two-worked-examples/optimal-search-reports-the-pull-up-reduction-makes-available, now covers `Line::pull_up` on its own terms: asked of `Search::Optimal` over a paragraph where the ideal, reduction-based repair ④ names is genuinely available, it is the only offered break admitting a complete arrangement at all, and `pull_up` reports it — the missing half the two-case scope above states, closed by this round without widening what either of the first two cases answers."
+
+[[owned]]
+rule = "3.5.2"
+milestone = "M1"
+why = "`jlreq_line::Paragraph::with_indents` narrows every line's own measure from both edges, which the case format can now ask for through `head_indent` and `end_indent`; 3.5.2/two-ideographs-two-lines/head-indent-carries-through-and-end-indent-narrows-the-target measures both halves the rule states, not only one: the head half is the second line's own placement, nonzero exactly because the indent reaches past the first line `first_line_indent` alone would stop at; the end half is the break position itself, since narrowing the target with `end_indent` is what forces this case's two-character text onto two lines rather than the one line it fills without the narrowing."
+
+[[owned]]
+rule = "3.5.3"
+milestone = "M1"
+why = "All four public alignments run through the unified placement pipeline. `line_extent_is_occupied_width_not_the_shifted_end_coordinate` fixes Start, Center, and End origins while preserving occupied inline extent, and justification is exercised by the generated Table 6 cases. Protocol-v1 case 3.5.3/end-alignment-shifts-origin-without-changing-extent observes the line-end method through an external process."
+
+[[owned]]
+rule = "3.7.3"
+milestone = "M1"
+why = "Jidori (字取り) is `jlreq_line::Alignment::EvenSpacing`, real at M1 exactly as this rule's own former `[[deferred]]` entry already said — the honest attribution for that whole-line reading is `jlreq-line`'s milestone. What that entry named as the actual blocker — the case schema's `input.kind` had three questions and none called `align` — is now closed: 3.7.3/three-ideographs/even-spacing-distributes-the-residual-across-both-interior-boundaries asks the new `align` kind for `Alignment::EvenSpacing` over two eligible interior boundaries, and its own rationale attributes the interior distribution to this rule and the resulting `extent` to ADR-0017 plus the fact that both eligible boundaries consumed their share, the same split 3.5.3's own entry draws for `Centered`. This covers only §3.7.3's whole-line reading; the span-inside-a-line reading — `jlreq-inline`'s own `Jidori` construct lowering to `Interior::Filled` (`docs/design/api-spine.md`) — is unbuilt and unmeasured, M4 work as the surrounding entries record it."
+
+[[owned]]
+rule = "3.6.1"
+milestone = "M1"
+why = "Tab characters and typed TabStop declarations are paragraph inputs. ParagraphBuilder enforces the section precondition that each tab on a mandatory-delimited line has a position and type, returning stable `input.insufficient-tab-stops`; sample_engine_reports_builder_input_errors_with_exit_two verifies protocol exit code 2 and the stable code. Protocol-v1 case 3.6.2/specified-character-tab-is-direction-independent observes a valid declaration."
+
+[[owned]]
+rule = "3.6.2"
+milestone = "M1"
+why = "The four tab kinds this rule lists were already real (`crates/jlreq-line/src/tab.rs`'s own `TabKind`: `Start`, `End`, `Centered`, `Character { at: ItemIndex }`, named direction-neutral the way `crate::Alignment`'s own four methods are, because §3.6.2's own Japanese states the horizontal/vertical pair explicitly for the identical rule ADR-0004's direction abstraction collapses); this round's own case format extension and its four cases in `crates/jlreq-conform/cases/3.6.2.json` are what close it, authored independently of `tab.rs` as ADR-0006 requires. `start-alignment` and `end-alignment` each derive their own case's placements by hand from a two-ideograph run's own declared advances (2000 units, Table 1's cl-19-against-cl-19 cell blank), one anchored at the declared position directly and the other pulled back by the run's own width; `specified-character-alignment` derives the anchor from the named item's own natural offset inside the run rather than the run's own start. `center-alignment` is the one of the four this round derived adversarially rather than by direct reading: an even residual would have let this project's own choice of `jlreq_unit::RemainderRule` (`Policy::JLREQ`'s default, `leading`) leak into a `standing: \"normative\"` case as if §3.6.2 itself required it, so the published case uses an odd 1001-unit run instead and publishes both readings — `leading` (1499/2199, extent 2500) and `trailing` (1500/2200, extent 2501) — keyed on `adjustment.remainder`, `standing: \"unstated\"` for the identical reason `jlreq_unit::RemainderRule`'s own doc gives, \"JLReq states no rule; both readings are permitted.\" §3.6.2's own silence on the specified-character kind's occurrence semantics is published separately at `docs/decisions/specified-character-tab-alignment.md`, per this project's own convention for a reading of a specification silence, and is not relitigated by this round's own case."
+
+[[owned]]
+rule = "3.6.3"
+milestone = "M1"
+why = "Tabs participate in paragraph search and placement. `tab_alignments_are_direction_independent` covers all four alignment types in both writing modes. When preceding text passes the remaining stop, an internal tab-before break candidate moves that tab and its target run to the next line, where stop selection restarts; protocol-v1 case 3.6.3/exhausted-stop-continues-at-next-line-first-stop and `exhausted_tab_positions_continue_on_the_next_line` measure §3.6.3(d) directly. Cursor clamping implements the preceding-string overlap rule."
+
+[[owned]]
+rule = "E.2#4"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity of up to a quarter em between two inseparable characters (cl-08) of different kinds, and two cases now measure both halves of its own stated contrast: E.2/two-em-dashes/an-identical-inseparable-character-is-not-a-different-kind reads two occurrences of the same em dash and answers `Expansion::None`, an identical member being certainly of its own kind under every reading this workspace has considered; E.2/em-dash-then-horizontal-ellipsis/two-kinds-open-a-third-stage-quarter-em reads an em dash followed by a horizontal ellipsis, two visibly different marks, and answers the captured quarter em at the third priority stage (`em(180)`, `stage: 3`, Table 6's own `(8, 8)` cell citing this note). Table 1's own cell at cl-08 against cl-08 is blank (`spec/captured/table1.en.tsv`), so this coordinate's whole opportunity rides on Table 6 alone; ADR-0021 (amending ADR-0014) is what made it reachable at all, moving Table 6's opportunity off `ConditionalSpace` — which only ever attached to an existing Table 1 term — and onto `jlreq_spacing::Boundary::expansion`, read independent of Table 1's own terms. The four-kinds partition the evaluator's own `cl_08_same_kind` reads — the em dash, the horizontal ellipsis and the two dot leader each alone, and the vertical kana repeat mark's three code points (U+3033, U+3034, U+3035) together — rests on §C.3's own addendum (whose Very loose level names exactly §C.2 note 5's own five forbidden pairs \"inseparable characters (cl-08) of the same kind\", the identical word 種類 this note uses) and on §A.8's own Remarks column, which states U+3033 and U+3034 are each followed by U+3035 rather than three independent marks; `docs/decisions/inseparable-character-kind.md`'s own \"Why\" section argues both points at length. What is not covered, honestly rather than by omission: the six ordered pairs drawn from {U+3033, U+3034, U+3035} where the adopted mark-family reading (`docs/decisions/inseparable-character-kind.md`, R2) diverges from member identity (R1) are asserted by no case in this suite. `xtask/src/conform.rs`'s own `check_standing` requires an `unstated` or `adjudicated` case to publish at least two `permitted` readings, and `spec/derived/questions.tsv` names no question addressed to `E.2#4` (checked directly: no row's `address` column reads `E.2#4`) — there is consequently no policy-selectable key a second reading could publish under, and a second `{}`-keyed entry would only be a tie-broken duplicate of the first (`crates/jlreq-conform/src/run.rs`'s own `applicable()`), not two published readings. That divergence is instead checked by `jlreq_spacing::evaluate`'s own test module: round 10 added assertions for a same-kind, member-identical pair and for the kunojiten crossing in both orders, which is a measurement of this workspace rather than a statement to another implementation, but is not a conformance case. A `spacing.inseparable_kind` question added to `xtask/src/policy.rs` is the specific change a later round would make to give R1 a second, policy-selectable home; until it exists, the six divergent cells stay unpublished rather than forced into a case format that cannot carry them."
+
+[[owned]]
+rule = "E.2#10"
+milestone = "M1"
+why = "The note gives a third order expansion opportunity between a preceding Western character (cl-27) and a trailing postfixed abbreviation (cl-13), unless the preceding Western character is used as a symbol of a quantity or a European numeral. Two cases now measure the two readings this workspace can publish: E.2/western-character-then-postfixed-abbreviation/the-general-rule-opens-a-third-stage-quarter-em reads an ordinary Western letter with no declared role and answers the captured quarter em at the third priority stage (`em(180)`, `stage: 3`, Table 6's own `(27, 13)` cell citing this note); E.2/quantity-symbol-then-postfixed-abbreviation/a-declared-role-withdraws-the-opportunity reads the identical fixture with `Role::QuantitySymbol` declared on the preceding item and answers `Expansion::None`, its expectation now also asserting `rule: \"E.2#10\"` beside `kind: \"none\"` (round 14), read from `note_governed_expansion`'s own literal `RuleId::E_2_NOTE_10` for this coordinate and corroborated independently by Table 6's own `(27, 13)` cell, which carries the identical citation. Table 1's own cell at cl-27 against cl-13 is blank here too (`spec/captured/table1.en.tsv`), so the whole opportunity again rides on Table 6 alone, reachable only since ADR-0021 moved it onto `jlreq_spacing::Boundary::expansion`. `crates/jlreq-spacing/src/evaluate.rs`'s own `note_governed_expansion` reads the exception through `quantity_or_numeral`, the identical function §C.2 note 11's own `note_governed_refusal` already reads at this coordinate for the breakability question, verbatim rather than a second, independently-drifting reading of the same six words (\"used as a symbol of a quantity or a European numeral\") — that reuse is the load-bearing fact this entry and `C.2#11`'s own entry above both rest on. The European-numeral half of the exception has no case here, for exactly the reason `C.2#11`'s own entry above gives for the identical phrase at the identical coordinate: `is_european_numeral` reads the occurrence's own Appendix A key rather than a caller-declared role (`docs/decisions/european-numeral-by-code-point.md`), and that decision file records that there is no live, policy-selectable second reading for a case to publish, since the alternative — a caller-declared `Role::EuropeanNumeral` — was considered and rejected outright rather than left live. `cases.schema.json`'s own `standing` rule (`check_standing`) requires an `unstated` or `adjudicated` case to carry at least two `permitted` readings, which this branch has none of. The behavior is real and covered by a unit test in `jlreq_spacing::evaluate`'s own test module rather than by a conformance case, the identical scope limit `C.2#11`'s own entry states for the same reading of the same six words."
+
+[[owned]]
+rule = "E.2#8"
+milestone = "M1"
+why = "The note's main clause denies any expansion between a preceding grouped numeral (cl-24) and a trailing postfixed abbreviation (cl-13), and two cases now measure it at two members of cl-13: E.2/grouped-numeral-percent/the-main-clause-denies-expansion (the percent sign, byte-identical to `A.13/grouped-numeral-percent/line-break`'s own input) and E.2/grouped-numeral-degree-celsius/the-alternative-is-scoped-to-the-percent-sign-alone (degree Celsius, byte-identical to `A.13/grouped-numeral-degree-celsius/line-break`'s own), each answering `expansion: { kind: \"none\", rule: \"E.2#8\" }` from Table 6's own `(24, 13)` cell (`limit: None`, citing this note). Both are `standing: \"normative\"`: no question in `spec/derived/questions.tsv` is addressed to `E.2#8`.\n\nScope limit, stated honestly rather than by omission: the note's own second clause states a real alternative — the percent sign, and only the percent sign, reclassified to cl-19, which Table 6's own `(24, 19)` cell backs with a captured half-em, second-stage amount — and this workspace cannot assert that reading as a case today, for two independent reasons the percent-sign case's own rationale documents in full and verifies directly against a scratch probe (removed before commit): `crates/jlreq-class/src/classify.rs`'s own `RECLASSIFICATIONS` table carries no percent-sign entry (only §C.2 notes 1 through 3's three reclassifications, per this project's own changelog), and independently, `crates/jlreq-spacing/src/evaluate.rs`'s own `class_of` resolves every item's class under a hardcoded `Policy::JLREQ` rather than the `policy` parameter `boundary()` itself receives, so no policy this workspace can construct ever changes which Table 6 cell a boundary's classification reaches. `A.13/percent-sign/kinsoku-loose-reclassification`'s own classify-side ladder already publishes the reclassification as a `kinsoku.level: loose` rung, unaudited against this same gap; this round's own cases do not repeat that unaudited claim on the expansion side, and both cases' own `forbidden` arrays name the half-em, second-stage reading a naive reading of the note (and of that classify-side case) would otherwise expect."
+
+[[owned]]
+rule = "E.2#9"
+milestone = "M1"
+why = "The note records the alternative third order expansion opportunity between a grouped numeral (cl-24) and a trailing Western character (cl-27), and one case, E.2/grouped-numeral-then-western-character/the-alternative-is-an-unfilled-policy-slot, now measures the coordinate: `standing: \"normative\"`, answering `expansion: { kind: \"none\", rule: \"E.2#9\" }` from Table 6's own `(24, 27)` cell (`limit: None`, `residual: false`, citing this note), which `spec/captured/table6.en.tsv`'s own reconciliation note confirms is the table's genuine captured default (a *blank* cell, not a placeholder for the note) rather than an artifact of how the note was transcribed. Scope limit, stated honestly: the note's own alternative — a third order, quarter-em opportunity, the identical shape §E.2 note 10 states at `(27, 13)` — is real JLReq text the published format can carry (proof: this file's own `E.2/western-character-then-postfixed-abbreviation/the-general-rule-opens-a-third-stage-quarter-em` case, at that sibling coordinate), but no question in `spec/derived/questions.tsv` is addressed to `E.2#9`, and `Question::GROUPED_NUMERAL_BEFORE_WESTERN` (§C.2#10's own breakability question over the identical class pair) answers nothing about expansion. The case's own `forbidden` array names the note's own quarter-em ceiling as the reading a naive, note-only justifier would wrongly publish; a policy question over this exact class pair is the concrete change a later round would make to give the alternative a second, policy-selectable rung."
+
+[[owned]]
+rule = "3.1.4"
+milestone = "M2"
+why = "The rule's first sentence states that where opening brackets, closing brackets, commas, full stops and middle dots come one after the other, the spacing adjustments Table 1 carries are made; `jlreq-spacing`'s evaluator now answers it, and 3.1.4/closing-bracket-then-opening-bracket/the-closing-brackets-own-half-em reads the plainest such pair, a closing bracket immediately followed by an opening bracket, from the unnoted `1/2 be` cell Table 1 states there — unnoted because no Appendix B note is attached to this coordinate, the identical shape §B's own entry above already reads at a different pair, credited to this rule's own address rather than to Appendix B's bare opening sentence because the coverage this suite counts is per address. The rule's second sentence is the reason this entry exists at all: it makes an exception of full stops (cl-06) among the five classes it names, stating that every half or quarter em this document adds before or after a punctuation mark may in principle be drained by line adjustment, except a full stop's own. 3.1.4/comma-then-opening-bracket/the-half-em-is-subject-to-line-adjustment reads a comma (cl-07) as the positive control — the same `1/2 be` amount, now published across all three reduction tables — but a run of this suite measures only the Table 3 entry, for the reason `crates/jlreq-conform/src/run.rs`'s own `applicable()` and `Kumihan::default()`'s declared `Policy::JLREQ` already give every §D.2 entry above. 3.1.4/full-stop-then-opening-bracket/the-full-stops-own-half-em-never-reduces reads the exception itself, at a full stop followed by an opening bracket: the identical `1/2 be` amount Table 1 states, but rigid under all three reduction tables at once — Table 3, Table 4 and Table 5 each carry a bare `1/2` at this coordinate with no dash, no equals sign and no stage, which is a genuinely different, unanimous shape from the comma's and the closing bracket's own dashed, reducible cells. The rule's own English and Japanese halves diverge over where the exception's own converse — the half em after a full stop at the line end — is scoped, a divergence this case's rationale records in full (both halves quoted, the corroborating Table 3/Table 4 line-end cells named) for a follow-up round to add to xtask/src/defects.rs without re-deriving it; nothing in spec/derived/defects.tsv names §3.1.4 today (checked directly, per this file's own header's practice of stating what a reviewer could disagree with). Cases 2 and 3 publish every reduction table not because the tables disagree at any of their own three coordinates in a way a policy must adjudicate between — Table 3, 4 and 5 are unanimous at the exception's own coordinate, and agree in shape (only their stage and floor differ) at the two reducible ones — but because §3.1.9 and §D.1 already establish, at a different coordinate, that a case's own coverage is counted per address regardless of whether the amount a table states is unique to it. Case 1 publishes only its own Table 3 entry, because its own point is the shape of the amount — one conditional space, owned by the preceding character — and not which table drains it, the question cases 2 and 3 answer instead."
+
+[[owned]]
+rule = "3.1.5"
+milestone = "M2"
+why = "The unified pipeline applies the typed `LineHeadOpeningBracket` choice at both paragraph-first and wrapped line heads. `opening_bracket_line_head_patterns_cover_first_and_wrapped_lines` fixes Pattern 1 at 1000/0 caller units, Pattern 2 at 1500/500, and Pattern 3 at 500/0 for those two positions. Protocol-v1 case 3.1.5/pattern-2-first-and-wrapped-opening-brackets observes both positions through an external process. The retained `jlreq-line` limitation described by the former ledger text therefore does not apply to `kumihan`."
+
+[[owned]]
+rule = "3.1.9"
+milestone = "M2"
+why = "The rule states the half em after a closing bracket, comma or full stop at the line end, the solid alternative, and that the two are the only possibilities; `jlreq-spacing`'s evaluator now answers all of it. §D.1's own legend already reads this rule at cl-02 (closing bracket) against the line end, where Table 4 stays rigid because JIS X 4051 never pads that boundary at all; 3.1.9/full-stop-at-line-end/table-4-alone-stays-rigid-among-the-three reads the coordinate the legend does not — a full stop (cl-06), which §D.1's own legend (not this rule's own text, which draws no distinction among its three named classes) distinguishes explicitly from cl-02 and cl-07 (\"On the other hand, while JIS X 4051 specifies to pad with a half em spacing after full stops... which is not allowed to reduce this spacing\") — and publishes all three reduction tables not because they disagree uniquely at this coordinate (Table 3, 4 and 5 read the same discrete/rigid/discrete shape D.1's own cl-02 case already reads) but because §3.1.9 and §D.1 are separate rule addresses and this suite's coverage is counted per address, not per amount."
+
+[[owned]]
+rule = "3.2.2"
+milestone = "M2"
+why = "The legacy classification cases 3.2.2/proportional-latin-letter/the-basic-approach-in-horizontal-writing, 3.2.2/half-width-european-numeral/both-half-width-and-proportional-fonts-are-used, and 3.2.2/western-word-space/the-third-em-in-principle cover the section first three sentences: proportional Western text, half-width or proportional European numerals, and the normal one-third-em Western word-space frame. The unified pipeline covers the fourth sentence in every scope it names. 3.2.2/western-word-space-collapses-at-line-edges forces proportional U+0020 clusters to both ends of a justified non-final line and observes zero advances with no adjustment inserted beside them; 3.2.2/western-word-space-restores-supplied-interior-width places the same class inside a line and observes the caller-supplied 333-unit advance unchanged. B.2-note-13/warichu-word-spaces-collapse-at-subline-edges repeats the distinction at both heads and ends of two warichu sublines. The public acceptance tests move the same source clusters among all three positions."
+
+[[owned]]
+rule = "B"
+milestone = "M2"
+why = "Appendix B is Table 1 and its notes: the space between two adjacent characters, which is `jlreq-spacing`'s whole subject. B/opening-bracket-then-middle-dot/an-unnoted-cell-cites-appendix-bs-own-sentence reads the coordinate Table 1 states with no note attached at all — cl-01 against cl-05, `1/4 af` — which is what a report cites §B's own opening sentence for rather than one of the forty-seven appendix notes, the identical shape D.1's own legend and E's own bare case already establish for Appendix D and Appendix E."
+
+[[owned]]
+rule = "B.2#2"
+milestone = "M2"
+why = "The note states the preferred half em between a closing bracket and the line end and the JIS X 4051 alternative to set it solid, which `jlreq-spacing`'s `Question::LINE_END_PUNCTUATION` answers as two permitted readings; B.2/closing-bracket-at-line-end/the-question-switches-between-half-em-and-solid asks for both, at the identical coordinate D.1's own case already reads for the reduction-table axis, and states in its own rationale which of the two axes each case varies so neither is mistaken for the other."
+
+[[owned]]
+rule = "B.2#3"
+milestone = "M2"
+why = "The note states that the space between two middle dots is the sum of a quarter em each of them carries, which `jlreq-spacing` answers as two conditional spaces rather than one amount (ADR-0014); B.2/two-middle-dots/the-boundary-is-two-quarter-ems-not-one-half-em asks for it at the unadjusted-amount coordinate D.2 note 1 already reads for the reduction ladder's own staging, publishing one policy reading because the point this case makes is the shape of the sum, not which table drains either half of it."
+
+[[owned]]
+rule = "B.2#4"
+milestone = "M2"
+why = "The note states the preferred quarter em between a middle dot and the line end and the JIS X 4051 alternative to set it solid; `jlreq-spacing` answers the preferred amount and, real but scoped, the absence of a reduction opportunity for it under Table 4 and Table 5, which B.2/middle-dot-at-line-end/the-preferred-quarter-em-and-a-withdrawal-no-question-can-select publishes across all three reduction tables. The note's own outright withdrawal to solid is a different fact from a table's own silence about reducing it, and no question in `spec/derived/questions.tsv` governs a withdrawal at this coordinate at all — `Question::LINE_END_PUNCTUATION` and `Question::LINE_END_FULL_STOP_COMMA` name cl-02, cl-06 and cl-07, never cl-05 — so the case's own rationale and its `forbidden` entry state that scope limit honestly rather than asserting a reading nothing in this workspace's policy space can select."
+
+[[owned]]
+rule = "B.2#5"
+milestone = "M2"
+why = "The note states that the space between a full stop or comma and a following middle dot is the sum of the two amounts those characters carry, which `jlreq-spacing` answers as two conditional spaces; B.2/full-stop-then-middle-dot/the-unadjusted-sum-of-a-half-em-and-a-quarter-em reads the coordinate the note's own first sentence states — a full stop, not a comma — at the identical boundary D.2 note 2 already reads for the reduction ladder's own staging. The note's own second sentence, JIS X 4051's reclassification of a comma as a closing bracket and the single-component reading that follows from it, is a different coordinate this workspace's policy space has no question to express; the case's own rationale states that scope limit rather than forcing it into `disagreements`, which records other implementations' measured behavior and not a divergence internal to the specification's own two conventions."
+
+[[owned]]
+rule = "B.2#6"
+milestone = "M2"
+why = "The note states the preferred half em between a full stop or comma and the line end and the JIS X 4051 alternative, which withdraws only the comma's space and leaves the full stop's untouched — `jlreq-spacing`'s `Question::LINE_END_FULL_STOP_COMMA` answers exactly that asymmetry, encoded explicitly in `crates/jlreq-spacing/src/evaluate.rs`'s own `line_end_punctuation_override`. B.2/comma-at-line-end/the-question-withdraws-only-the-comma asks for it at the comma's own coordinate, where the two policy readings are visibly different, because a case built at the full stop's coordinate would publish two `permitted` entries with identical expectations and demonstrate nothing; the full stop's own half of the asymmetry is stated in the case's own rationale instead."
+
+[[owned]]
+rule = "B.2#12"
+milestone = "M2"
+why = "The note states the quarter em between a preceding unit symbol and a trailing middle dot, and which character carries it, which `jlreq-spacing` answers; B.2/unit-symbol-then-middle-dot/the-trailing-middle-dots-own-quarter-em asks for it across all three reduction tables, declaring the unit symbol through `role: \"unit-symbol\"` the way A.25's own case already establishes, since no code point identifies cl-25 on its own. The note's own second and third sentences, KATAKANA MIDDLE DOT's own zero-space reading when it is itself declared a unit symbol, are a different occurrence from this case's trailing item and are stated as the scope this case does not cover, recorded in its own `forbidden` entry."
+
+[[owned]]
+rule = "B.2#17"
+milestone = "M2"
+why = "The note states the preferred zero space between the line head and an opening bracket (cl-01) and an alternative that keeps a conditional half em, and names §3.1.5 by section title as the place that alternative is laid out. Task #42 (round 15) read that cross-reference as the identification and wired `Question::LINE_HEAD_OPENING_BRACKET`'s own `pattern-2` answer to synthesize exactly this note's own alternative at Table 1's `(0, 1)` coordinate; task #47 (round 17) is the independently authored case phase ADR 0006 requires for it, `B.2/opening-bracket-at-line-head/the-preferred-zero-and-the-retained-half-em`, derived from this note's own two sentences and from the generated tables before this round's own suite run. The preferred zero is a real, checked fact under the declared default: the `{}` entry asserts `spaces: []` together with `rules: [\"B.2#17\"]` at the line head before cl-01, and `rules_fired` puts `RuleId::B_2_NOTE_17` into its own placement slot from Table 1's own `(0, 1)` cell regardless of `spacing.line_head_opening_bracket`'s own answer, so the citation is observable at `Policy::JLREQ`'s own default `pattern-1` even though the half-em space `pattern-2` alone produces is not — `crates/jlreq-conform/src/run.rs`'s own `applicable()` excludes the `pattern-2`-keyed entries below from a `Policy::JLREQ` run without `unselectable()` counting them, the identical standing `3.1.6`'s own entry already states for its own ten quarter-em-keyed siblings. What remained open before this round was not whether the alternative fires — round 15 already proved that in `crates/jlreq-spacing/src/evaluate.rs`'s own test module — but what it should carry: whose em the half em is a fraction of, whether Appendix D's reduction tables govern it, and which of this note's two paired addresses should be cited. This round's own case settles the referent question independently of round 15's own argument, from a class-level pattern round 15's own decision record did not check: `spec/captured/table1.en.tsv`'s own cl-01 column reads a trailing half em, `1/2 af`, at essentially every `before` class this workspace has, so cl-01 genuinely has an 'accompanying' half em of its own for the note's own English ('not to remove a conditional half em spacing accompanying the characters') to retain, independent confirmation of `Referent::Trailing` rather than a re-litigation of it. This round's own case also repairs the reduction question's own ground rather than its answer: round 15's own doc reasoned from `(0, 1)`'s own row in Tables 3 through 5 being the tables' total-grid boilerplate for an absent term, true but narrower than the fact that actually settles it — not a categorical claim that Appendix D's reduction mechanism, scoped to an opportunity 'between two adjacent characters' (`spec/derived/rules.tsv`'s own row for rule `D`), excludes any line edge by definition (a line end has the identical single-neighbor structure, and Appendix D genuinely does reduce real terms there — this file's own `D.1` entry above names the coordinate directly, its own case titled `table-4-protects-what-table-3-and-5-drain`, and `3.1.9`'s own entry above states the identical \"discrete/rigid/discrete shape\" again at a second class), but the narrower, purely empirical fact that the line-*head* row specifically is uniformly rigid across all three tables — `xtask/src/attest.rs`'s own `no_reduction_at_the_line_head` invariant confirms this holds without exception across the entire line-head row of Tables 3, 4 and 5, not only at cl-01's own coordinate (`docs/design/generation.md`'s own cross-table invariant 4). `Reduction::Rigid` is consequently the corrected answer, not a disagreement with round 15's own `Reduction::Rigid` — the case's own third `permitted` entry states the corrected ground positively, publishing Table 5 (the one reduction table whose own interior schedule for cl-01 never drains fully to zero) as still rigid at the line head, and its own `forbidden` entry names the misreading — importing cl-01's real interior schedule wholesale — that the retention framing alone, without the structural argument, would wrongly predict. What remains true of this note that this round does not change: the citation is observable at boundary granularity and still unobservable at space granularity, the split task #44 (round 16) drew on purpose — `ExpectSpace::rule` is still parsed and never read, and `CaseSpace`, the answer side, still carries no `rule` field to compare it against at all, a published API-surface change against `docs/api-frozen.toml` and a round of its own rather than a case-authoring one."
+
+[[owned]]
+rule = "3.1.6"
+milestone = "M2"
+why = "The public cluster contract distinguishes `SentenceMedial` from `SentenceTerminator`. The medial choice is measured by 3.1.6/sentence-medial-role-opens-quarter-em-on-both-sides. The main-body sentence-final rule is measured independently by 3.1.6/sentence-terminator-inserts-one-em, while 3.1.6/sentence-terminator-space-is-withdrawn-at-wrap proves that the inserted em is not carried to the next line head. A following closing bracket remains the stated zero-space exception. The Note forbidding authors from appending a full stop changes caller content before shaping and is editorial rather than layout work."
+
+[[owned]]
+rule = "3.5.4"
+milestone = "M3"
+why = "Widow adjustment moves a break so that the last line of a paragraph carries enough characters. Task #57 (round 21) wrote the implementation: `demerits_of` — the one cost function `Search::FirstFit` and `Search::Optimal` both read — adds a shortfall-proportional term to `Demerits::structural` on a paragraph's own last line, and a `ViolationKind::Widow` naming this rule is reported when the arrangement a search finally settles on still falls short (`docs/decisions/widow-threshold.md`). Task #58 (round 22) is the independently authored case phase ADR-0006 requires for it, `crates/jlreq-conform/cases/3.5.4.json`, three cases derived from §3.5.4's own sentence and from `docs/decisions/widow-threshold.md`'s own four published readings before this round's own suite run, extending the case format with `input.widow_threshold` (`cases.schema.json`'s own description) to let a case state the threshold at all — no case could name this rule before that field existed. What is covered, and by which reading: Q2 — whether a paragraph occupying a single line can itself carry a widow — is `3.5.4/one-line-paragraph/the-only-line-is-still-the-last-line-and-can-be-a-widow`, a two-item, one-line paragraph (`亜亜`) composed with an empty `candidates` array, so the whole text is necessarily one line (`jlreq_line::Candidate`'s own doc: the last line ends where the text does whether or not a candidate says so), whose declared threshold (3) exceeds its own item count (2); the exempting alternative — a one-line paragraph read as immune because it has no earlier line to be short relative to — is stated and rejected in that case's own `forbidden` entry, because §3.5.4's own words carry no such exemption. Q1 — what \"a character\" counts as — is the pair `3.5.4/last-line-item-count/a-threshold-equal-to-the-count-is-satisfied` and `3.5.4/last-line-item-count/a-threshold-past-the-count-is-a-widow`: a two-line paragraph whose last line is two items (`fi` and `if`, two Western-letter clusters on the proportional frame, ADR-0018's own Western-ligature exception) but four code points and four bytes, so an implementation counting either of those instead of items would answer the second case's own `violations` differently from one that counts items the way `docs/decisions/widow-threshold.md`'s own Q1 reads \"a character\" — and the code-point and byte counting alternatives are both stated and rejected in that second case's own `forbidden`, not only in this entry's own prose. Q4 — that an unsatisfiable threshold is met with graceful degradation and an honest violation rather than a refusal — is carried through the same channel by the one-line case above and by the second Q1 case: each has a non-empty `lines` beside a real `violations: [\"3.5.4\"]`, which is what the claim actually is (ADR-0010's own \"composition never refuses to produce lines\"); the first Q1 case, whose own threshold is satisfied, carries no Q4 evidence and is not counted among these two. The second Q1 case's own `forbidden` additionally rejects the relaxation alternative — the threshold silently lowered until the unchanged last line is satisfied — by name, for the reason `docs/decisions/tolerance-exhaustion.md` already gives a structurally identical unsatisfiable-constraint case. Every case's own `standing` is `normative` rather than `unstated`, even though each turns on a published reading of a silence: `conform --check`'s own `check_standing` (ADR-0006) requires `permitted` to carry more than one reading whenever `standing` is `unstated`, `adjudicated` or `alternative`, and none of these three cases has a second reachable answer under any `Policy` question — the rejected alternative in each case lives in `forbidden`, which carries no such requirement, because no policy this workspace has reaches it either. What a run of this suite actually measures, and what it cannot: `crates/jlreq-conform/src/kumihan.rs`'s own `compose` maps every entry of `composition.violations()` through `violation.rule.address().to_string()` alone, discarding `ViolationKind::Widow`'s own `have` and `want` before the case format ever sees them, so this suite checks that §3.5.4 was violated, never by how much — the one channel `Demerits` (this crate's own invented objective function, never itself a JLReq-shaped fact `docs/decisions/widow-threshold.md`'s own \"Why\" states) leaves for a case to assert at all. Two of the four readings stay outside what a case can measure, named rather than left to look covered: Q3, the penalty's own shape (flat or shortfall-proportional), is unconstructible in this format for a reason sharper than difficulty deriving one fixture by hand — no `Policy` question selects a flat penalty, so even a fixture built to show `Search::Optimal` preferring the smaller of two shortfalls would only be consistent with the proportional reading, never a refutation of the flat one in the conformance format's own terms, because the flat alternative has no reachable answer for any case to compare against. Q1's own hanging wrinkle — that a last item `crate::ladder::hang` lets hang past the measure is still counted — requires `adjustment.hanging_punctuation = hanging`, which `Policy::JLREQ` does not select, so a case exercising it would be published but never attempted by `cargo nextest`'s own `section_3_5_4` test, the identical unexercised standing `3.8.2.json`'s own rationale already states about itself; this round declines to publish one for that reason rather than let an unattempted case read as coverage. Coverage consequently rests on Q1's own discriminating pair and Q2's own single-line case, real and attempted (`3 attempted, 0 not attempted`), with Q3 and the hanging wrinkle named as open rather than covered."
+
+[[owned]]
+rule = "3.3.9"
+milestone = "M4"
+why = "The unified `kumihan` pipeline now repeats the caller-selected mark once per shaped base cluster, sizes each mark to one half of that cluster's own inline and block size, centers it on the cluster advance, places it on block-start (above in horizontal-tb and right in vertical-rl), and reserves the largest mark extent for line progression. Protocol-v1 cases `3.3.9/emphasis-horizontal-mixed-size` and `3.3.9/emphasis-vertical-mixed-size` measure the complete geometry through the language-independent process boundary, including two unequal base sizes, symbol choice, attachment count, centering, touching-side coordinates, and line block extent; `crates/kumihan/tests/public_api.rs` independently exercises the same facts through the no_std library surface."

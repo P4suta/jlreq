@@ -1,6 +1,8 @@
 # ADR-0001: the layout core has no std, no I/O, and no font access
 
-- Status: accepted
+- Status: accepted; the historical crate enumeration is superseded by
+  [ADR 0022](0022-unified-public-crate-and-process-conformance.md). The purity rule itself
+  is unchanged and now binds the single `kumihan` library.
 - Date: 2026-08-05
 
 ## Context
@@ -18,11 +20,16 @@ that already has its fonts, or a test that wants a fixed answer.
 
 ## Decision
 
-`jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`, and `jlreq` are `no_std`.
-They do not depend on `std`, on any I/O crate, on any font crate, or on any allocator
-beyond `alloc` where composition genuinely needs to build a result.
+The crate names below record the pre-1.0 topology in which this decision was made. In the
+current topology, their code is private inside `kumihan`, and the same rule applies to the
+whole library.
 
-`jlreq-class` and `jlreq-spacing` do not allocate at all.
+`jlreq-unit`, `jlreq-spec`, `jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`,
+and `jlreq` are `no_std`. They do not depend on `std`, on any I/O crate, on any font
+crate, or on any allocator beyond `alloc` where composition genuinely needs to build a
+result.
+
+`jlreq-unit`, `jlreq-spec`, `jlreq-class`, and `jlreq-spacing` do not allocate at all.
 
 The gate is mechanical, not cultural. `just purity` reads every core manifest and source
 file and fails on a `std` dependency, an I/O or font dependency, or a `std::` path.
