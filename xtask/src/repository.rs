@@ -118,15 +118,15 @@ fn local_links(source: &str) -> Vec<Link> {
                 });
             }
         }
-        if let Some((label, raw_target)) = line.split_once("]:")
-            && label.trim_start().starts_with('[')
-        {
-            let target = markdown_target(raw_target);
-            if is_local_target(target) {
-                links.push(Link {
-                    line: index.saturating_add(1),
-                    target: target.to_owned(),
-                });
+        if let Some((label, raw_target)) = line.split_once("]:") {
+            if label.trim_start().starts_with('[') {
+                let target = markdown_target(raw_target);
+                if is_local_target(target) {
+                    links.push(Link {
+                        line: index.saturating_add(1),
+                        target: target.to_owned(),
+                    });
+                }
             }
         }
     }
@@ -135,10 +135,10 @@ fn local_links(source: &str) -> Vec<Link> {
 
 fn markdown_target(raw: &str) -> &str {
     let trimmed = raw.trim_start();
-    if let Some(opened) = trimmed.strip_prefix('<')
-        && let Some((target, _)) = opened.split_once('>')
-    {
-        return target;
+    if let Some(opened) = trimmed.strip_prefix('<') {
+        if let Some((target, _)) = opened.split_once('>') {
+            return target;
+        }
     }
     trimmed.split_ascii_whitespace().next().unwrap_or_default()
 }
