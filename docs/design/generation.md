@@ -509,9 +509,9 @@ is what [REUSE](https://reuse.software) asks for, and a range nobody can point a
 file is the same species of unfounded claim as a scraped matrix.
 
 Both licenses need a `LICENSES/*.txt` file, and `reuse lint` fails on an unused one, so
-they are added in the same commit as the first snapshot file. `Unicode-3.0` is already on
-`deny.toml`'s allow list; `W3C-20150513` applies to committed documents rather than to a
-crate in the dependency graph, so `cargo deny` never sees it.
+they are added in the same commit as the first snapshot file. `Unicode-3.0` and
+`W3C-20150513` apply to committed documents rather than to crates in the dependency graph,
+so REUSE enforces them and `cargo deny` deliberately does not list or see them.
 
 Three files under `spec/derived/` are read out of the Unicode Character Database rather
 than out of the W3C document, so they carry Unicode's notice and not W3C's. `REUSE.toml`
