@@ -28,12 +28,12 @@ Expect an acknowledgement within seven days.
 
 ## Supported versions
 
-Security fixes are made on the latest 1.x release. Unpublished pre-1.0 snapshots are not
-supported.
+kumihan has no released or supported version yet. Security reports against the development
+branch are still welcome and fixes land on `main`; there is currently no backport policy.
 
 | Version | Supported |
 | --- | --- |
-| 1.x | Yes |
-| < 1.0 | No |
+| `0.0.0` development snapshot | Best effort |
+| Released versions | None exist |
 
 [advisories]: https://github.com/P4suta/kumihan/security/advisories/new

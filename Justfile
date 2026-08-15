@@ -140,7 +140,8 @@ attest:
 conform:
     cargo run --quiet -p xtask -- conform --check
 
-# Reject CRLF in tracked UTF-8 files and broken local Markdown links (CONTRIBUTING.md).
+# Hold the unreleased 0.0.0 state, reject CRLF in tracked UTF-8 files, and reject broken
+# local Markdown links (CONTRIBUTING.md).
 repository:
     cargo run --quiet -p xtask -- repository
 

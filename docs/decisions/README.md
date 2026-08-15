@@ -21,7 +21,7 @@ Each file states four things, in this order and with these headings:
 The conformance suite must carry every reading here with *all* of its readings, not only
 the one this project takes ([conformance.md](../design/conformance.md)). The prose in an
 individual reading preserves names from the implementation it adjudicated; this index links
-to the current private owner after the 1.0 crate unification.
+to the current private owner after the crate unification.
 
 | Reading | Question | Where it applies |
 | --- | --- | --- |

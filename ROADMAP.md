@@ -1,59 +1,64 @@
 # Roadmap
 
-## 1.0 baseline
+## Current status: unreleased 0.0.0
 
-The 1.0 release criteria are complete:
+kumihan has not reached 0.1. Both product packages set `publish = false`; there is no
+released compatibility contract, support line, release date, or implied path to 1.0.
+Passing the repository's implementation and conformance gates is evidence about the current
+tree, not a release decision.
 
-- the public Rust surface is the dependency-free `no_std + alloc` `kumihan` crate;
-- callers provide shaped UTF-8 clusters and break opportunities, then make one `compose`
-  call over a validated `Paragraph`;
-- all nine inline constructs, horizontal and vertical placement, tabs, widow control,
-  mandatory/discretionary breaks, and whole-paragraph optimization share that pipeline;
-- every one of the 22 JLReq 2020 choice points is a dedicated typed Style setting;
-- all 100 observable inventoried rules have protocol-v1 black-box cases;
-- the remaining three editorial and three non-observable statements carry primary evidence;
-- ICU4X byte offsets and HarfRust glyph clusters are exercised by reference integrations;
-- the eight pre-1.0 crates and their compatibility controls have been removed.
+The current implementation is exploring a deliberately small eventual product boundary:
 
-The stable specification identifier is
-`jlreq-2020-08-11+unicode-17.0.0`. Complete JIS X 4051 conformance is not claimed; the
-library implements only the alternatives that JLReq records.
+- one dependency-free `no_std + alloc` Rust library;
+- one validated paragraph composition pipeline for caller-shaped UTF-8 clusters;
+- nine inline constructs, horizontal and vertical placement, tabs, widow control, and
+  whole-paragraph optimization;
+- 22 typed JLReq 2020 Style choices; and
+- a language-independent black-box conformance protocol.
 
-The following headings preserve the stable ownership keys used by the conformance ledger;
-all are complete in the unified pipeline.
+The working specification identifier is `jlreq-2020-08-11+unicode-17.0.0`. Complete JIS X
+4051 conformance is not claimed; the implementation covers only alternatives JLReq records.
 
-## M0 — Classification and specification data (complete)
+## Implemented workstreams
 
-## M1 — Line feasibility and adjustment (complete)
+These headings preserve ownership keys used by the conformance ledger. “Implemented” means
+the current tests exercise the workstream; it does not mean stable or released.
 
-## M2 — Mojikumi spacing (complete)
+## M0 — Classification and specification data
 
-## M3 — Whole-paragraph composition (complete)
+## M1 — Line feasibility and adjustment
 
-## M4 — Inline constructs and Appendix F (complete)
+## M2 — Mojikumi spacing
 
-## M5 — Vertical composition (complete)
+## M3 — Whole-paragraph composition
 
-## Post-1.0 compatibility
+## M4 — Inline constructs and Appendix F
 
-- `Style::default()` remains identical to `Style::jlreq_2020()` forever.
-- A future JLReq revision adds a new dated profile and specification identifier; it does
-  not reinterpret an existing profile.
-- Public additions and removals require an intentional update to `docs/api-1.0.toml` and a
-  semantic-version review.
-- The conformance protocol is versioned independently. An incompatible envelope or body
-  change requires a new `kumihan.conformance/N` identifier.
+## M5 — Vertical composition
+
+## Before any release
+
+- Keep development test-first: reproduce an observable failure, verify Red, implement the
+  smallest coherent behavior, verify Green through the Rust API and protocol suite, then
+  refactor under the architecture gates.
+- Expand mixed-script and vertical reference fixtures, malformed-input fuzz corpora, and
+  arithmetic-extreme coverage.
+- Profile realistic paragraphs without exposing implementation tuning knobs.
+- Treat `docs/api-1.0.toml` as a candidate-surface control only; compatibility remains open
+  to change before an explicit release decision.
+- Do not remove `publish = false`, create a version tag, or move changelog entries out of
+  `Unreleased` as part of ordinary development work.
+
+## Candidate long-term invariants
+
+These are design goals to evaluate before a stable release, not current promises:
+
+- `Style::default()` remains identical to `Style::jlreq_2020()`.
+- A future JLReq revision adds a dated profile and specification identifier rather than
+  reinterpreting an existing profile.
+- The conformance protocol uses a new `kumihan.conformance/N` identifier for incompatible
+  envelope or body changes.
 - Integer layout results remain bit-identical across supported targets.
-
-## Ongoing work
-
-Development remains test-first: reproduce an observable failure, verify Red, implement the
-smallest coherent behavior, verify Green through the Rust API and protocol suite, then
-refactor under the architecture gates.
-
-Useful post-1.0 improvements include broader mixed-script and vertical reference fixtures,
-more fuzz corpus seeds for malformed ranges and arithmetic extremes, performance profiling
-without public tuning knobs, and conformance cases for clarified future JLReq revisions.
 
 ## Permanent non-goals
 

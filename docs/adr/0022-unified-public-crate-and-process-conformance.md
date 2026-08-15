@@ -19,9 +19,10 @@ language must be testable without reproducing Rust types or kumihan's private ph
 
 ## Decision
 
-The only public library is `kumihan`, a dependency-free `no_std + alloc` crate. Its private
-modules follow the one-way graph in [ARCHITECTURE.md](../../ARCHITECTURE.md), but module
-boundaries are not products and no compatibility layer preserves the old crates.
+The only intended public library is `kumihan`, a dependency-free `no_std + alloc` crate.
+The workspace remains unpublished at `0.0.0`. Its private modules follow the one-way graph
+in [ARCHITECTURE.md](../../ARCHITECTURE.md), but module boundaries are not products and no
+compatibility layer preserves the old crates.
 
 The only second public contract is the versioned NDJSON process protocol implemented by the
 binary-only `kumihan-conformance` package. It exchanges pre-shaped input and observable
@@ -35,8 +36,9 @@ reference-integration dependencies remain outside `kumihan`. The `api`, `directi
 ## Consequences
 
 Users have one validated paragraph builder and one infallible composition call. Internal
-algorithms and provenance can evolve without multiplying public crates, while the exact 1.0
-Rust names and protocol-v1 messages remain stable contracts.
+algorithms and provenance can evolve without multiplying public crates. The candidate 1.0
+Rust names and protocol-v1 messages are mechanically controlled during development, but do
+not become stable compatibility contracts until an explicit release decision.
 
 Historical ADRs and changelog entries retain their old crate names because they record the
 reasoning that produced the implementation. Current indexes and architecture documents point

@@ -32,6 +32,7 @@ for line in layout.lines() {
 # Ok::<(), kumihan::InputError>(())
 ```
 
-See the [repository guide](https://github.com/P4suta/kumihan) for scope, shaping and
-segmentation integrations, the language-independent conformance protocol, and development
-policy. API documentation is on [docs.rs](https://docs.rs/kumihan).
+See the [repository guide](https://github.com/P4suta/kumihan) for the unreleased development
+status, scope, shaping and segmentation integrations, the language-independent conformance
+protocol, and development policy. Generate API documentation locally with
+`cargo doc -p kumihan --open`.

@@ -1,11 +1,12 @@
-# The 1.0 API spine
+# The candidate 1.0 API spine
 
 This is the human-readable contract for the only public Rust library, `kumihan`. The exact
 directly exported names and the 22 Style mappings are machine-readable in
 [`docs/api-1.0.toml`](../api-1.0.toml) and checked in both directions by `xtask api`.
 
-This document describes the released 1.0 contract. The old multi-crate API is not carried
-forward and has no compatibility facade.
+This document describes a candidate 1.0 contract for the unreleased `0.0.0` workspace. It
+is a mechanical design control, not a compatibility promise. The old multi-crate API is not
+carried forward and has no compatibility facade.
 
 ## Principles
 
@@ -137,4 +138,5 @@ conflict code.
 `Style::default()` never changes meaning. A new specification revision adds a dated profile
 and a new specification identifier. The process protocol is versioned separately.
 
-The 1.0 release has no compatibility layer for the former pre-1.0 API.
+The candidate 1.0 design has no planned compatibility layer for the former experimental
+API. Until an explicit release decision, all of this surface may still change.

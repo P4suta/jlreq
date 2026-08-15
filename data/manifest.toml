@@ -11,7 +11,7 @@
 
 [[file]]
 path = "ROADMAP.md"
-sha256 = "565a955ea1a28f99ccc79a280db47fa4060b614b65e97efda824873cf7f16c6e"
+sha256 = "97e1c4eb09fb9da11e087fd2213fb6354a673ce9c69fe2c3f14d8e586e36a212"
 
 [[file]]
 path = "crates/kumihan-conformance/protocol.schema.json"
@@ -63,7 +63,7 @@ sha256 = "54ab20802eff2ae1c5e5582881c3a01b4bc1ba35ff9d24a311abd5e7c073336e"
 
 [[file]]
 path = "docs/api-1.0.toml"
-sha256 = "f72aa7cb94319a98402dccfe5682be72214265dea7f34fe43966fa171327e07d"
+sha256 = "d9bd434a911a3d5fcb2d000068827fee1b2cffb661c47986fb2320eabbfa788a"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"

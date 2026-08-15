@@ -12,9 +12,12 @@ The public surface is deliberately limited to:
 Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
 remain the caller's responsibility.
 
-Version 1.0 implements the complete public pipeline. The conformance inventory reports zero
-mechanically implementable deferrals; three editorial and three non-observable statements
-are classified with evidence rather than represented by empty cases.
+This repository is an unreleased `0.0.0` development snapshot. It has not reached 0.1, and
+neither package is publishable. The implementation exercises the candidate end-to-end
+pipeline while its API and behavior remain free to change. The conformance inventory
+currently reports zero mechanically implementable deferrals; three editorial and three
+non-observable statements are classified with evidence rather than represented by empty
+cases.
 
 ## Quick start
 
@@ -118,8 +121,9 @@ just ci             # all practical CI checks, including no_std and WASM
 cargo run -p kumihan-conformance -- list
 ```
 
-The exact 1.0 names are frozen in [`docs/api-1.0.toml`](docs/api-1.0.toml). The gate
-checks both missing and extra exports, as well as all 22 typed Style mappings.
+The candidate 1.0 names are tracked in [`docs/api-1.0.toml`](docs/api-1.0.toml). This is a
+development control, not a released compatibility promise. The gate checks both missing and
+extra exports, as well as all 22 typed Style mappings.
 
 ## License
 

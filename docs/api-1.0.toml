@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Exact public names for the only Rust library released as kumihan 1.0. Signatures and
-# openness are checked by xtask's structural API pass; this file makes additions and
-# removals deliberate. Implementation modules remain private.
+# Candidate public names for a possible kumihan 1.0. The workspace remains an unpublished
+# 0.0.0 snapshot, so this is a development control rather than a compatibility promise.
+# Signatures and openness are checked by xtask's structural API pass; this file makes
+# additions and removals deliberate. Implementation modules remain private.
 
 [[module]]
 path = "kumihan"
