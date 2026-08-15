@@ -65,7 +65,7 @@ applies to its own at-most-two-spaces bound) — across every one of Table 6's 4
 cells, zero sit at a Table 1 coordinate that carries two terms. `xtask attest`'s
 `expansion-needs-no-referent` invariant asserts this over the captured tables on every run,
 so a future revision of either table that broke the assumption would fail the build rather
-than silently produce a `jlreq_line::ladder::Site` asked to carry two owners' worth of
+than silently produce a private `pipeline::ExpansionSite` asked to carry two owners' worth of
 expansion room in the one slot ADR-0014's own bound gives it.
 
 `ConditionalSpace::reduction` and everything about the D.2 stage split are unaffected: a

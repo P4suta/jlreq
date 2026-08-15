@@ -10,8 +10,9 @@ body:
     attributes:
       value: >-
         For output you believe is composed incorrectly, use **Layout disagreement** instead.
-        For a panic or hang on untrusted input, see [SECURITY.md](../../SECURITY.md) first —
-        that is a security report, not an issue.
+        For a panic or hang on untrusted input, see the
+        [security policy](https://github.com/P4suta/kumihan/security/policy) first — that is
+        a private security report, not an issue.
 
   - type: textarea
     id: what
@@ -33,6 +34,6 @@ body:
     id: version
     attributes:
       label: Version
-      placeholder: "jlreq 0.1.0, rustc 1.85.0, x86_64-unknown-linux-gnu"
+      placeholder: "kumihan 1.0.0, rustc 1.85.0, x86_64-unknown-linux-gnu"
     validations:
       required: true

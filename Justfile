@@ -14,6 +14,10 @@ core_crates := "-p kumihan"
 # conformance product is an external black-box runner.
 mutant_crates := "-p kumihan"
 
+# A developer must be able to inspect an archive before committing; CI packages a clean
+# checkout and therefore deliberately omits Cargo's dirty-tree escape hatch.
+package_dirty := if env_var_or_default("CI", "") == "true" { "" } else { "--allow-dirty" }
+
 # List the available development commands.
 default:
     @just --list
@@ -49,6 +53,13 @@ test-ci:
 # Build public documentation with warnings denied.
 doc:
     cargo doc --workspace --all-features --no-deps
+
+# Build and verify the public library archive, then inspect every file Cargo would put in the
+# CLI archive. Cargo cannot create that second archive until its exact-version kumihan
+# dependency has been published; the CLI's workspace build, tests, and MSRV run separately.
+package:
+    cargo package -p kumihan --locked {{package_dirty}}
+    cargo package -p kumihan-conformance --locked {{package_dirty}} --list
 
 # Compile no-default, every individual feature, and representative feature pairs.
 feature-matrix:
@@ -129,6 +140,10 @@ attest:
 conform:
     cargo run --quiet -p xtask -- conform --check
 
+# Reject CRLF in tracked UTF-8 files and broken local Markdown links (CONTRIBUTING.md).
+repository:
+    cargo run --quiet -p xtask -- repository
+
 # Spell-check the repository.
 typos:
     typos
@@ -178,7 +193,7 @@ mutants crate="":
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
-design: purity placeholder api direction derive-check generate-check attest conform
+design: purity placeholder api direction derive-check generate-check attest conform repository
     @echo "design gates passed"
 
 # Fast deterministic checks used during the edit/commit loop.
@@ -186,5 +201,5 @@ check: fmt-check toml-check typos lint design shear reuse actionlint zizmor
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv
     @echo "local CI passed"

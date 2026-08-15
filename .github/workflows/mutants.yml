@@ -5,14 +5,10 @@
 # Mutation testing (cargo-mutants) for the sole public Rust library. xtask is tooling and
 # kumihan-conformance is tested through its process protocol.
 #
-# Baseline only (M1-a): this is a report, not a kill-everything gate. cargo-mutants exits
-# non-zero whenever any mutant survives, so a red run here is the expected steady state
-# until M1-b's independently-authored cases (the discipline that already applies to
-# character classification, docs/adr/0006) raise the kill rate. That is why this workflow
-# is separate from `ci.yml` and absent from its `ci-required` aggregation gate — the same
-# precedent `codeql.yml` sets for a slow, non-blocking, regularly-scheduled check — rather
-# than a `just check`/`just ci` recipe, which both stay fast and deterministic gates a
-# developer runs on every commit.
+# This is a scheduled report rather than a required gate: a complete mutation run is slow,
+# and surviving mutants are evidence for the next independently-authored test rather than a
+# reason to hide the report behind a permanently red workflow. The command outcome and full
+# report remain visible in the job summary and artifact.
 #
 # Each matrix leg runs `just mutants <crate>`, scoped to one package the way `-p` scopes
 # every other per-crate gate in this repository (see `just msrv`).
@@ -22,7 +18,7 @@ on:
   workflow_dispatch:
   schedule:
     # Weekly (Thu 04:38 UTC, offset from codeql.yml's Mon 03:27 UTC) so the baseline tracks
-    # the test suite even between direct changes to the four crates under test.
+    # the test suite even between direct changes to the public library.
     - cron: "38 4 * * 4"
 
 permissions:
@@ -55,7 +51,18 @@ jobs:
       # provokes a new lint should still build and run against the tests here. See the
       # Justfile's `mutants` recipe for the fuller version of this reasoning.
       - name: cargo mutants
+        id: cargo_mutants
+        continue-on-error: true
         run: just mutants ${{ matrix.crate }}
+      - name: summarize mutation result
+        if: always()
+        env:
+          MUTANTS_OUTCOME: ${{ steps.cargo_mutants.outcome }}
+        run: |-
+          echo "## cargo-mutants: $MUTANTS_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MUTANTS_OUTCOME" != "success" ]; then
+            echo "Surviving mutants or a runner error were reported; inspect the artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: upload mutants.out
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

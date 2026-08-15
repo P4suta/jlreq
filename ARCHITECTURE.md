@@ -130,6 +130,7 @@ cannot accidentally be judged against a new suite.
   provenance;
 - `conform`: every observable inventoried rule has a protocol-v1 black-box case, and every
   excluded rule has an evidence-backed editorial/non-observable classification;
+- `repository`: tracked UTF-8 files use LF and every local Markdown link resolves;
 - normal Rust tests: invalid input, all style choices, all constructs in both directions,
   paragraph search, placement, and protocol behavior.
 

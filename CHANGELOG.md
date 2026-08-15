@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Restored the §3.3.6 single-character `flush` group-ruby reading as an explicit
+  protocol-v1 black-box case, bringing the built-in suite to 89 cases.
+- Added a repository gate for broken local Markdown links, publishable-package checks in CI,
+  crate-specific package READMEs, and ADR 0022 for the unified 1.0 product boundary.
+
+### Changed
+
+- Updated security support, issue forms, mutation reporting, current decision ownership,
+  and CI wording to describe the 1.0 repository rather than its retired crate graph.
+
 ## [1.0.0] - 2026-08-14
 
 ### Changed

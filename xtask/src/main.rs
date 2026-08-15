@@ -13,10 +13,8 @@
 //! filled in without touching a file any other task shares.
 //!
 //! The gates this design calls for are enumerated in `docs/design/api-spine.md`, and every
-//! one of them is written. Several govern subjects the repository does not hold yet — the
-//! generated tables, the transcribed matrices, the conformance cases — and each of those
-//! reports what it examined and which of its checks had nothing to run over, rather than
-//! reporting a pass. No gate ever states that a check it could not run held.
+//! one of them is written. Every gate reports the exact census it examined, and no gate
+//! ever states that a check it could not run held.
 
 mod api;
 mod attest;
@@ -31,6 +29,7 @@ mod inventory;
 mod placeholder;
 mod policy;
 mod purity;
+mod repository;
 mod shared;
 mod spacing;
 
@@ -48,6 +47,7 @@ const GATES: &[Gate] = &[
     generate::GATE,
     attest::GATE,
     conform::GATE,
+    repository::GATE,
 ];
 
 fn main() -> ExitCode {

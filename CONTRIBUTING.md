@@ -99,6 +99,11 @@ English translation instead carries the kanji and the romanization — "hanging 
 "warichu (割注)".
 
 Use `ADR-0013` inside source comments and a Markdown link such as `docs/adr/0013` in prose.
+
+Tracked UTF-8 files use LF, including on Windows, and local links in tracked Markdown are
+part of the repository contract. Keep links relative so they work in a checkout and run
+`just repository`; the gate rejects CR bytes, missing targets, and links that escape the
+repository while leaving binary files, external URLs, and in-page anchors alone.
 Use canonical JLReq addresses from `spec/derived/rules.tsv` in protocol case metadata.
 
 ## Commits

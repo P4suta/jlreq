@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Dependabot version updates. Weekly PRs for the GitHub Actions the workflows use, and for
-# Cargo crates once any exist. Every commit is prefixed `build(deps)` so the Conventional
+# Cargo dependencies used by the conformance product and its integrations. Every commit is
+# prefixed `build(deps)` so the Conventional
 # Commits gate accepts a Dependabot-authored commit. Patch and minor Cargo updates group
 # together; unrelated majors land on their own so each breaking change is weighed
 # separately.

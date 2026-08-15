@@ -28,6 +28,12 @@ Expect an acknowledgement within seven days.
 
 ## Supported versions
 
-While the project is pre-1.0, only the latest release receives fixes.
+Security fixes are made on the latest 1.x release. Unpublished pre-1.0 snapshots are not
+supported.
+
+| Version | Supported |
+| --- | --- |
+| 1.x | Yes |
+| < 1.0 | No |
 
 [advisories]: https://github.com/P4suta/kumihan/security/advisories/new

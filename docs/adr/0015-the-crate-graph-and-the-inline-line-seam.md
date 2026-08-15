@@ -1,6 +1,7 @@
 # ADR-0015: two crates below the core, and the line layer owns every break
 
-- Status: accepted, amended in part by [ADR 0020](0020-the-seam-carries-no-rule-address.md)
+- Status: superseded by [ADR 0022](0022-unified-public-crate-and-process-conformance.md);
+  retained as the historical derivation of the construct/composition seam
 - Date: 2026-08-05
 
 ADR 0020 corrects two sentences below. `jlreq-spec` depends on `jlreq-unit`, so the two are

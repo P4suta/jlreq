@@ -6,6 +6,10 @@
 name = "kumihan-conformance"
 description = "Language-independent black-box conformance runner for kumihan engines"
 default-run = "kumihan-conformance"
+keywords = ["japanese", "typesetting", "jlreq", "conformance", "text-layout"]
+categories = ["command-line-utilities", "development-tools::testing"]
+readme = "README.md"
+documentation = "https://github.com/P4suta/kumihan/tree/main/crates/kumihan-conformance"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

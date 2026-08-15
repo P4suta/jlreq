@@ -1,6 +1,7 @@
 # ADR-0020: the seam carries no rule address, and `jlreq-spec` depends on `jlreq-unit`
 
-- Status: accepted
+- Status: superseded by [ADR 0022](0022-unified-public-crate-and-process-conformance.md);
+  its no-public-rule-address constraint remains in force
 - Date: 2026-08-06
 
 ## Context

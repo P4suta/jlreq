@@ -1,0 +1,43 @@
+# ADR-0022: one public Rust crate and one process conformance contract
+
+- Status: accepted
+- Date: 2026-08-14
+- Supersedes the crate topology in [ADR 0015](0015-the-crate-graph-and-the-inline-line-seam.md)
+  and its seam-carrier amendment in
+  [ADR 0020](0020-the-seam-carries-no-rule-address.md).
+
+## Context
+
+The pre-1.0 implementation split classification, spacing, line composition, constructs,
+units, specification addresses, conformance, and a facade into separate crates. That graph
+was useful while discovering ownership, but it exposed implementation stages as products.
+Callers had to connect lowering, feasibility, adjustment, and placement themselves, and
+types such as rule addresses and internal indices became compatibility obligations.
+
+Conformance has a different audience from the Rust API. An engine written in another
+language must be testable without reproducing Rust types or kumihan's private phases.
+
+## Decision
+
+The only public library is `kumihan`, a dependency-free `no_std + alloc` crate. Its private
+modules follow the one-way graph in [ARCHITECTURE.md](../../ARCHITECTURE.md), but module
+boundaries are not products and no compatibility layer preserves the old crates.
+
+The only second public contract is the versioned NDJSON process protocol implemented by the
+binary-only `kumihan-conformance` package. It exchanges pre-shaped input and observable
+placements and diagnostics. Classification, rule addresses, adjustment stages, and search
+mechanics never cross either public boundary.
+
+The Rust crate and CLI share a release version but not a dependency surface: JSON and
+reference-integration dependencies remain outside `kumihan`. The `api`, `direction`,
+`purity`, `conform`, and `repository` gates hold these boundaries mechanically.
+
+## Consequences
+
+Users have one validated paragraph builder and one infallible composition call. Internal
+algorithms and provenance can evolve without multiplying public crates, while the exact 1.0
+Rust names and protocol-v1 messages remain stable contracts.
+
+Historical ADRs and changelog entries retain their old crate names because they record the
+reasoning that produced the implementation. Current indexes and architecture documents point
+to the unified owners so those historical names are never mistaken for installable products.

@@ -334,7 +334,7 @@ redundancy is published rather than private.
     independent expansion belongs to. Measured over the whole capture: of Table 6's 494
     non-blank, non-`×` cells, zero sit at a Table 1 coordinate with two terms; a future
     revision of either table that broke that fact fails here rather than leaving
-    `jlreq_line::ladder::Site` asked to carry more expansion room than ADR-0014's own
+    the private `pipeline::ExpansionSite` asked to carry more expansion room than ADR-0014's own
     at-most-two-spaces bound gives it anywhere to put.
 
 Invariant 2 is the strongest, because §E.1's legend explains a Table 6 value by reference to

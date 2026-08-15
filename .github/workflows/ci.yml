@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# CI for kumihan (Japanese line composition following JLReq and JIS X 4051).
+# CI for kumihan (JLReq 2020 Japanese line composition, including the JIS X 4051
+# alternatives JLReq records; complete JIS X 4051 conformance is not claimed).
 #
 # Layout under test:
 #   - kumihan              dependency-free no_std + alloc public library.
@@ -226,6 +227,18 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         run: just doc
 
+  package:
+    name: cargo package (release readiness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@18b1216eba7f8039b0f8d131d5473787f0edce68 # v2.85.3
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - run: just package
+
   typos:
     name: typos
     runs-on: ubuntu-latest
@@ -319,6 +332,7 @@ jobs:
       - purity
       - design
       - doc
+      - package
       - typos
       - msrv
       - reuse
