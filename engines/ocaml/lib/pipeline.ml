@@ -9,6 +9,7 @@
     + choose the line breaks over the {i whole} paragraph, not greedily;
     + measure each chosen line, classify each adjacency, and take Table 1's space;
     + reduce the line where it is too wide (Table 3, 4 or 5), by priority stage;
+    + open a justified line that is too narrow (Table 6), by priority stage;
     + place each cluster at a cursor, and shift the whole line for alignment;
     + report an overfull line and a widow.
 
@@ -31,10 +32,11 @@
 
     A placement's [advance] is what the cluster contributes before the line is
     adjusted -- its shaped advance plus Table 1's space after it. The cursor also
-    carries the reduction applied at that boundary, which is negative. On a line
-    that fits, the two walks agree; on a reduced line the placements sit closer
-    together than their advances say. That is observable, and it is written down
-    nowhere else. *)
+    carries the adjustment applied at that boundary, negative where the line was
+    reduced and positive where it was opened up. On a line that fits, the two walks
+    agree; on an adjusted line the placements sit closer together or further apart
+    than their advances say. That is observable, and it is written down nowhere
+    else. *)
 
 open Model
 
@@ -202,6 +204,29 @@ let is_western_word_space (paragraph : Paragraph.t) (ordinal : int) : bool =
 
 let is_math_token_cluster (paragraph : Paragraph.t) (cluster : Model.cluster) : bool =
   scalar_satisfies paragraph cluster Construct.is_math_token
+
+(** §C.2 note 5's {i kinds} of inseparable character, as §C.3's very loose level
+    enumerates them: each mark is its own kind, and the three code points of the
+    vertical kana repeat mark are one kind between them
+    (docs/decisions/inseparable-character-kind.md). Two occurrences of the same kind
+    are read as one character, which is what §C.2 note 5 refuses to break and what
+    §E.2 note 4 refuses to open. *)
+let cl_08_same_kind (before : int option) (after : int option) : bool =
+  match (before, after) with
+  | Some left, Some right when left = right -> true
+  | Some left, Some right ->
+    let repeat scalar =
+      scalar = kana_repeat_upper || scalar = kana_repeat_voiced_upper
+      || scalar = kana_repeat_lower
+    in
+    repeat left && repeat right
+  | _ -> false
+
+(** The ten European numerals, read from the occurrence's own key rather than from
+    a role the caller declares (docs/decisions/european-numeral-by-code-point.md).
+    §C.2 note 11 and §E.2 note 10 both name them, and both read them here. *)
+let is_european_numeral (scalar : int option) : bool =
+  match scalar with Some scalar -> scalar >= 0x30 && scalar <= 0x39 | None -> false
 
 (* ----------------------------------------------------------------------------- *)
 (* Table 1: the space after a cluster *)
@@ -549,6 +574,42 @@ let apply_reduction (boundary : int) (amount : int64) (adjustments : int array) 
   if boundary >= 0 && boundary < Array.length adjustments then
     adjustments.(boundary) <- Num.i32_sub adjustments.(boundary) (Num.clamp_i32 amount)
 
+(** Share [amount] out over a stage's sites, proportionally to the em each was
+    measured from and never past the room each has, handing the rounding remainder
+    to the leading or the trailing site as §3.8.3 and §3.8.4 leave open.
+
+    Both ladders apportion the same way -- "equally with proportional character
+    size" is §3.8.4's phrase and §3.8.3's method -- so both call this, one to take
+    space away and one to add it. *)
+let apportion (amount : int64) (weights : int array) (capacities : int64 array)
+    (remainder : string) : int64 array =
+  let count = Array.length weights in
+  let weight_sum = Array.fold_left (fun sum weight -> sum +| i64 (max 1 weight)) 0L weights in
+  let divisor = if le weight_sum 1L then 1L else weight_sum in
+  let assigned =
+    Array.init count (fun index ->
+        min64 (Int64.div (amount *| i64 (max 1 weights.(index))) divisor) capacities.(index))
+  in
+  let left = ref (amount -| Array.fold_left ( +| ) 0L assigned) in
+  let order =
+    let ascending = List.init count (fun index -> index) in
+    if String.equal remainder "trailing" then List.rev ascending else ascending
+  in
+  let running = ref true in
+  while (not (le !left 0L)) && !running do
+    let progressed = ref false in
+    List.iter
+      (fun index ->
+        if (not (le !left 0L)) && lt assigned.(index) capacities.(index) then begin
+          assigned.(index) <- assigned.(index) +| 1L;
+          left := !left -| 1L;
+          progressed := true
+        end)
+      order;
+    if not !progressed then running := false
+  done;
+  assigned
+
 (** Share [amount] out over one stage's sites, proportionally to the em each was
     measured from, and hand the rounding remainder to the leading or the trailing
     site as §3.8.3 leaves open. *)
@@ -556,36 +617,12 @@ let distribute_reduction (amount : int64) (sites : reduction_site list) (remaind
     (adjustments : int array) : unit =
   if (not (le amount 0L)) && sites <> [] then begin
     let sites = Array.of_list sites in
-    let weight_sum =
-      Array.fold_left (fun sum site -> sum +| i64 (max 1 site.site_weight)) 0L sites
-    in
-    let divisor = if le weight_sum 1L then 1L else weight_sum in
     let assigned =
-      Array.map
-        (fun site ->
-          min64
-            (Int64.div (amount *| i64 (max 1 site.site_weight)) divisor)
-            (i64 site.site_capacity))
-        sites
+      apportion amount
+        (Array.map (fun site -> site.site_weight) sites)
+        (Array.map (fun site -> i64 site.site_capacity) sites)
+        remainder
     in
-    let left = ref (amount -| Array.fold_left ( +| ) 0L assigned) in
-    let order =
-      let ascending = List.init (Array.length sites) (fun index -> index) in
-      if String.equal remainder "trailing" then List.rev ascending else ascending
-    in
-    let running = ref true in
-    while (not (le !left 0L)) && !running do
-      let progressed = ref false in
-      List.iter
-        (fun index ->
-          if (not (le !left 0L)) && lt assigned.(index) (i64 sites.(index).site_capacity) then begin
-            assigned.(index) <- assigned.(index) +| 1L;
-            left := !left -| 1L;
-            progressed := true
-          end)
-        order;
-      if not !progressed then running := false
-    done;
     Array.iteri
       (fun index site -> apply_reduction site.site_boundary assigned.(index) adjustments)
       sites
@@ -623,6 +660,263 @@ let prepare_line_reductions (paragraph : Paragraph.t) (style : Style.t) ~(line_s
     end;
     incr stage
   done
+
+(* ----------------------------------------------------------------------------- *)
+(* Line expansion (§3.8.4, Table 6) *)
+(* ----------------------------------------------------------------------------- *)
+
+(** A place a justified line may be opened up at.
+
+    Reduction and expansion are not the same shape. A reduction shrinks an amount
+    Table 1 stated, so it rides along with whichever of the two neighbors
+    contributed that amount, and one boundary can carry two of them. Table 6 states
+    one cell per class pair and names no neighbor at all (ADR 0021), so a boundary
+    carries at most one expansion opportunity -- and carries one even where Table 1
+    left the boundary solid, which is most of ordinary Japanese running text. *)
+type expansion_site = {
+  grow_boundary : int;  (** The boundary's index within the line. *)
+  grow_weight : int;  (** The em the ceiling was measured from. *)
+  grow_bounded : (int * int) option;
+      (** How much one of the first three stages may add here, and which stage. *)
+  grow_residual : bool;  (** Whether step (d) may keep adding here after that. *)
+}
+
+(** Class 26, the Western word space. Not one of {!Spec}'s named classes, because
+    nothing but §3.8.4 step (a) asks for it by number. *)
+let western_word_space_class = 26
+
+let push_grow sites ~boundary ~weight ~bounded ~residual =
+  if bounded <> None || residual then
+    sites :=
+      {
+        grow_boundary = boundary;
+        grow_weight = weight;
+        grow_bounded = bounded;
+        grow_residual = residual;
+      }
+      :: !sites
+
+(** §3.2.2: a Western word space at either edge of a line disappears entirely.
+
+    It is not merely set to zero -- there is nothing there any more -- so neither
+    the space itself nor the boundary against it is a place §3.8.4 may open up.
+    Reduction reads the same edge differently, and deliberately: it shrinks the
+    space's own stated advance, which still exists as a number even where the line
+    does not show it. *)
+let is_collapsed_word_space (paragraph : Paragraph.t) (ordinal : int) ~(line_start : int)
+    ~(line_end : int) : bool =
+  is_western_word_space paragraph ordinal && (ordinal = line_start || ordinal + 1 = line_end)
+
+(** A third of [value], rounded up, which {!Model.half_of} and {!Model.quarter_of}
+    are the other two of. *)
+let third_of (value : int) : int = (value / 3) + if value mod 3 <> 0 then 1 else 0
+
+(** How wide the space at a boundary may become, measured from [weight].
+
+    Every cell states its own ceiling and most of them are the whole answer. The
+    exception is §3.8.4 step (b)'s quarter em between Japanese text and Latin
+    script text, which the style opens to a half em, to a third of an em, or -- when
+    it reads that quarter em as a fixed space adjustment does not touch -- no
+    further than the quarter em it already is, which leaves nothing to add.
+
+    {b Which boundary is step (b)'s} is a policy and not a reading. Step (b)'s own
+    sentence names three Japanese classes and three Latin ones, nine coordinates in
+    each direction; §3.8.4's Note, which is where the third answer comes from,
+    names [漢字等（cl-19）など] and the same three Latin classes in Japanese and
+    expands that to all three Japanese classes in English. The reference
+    implementation answers the narrowest reading either sentence supports -- cl-19
+    against cl-27 and nothing else -- and that is what this engine matches. It is
+    observable and it is written down nowhere; see README.md, "Observable policies
+    with no written source". *)
+let expansion_ceiling (style : Style.t) ~(before : int) ~(after : int) ~(weight : int)
+    ~(limit : int) : int =
+  if not ((before = Spec.ideograph && after = 27) || (before = 27 && after = Spec.ideograph))
+  then Spec.scale_spec_units weight limit
+  else
+    match Style.japanese_latin_expansion_ceiling style with
+    | "third-em" -> third_of weight
+    | "rigid" -> Model.quarter_of weight
+    | _ -> Model.half_of weight
+
+(** The em Table 6's amount is measured from.
+
+    Table 6 names a class pair and no neighbor, so the em has to come from
+    somewhere else. Where Table 1 stated an amount at the same coordinate, that
+    amount's own referent is the em the boundary is already measured in -- and
+    [expansion-needs-no-referent] holds that no expansion coordinate carries two
+    terms, so the choice is never between two. Where Table 1 left the boundary
+    solid there is no referent at all and the preceding character's em is taken,
+    which is the one of the two the boundary is stated after. *)
+let expansion_weight ~(components : int * int) ~(before_size : Model.size)
+    ~(after_size : Model.size) : int =
+  match components with
+  | 0, amount when amount > 0 -> after_size.Model.inline
+  | _ -> before_size.Model.inline
+
+(** §E.2's two notes that withdraw the opportunity their own cell states.
+
+    Note 4: two inseparable characters open a quarter em only when they are of
+    different kinds; two of the same kind are one character and stay solid. Note
+    10: a Western character keeps its postfixed abbreviation when it is being used
+    as a quantity symbol or as a European numeral -- the same exception §C.2 note
+    11 states for the break at the same coordinate, read the same way. *)
+let expansion_is_withdrawn ~(before : int) ~(after : int) ~(before_cluster : Model.cluster)
+    ~(before_scalar : int option) ~(after_scalar : int option) : bool =
+  if before = Spec.inseparable && after = Spec.inseparable then
+    cl_08_same_kind before_scalar after_scalar
+  else if before = 27 && after = 13 then
+    before_cluster.Model.role = Some Model.Quantity_symbol
+    || is_european_numeral before_scalar
+  else false
+
+let append_table_expansion_site (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
+    (boundary : int) sites : unit =
+  match (cluster_at paragraph ordinal, cluster_at paragraph (ordinal + 1)) with
+  | Some before_cluster, Some after_cluster -> (
+    let before = class_of_cluster paragraph style ordinal in
+    let after = class_of_cluster paragraph style (ordinal + 1) in
+    let before_scalar = single_scalar paragraph before_cluster in
+    let after_scalar = single_scalar paragraph after_cluster in
+    if expansion_is_withdrawn ~before ~after ~before_cluster ~before_scalar ~after_scalar then ()
+    else
+      match Spec.ranged_cell Tables.table6 before after with
+      | None -> ()
+      | Some cell -> (
+        let before_size = size_of paragraph before_cluster in
+        let after_size = size_of paragraph after_cluster in
+        let components =
+          Spec.table_one_space_components ~before ~after ~before_size ~after_size
+            ~before_solid:(is_solid paragraph before_cluster)
+            ~after_solid:(is_solid paragraph after_cluster)
+        in
+        let weight = expansion_weight ~components ~before_size ~after_size in
+        if cell.Spec.ranged_residual then
+          push_grow sites ~boundary ~weight ~bounded:None ~residual:true
+        else
+          match cell.Spec.ranged_limit with
+          | Some limit when cell.Spec.ranged_stage <> 0 ->
+            let ceiling = expansion_ceiling style ~before ~after ~weight ~limit in
+            let capacity = Num.i32_sub ceiling (boundary_space_after paragraph style ordinal) in
+            if capacity > 0 then
+              push_grow sites ~boundary ~weight
+                ~bounded:(Some (capacity, cell.Spec.ranged_stage))
+                ~residual:false
+          | _ -> ()))
+  | _ -> ()
+
+(** §3.8.4 step (a)'s site: the Western word space itself, which opens to a half em
+    before anything else on the line opens at all.
+
+    Table 6 is not asked what the boundary after a word space may do -- step (a)
+    owns it -- with one exception. Where the table's own cl-26 row says the
+    coordinate is a residual one, step (d) may keep opening the same space after
+    step (a) has taken it to its half em, so the site carries both facts. *)
+let append_word_space_expansion_site (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
+    (boundary : int) sites : unit =
+  let cluster = paragraph.Paragraph.text.clusters.(ordinal) in
+  let weight = (size_of paragraph cluster).inline in
+  let capacity =
+    Num.i32_sub (Model.half_of weight) (cluster_body_advance paragraph ordinal)
+  in
+  let residual =
+    match
+      Spec.ranged_cell Tables.table6 western_word_space_class
+        (class_of_cluster paragraph style (ordinal + 1))
+    with
+    | Some cell -> cell.Spec.ranged_residual
+    | None -> false
+  in
+  push_grow sites ~boundary ~weight
+    ~bounded:(if capacity > 0 then Some (capacity, 1) else None)
+    ~residual
+
+(** Every place this line may be opened up at, in line order. One boundary, one
+    site. *)
+let expansion_sites (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int)
+    ~(line_end : int) : expansion_site list =
+  let sites = ref [] in
+  for ordinal = line_start to line_end - 2 do
+    if
+      (not (is_internal_jidori_boundary paragraph ordinal))
+      && (not (is_collapsed_word_space paragraph ordinal ~line_start ~line_end))
+      && not (is_collapsed_word_space paragraph (ordinal + 1) ~line_start ~line_end)
+    then
+      if is_western_word_space paragraph ordinal then
+        append_word_space_expansion_site paragraph style ordinal (ordinal - line_start) sites
+      else append_table_expansion_site paragraph style ordinal (ordinal - line_start) sites
+  done;
+  List.rev !sites
+
+let apply_expansion (boundary : int) (amount : int64) (adjustments : int array) : unit =
+  if boundary >= 0 && boundary < Array.length adjustments then
+    adjustments.(boundary) <- Num.i32_add adjustments.(boundary) (Num.clamp_i32 amount)
+
+(** Share [amount] out over these sites, each taking at most [capacity index].
+
+    The first three stages pass their own ceilings; step (d) passes [amount], which
+    is a bound no site can reach and so is none at all. *)
+let distribute_expansion (amount : int64) (sites : expansion_site list)
+    (capacity : expansion_site -> int64) (remainder : string) (adjustments : int array) : unit =
+  if (not (le amount 0L)) && sites <> [] then begin
+    let sites = Array.of_list sites in
+    let assigned =
+      apportion amount
+        (Array.map (fun site -> site.grow_weight) sites)
+        (Array.map capacity sites)
+        remainder
+    in
+    Array.iteri
+      (fun index site -> apply_expansion site.grow_boundary assigned.(index) adjustments)
+      sites
+  end
+
+let bounded_at (stage : int) (site : expansion_site) : int option =
+  match site.grow_bounded with
+  | Some (capacity, own) when own = stage -> Some capacity
+  | _ -> None
+
+(** §3.8.4's ladder: the Western word spaces, then the Japanese-Latin quarter ems,
+    then everything Table 6 leaves open to a quarter em -- each stage taking only as
+    much as its own ceilings allow.
+
+    Then step (d), if the line is still short. §E.1 states it as adding space "to
+    equalize the spacing of 1st, 2nd, 3rd and 4th steps", so a boundary that already
+    sits at a ceiling opens past it rather than the line staying short: the third
+    stage's own quarter em is where the residual is re-leveled when nothing else on
+    the line is open.
+
+    {b Which sites step (d) re-levels} is a policy and not a reading. §E.1 says the
+    first four stages and the reference implementation includes the second, the
+    third and the residual cells -- but a first-stage Western word space only when
+    Table 6's own cl-26 row makes that same boundary residual, never on the strength
+    of step (a) alone. It is observable and it is written down nowhere; see
+    README.md, "Observable policies with no written source". *)
+let prepare_line_expansions (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int)
+    ~(line_end : int) (need : int64) (adjustments : int array) : unit =
+  let sites = expansion_sites paragraph style ~line_start ~line_end in
+  let remainder = Style.remainder style in
+  let need = ref need in
+  for stage = 1 to 3 do
+    if not (le !need 0L) then begin
+      let current = List.filter (fun site -> bounded_at stage site <> None) sites in
+      let capacity site = i64 (Option.value ~default:0 (bounded_at stage site)) in
+      let available = List.fold_left (fun sum site -> sum +| capacity site) 0L current in
+      let take = min64 !need available in
+      distribute_expansion take current capacity remainder adjustments;
+      need := !need -| take
+    end
+  done;
+  if not (le !need 0L) then begin
+    let union =
+      List.filter
+        (fun site ->
+          site.grow_residual
+          || bounded_at 2 site <> None
+          || bounded_at 3 site <> None)
+        sites
+    in
+    distribute_expansion !need union (fun _ -> !need) remainder adjustments
+  end
 
 (** §3.8.2's hanging punctuation: a full stop or a comma at the end of an overfull
     line may sit outside the measure rather than force a wrap. *)
@@ -873,17 +1167,6 @@ let inseparable_member_pair (before : int option) (after : int option) : bool =
        && right = kana_repeat_lower)
   | _ -> false
 
-let cl_08_same_kind (before : int option) (after : int option) : bool =
-  match (before, after) with
-  | Some left, Some right when left = right -> true
-  | Some left, Some right ->
-    let repeat scalar =
-      scalar = kana_repeat_upper || scalar = kana_repeat_voiced_upper
-      || scalar = kana_repeat_lower
-    in
-    repeat left && repeat right
-  | _ -> false
-
 (** §C.3's relaxation by reclassification: at every level but the very strict one a
     prolonged sound mark and a small kana are treated as the script they belong to,
     and an iteration mark the style permits at a line head is an ordinary
@@ -975,10 +1258,7 @@ let break_is_legal (paragraph : Paragraph.t) (style : Style.t) (offset : int) : 
             (* §C.2 note 11: a Western character used as a quantity symbol, or as a
                European numeral, keeps its postfixed abbreviation. *)
             text.clusters.(before_ordinal).role <> Some Quantity_symbol
-            && not
-                 (match before_scalar with
-                 | Some scalar -> scalar >= 0x30 && scalar <= 0x39
-                 | None -> false)
+            && not (is_european_numeral before_scalar)
           else cell.Spec.break_levels land Style.kinsoku_level_bit style = 0
       end
     end
@@ -1127,16 +1407,19 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
     | Paragraph.Center -> Int64.div non_negative 2L
     | Paragraph.End -> non_negative
   in
-  (* Expansion (§3.8.4, Table 6) is milestone M3's. Until then a justified line
-     that comes up short is set flush, which is what `start` alignment does, and a
-     line that overruns is reduced exactly as any other alignment's would be. *)
-  let _justify =
+  (* Only a justified line takes up the measure it did not fill, and only one that
+     is not the paragraph's last -- §3.5.3 sets a last line flush rather than
+     adjusting it. Every other alignment sets a short line flush too and shifts the
+     whole line instead, which `alignment_offset` above has already done. *)
+  let justify =
     paragraph.Paragraph.alignment = Paragraph.Justify
     && (not is_last) && lt 0L remaining && count > 1
   in
   let adjustments = Array.make (max count 1) 0 in
   if count > 0 && lt remaining 0L then
-    prepare_line_reductions paragraph style ~line_start ~line_end (Num.sabs remaining) adjustments;
+    prepare_line_reductions paragraph style ~line_start ~line_end (Num.sabs remaining) adjustments
+  else if justify then
+    prepare_line_expansions paragraph style ~line_start ~line_end remaining adjustments;
   let placed = ref [] in
   let cursor = ref (i64 indent +| alignment_offset) in
   let block_extent = ref text.size.block in
