@@ -65,6 +65,7 @@
 
 (provide classify
          classify-cluster
+         math-class-of
          construct-class?
          middle-dot-in-construct?
          folded-key
@@ -155,13 +156,20 @@
 (define (japanese-design? value)
   (or (= value 1) (= value 2) (= value 5) (= value 6) (= value 7) (= value 19)))
 
+;; Whether one listing is used in this writing mode.
+(define (mode-fits? remark writing-mode)
+  (define mode (remark-writing-mode remark))
+  (or (not mode) (eq? mode writing-mode)))
+
+;; Whether one listing is set at this width.
+(define (width-fits? value remark frame)
+  (define frames (remark-frames remark))
+  (and (if frames (and (memq frame frames) #t) #t)
+       (not (and (eq? frame 'proportional) (japanese-design? value)))))
+
 ;; Whether one listing describes this occurrence.
 (define (listing-available? value remark frame writing-mode)
-  (define mode (remark-writing-mode remark))
-  (define frames (remark-frames remark))
-  (and (or (not mode) (eq? mode writing-mode))
-       (if frames (and (memq frame frames) #t) #t)
-       (not (and (eq? frame 'proportional) (japanese-design? value)))))
+  (and (mode-fits? remark writing-mode) (width-fits? value remark frame)))
 
 ;; ----------------------------------------------------------------------------
 ;; Classification
@@ -203,7 +211,33 @@
        (for/list ([one (in-list stated)]
                   #:when (listing-available? (car one) (cdr one) frame writing-mode))
          one))
-     (define pool (if (null? available) stated available))
+     ;; Two fallbacks, because the conditions a Remarks cell states are not all the
+     ;; same kind of claim.
+     ;;
+     ;; A cell that says `proportionally-spaced` names the Western design of the
+     ;; character, and §3.9.2's own note on cl-27 is what makes that a different
+     ;; character rather than the same one measured differently -- so it stays out
+     ;; wherever the caller did not set the occurrence proportionally. Every other
+     ;; width is a measurement, and where no listing was taken at the caller's own
+     ;; the width stops separating them. The writing mode outlasts both: a full stop
+     ;; §A.06 lists "used in horizontal composition" is not the full stop of a
+     ;; vertical line whatever it is measured at, so a vertical U+002E is §A.24's
+     ;; decimal point and not §A.06's.
+     ;;
+     ;; Only where nothing survives even that does every listing stand again, which
+     ;; is what answers a key Appendix A lists in one writing mode alone when it is
+     ;; read in the other.
+     (define nearly
+       (for/list ([one (in-list stated)]
+                  #:when (and (mode-fits? (cdr one) writing-mode)
+                              (or (eq? frame 'proportional)
+                                  (not (equal? (remark-frames (cdr one)) '(proportional))))))
+         one))
+     (define pool
+       (cond
+         [(not (null? available)) available]
+         [(not (null? nearly)) nearly]
+         [else stated]))
      (cond
        ;; A role the key has a listing for settles it: the caller has named the
        ;; construct, which is the axis the character itself cannot carry.
@@ -258,6 +292,16 @@
       (for/list ([scalar (in-list raw)]) (hash-ref folding-map scalar scalar))))
 
 ;; The class of one cluster of the paragraph.
+;; §3.7.4: whether the key is one of the two math classes, and which.
+;;
+;; cl-17 and cl-18 are the two classes §3.9.2 closes the set with that no matrix
+;; carries an axis for, and a key Appendix A lists under one of them is a math
+;; symbol wherever the caller has said the text is a formula. Outside a formula the
+;; same key is read like any other: `=` on the proportional frame is Western text.
+(define (math-class-of key)
+  (for/or ([one (in-list (listings-of key))])
+    (and (memv (car one) '(17 18)) (car one))))
+
 (define (classify-cluster para one style)
   (classify (folded-key (cluster-text para one))
             (cluster-frame-of para one)

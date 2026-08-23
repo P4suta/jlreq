@@ -170,7 +170,7 @@
 ;; conventions: what a character *becomes* inside a construct. §C.2 notes 6, 7, 8
 ;; and 13 state those, and no level of the addendum grades them.
 (define (structural? value)
-  (or (<= 20 value 23) (= value 28) (= value 29) (= value 30)))
+  (or (<= 20 value 23) (= value 28) (= value 29)))
 
 ;; Whether the level lifts the prohibition at this boundary.
 (define (relaxed? style level before after before-class after-class before-key after-key)
@@ -207,15 +207,36 @@
 ;; The answer
 ;; ----------------------------------------------------------------------------
 
+;; Whether the item stands inside a formula the caller declared.
+(define (in-formula? one)
+  (let ([found (item-structure one)])
+    (and found (eq? (car found) 'formula))))
+
 ;; Whether a line may end between these two occurrences.
+;; §B.2 notes 14 through 16 name the reclassification and Appendix C is where it is
+;; observable. Tables 1, 3, 4 and 5 state the same cell for cl-09, cl-10 and cl-11 as
+;; for cl-19, cl-16 and cl-15 at every coordinate a line without a warichu bracket
+;; can reach, and Table 6 states a different one at eight -- and the reference
+;; engines answer Table 6 at the class the character *has*, not the class §C.3 let
+;; it start a line as. So the change of class is Table 2's, which is the table the
+;; three notes are about: the mark may begin a line, and what may then stand before
+;; it is what may stand before a katakana.
 (define (breakable? para style before after)
-  (define before-class (item-class before))
-  (define after-class (item-class after))
+  (define before-class (reclassified para style before (item-class before)))
+  (define after-class (reclassified para style after (item-class after)))
   (define before-key (single-key para before))
   (define after-key (single-key para after))
   (define cell (tables:cell-at table2 before-class after-class))
   (define base
     (cond
+      ;; §3.7.4: "A line can be broken between math symbols (cl-17) or math
+      ;; operators (cl-18) and adjacent grouped numerals (cl-24), Western
+      ;; characters (cl-27) or ornamented character complexes (cl-21)" -- and,
+      ;; read as a rule rather than as a preference, nowhere else inside a
+      ;; formula. Neither class carries a Table 2 axis, so the section is the
+      ;; whole answer at any boundary one of them stands at.
+      [(or (in-formula? before) (in-formula? after))
+       (and (or (memv before-class '(17 18)) (memv after-class '(17 18))) #t)]
       ;; §C.2 note 5: the cell is blank, and five ordered couples are still one unit.
       [(and (= before-class 8) (= after-class 8)) (not (indivisible-couple? before-key after-key))]
       ;; §C.2 note 11: a quantity symbol or a European numeral holds its postfix.

@@ -52,6 +52,7 @@
          "model.rkt"
          "style.rkt"
          "classes.rkt"
+         "spacing.rkt"
          (prefix-in tables: "tables.rkt"))
 
 (provide (struct-out annotation)
@@ -61,8 +62,7 @@
          ruby-class-of
          plan-ruby
          character-hang
-         (struct-out plan)
-         (struct-out attachment))
+         (struct-out plan))
 
 ;; ----------------------------------------------------------------------------
 ;; The construct, read out of the request
@@ -129,10 +129,6 @@
 ;; ----------------------------------------------------------------------------
 ;; The plan
 ;; ----------------------------------------------------------------------------
-
-;; One placed reading cluster: `anchor` is the item its position is measured from
-;; and `offset` how far along the line it stands from that item's own start.
-(struct attachment (construct anchor offset start end advance size) #:transparent)
 
 ;; What one construct does to the line.
 ;;
@@ -296,9 +292,9 @@
         (unless (null? rest)
           (define found (car rest))
           (set! attachments
-                (cons (attachment (ruby-index one) anchor at
+                (cons (attachment (ruby-index one) anchor 0 0 at
                                   (annotation-start found) (annotation-end found)
-                                  (annotation-advance found) (annotation-size found))
+                                  (annotation-advance found) (annotation-size found) #f)
                       attachments))
           (walk (cdr rest) (chk+ at (annotation-advance found)))))))
   (plan separations (reverse attachments)))
@@ -323,9 +319,9 @@
        (spread (chk- width reading) widths (distribution-weights (length widths) flush?) style))
      (plan (make-hash)
            (for/list ([found (in-list readings)] [at (in-list offsets)])
-             (attachment (ruby-index one) anchor at
+             (attachment (ruby-index one) anchor 0 0 at
                          (annotation-start found) (annotation-end found)
-                         (annotation-advance found) (annotation-size found))))]
+                         (annotation-advance found) (annotation-size found) #f)))]
     ;; The base is the shorter one: spread IT across the reading, which is what
     ;; pushes the base characters apart and is the construct's own separation.
     [else
@@ -347,9 +343,9 @@
                 (define found (car rest))
                 (walk (cdr rest)
                       (chk+ at (annotation-advance found))
-                      (cons (attachment (ruby-index one) anchor at
+                      (cons (attachment (ruby-index one) anchor 0 0 at
                                         (annotation-start found) (annotation-end found)
-                                        (annotation-advance found) (annotation-size found))
+                                        (annotation-advance found) (annotation-size found) #f)
                             out))])))]))
 
 ;; ----------------------------------------------------------------------------
@@ -398,8 +394,8 @@
              (define-values (next placed)
                (for/fold ([at at] [placed '()]) ([found (in-list here)])
                  (values (chk+ at (annotation-advance found))
-                         (cons (attachment (ruby-index one) anchor at
+                         (cons (attachment (ruby-index one) anchor 0 0 at
                                            (annotation-start found) (annotation-end found)
-                                           (annotation-advance found) (annotation-size found))
+                                           (annotation-advance found) (annotation-size found) #f)
                                placed))))
              (walk (cdr rest) next (append placed out))]))))

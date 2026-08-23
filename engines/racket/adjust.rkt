@@ -44,6 +44,7 @@
 
 (provide reduction-of
          expansion-of
+         third-em
          (struct-out reduction)
          (struct-out expansion)
          word-space-floor
@@ -145,6 +146,15 @@
     ;; makes a justified line holding only that boundary come out at its natural
     ;; width rather than at the measure.
     [else (expansion #f #f #f)]))
+
+;; §3.8.4's own second step offers "half em spacing (or one third em spacing)" as the
+;; ceiling between Japanese and Latin text, and a third of an em is the one amount in
+;; either ladder that 1/720 em cannot state exactly. It is rounded up rather than
+;; down: the sentence states a maximum a space may "take up to", and a maximum that
+;; fell short of a third of an em by a unit would be a smaller answer than the one
+;; the section names.
+(define (third-em em)
+  (div-trunc (chk+ em 2) 3))
 
 ;; §3.8.3 (a) and §D: a Western word space is reduced to leave a quarter em.
 (define (word-space-floor em)

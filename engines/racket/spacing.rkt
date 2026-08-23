@@ -36,6 +36,7 @@
 
 (provide (struct-out item)
          (struct-out piece)
+         (struct-out attachment)
          (struct-out contribution)
          boundary-contributions
          head-contributions
@@ -58,8 +59,13 @@
 ;; item because a reading had nowhere else to go, `tail` the same at the paragraph's
 ;; own end -- the one boundary that is not before any item -- and `attachments` is
 ;; the reading itself, positioned from this item's own start.
+;;
+;; `structure` names the §3.4 or §3.7 structure the item is part of, where it is
+;; part of one: `(formula display?)` for §3.7.4, `(warichu index)` for the text of
+;; an inline cutting note. It is #f for everything a line sets straight along
+;; itself.
 (struct item (index start end advance size frame role class transform kind members
-              complex run separation tail attachments)
+              complex run separation tail attachments structure)
   #:transparent)
 
 ;; One cluster of a grouped item.
@@ -69,7 +75,21 @@
 ;; a warichu block -- carries one per cluster, and `compose.rkt` gives each its own
 ;; place inside the item's own box. `block` is the offset from the item's own block
 ;; origin, which is zero for everything a line sets straight along it.
-(struct piece (index start end advance size frame transform block writing-mode) #:transparent)
+(struct piece (index start end advance size frame transform inline block writing-mode) #:transparent)
+
+;; One annotation, waiting for its base to be placed.
+;;
+;; `anchor` is the item its position is measured from. `span` is how many items it
+;; is set across: 0 means `offset` is the whole answer, which is what a ruby reading
+;; carries, and a positive span means the annotation is CENTERED over that many
+;; items and the offset is computed once the line knows how wide they came out.
+;; §3.3.9 and §3.7.1 both need the second, because both center on "the base
+;; characters" and what the line gave those characters includes the space beside
+;; them.
+;;
+;; `symbol` is the repeated mark §3.3.9 sets and #f for an annotation that carries
+;; its own text; a symbol takes no advance of its own.
+(struct attachment (construct anchor span whole offset start end advance size symbol) #:transparent)
 
 ;; One term of a boundary: an amount in the caller's unit and whose em it came
 ;; from. `hang?` is §B.1's annotation that a ruby reading may extend over it, which
@@ -149,8 +169,11 @@
 ;; ----------------------------------------------------------------------------
 
 ;; The space between two occurrences of one line.
-(define (boundary-contributions before after writing-mode style)
-  (define stated (table-one-terms before after))
+(define (boundary-contributions before after writing-mode style [literal? #f])
+  (define stated
+    (if literal?
+        (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))
+        (or (formula-terms before after) (table-one-terms before after))))
   (define withdrawn
     (let* ([step-one (if (withdraws-own-space? before writing-mode) (without stated 'before) stated)]
            [step-two (if (withdraws-own-space? after writing-mode) (without step-one 'after) step-one)])
@@ -158,6 +181,33 @@
   (append withdrawn
           (sentence-terminator-terms before after)
           (sentence-medial-terms before after style)))
+
+;; §3.7.4's own answer at a boundary one of whose sides is a math symbol (cl-17) or
+;; a math operator (cl-18), or #f where the section says nothing about the
+;; coordinate.
+;;
+;; No matrix carries a cl-17 or a cl-18 axis, so Table 1 answers nothing here and
+;; the section is the whole of it. Inside an ordinary line the boundary is solid;
+;; on an independent line a math SYMBOL opens a quarter em of its own em on each
+;; side and a math OPERATOR stays solid. The em is the symbol's own, because
+;; §3.7.4 is a statement about how the symbol is set.
+(define (formula-terms before after)
+  (define (math? one) (memv (item-class one) '(17 18)))
+  (define (beside? one) (memv (item-class one) '(21 24 27)))
+  (define (display? one)
+    (let ([found (item-structure one)])
+      (and found (eq? (car found) 'formula) (cadr found))))
+  (cond
+    [(and (math? before) (beside? after))
+     (if (and (display? before) (eqv? (item-class before) 17))
+         (list (contribution (scale 180 (item-em before)) 'before #f 180))
+         '())]
+    [(and (beside? before) (math? after))
+     (if (and (display? after) (eqv? (item-class after) 17))
+         (list (contribution (scale 180 (item-em after)) 'after #f 180))
+         '())]
+    [(or (math? before) (math? after)) '()]
+    [else #f]))
 
 ;; What Table 1 states at one interior boundary, with §3.2.5's own override.
 ;;
@@ -240,11 +290,22 @@
     [else stated]))
 
 ;; The space between the line's last occurrence and the line end.
-(define (end-contributions last-item style writing-mode)
+(define (end-contributions last-item style writing-mode [next #f])
   (define stated
-    (if (withdraws-own-space? last-item writing-mode)
-        (without (cell-contributions (item-class last-item) line-edge (item-em last-item) #f) 'before)
-        (cell-contributions (item-class last-item) line-edge (item-em last-item) #f)))
+    (cond
+      ;; §3.2.5: "when tate-chu-yoko is set before an opening bracket, half em
+      ;; spacing is added". The section is describing how the RUN is set -- it is
+      ;; one object on the line however many characters it holds -- rather than
+      ;; what happens at a boundary, so the half em is there because an opening
+      ;; bracket follows the run in the text and stays there when the line ends
+      ;; between the two. Every other amount at a line end is Table 1's `line-end`
+      ;; column, which is what a boundary looks like once one of its neighbors is
+      ;; gone.
+      [(and next (= (item-class last-item) 30) (= (item-class next) 1))
+       (cell-contributions 30 1 (item-em last-item) (item-em next))]
+      [(withdraws-own-space? last-item writing-mode)
+       (without (cell-contributions (item-class last-item) line-edge (item-em last-item) #f) 'before)]
+      [else (cell-contributions (item-class last-item) line-edge (item-em last-item) #f)]))
   (cond
     ;; §3.1.9 and §B.2 notes 2 and 6: the half em a closing bracket, a full stop or
     ;; a comma takes at the line end is what `spacing.line_end_punctuation` and
