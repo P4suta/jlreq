@@ -267,8 +267,9 @@ job in CI runs `just racket-gate`, so that one digit is what a merge is held to.
 Advance it in the pull request that makes the milestone pass, never before. At `9`
 the cumulative suite is the whole suite and the gate is `just conform-racket`.
 
-It stands at **`8`** today: eighty-six of the eighty-nine cases are claimed, and
-what is left is §3.6's tab setting and §3.5.4's paragraph end.
+It stands at **`9`** today: all eighty-nine cases are claimed, so the cumulative
+suite is the whole suite and `just racket-gate` and `just conform-racket` are the
+same run.
 
 `just conform-engines`, which `just ci` runs, is both engines' gates with a check for
 each toolchain in front of it: a developer with no opam switch or no Racket gets a
@@ -287,7 +288,8 @@ being claimed: vertical composition is one rule about the transform over the sam
 geometry. M5 is §3.2.5's tate-chu-yoko, one thing on the line for spacing, breaking
 and adjustment alike. M6 is §3.3's ruby in all three kinds and §3.3.8's overhang; M7
 is the ornamented complex; M8 is the four structures that set text somewhere a line
-does not.
+does not; M9 is §3.6's tab setting, §3.5.4's widow adjustment and §3.5's indentation,
+which closes the suite.
 
 Two things the protocol carries are two different numbers whenever a line was
 adjusted, and both are answered here. A placement's `advance` is the advance the
@@ -296,20 +298,21 @@ and its `inline` is where the character **stands** once §3.8.3's or §3.8.4's l
 has run. `inline_extent` is the second of the two.
 
 ```text
-just racket-milestone 8   → exit 0    (86 cases)
-just conform-racket       → exit 1    (3 DIFF, 0 protocol errors)
-just racket-gate          → exit 0    (CURRENT = 8, so the same run as M1..M8)
+just racket-milestone 9   → exit 0    (89 cases)
+just conform-racket       → exit 0    (0 DIFF, 0 protocol errors)
+just racket-gate          → exit 0    (CURRENT = 9, so the same run as conform-racket)
 just test-engine-racket   → 10185 tests passed
 ```
 
-Six of the ten censuses agree with the Rust engine at every request:
+Five of the ten censuses agree with the Rust engine at every request, and the sixth
+at all but ten:
 
 ```text
 just census-racket spacing        → 2116 request(s), 0 differing response(s)
 just census-racket break          → 2116 request(s), 0 differing response(s)
 just census-racket reduction      → 3174 request(s), 0 differing response(s)
 just census-racket expansion      → 3174 request(s), 0 differing response(s)
-just census-racket vertical       → 5290 request(s), 0 differing response(s)
+just census-racket vertical       → 5290 request(s), 10 differing response(s)
 just census-racket tate-chu-yoko  → 4761 request(s), 0 differing response(s)
 ```
 
@@ -319,13 +322,30 @@ give the spacing back, and out of Table 6 on a justified line with room left ove
 from the English transcription of those six PDF pages against the Japanese one the
 OCaml engine reads, agreeing bit for bit. Then the same pairs again in vertical
 composition, and again with a tate-chu-yoko run standing between them, which is the
-only way to reach the cl-30 row and column of all six matrices at all. 20,631
-requests, and no answer differs by one unit. `ruby`, `constructs`, `tabs` and `widow`
-are not clean yet; they are M6's, M8's and M9's own coordinates.
+only way to reach the cl-30 row and column of all six matrices at all. 20,621 of the
+20,631 requests agree bit for bit.
 
-Six things the censuses settled that neither JLReq nor `docs/` states, and that this
-engine answers the way the Rust one does because returning to §3.8 and Appendix D
-did not settle them:
+The ten that do not agree are one coordinate family, and none of them is reachable
+from the eighty-nine cases:
+
+```text
+census/vertical/cl-24+{cl-05,cl-12,cl-24,cl-26,cl-28}/rotated-break
+census/vertical/cl-26+{cl-05,cl-12,cl-24,cl-26,cl-28}/rotated-break
+```
+
+A rotated run of cl-24 or cl-26 that has to break loses the quarter or half em the
+Rust engine pulls it back by, so the line it is on measures wider and the break
+lands one cluster early. It is §3.2.5's amount surviving a wrap — the same reading
+this engine already takes for an opening bracket, and not yet taken here for a
+rotated Western run. `ruby`, `constructs`, `tabs` and `widow` are not clean either;
+those four and this one are the next round's work.
+
+Six things the censuses settled that JLReq does not state, and that this engine
+answers the way the Rust one does because returning to §3.8 and Appendix D did not
+settle them. `docs/decisions/` has since published its own reading of several —
+[`tate-chu-yoko-spacing-sources`](../../docs/decisions/tate-chu-yoko-spacing-sources.md)
+covers the third of them — and where it does, the reading below is the same one,
+which is what a census at zero differences means:
 
 - **§B.2 note 13's collapse reaches the boundary after a line-head word space and
   not the one before a line-end word space.** A closing bracket that ends up before a
