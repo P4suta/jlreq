@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/appendix-a.tsv`
-//! - Source SHA-256: `319ded957224da4bce5f0d07286c9e59dc5d6ec9538bd60080c8854e4589ddf5`
+//! - Source SHA-256: `d47f6bf7a6d51d20c4e86419c35ef5ccaaf0c4baa9fb4ace55a0990e8360734c`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `edb1bbf8074d55b5386983a7842e187785ed3df8e6e72aeddf506d966dbb3123`
+//! - Generator SHA-256: `a388af8ad963070b6c86477a42ee30023c165c0a82b92d30d4327df1dcfe3137`
 //! - Entries: 1686
 
 /// The longest key Appendix A enumerates, in code points.

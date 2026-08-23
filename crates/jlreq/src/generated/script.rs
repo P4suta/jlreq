@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/scripts.tsv`
-//! - Source SHA-256: `af717d47dc4788b6519a6a522e950065de6953165c69b57f541e271f9bad1e6e`
+//! - Source SHA-256: `3b7c3d2e4e2f35912137c2fef54928c4cbf42f850bcd2483175ec11f5c78bfd1`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `edb1bbf8074d55b5386983a7842e187785ed3df8e6e72aeddf506d966dbb3123`
+//! - Generator SHA-256: `a388af8ad963070b6c86477a42ee30023c165c0a82b92d30d4327df1dcfe3137`
 //! - Entries: 22
 
 /// The `Script=Hiragana` tag.

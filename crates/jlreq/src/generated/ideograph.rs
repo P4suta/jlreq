@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/ideographs.tsv`
-//! - Source SHA-256: `e95db689b15497d20356a7e70aec2f46dcb7e51336b92c4becd469e9f7dec928`
+//! - Source SHA-256: `cf61e33039cc37974f3e017e6381e94873df3e55701199a71877b18bbd01886d`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `edb1bbf8074d55b5386983a7842e187785ed3df8e6e72aeddf506d966dbb3123`
+//! - Generator SHA-256: `a388af8ad963070b6c86477a42ee30023c165c0a82b92d30d4327df1dcfe3137`
 //! - Entries: 16
 
 /// One range of code points the Unicode Character Database gives

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -13,7 +13,7 @@
 //! - Source SHA-256: `e63166631b11e80c00adff7e1bf3126be347e95133e74112310307fff1f27ac9`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/spacing.rs`
-//! - Generator SHA-256: `54b3bad98259f6b290524c7c133a3d0bf7f6b0ee8c7bdc3bb017f6e737efd030`
+//! - Generator SHA-256: `23efc502ed358c12303978c55aa110c667e2145dc2ebd0ab775e889eed711109`
 //! - Entries: 784
 
 use crate::spec::{RawRangedCell, em};

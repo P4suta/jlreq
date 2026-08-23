@@ -10,7 +10,7 @@
 # Source: spec/snapshot/index.html
 # Source SHA-256: cfb1def5bf1594d59080a26d8d03c2670bb3116490ab57ef6e131b166a7c832f
 # Reader: xtask/src/derive.rs, xtask/src/inventory.rs
-# Reader SHA-256: 4cc59087642ae554eee93e1b9aae70ebb9c6a2f43e682035b645d58f644daa94
+# Reader SHA-256: 68fb7e0413b34f8aafd1b75ca94ac1234d7c40d5cb2652b9319af6ccdfd20168
 
 address	name	standing	direction_conditional	statement_en	statement_ja
 # `standing` is Normative throughout, because every row quotes the specification. An
