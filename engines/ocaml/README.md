@@ -88,6 +88,7 @@ engines/ocaml/
   lib/              num utf8 tsv tables …                      library jlreq
   proto/            json protocol                              library jlreq_proto
   bin/              the NDJSON loop                            jlreq_ocaml_engine.exe
+  probe/            development probes, on no gate's path       diffcase.exe census.exe
   test/             dune runtest
   milestones/       M1.ids … M9.ids, and CURRENT
 ```
@@ -102,6 +103,64 @@ string literal, so `cat` is the whole encoder and no generated source is
 committed. Embedding rather than reading from disk is forced by the contract: the
 runner starts the engine with no arguments, from a working directory it never
 discloses, so there is no path for the engine to resolve.
+
+## Development probes
+
+`jlreq-conformance run` reports a wrong case as `DIFF <case-id>`. That is the
+right report for a gate and the wrong one for the person fixing it, so `probe/`
+holds two tools that say more. Neither is the engine, neither is on any gate's
+path, and — unlike the engine — both may read a file at run time and start a
+subprocess, because nobody hands them a request from an undisclosed working
+directory.
+
+```bash
+just diffcase quick-start/two-lines          # against the suite's own `expected`
+just diffcase quick-start/two-lines --rust   # against the Rust engine's live answer
+just census spacing                          # generate, run both engines, diff
+just census break
+just census-classes                          # the representative chosen for each class
+```
+
+**`diffcase`** runs one case and compares the two responses field by field,
+naming each difference by its JSON path. It exits `0` on a match, `1` on a
+difference and `2` when it could not get an answer at all.
+
+```text
+lines[1].clusters[0].inline: expected 0, got 250
+DIFF quick-start/two-lines: 1 difference(s) against crates/jlreq-conformance/suite.ndjson
+```
+
+**`census`** generates a synthetic suite that isolates one mechanism. It picks
+one representative code point per character class out of Appendix A — fewest
+classes listing the key first, then a single scalar over a sequence, then an
+empty Remarks cell, then document order — and walks the ordered pairs.
+`just census-classes` prints the chosen table. Twenty-three of the thirty
+classes get one: cl-17 and cl-18 carry no adjacency on any matrix axis, and
+cl-20 through cl-23 and cl-30 are what a character *becomes* inside a construct,
+so Appendix A lists no code point in them.
+
+| Census | Requests | What one answer is |
+| --- | ---: | --- |
+| `spacing` | 2,116 | 529 pairs × `pair`, `head`, `end`, `interior`, on a line too wide to break or adjust: Table 1 read back out |
+| `break` | 2,116 | 529 pairs × the four §C.3 levels, on a one-cluster line with every boundary `allowed`: Table 2 read back out |
+
+The reduction and expansion censuses join the `kinds` registry in `census.ml` at
+M2 and M3; nothing else in the file changes.
+
+Both answer streams are canonicalized before `diff` sees them, because key order
+is not part of an answer — the Rust side's `serde_json` sorts the keys, this side
+writes `lines` before `diagnostics` — and a raw textual diff would call every
+line different. Everything a run generates lands in `target/census/`: the
+requests, both raw answer streams, both canonical ones, and the diff.
+
+One thing the census surfaced immediately. `spec/derived/questions.tsv` carries
+an `excludes` column, and §C.3's `kinsoku.level: very-strict` excludes both
+`kinsoku.grouped_numeral_before_western: breakable` and
+`kinsoku.relaxation_mechanism: reclassify` — which are exactly what the
+`jlreq-2020` profile answers. A request stating nothing but the level is a
+contradiction and an engine is right to refuse it. `census.ml` reads the column
+and states the forced answers rather than hard-coding those two, so whatever the
+M2 and M3 censuses exclude is already handled.
 
 ## The independence rule
 

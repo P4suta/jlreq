@@ -1,0 +1,39 @@
+; SPDX-FileCopyrightText: 2026 jlreq contributors
+;
+; SPDX-License-Identifier: MIT OR Apache-2.0
+
+; The development probes.
+;
+; These are not the engine and are not on any gate's path: the conformance runner
+; starts `bin/jlreq_ocaml_engine.exe` and nothing else, and `just ocaml-gate` never
+; builds anything here on purpose. They exist because a milestone is debugged one
+; number at a time, and `DIFF <case-id>` is not a number.
+;
+;   just diffcase quick-start/two-lines     # one case, field by field
+;   just census spacing                     # every class pair, both engines
+;
+; Unlike the engine, a probe may read a file at run time -- the suite, a generated
+; census -- because nobody hands it a request over a pipe from an undisclosed
+; working directory. It may also start a subprocess, which it does through
+; `Sys.command` and two temporary files rather than `Unix.open_process`: this tree's
+; OCaml depends on the compiler and dune and nothing else, and `unix` would be the
+; first library outside that promise.
+;
+; Two `executable` stanzas rather than one `executables`, because dune links every
+; module of a stanza into every executable it names -- and OCaml runs a linked
+; module's top-level effects. `census.exe` would run `diffcase.ml`'s `let ()` on the
+; way to its own. The `modules` field keeps each probe to itself.
+
+(executable
+ (name diffcase)
+ (modules diffcase)
+ (libraries jlreq jlreq_proto)
+ (flags
+  (:standard -w +a-4-40-41-42-44-45-70 -strict-sequence -strict-formats -safe-string)))
+
+(executable
+ (name census)
+ (modules census)
+ (libraries jlreq jlreq_proto)
+ (flags
+  (:standard -w +a-4-40-41-42-44-45-70 -strict-sequence -strict-formats -safe-string)))
