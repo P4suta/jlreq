@@ -390,9 +390,13 @@ let paragraph_of_json (body : Json.t) : Paragraph.t * Style.t =
           "widow_minimum_clusters"; "writing_mode"; "style";
         ]
   in
+  (* A request that states no alignment is asking for ordinary Japanese setting,
+     which §3.8.1 describes as adjusting every line but a short last one to the
+     measure. `start` is one of §3.5.3's four answers, and a caller who wants it
+     says so; the absence of the field is not that answer. *)
   let alignment =
     match object_field "request" body "alignment" with
-    | None -> Paragraph.Start
+    | None -> Paragraph.Justify
     | Some (Json.String "start") -> Paragraph.Start
     | Some (Json.String "center") -> Paragraph.Center
     | Some (Json.String "end") -> Paragraph.End

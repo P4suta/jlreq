@@ -265,6 +265,123 @@ let ruby_of (layout : Layout.t) : string =
 let ruby ?mode ?style ?indent ?reading_em ~kind ~base_first ~runs ~extent pieces : string =
   ruby_of (compose_ruby ?mode ?style ?indent ?reading_em ~kind ~base_first ~runs ~extent pieces)
 
+(* ----------------------------------------------------------------------------- *)
+(* Emphasis dots, ornamented complexes, warichu, furawake and jidori *)
+(* ----------------------------------------------------------------------------- *)
+
+(** A construct over a half-open range of {i piece} indices, stated the way the
+    checks below want to read it rather than the way the protocol carries it. *)
+type built =
+  | Emphasis of int * int * string
+  | Ornament of string * int * int * int  (** kind, first, last, ruby characters. *)
+  | Warichu of int * int
+  | Furawake of int * int * int * int  (** first, last, columns, line gap. *)
+  | Jidori of int * int * int  (** first, last, cells. *)
+  | Formula of int * int
+
+let annotation_of (count : int) (em : int) : Model.shaped_text =
+  let letters =
+    [|
+      "\xe3\x81\xab"; "\xe3\x81\xbb"; "\xe3\x82\x93"; "\xe3\x81\x94"; "\xe3\x81\x8b";
+      "\xe3\x81\xaa";
+    |]
+  in
+  text
+    ~size:{ Model.inline = em; Model.block = em }
+    (String.concat "" (List.init count (fun index -> letters.(index mod Array.length letters))))
+    (List.init count (fun index -> cluster (index * 3) ((index + 1) * 3) em))
+
+(** Compose a line of [pieces] carrying [constructs], stated in piece indices. *)
+let compose_built ?(mode = Model.Horizontal_tb) ?(style = Style.default ())
+    ?(alignment = Paragraph.Start) ?(breaks : (int * Paragraph.break_kind) list = [])
+    ?(tab_stops : Paragraph.tab_stop list = []) ?(widow = Paragraph.No_widow) ?(indent = 0)
+    ~(extent : int) ~(constructs : built list) (pieces : piece list) : Layout.t =
+  let source = String.concat "" (List.map (fun piece -> piece.at) pieces) in
+  let bounds = Array.make (List.length pieces + 1) 0 in
+  let clusters, _ =
+    List.fold_left
+      (fun (clusters, start) piece ->
+        let index = List.length clusters in
+        let stop = start + String.length piece.at in
+        bounds.(index) <- start;
+        bounds.(index + 1) <- stop;
+        ( cluster ?size:piece.own_size ?frame:piece.own_frame ?role:piece.own_role start stop
+            piece.advance
+          :: clusters,
+          stop ))
+      ([], 0) pieces
+  in
+  let built (item : built) : Construct.t =
+    let range first last = (bounds.(first), bounds.(last)) in
+    match item with
+    | Emphasis (first, last, mark) ->
+      {
+        Construct.range = range first last;
+        Construct.kind =
+          Construct.Emphasis_dots { mark = fst (Utf8.decode mark 0) };
+      }
+    | Ornament (kind, first, last, count) ->
+      let annotation = annotation_of count 500 in
+      {
+        Construct.range = range first last;
+        Construct.kind =
+          (if String.equal kind "script" then Construct.Script { annotation }
+           else Construct.Reference_mark { annotation });
+      }
+    | Warichu (first, last) ->
+      { Construct.range = range first last; Construct.kind = Construct.Warichu }
+    | Furawake (first, last, columns, line_gap) ->
+      {
+        Construct.range = range first last;
+        Construct.kind = Construct.Furawake { columns; line_gap };
+      }
+    | Jidori (first, last, cells) ->
+      { Construct.range = range first last; Construct.kind = Construct.Jidori { cells } }
+    | Formula (first, last) ->
+      { Construct.range = range first last; Construct.kind = Construct.Formula }
+  in
+  let paragraph =
+    Paragraph.build ~text:(text source (List.rev clusters)) ~line_extent:extent
+      ~breaks:
+        (List.map
+           (fun (index, kind) -> { Paragraph.offset = bounds.(index); Paragraph.kind })
+           breaks)
+      ~constructs:(List.map built constructs) ~tab_stops ~first_line_indent:indent ~alignment
+      ~widow ~writing_mode:mode ()
+  in
+  Pipeline.compose paragraph style
+
+(** Every line as [(inline extent/block extent) [inline:block+advance ...] [attachments]],
+    which is the whole of what a stacked structure decides. *)
+let built_of (layout : Layout.t) : string =
+  String.concat " | "
+    (List.map
+       (fun (line : Layout.line) ->
+         Printf.sprintf "(%d/%d) [%s] [%s]" line.Layout.inline_extent line.Layout.block_extent
+           (String.concat " "
+              (List.map
+                 (fun (placement : Layout.placement) ->
+                   Printf.sprintf "%d:%d+%d" placement.Layout.inline placement.Layout.block
+                     placement.Layout.advance)
+                 line.Layout.clusters))
+           (String.concat " " (List.map show_attachment line.Layout.attachments)))
+       layout.Layout.lines)
+
+let built ?mode ?style ?alignment ?breaks ?tab_stops ?widow ?indent ~extent ~constructs pieces :
+    string =
+  built_of
+    (compose_built ?mode ?style ?alignment ?breaks ?tab_stops ?widow ?indent ~extent ~constructs
+       pieces)
+
+(** The diagnostics a layout carries, as their codes. *)
+let codes_of (layout : Layout.t) : string =
+  String.concat " "
+    (List.map (fun (item : Layout.diagnostic) -> item.Layout.code) layout.Layout.diagnostics)
+
+(** One of §3.6.2's stops. *)
+let at ?(alignment = Paragraph.Tab_start) (position : int) : Paragraph.tab_stop =
+  { Paragraph.position; Paragraph.tab_alignment = alignment }
+
 let compose_json (envelope : string) : string =
   match Jlreq_proto.Protocol.request_of_line envelope with
   | Some request -> Jlreq_proto.Json.to_string (Jlreq_proto.Protocol.answer request)
@@ -717,6 +834,369 @@ let run () =
   Check.returns "and a jukugo run over two of them" (fun () ->
       compose_ruby ~kind:Construct.Jukugo ~base_first:1 ~runs:[ (2, 3); (1, 2) ] ~extent:16000
         [ p hiragana; p base; p base; p base; p hiragana ]);
+  (* Group ruby is the mirror image of mono: "the method of attaching ruby to a group
+     of base characters" is one group and one reading, so it takes one run over as
+     many base characters as the caller likes and no second run. *)
+  Check.raises "a group ruby stating two runs" (fun () ->
+      compose_ruby ~kind:Construct.Group ~base_first:1 ~runs:[ (1, 2); (1, 2) ] ~extent:16000
+        [ p hiragana; p base; p base; p hiragana ]);
+  Check.returns "and one stating a single run over both base characters" (fun () ->
+      compose_ruby ~kind:Construct.Group ~base_first:1 ~runs:[ (2, 4) ] ~extent:16000
+        [ p hiragana; p base; p base; p hiragana ]);
+
+  (* ---------------------------------------------------------------------------
+     §3.3.9's emphasis dots, §3.7.1's ornamented complexes, §3.4's warichu, §3.7.2's
+     furawake and §3.7.3's jidori.
+     --------------------------------------------------------------------------- *)
+  let dot = "\xe2\x80\xa2" (* U+2022 BULLET, §3.3.9's horizontal mark *) in
+  let sesame = "\xef\xb9\x85" (* U+FE45 SESAME DOT, its vertical one *) in
+  let note at = p ~size:{ Model.inline = 500; Model.block = 500 } ~advance:500 at in
+  let bracket at = p ~role:Model.Warichu_bracket at in
+
+  (* §3.3.9: "the character size of emphasis dots is the half size of the base
+     characters", one mark per base character, "the center of emphasis dots is aligned
+     with that of the base characters". Two base characters of different sizes are what
+     makes the half a half of each rather than a half of the run. *)
+  Check.equal_string "an emphasis mark is half its own base character and centered on it"
+    ~expected:"(1600/1500) [0:0+1000 1000:0+600] [250:-500:0 1150:-300:0]"
+    ~actual:
+      (built ~extent:2000 ~constructs:[ Emphasis (0, 2, dot) ]
+         [ p base; p ~size:{ Model.inline = 600; Model.block = 600 } ~advance:600 base ]);
+  Check.equal_string "and sits on the other side of the line in vertical composition"
+    ~expected:"(1600/1500) [0:0+1000 1000:0+600] [250:500:0 1150:300:0]"
+    ~actual:
+      (built ~mode:Model.Vertical_rl ~extent:2000 ~constructs:[ Emphasis (0, 2, sesame) ]
+         [ p base; p ~size:{ Model.inline = 600; Model.block = 600 } ~advance:600 base ]);
+  (* What the mark is centered on is the advance the line gave the cluster, spacing
+     and all, rather than the character's own em box. The two part wherever Table 1
+     states anything after the base character; here it is the quarter em cl-21 takes
+     before an ideograph. Written down nowhere -- see README.md. *)
+  Check.equal_string "the center is the advance on the line and not the em box"
+    ~expected:"(3500/1500) [0:0+1250 1250:0+1250 2500:0+1000] [1625:-500:0]"
+    ~actual:(built ~extent:6000 ~constructs:[ Emphasis (1, 2, dot) ] [ p base; p base; p base ]);
+
+  (* §E.2 note 5 gives the quarter em at [(cl-21, cl-21)] to two characters of
+     different complexes. §3.3.9 attaches a mark to each base character on its own, so
+     every boundary inside an emphasis run is one of those and every one of them
+     opens -- while §3.7.1's complex is the whole construct and none of its boundaries
+     ever does. That split is observable and written down nowhere; see README.md. *)
+  Check.equal_string "expansion opens inside an emphasis run, one complex per character"
+    ~expected:
+      "(3500/1500) [0:0+1000 1250:0+1000 2500:0+1000] [250:-500:0 1500:-500:0 2750:-500:0] | (2000/1000) [0:1500+1000 1000:1500+1000] []"
+    ~actual:
+      (built ~alignment:Paragraph.Justify ~extent:3500 ~breaks:[ (3, Paragraph.Mandatory) ]
+         ~constructs:[ Emphasis (0, 3, dot) ]
+         [ p base; p base; p base; p base; p base ]);
+  Check.equal_string "and never inside one superscript's complex"
+    ~expected:
+      "(3000/1500) [0:0+1000 1000:0+1000 2000:0+1000] [1250:-500:500] | (2000/1000) [0:1500+1000 1000:1500+1000] []"
+    ~actual:
+      (built ~alignment:Paragraph.Justify ~extent:3500 ~breaks:[ (3, Paragraph.Mandatory) ]
+         ~constructs:[ Ornament ("script", 0, 3, 1) ]
+         [ p base; p base; p base; p base; p base ]);
+
+  (* §3.7.1 leaves the annotation's own geometry implementation defined, and the
+     reference engine centers it on the whole complex and lets it hang over both
+     neighbors where it is longer -- without opening the line. Neither is written
+     down, and neither reads [ruby.alignment]; see README.md. *)
+  Check.equal_string "a superscript is centered on its complex, and hangs over it when longer"
+    ~expected:"(1000/1500) [0:0+1000] [-250:-500:500 250:-500:500 750:-500:500]"
+    ~actual:(built ~extent:4000 ~constructs:[ Ornament ("script", 0, 1, 3) ] [ p base ]);
+  Check.equal_string "and a reference mark is set the same way"
+    ~expected:"(2000/1500) [0:0+1000 1000:0+1000] [750:-500:500]"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Ornament ("reference-mark", 0, 2, 1) ]
+         [ p base; p base ]);
+  Check.equal_string "the katatsuki answer selects nothing there"
+    ~expected:"(2000/1500) [0:0+1000 1000:0+1000] [750:-500:500]"
+    ~actual:
+      (built ~style:(Style.build [ ("ruby.alignment", "katatsuki") ]) ~extent:4000
+         ~constructs:[ Ornament ("script", 0, 2, 1) ] [ p base; p base ]);
+
+  (* §C.2 note 6 and §3.7.1: "it is prohibited to break lines within an ornamented
+     character complex (cl-21) sequence", which this engine answers by refusing the
+     request. An emphasis run is not one complex but one per character, so a break
+     inside it is a break between two complexes and is answered. *)
+  Check.raises "a break inside one superscript's complex" (fun () ->
+      compose_built ~extent:1000 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Ornament ("script", 0, 2, 1) ] [ p base; p base ]);
+  Check.raises "and one inside a reference mark" (fun () ->
+      compose_built ~extent:1000 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Ornament ("reference-mark", 0, 2, 1) ] [ p base; p base ]);
+  Check.returns "and one inside an emphasis run, which is one complex per character"
+    (fun () ->
+      compose_built ~extent:1000 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Emphasis (0, 2, dot) ] [ p base; p base ]);
+
+  (* §3.4.2: two lines as near the same length as they can be made, set with no gap
+     between them and centered across the main line, inside brackets that stand beside
+     the note rather than on either of its lines. *)
+  Check.equal_string "a warichu divides into two balanced sublines between its brackets"
+    ~expected:
+      "(3000/1000) [0:0+1000 1000:0+500 1500:0+500 1000:500+500 1500:500+500 2000:0+1000] []"
+    ~actual:
+      (built ~extent:3000 ~constructs:[ Warichu (0, 6) ]
+         ~breaks:[ (2, Paragraph.Allowed); (3, Paragraph.Allowed); (4, Paragraph.Allowed) ]
+         [
+           bracket opening_bracket; note base; note base; note base; note base;
+           bracket closing_bracket;
+         ]);
+  Check.equal_string "and stacks them the other way in vertical composition"
+    ~expected:
+      "(3000/1000) [0:0+1000 1000:0+500 1500:0+500 1000:-500+500 1500:-500+500 2000:0+1000] []"
+    ~actual:
+      (built ~mode:Model.Vertical_rl ~extent:3000 ~constructs:[ Warichu (0, 6) ]
+         ~breaks:[ (2, Paragraph.Allowed); (3, Paragraph.Allowed); (4, Paragraph.Allowed) ]
+         [
+           bracket opening_bracket; note base; note base; note base; note base;
+           bracket closing_bracket;
+         ]);
+
+  (* "A position where line breaking is permitted" is read as a position the caller
+     stated, and as every cluster boundary where the caller stated none. Both readings
+     are observable and JLReq settles neither; see README.md. *)
+  Check.equal_string "the note divides where the caller offered a break"
+    ~expected:"(1500/1000) [0:0+500 500:0+500 1000:0+500 0:500+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 4) ] ~breaks:[ (3, Paragraph.Allowed) ]
+         [ note base; note base; note base; note base ]);
+  Check.equal_string "and at the balance point where the caller offered none"
+    ~expected:"(1000/1000) [0:0+500 500:0+500 0:500+500 500:500+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 4) ]
+         [ note base; note base; note base; note base ]);
+  (* "The length of the second line should not be longer than the length of the first
+     line" is a preference among the stated positions rather than a bound on them. *)
+  Check.equal_string "of two stated positions the one that does not lengthen the second wins"
+    ~expected:"(2000/1000) [0:0+500 500:0+500 1000:0+500 1500:0+500 0:500+500 500:500+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 6) ]
+         ~breaks:[ (2, Paragraph.Allowed); (4, Paragraph.Allowed) ]
+         [ note base; note base; note base; note base; note base; note base ]);
+  Check.equal_string "and the only stated position is taken even where it does lengthen it"
+    ~expected:"(1500/1000) [0:0+500 0:500+500 500:500+500 1000:500+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 4) ] ~breaks:[ (1, Paragraph.Allowed) ]
+         [ note base; note base; note base; note base ]);
+
+  (* §B.2 note 13 names four edges and two of them are the warichu's own: "there shall
+     be no visible space occupied by Western word space (cl-26) at the line head and
+     that of warichu, the line end and that of warichu". *)
+  Check.equal_string "a Western word space vanishes at either edge of a subline"
+    ~expected:"(250/1000) [0:0+0 0:0+250 250:0+0 0:500+250 250:500+0] []"
+    ~actual:
+      (built ~extent:1000 ~constructs:[ Warichu (0, 5) ] ~breaks:[ (3, Paragraph.Allowed) ]
+         [
+           p ~frame:Model.Proportional ~size:{ Model.inline = 500; Model.block = 500 }
+             ~advance:167 " ";
+           p ~frame:Model.Proportional ~size:{ Model.inline = 500; Model.block = 500 }
+             ~advance:250 "A";
+           p ~frame:Model.Proportional ~size:{ Model.inline = 500; Model.block = 500 }
+             ~advance:167 " ";
+           p ~frame:Model.Proportional ~size:{ Model.inline = 500; Model.block = 500 }
+             ~advance:250 "B";
+           p ~frame:Model.Proportional ~size:{ Model.inline = 500; Model.block = 500 }
+             ~advance:167 " ";
+         ]);
+
+  (* §3.7.2: every furawake-gyou starts at the same place, the block is as long as its
+     longest line, its own height is the line's, and its center is the text's. *)
+  Check.equal_string "a furawake sets its declared columns, centered across the line"
+    ~expected:"(2000/2200) [0:-600+1000 0:600+1000 1000:600+1000] []"
+    ~actual:
+      (built ~extent:3000 ~constructs:[ Furawake (0, 3, 2, 200) ]
+         ~breaks:[ (1, Paragraph.Mandatory) ] [ p base; p base; p base ]);
+  Check.equal_string "and centers them the other way in vertical composition"
+    ~expected:"(2000/2200) [0:600+1000 0:-600+1000 1000:-600+1000] []"
+    ~actual:
+      (built ~mode:Model.Vertical_rl ~extent:3000 ~constructs:[ Furawake (0, 3, 2, 200) ]
+         ~breaks:[ (1, Paragraph.Mandatory) ] [ p base; p base; p base ]);
+  Check.raises "a furawake that states more splits than it has columns" (fun () ->
+      compose_built ~extent:3000 ~constructs:[ Furawake (0, 3, 2, 200) ]
+        ~breaks:[ (1, Paragraph.Mandatory); (2, Paragraph.Mandatory) ]
+        [ p base; p base; p base ]);
+  Check.raises "and one that states fewer" (fun () ->
+      compose_built ~extent:3000 ~constructs:[ Furawake (0, 3, 3, 200) ]
+        ~breaks:[ (1, Paragraph.Mandatory) ] [ p base; p base; p base ]);
+
+  (* §3.7.3: the run occupies the declared number of full-em cells, the surplus shared
+     evenly over the boundaries a line could break at, and pushed out behind the run
+     where there are none -- "if there is only one character, it should be aligned to
+     the left of the jidori block". *)
+  Check.equal_string "a jidori spreads its text over the cells it was given"
+    ~expected:"(4000/1000) [0:0+3000 3000:0+1000] []"
+    ~actual:(built ~extent:4000 ~constructs:[ Jidori (0, 2, 4) ] [ p base; p base ]);
+  Check.equal_string "and pads behind a run with no boundary it may open"
+    ~expected:"(3000/1000) [0:0+3000] []"
+    ~actual:(built ~extent:4000 ~constructs:[ Jidori (0, 1, 3) ] [ p base ]);
+  Check.equal_string "a boundary no line may break at takes none of the surplus"
+    ~expected:"(6000/1000) [0:0+2000 2000:0+1000 3000:0+2000 5000:0+1000] []"
+    ~actual:
+      (built ~extent:9000 ~constructs:[ Jidori (0, 4, 6) ]
+         [ p base; p em_dash; p em_dash; p base ]);
+  (* Which boundaries those are is §C.3's question, so the convention level moves
+     them: the newspaper convention separates two inseparable characters of one kind
+     and the jidori opens that boundary too. *)
+  Check.equal_string "and the convention level decides which boundaries they are"
+    ~expected:"(6000/1000) [0:0+1667 1667:0+1667 3334:0+1666 5000:0+1000] []"
+    ~actual:
+      (built ~style:(Style.of_profile "newspaper-2020") ~extent:9000
+         ~constructs:[ Jidori (0, 4, 6) ] [ p base; p em_dash; p em_dash; p base ]);
+  Check.raises "a break inside a jidori" (fun () ->
+      compose_built ~extent:1000 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Jidori (0, 2, 4) ] [ p base; p base ]);
+
+  (* Â§3.7.4: "a line break in a mathematical formula is done, when possible, at an
+     equals sign (cl-17) ... or at an operator (cl-18)", which the reference engine
+     reads as the whole of where a formula may break -- every other boundary inside one
+     is refused rather than merely dispreferred. Written down nowhere; see README.md. *)
+  let latin at = p ~frame:Model.Proportional ~advance:500 at in
+  let equals = latin "=" in
+  Check.returns "a break before an equals sign inside a formula" (fun () ->
+      compose_built ~extent:4500 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Formula (0, 3) ] [ latin "a"; equals; latin "b" ]);
+  Check.returns "and one after it" (fun () ->
+      compose_built ~extent:4500 ~breaks:[ (2, Paragraph.Allowed) ]
+        ~constructs:[ Formula (0, 3) ] [ latin "a"; equals; latin "b" ]);
+  Check.raises "and not one between two characters that are neither" (fun () ->
+      compose_built ~extent:4500 ~breaks:[ (1, Paragraph.Allowed) ]
+        ~constructs:[ Formula (0, 3) ] [ latin "a"; latin "b"; equals ]);
+
+  (* §3.6.3: "set the text from the line head to the position before the tab sign in
+     the first tab position, set the text from the first tab sign to the next tab sign
+     in the second tab position, and so on" -- and, four sentences later, "if there is
+     no tab position corresponding to the target string, the string should be set from
+     the tab position of the next line". A stop the line has already gone past is that
+     case, so the sign and everything after it leave the line. *)
+  let tab = p ~frame:Model.Proportional ~advance:500 "\t" in
+  let letter at = p ~frame:Model.Proportional ~advance:500 at in
+  Check.equal_string "a tab sign moves the text after it to its stop"
+    ~expected:"(2500/1000) [0:0+500 500:0+1500 2000:0+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[] ~tab_stops:[ at 2000 ]
+         [ letter "A"; tab; letter "B" ]);
+  Check.equal_string "a stop the line has passed sends the sign to the next line"
+    ~expected:"(1000/1000) [0:0+500 500:0+500] [] | (1500/1000) [0:1000+1000 1000:1000+500] []"
+    ~actual:
+      (built ~extent:2500 ~constructs:[] ~tab_stops:[ at 1000 ]
+         [ letter "A"; letter "A"; tab; letter "B" ]);
+  (* The cut is §3.6.3's own and answers to no character class, so it happens at a
+     boundary Table 2 would never allow a line to end at. Written down nowhere; see
+     README.md. *)
+  Check.equal_string "and does so even where the line would then end on an opening bracket"
+    ~expected:"(2000/1000) [0:0+1000 1000:0+1000] [] | (1500/1000) [0:1000+1000 1000:1000+500] []"
+    ~actual:
+      (built ~extent:2500 ~constructs:[] ~tab_stops:[ at 1000 ]
+         [ letter "A"; p opening_bracket; tab; letter "B" ]);
+  (* A sign at the line head has no earlier boundary to go to, so it is the one place
+     §3.6.3's fourth sentence cannot be obeyed: the sign takes one em and the line
+     overruns. Written down nowhere; see README.md. *)
+  Check.equal_string "a sign at the line head keeps a stopless stop's line and takes one em"
+    ~expected:"(3500/1000) [2000:0+1000 3000:0+500] []"
+    ~actual:
+      (built ~extent:3000 ~indent:2000 ~constructs:[] ~tab_stops:[ at 1000 ] [ tab; letter "A" ]);
+  Check.equal_string "the stops start again at the head of every line"
+    ~expected:
+      "(1500/1000) [0:0+500 500:0+500 1000:0+500] [] | (1500/1000) [0:1000+1000 1000:1000+500] []"
+    ~actual:
+      (built ~extent:3000 ~constructs:[] ~tab_stops:[ at 1000; at 1200 ]
+         [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+  (* Which stop a sign takes is a question about the line, and a line knows only where
+     the stops are: the caller's listing order is not their order. Written down
+     nowhere; see README.md. *)
+  Check.equal_string "and the stops are taken in the order they stand in, not the order stated"
+    ~expected:
+      "(1500/1000) [0:0+500 500:0+500 1000:0+500] [] | (1500/1000) [0:1000+1000 1000:1000+500] []"
+    ~actual:
+      (built ~extent:3000 ~constructs:[] ~tab_stops:[ at 1200; at 1000 ]
+         [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+  (* §3.6.3's cut is a line boundary rather than a break opportunity, so what decides
+     whether it is available is not a rule about characters but whether there is a
+     boundary there at all -- and inside one object there is not. Written down
+     nowhere; see README.md. *)
+  Check.equal_string "a sign inside a construct does not end the line, and takes one em"
+    ~expected:"(2500/1000) [0:0+500 500:0+500 1000:0+1000 2000:0+500] []"
+    ~actual:
+      (built ~extent:2500 ~constructs:[ Jidori (0, 4, 2) ] ~tab_stops:[ at 500 ]
+         [ letter "A"; letter "A"; tab; letter "B" ]);
+  Check.equal_string "and a construct that ends at the sign leaves the cut available"
+    ~expected:"(2000/1000) [0:0+500 500:0+1500] [] | (1500/1000) [0:1000+1000 1000:1000+500] []"
+    ~actual:
+      (built ~extent:2500 ~constructs:[ Jidori (0, 2, 2) ] ~tab_stops:[ at 1000 ]
+         [ letter "A"; letter "A"; tab; letter "B" ]);
+  (* A warichu's sublines are not the line, so a sign on one takes no stop at all --
+     and the cursor a stop is measured against steps once past the whole block, not
+     once per character inside it: the outer sign below stands at 1000, the block's
+     own width, so the first stop it can reach is the one at 1200 and not the one at
+     3000 that the three characters' advances would have put it past. Written down
+     nowhere, and the reference engine does not agree; see README.md. *)
+  Check.equal_string "a sign inside a warichu keeps the advance it was shaped with"
+    ~expected:"(1000/1000) [0:-500+500 500:-500+500 0:500+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 3) ] ~breaks:[ (2, Paragraph.Allowed) ]
+         ~tab_stops:[ at 2000 ] [ letter "A"; tab; letter "B" ]);
+  Check.equal_string "and the stop past the block is measured from the block's own width"
+    ~expected:"(1700/1000) [0:-500+500 500:-500+500 0:500+500 1000:0+200 1200:0+500] []"
+    ~actual:
+      (built ~extent:4000 ~constructs:[ Warichu (0, 3) ] ~breaks:[ (2, Paragraph.Allowed) ]
+         ~tab_stops:[ at 1200; at 3000 ] [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+
+  (* §3.6.1: "if there is more than one tab sign, it is necessary to set the same
+     numbers of tab positions and tab types as the number of tab signs". A stretch
+     between two mandatory breaks is the only line validation can see. *)
+  Check.raises "a line with more tab signs than the request states stops" (fun () ->
+      compose_built ~extent:3000 ~constructs:[] ~tab_stops:[ at 1000 ]
+        [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+  Check.returns "and the same two signs with a mandatory break between them" (fun () ->
+      compose_built ~extent:3000 ~constructs:[] ~tab_stops:[ at 1000 ]
+        ~breaks:[ (2, Paragraph.Mandatory) ]
+        [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+  Check.returns "and more stops than signs" (fun () ->
+      compose_built ~extent:3000 ~constructs:[] ~tab_stops:[ at 1000; at 1200 ]
+        [ letter "A"; tab; letter "B" ]);
+  (* A stop is a position in the line, so one the measure does not reach is not a
+     position at all -- and that is true of a request with no tab sign in it. *)
+  Check.raises "a stop at the measure" (fun () ->
+      compose_built ~extent:2000 ~constructs:[] ~tab_stops:[ at 2000 ]
+        [ letter "A"; tab; letter "B" ]);
+  Check.raises "and one past it, with no sign to reach it" (fun () ->
+      compose_built ~extent:2000 ~constructs:[] ~tab_stops:[ at 2500 ] [ letter "A" ]);
+
+  (* §3.5.4: "avoid that the last line of a paragraph contains less than a given
+     number of characters". Five ems in a four-em measure would leave one behind, so
+     the paragraph gives the third cluster up -- and §3.8.1 then opens the line it
+     shortened back out to the measure. *)
+  let five = [ p base; p base; p base; p base; p base ] in
+  let every = List.map (fun index -> (index, Paragraph.Allowed)) [ 1; 2; 3; 4 ] in
+  Check.equal_string "an unconstrained paragraph fills its first line"
+    ~expected:
+      "(4000/1000) [0:0+1000 1000:0+1000 2000:0+1000 3000:0+1000] [] | (1000/1000) [0:1000+1000] []"
+    ~actual:(built ~alignment:Paragraph.Justify ~extent:4000 ~constructs:[] ~breaks:every five);
+  Check.equal_string "a widow minimum of two moves the break and the line opens back out"
+    ~expected:
+      "(4000/1000) [0:0+1000 1500:0+1000 3000:0+1000] [] | (2000/1000) [0:1000+1000 1000:1000+1000] []"
+    ~actual:
+      (built ~alignment:Paragraph.Justify ~extent:4000 ~constructs:[] ~breaks:every
+         ~widow:(Paragraph.Minimum_clusters 2) five);
+  (* §3.5.3's flush setting is a caller asking for a short line, so it is the one
+     alignment that leaves the shortened line short. *)
+  Check.equal_string "a flush line keeps the break and not the measure"
+    ~expected:
+      "(3000/1000) [0:0+1000 1000:0+1000 2000:0+1000] [] | (2000/1000) [0:1000+1000 1000:1000+1000] []"
+    ~actual:
+      (built ~alignment:Paragraph.Start ~extent:4000 ~constructs:[] ~breaks:every
+         ~widow:(Paragraph.Minimum_clusters 2) five);
+  Check.equal_string "a paragraph that cannot avoid a widow reports one"
+    ~expected:"layout.widow"
+    ~actual:
+      (codes_of
+         (compose_built ~extent:4000 ~constructs:[] ~breaks:[ (4, Paragraph.Mandatory) ]
+            ~widow:(Paragraph.Minimum_clusters 2) five));
+  Check.equal_string "and one that avoids it reports nothing" ~expected:""
+    ~actual:
+      (codes_of
+         (compose_built ~extent:4000 ~constructs:[] ~breaks:every
+            ~widow:(Paragraph.Minimum_clusters 2) five));
 
   (* A request the protocol does not carry is an error, not a default. *)
   Check.raises "an unknown request field" (fun () ->

@@ -164,6 +164,52 @@ let is_internal_furawake_offset (paragraph : Paragraph.t) (offset : int) : bool 
       | _ -> false)
     paragraph.Paragraph.constructs
 
+(** Whether the boundary after [ordinal] falls inside a warichu or a furawake.
+
+    Both structures take the line off the line: their text is set on sublines of
+    their own, and §3.8.3's and §3.8.4's ladders are about the spacing of the line
+    they interrupt. A boundary with one cluster inside such a structure and the next
+    outside it is not one of these -- that boundary is on the line, and it is where
+    a justified line carrying a warichu opens up. *)
+let is_internal_stacked_boundary (paragraph : Paragraph.t) (ordinal : int) : bool =
+  match cluster_at paragraph ordinal with
+  | None -> false
+  | Some cluster ->
+    Array.exists
+      (fun (construct : Construct.t) ->
+        match construct.Construct.kind with
+        | Construct.Warichu | Construct.Furawake _ ->
+          let first, last = construct.Construct.range in
+          first < cluster.last && cluster.last < last
+        | _ -> false)
+      paragraph.Paragraph.constructs
+
+(** Whether the boundary after [ordinal] falls inside one ornamented character
+    complex.
+
+    §B.2 note 9 and §E.2 note 5 are the same sentence about two different tables: the
+    quarter em Table 6 states at [(cl-21, cl-21)] belongs to two characters of {i
+    different} complexes, and two characters of one complex are set by §3.7.1's own
+    method and never opened up. §3.7.1 says the second half again in its own words --
+    "it is prohibited to use inter-character spacing within an ornamented character
+    complex (cl-21) sequence for line adjustment".
+
+    A [script] construct is one complex and a [reference-mark] is read the same way.
+    An emphasis run is not: §3.3.9 attaches a mark to each base character on its own,
+    so two of them are two complexes and the boundary between them opens. *)
+let is_internal_ornamented_boundary (paragraph : Paragraph.t) (ordinal : int) : bool =
+  match cluster_at paragraph ordinal with
+  | None -> false
+  | Some cluster ->
+    Array.exists
+      (fun (construct : Construct.t) ->
+        match construct.Construct.kind with
+        | Construct.Script _ | Construct.Reference_mark _ ->
+          let first, last = construct.Construct.range in
+          first < cluster.last && cluster.last < last
+        | _ -> false)
+      paragraph.Paragraph.constructs
+
 (** One run of one ruby construct, as ordinals rather than as the byte ranges the
     protocol carries.
 
@@ -343,6 +389,54 @@ let is_western_word_space (paragraph : Paragraph.t) (ordinal : int) : bool =
 
 let is_math_token_cluster (paragraph : Paragraph.t) (cluster : Model.cluster) : bool =
   scalar_satisfies paragraph cluster Construct.is_math_token
+
+let is_tab (paragraph : Paragraph.t) (cluster : Model.cluster) : bool =
+  String.equal (piece_of paragraph cluster) "\t"
+
+(** Whether [offset] falls strictly inside some construct.
+
+    Every construct in the vocabulary is at least one object on the line -- a
+    tate-chu-yoko run, a base character group, an ornamented complex, a note set on
+    lines of its own, a run given a length of its own, a formula -- and §3.6.3's cut
+    is not a break opportunity that a rule about characters could permit or forbid.
+    It is the tab's own, so the only thing that can stop it is there being no line
+    boundary at that point at all, which is what standing inside a construct means.
+    A construct that begins or ends exactly at the sign leaves the cut available:
+    the sign is then beside the construct rather than in it. *)
+let is_inside_construct (paragraph : Paragraph.t) (offset : int) : bool =
+  Array.exists
+    (fun (construct : Construct.t) ->
+      let first, last = construct.Construct.range in
+      first < offset && offset < last)
+    paragraph.Paragraph.constructs
+
+(** Whether the cluster at [ordinal] is a tab sign §3.6 has anything to say about.
+
+    §3.6.3 corresponds the signs of a {i line} with the stops of that line, and three
+    of the constructs do not set their text along the line at all. A warichu's and a
+    furawake's sublines run beside it and a tate-chu-yoko run runs across it; each is
+    one position on the line however many characters it holds, so a coordinate inside
+    one is not a position a stop could name. A sign there sets what it was shaped to
+    set, takes no stop, and leaves the line's stops for the signs that are on the
+    line. That holds of every character of such a structure, the first one included:
+    what makes a sign a sign of the line is where its text is set, and the first
+    character of a run is set in the run like every other. Written down nowhere; see
+    README.md, where the reference engine's answer at the first character is recorded
+    as a disagreement rather than followed. *)
+let is_line_tab (paragraph : Paragraph.t) (ordinal : int) : bool =
+  match cluster_at paragraph ordinal with
+  | None -> false
+  | Some cluster ->
+    is_tab paragraph cluster
+    && not
+         (Array.exists
+            (fun (construct : Construct.t) ->
+              match construct.Construct.kind with
+              | Construct.Warichu | Construct.Furawake _ | Construct.Tate_chu_yoko ->
+                let first, last = construct.Construct.range in
+                first <= cluster.first && cluster.last <= last
+              | _ -> false)
+            paragraph.Paragraph.constructs)
 
 (** §C.2 note 5's {i kinds} of inseparable character, as §C.3's very loose level
     enumerates them: each mark is its own kind, and the three code points of the
@@ -582,35 +676,309 @@ let cluster_body_advance (paragraph : Paragraph.t) (ordinal : int) : int =
       (size_of paragraph cluster).inline
     else cluster.advance
 
-(** A cluster's advance as {i this} line sets it.
+(** A cluster's advance inside the run of clusters [first, last) sets it.
 
-    Three things depend on where the line ends. A Western word space at either edge
-    of a line disappears entirely (§3.2.2). The last cluster takes Table 1's
-    line-end cell rather than the cell for its neighbor. Everything between takes
-    the ordinary boundary space.
+    Three things depend on where that run ends. A Western word space at either edge
+    of one disappears entirely (§3.2.2). The cluster that ends one takes Table 1's
+    line-end cell rather than the cell for its neighbor -- but only where the run
+    {i is} the line: §3.4's warichu and §3.7.2's furawake set their text on sublines
+    of their own, and Table 1's line-end column is a statement about the measure's
+    own edge rather than about every place a run of characters stops. Everything
+    between takes the ordinary boundary space.
 
-    A tate-chu-yoko member is not asked where the line ends at all. §3.2.5 makes the
+    A tate-chu-yoko member is not asked where the run ends at all. §3.2.5 makes the
     run one thing on the line, so what follows it is stated by §3.2.5 against the
     next character of the {i paragraph} -- the run keeps the half em it takes before
     an opening bracket even when the bracket is the first thing on the next line --
     and Table 1's line-end column, which states nothing at cl-30 anyway, is not
     consulted. *)
-let cluster_advance_on_line (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
-    ~(line_start : int) ~(line_end : int) : int =
-  if is_western_word_space paragraph ordinal && (ordinal = line_start || ordinal + 1 = line_end)
-  then 0
+let cluster_advance_in_run (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
+    ~(first : int) ~(last : int) ~(is_line : bool) : int =
+  if is_western_word_space paragraph ordinal && (ordinal = first || ordinal + 1 = last) then 0
   else if tate_chu_yoko_range paragraph ordinal <> None then
     Num.i32_add
       (cluster_body_advance paragraph ordinal)
       (boundary_space_after paragraph style ordinal)
-  else if ordinal + 1 = line_end then
+  else if ordinal + 1 = last then
     Num.i32_add
       (cluster_body_advance paragraph ordinal)
-      (line_end_space_after paragraph style ordinal)
+      (if is_line then line_end_space_after paragraph style ordinal else 0)
   else
     Num.i32_add
       (cluster_body_advance paragraph ordinal)
       (boundary_space_after paragraph style ordinal)
+
+(** How wide [first, last) sets, as a run of its own. *)
+let run_extent (paragraph : Paragraph.t) (style : Style.t) ~(first : int) ~(last : int)
+    ~(is_line : bool) : int =
+  let total = ref 0 in
+  for ordinal = first to last - 1 do
+    total := Num.i32_add !total (cluster_advance_in_run paragraph style ordinal ~first ~last ~is_line)
+  done;
+  !total
+
+(* ----------------------------------------------------------------------------- *)
+(* Stacked structures: §3.4's warichu and §3.7.2's furawake *)
+(* ----------------------------------------------------------------------------- *)
+
+(** A structure that sets its own text on several lines inside one line of the main
+    text: §3.4's inline cutting note and §3.7.2's furawake.
+
+    The two are the same geometry with three answers changed. A warichu is always two
+    sublines and the engine picks where to divide them (§3.4.2); a furawake has as
+    many as the caller declared and divides them where the caller said (§3.7.2). A
+    warichu's sublines sit with no gap between them -- "the space between adjacent
+    lines in an inline cutting note is zero" -- and a furawake's take the gap the
+    caller stated. And a warichu's own height is not the line's: "the line gap used to
+    establish the kihon-hanmen should not be affected by the horizontal width of the
+    inline cutting note area", while §3.7.2 requires the whole furawake block to sit
+    inside the kihon-hanmen and so makes its height the line's.
+
+    Both are centered across the line: "the horizontal centers of the kihon-hanmen
+    line and inline cutting note area are aligned", "the center line of the furiwake
+    block should be aligned with the center line of the main text". *)
+type stack = {
+  stack_first : int;  (** The first cluster of the structure this line holds. *)
+  stack_last : int;  (** One past the last. *)
+  stack_body_first : int;  (** The first cluster set on a subline. *)
+  stack_body_last : int;  (** One past the last. *)
+  stack_sublines : (int * int) array;  (** Cluster ranges within the body, in order. *)
+  stack_gap : int;  (** The space between two of them along the block axis. *)
+  stack_in_extent : bool;  (** Whether the structure's height is the line's too. *)
+}
+
+let is_warichu_bracket (paragraph : Paragraph.t) (ordinal : int) : bool =
+  match cluster_at paragraph ordinal with
+  | Some cluster -> cluster.role = Some Model.Warichu_bracket
+  | None -> false
+
+(** The clusters of [construct] this line sets, with the brackets §3.4.2 wraps a
+    warichu in left on the main line where they belong.
+
+    "An inline cutting note ... is surrounded by LEFT PARENTHESIS and RIGHT
+    PARENTHESIS characters that are double the size of the characters in the inline
+    cutting note itself" -- they are as tall as the whole note and stand beside it
+    rather than on either of its lines, which is exactly what a caller says by giving
+    them the [warichu-bracket] role. *)
+let stacked_body (paragraph : Paragraph.t) ~(line_start : int) ~(line_end : int)
+    ~(trim_brackets : bool) ((first, last) : int * int) :
+    ((int * int) * (int * int)) option =
+  let outer_first = max line_start (Paragraph.cluster_index_at_or_after paragraph first) in
+  let outer_last = min line_end (Paragraph.cluster_index_at_or_after paragraph last) in
+  let low = ref outer_first and high = ref outer_last in
+  if trim_brackets then begin
+    while !low < !high && is_warichu_bracket paragraph !low do
+      incr low
+    done;
+    while !high > !low && is_warichu_bracket paragraph (!high - 1) do
+      decr high
+    done
+  end;
+  if !high > !low then Some ((outer_first, outer_last), (!low, !high)) else None
+
+(** The break opportunities the caller stated strictly inside [first, last), as
+    cluster ordinals. *)
+let stated_splits (paragraph : Paragraph.t) ~(first : int) ~(last : int) : int list =
+  List.sort_uniq compare
+    (List.filter_map
+       (fun (opportunity : Paragraph.break_opportunity) ->
+         let ordinal =
+           Paragraph.cluster_index_at_or_after paragraph opportunity.Paragraph.offset
+         in
+         if ordinal > first && ordinal < last then Some ordinal else None)
+       (Array.to_list paragraph.Paragraph.breaks))
+
+(** §3.4.2's division of a warichu into its two lines.
+
+    "The length of the two lines of the inline cutting note should be as near as
+    possible the same. When the inline cutting note can be set in one kihon-hanmen
+    line, the whole inline note text should be broken at a position where line
+    breaking is permitted, and where the two resulting lines are as close as possible
+    to the same length. The length of the second line should not be longer than the
+    length of the first line."
+
+    Three readings of that are answers rather than transcriptions, and all three are
+    observable.
+
+    {b "A position where line breaking is permitted" is a position the caller stated}
+    -- one of the request's own break opportunities -- and not one Table 2 permits. A
+    warichu whose text the caller offered no break inside is still divided, at
+    whichever cluster boundary balances it best, so the sentence is read as a
+    restriction where the caller made one and as nothing where the caller did not.
+
+    {b The second sentence is a preference and not a bound.} Where every stated
+    position leaves the second line longer than the first, the least unbalanced of
+    them is still taken rather than the note being left on one line.
+
+    {b Two positions that balance equally are settled by the earlier one.} *)
+let warichu_sublines (paragraph : Paragraph.t) (style : Style.t) ~(first : int) ~(last : int) :
+    (int * int) array =
+  if last - first <= 1 then [| (first, last) |]
+  else begin
+    let stated = stated_splits paragraph ~first ~last in
+    let candidates =
+      if stated <> [] then stated
+      else List.init (last - first - 1) (fun index -> first + index + 1)
+    in
+    let score split =
+      let head = run_extent paragraph style ~first ~last:split ~is_line:false in
+      let tail = run_extent paragraph style ~first:split ~last ~is_line:false in
+      ((if tail > head then 1 else 0), abs (head - tail))
+    in
+    let best =
+      List.fold_left
+        (fun best split ->
+          let current = score split in
+          match best with
+          | Some (_, previous) when previous <= current -> best
+          | _ -> Some (split, current))
+        None candidates
+    in
+    match best with
+    | Some (split, _) -> [| (first, split); (split, last) |]
+    | None -> [| (first, last) |]
+  end
+
+(** §3.7.2's columns: "when there are line break marks in the furiwake-gyou, the line
+    is broken in the indicated places". {!Paragraph.check_furawake_splits} has already
+    refused a request that states a number of them the column count does not match, so
+    the marks are the division. *)
+let furawake_sublines (paragraph : Paragraph.t) ~(first : int) ~(last : int) : (int * int) array =
+  let cuts = stated_splits paragraph ~first ~last in
+  let edges = (first :: cuts) @ [ last ] in
+  let rec pairs = function
+    | left :: (right :: _ as rest) -> (left, right) :: pairs rest
+    | _ -> []
+  in
+  Array.of_list (List.filter (fun (left, right) -> right > left) (pairs edges))
+
+let line_stacks (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~(line_end : int)
+    : stack list =
+  let out = ref [] in
+  Array.iter
+    (fun (construct : Construct.t) ->
+      let add ~trim_brackets ~sublines ~gap ~in_extent =
+        match stacked_body paragraph ~line_start ~line_end ~trim_brackets construct.Construct.range
+        with
+        | None -> ()
+        | Some ((outer_first, outer_last), (first, last)) ->
+          out :=
+            {
+              stack_first = outer_first;
+              stack_last = outer_last;
+              stack_body_first = first;
+              stack_body_last = last;
+              stack_sublines = sublines ~first ~last;
+              stack_gap = gap;
+              stack_in_extent = in_extent;
+            }
+            :: !out
+      in
+      match construct.Construct.kind with
+      | Construct.Warichu ->
+        add ~trim_brackets:true ~sublines:(warichu_sublines paragraph style) ~gap:0
+          ~in_extent:false
+      | Construct.Furawake { line_gap; _ } ->
+        add ~trim_brackets:false ~sublines:(furawake_sublines paragraph) ~gap:line_gap
+          ~in_extent:true
+      | _ -> ())
+    paragraph.Paragraph.constructs;
+  List.rev !out
+
+let stack_at (stacks : stack list) (ordinal : int) : stack option =
+  List.find_opt (fun stack -> stack.stack_first <= ordinal && ordinal < stack.stack_last) stacks
+
+(** The subline [ordinal] is set on, or [None] where it is on the line itself. *)
+let subline_at (stacks : stack list) (ordinal : int) : (int * int) option =
+  match stack_at stacks ordinal with
+  | None -> None
+  | Some stack ->
+    Array.find_opt (fun (first, last) -> first <= ordinal && ordinal < last) stack.stack_sublines
+
+(** A cluster's advance as {i this} line sets it: inside its own subline where a
+    warichu or a furawake put it, inside the structure where §3.4.2's brackets stand
+    beside one rather than on it, and on the line otherwise.
+
+    The bracket that ends a warichu is the structure's last character and not the
+    line's, so what Table 1 states after it is the space between the {i structure} and
+    what follows -- and that space stands after the block, which is why it is no part
+    of the bracket's own advance. *)
+let cluster_advance_on_line (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
+    ~(stacks : stack list) ~(line_start : int) ~(line_end : int) : int =
+  match subline_at stacks ordinal with
+  | Some (first, last) -> cluster_advance_in_run paragraph style ordinal ~first ~last ~is_line:false
+  | None -> (
+    match stack_at stacks ordinal with
+    | Some stack ->
+      cluster_advance_in_run paragraph style ordinal ~first:stack.stack_first
+        ~last:stack.stack_last ~is_line:false
+    | None ->
+      cluster_advance_in_run paragraph style ordinal ~first:line_start ~last:line_end ~is_line:true)
+
+(** How much of the line a stacked structure takes along it: "the line length of the
+    furiwake block is the line length of the longest furiwake-gyou" (§3.7.2), and the
+    same for a warichu, whose two lines are as near the same length as they can be
+    made anyway.
+
+    [advances] is the line's own advances, indexed from [line_start], so that whatever
+    else has been charged to a cluster by the time the line is placed is charged to the
+    subline it sits on too. *)
+let stack_width (advances : int array) ~(line_start : int) (stack : stack) : int =
+  Array.fold_left
+    (fun widest (first, last) ->
+      let total = ref 0 in
+      for ordinal = first to last - 1 do
+        let local = ordinal - line_start in
+        if local >= 0 && local < Array.length advances then
+          total := Num.i32_add !total advances.(local)
+      done;
+      max widest !total)
+    0 stack.stack_sublines
+
+let subline_height (paragraph : Paragraph.t) ((first, last) : int * int) : int =
+  let tallest = ref 0 in
+  for ordinal = first to last - 1 do
+    match cluster_at paragraph ordinal with
+    | Some cluster ->
+      let size = size_of paragraph cluster in
+      if size.Model.block > !tallest then tallest := size.Model.block
+    | None -> ()
+  done;
+  !tallest
+
+(** How much a stacked structure takes across the line: its sublines' own heights and
+    the gaps between them. *)
+let stack_height (paragraph : Paragraph.t) (stack : stack) : int =
+  let total = ref 0 in
+  Array.iteri
+    (fun index range ->
+      if index > 0 then total := Num.i32_add !total stack.stack_gap;
+      total := Num.i32_add !total (subline_height paragraph range))
+    stack.stack_sublines;
+  !total
+
+(** Where each subline's own edge sits, measured from the line's block origin toward
+    the side the next line is on.
+
+    The structure is centered on the line's own em box rather than on whatever the
+    line turned out to be as tall as, which is what makes a warichu taller than the
+    line overhang it equally on both sides (§3.4.2) and a furawake with a gap sit
+    symmetrically about the text (§3.7.2). *)
+let stack_offsets (paragraph : Paragraph.t) (stack : stack) : int array =
+  let count = Array.length stack.stack_sublines in
+  let top = Num.i32_sub paragraph.Paragraph.text.size.Model.block (stack_height paragraph stack) / 2 in
+  let out = Array.make (max count 1) top in
+  let cursor = ref top in
+  Array.iteri
+    (fun index range ->
+      if index > 0 then
+        cursor :=
+          Num.i32_add !cursor
+            (Num.i32_add (subline_height paragraph stack.stack_sublines.(index - 1)) stack.stack_gap);
+      out.(index) <- !cursor;
+      ignore range)
+    stack.stack_sublines;
+  out
 
 (* ----------------------------------------------------------------------------- *)
 (* Line reduction (§3.8.3, Tables 3 through 5) *)
@@ -742,7 +1110,10 @@ let reduction_sites (paragraph : Paragraph.t) (style : Style.t) ~(line_start : i
     ~(line_end : int) : reduction_site list =
   let sites = ref [] in
   for ordinal = line_start to line_end - 2 do
-    if not (is_internal_jidori_boundary paragraph ordinal) then begin
+    if
+      (not (is_internal_jidori_boundary paragraph ordinal))
+      && not (is_internal_stacked_boundary paragraph ordinal)
+    then begin
       (* §3.2.2: a Western word space is elastic down to a quarter em. *)
       if is_western_word_space paragraph ordinal then begin
         let cluster = paragraph.Paragraph.text.clusters.(ordinal) in
@@ -1033,6 +1404,8 @@ let expansion_sites (paragraph : Paragraph.t) (style : Style.t) ~(line_start : i
   for ordinal = line_start to line_end - 2 do
     if
       (not (is_internal_jidori_boundary paragraph ordinal))
+      && (not (is_internal_stacked_boundary paragraph ordinal))
+      && (not (is_internal_ornamented_boundary paragraph ordinal))
       && (not (is_internal_tate_chu_yoko_boundary paragraph ordinal))
       && (not (ruby_expansion_is_withdrawn paragraph ordinal))
       && (not (is_collapsed_word_space paragraph ordinal ~line_start ~line_end))
@@ -1171,6 +1544,128 @@ let line_head_indent (paragraph : Paragraph.t) (style : Style.t) ~(line_start : 
       | _, "pattern-2" -> Num.i32_add ordinary half
       | true, "pattern-3" -> Num.i32_sub ordinary half
       | _ -> ordinary)
+
+(* ----------------------------------------------------------------------------- *)
+(* Breakability (§C.2, §C.3, Table 2) *)
+(* ----------------------------------------------------------------------------- *)
+
+(** §C.2 note 5's inseparable pairs: two of the same mark are one character, and
+    the two halves of a vertical kana repeat mark belong together. Two {i
+    different} inseparable characters do separate. *)
+let inseparable_member_pair (before : int option) (after : int option) : bool =
+  match (before, after) with
+  | Some left, Some right ->
+    (left = em_dash && right = em_dash)
+    || (left = horizontal_ellipsis && right = horizontal_ellipsis)
+    || (left = two_dot_leader && right = two_dot_leader)
+    || ((left = kana_repeat_upper || left = kana_repeat_voiced_upper)
+       && right = kana_repeat_lower)
+  | _ -> false
+
+(** §C.3's relaxation by reclassification: at every level but the very strict one a
+    prolonged sound mark and a small kana are treated as the script they belong to,
+    and an iteration mark the style permits at a line head is an ordinary
+    ideographic character. *)
+let reclassified_break_class (style : Style.t) (klass : int) (scalar : int option) : int =
+  if
+    scalar = Some iteration_mark
+    && Style.iteration_mark_at_line_head style <> "prohibited"
+    && Style.kinsoku_level style <> "very-strict"
+  then Spec.ideograph
+  else if
+    Style.relaxation_mechanism style = "reclassify" && Style.kinsoku_level style <> "very-strict"
+  then
+    if klass = 10 then 16
+    else if klass = 11 then
+      match scalar with Some scalar when Spec.is_hiragana scalar -> 15 | _ -> 16
+    else klass
+  else klass
+
+(** §C.3's relaxation by matrix: the four conventions differ in which classes they
+    let a line break beside even where Table 2 prohibits it. *)
+let c_3_relaxes_boundary (style : Style.t) ~(before : int) ~(after : int)
+    ~(before_scalar : int option) ~(after_scalar : int option) : bool =
+  let either_class classes = List.mem before classes || List.mem after classes in
+  let either_scalar scalar = before_scalar = Some scalar || after_scalar = Some scalar in
+  let iteration_relaxed =
+    Style.iteration_mark_at_line_head style <> "prohibited" && either_scalar iteration_mark
+  in
+  let matrix_kana = Style.relaxation_mechanism style = "matrix" && either_class [ 10; 11 ] in
+  match Style.kinsoku_level style with
+  | "very-loose" ->
+    either_class [ 3; 4; 5; 9; 12; 13 ]
+    || matrix_kana
+    || cl_08_same_kind before_scalar after_scalar
+  | "loose" ->
+    either_class [ 3 ]
+    || either_scalar katakana_middle_dot
+    || (before_scalar = Some horizontal_ellipsis && after_scalar = Some horizontal_ellipsis)
+    || (before_scalar = Some two_dot_leader && after_scalar = Some two_dot_leader)
+    || iteration_relaxed || matrix_kana
+    || either_scalar percent_sign
+    || either_scalar fullwidth_percent_sign
+  | "strict" -> iteration_relaxed || matrix_kana
+  | _ -> false
+
+(** Whether a line may end at [offset].
+
+    §C.3 states four prohibitions that hold at every convention level: nothing
+    separates an opening bracket from what follows, and nothing separates a closing
+    bracket, a full stop or a comma from what precedes. They are checked before the
+    level's own relaxations, which is why the newspaper convention still refuses to
+    strand a closing bracket.
+
+    §C.2 note 13's prohibition is not among the ones asked here, and neither is §C.2
+    note 7's. Table 2 states the [(cl-30, cl-30)] and [(cl-22, cl-22)] coordinates
+    blank and leaves the notes to say which of the two readings of blank is meant, and
+    both notes' answers -- that two characters of one tate-chu-yoko run, and two
+    characters of one base character group, have no opportunity between them -- are
+    settled before the search runs at all: {!Paragraph.check_indivisible_constructs}
+    refuses the request. A candidate that reached here inside a run would be one the
+    paragraph could not have been built with. *)
+let break_is_legal (paragraph : Paragraph.t) (style : Style.t) (offset : int) : bool =
+  let text = paragraph.Paragraph.text in
+  if offset = String.length text.source then true
+  else
+    let after_ordinal = Paragraph.cluster_index_at_or_after paragraph offset in
+    if after_ordinal = 0 then true
+    else if after_ordinal >= Array.length text.clusters then true
+    else if is_tab paragraph text.clusters.(after_ordinal) then true
+    else begin
+      let before_ordinal = after_ordinal - 1 in
+      let raw_before = class_of_cluster paragraph style before_ordinal in
+      let raw_after = class_of_cluster paragraph style after_ordinal in
+      let before_scalar = single_scalar paragraph text.clusters.(before_ordinal) in
+      let after_scalar = single_scalar paragraph text.clusters.(after_ordinal) in
+      if
+        raw_before = Spec.opening_bracket
+        || raw_after = Spec.closing_bracket
+        || raw_after = Spec.full_stop
+        || raw_after = Spec.comma
+      then false
+      else if
+        c_3_relaxes_boundary style ~before:raw_before ~after:raw_after ~before_scalar ~after_scalar
+      then true
+      else begin
+        let before = reclassified_break_class style raw_before before_scalar in
+        let after = reclassified_break_class style raw_after after_scalar in
+        match Spec.table_two_cell before after with
+        | None -> true
+        | Some cell ->
+          if cell.Spec.break_prohibited then false
+          else if before = Spec.inseparable && after = Spec.inseparable then
+            not (inseparable_member_pair before_scalar after_scalar)
+          else if before = 24 && after = 27 then
+            (* §C.2 note 10 leaves this one to the style. *)
+            Style.grouped_numeral_before_western style = "breakable"
+          else if before = 27 && after = 13 then
+            (* §C.2 note 11: a Western character used as a quantity symbol, or as a
+               European numeral, keeps its postfixed abbreviation. *)
+            text.clusters.(before_ordinal).role <> Some Quantity_symbol
+            && not (is_european_numeral before_scalar)
+          else cell.Spec.break_levels land Style.kinsoku_level_bit style = 0
+      end
+    end
 
 (* ----------------------------------------------------------------------------- *)
 (* Ruby placement (§3.3.5 through §3.3.8, §B.2 notes 1, 7 and 8, and §F) *)
@@ -1744,12 +2239,245 @@ let ruby_gaps ~(line_start : int) ~(line_end : int) (spans : ruby_span list) : i
     spans;
   gaps
 
-let is_tab (paragraph : Paragraph.t) (cluster : Model.cluster) : bool =
-  String.equal (piece_of paragraph cluster) "\t"
+(* ----------------------------------------------------------------------------- *)
+(* §3.7.3's jidori *)
+(* ----------------------------------------------------------------------------- *)
+
+(** The extra space each boundary of the line takes so that every jidori construct on
+    it occupies the number of cells the caller declared.
+
+    §3.7.3 states three things and the engine answers a fourth. "The length for the
+    jidori processing should be defined as a whole number of full-width characters at
+    the size defined for the surrounding text", so the target is the cell count times
+    the paragraph's own em. "The jidori text should be adjusted using spacing between
+    characters so that the sides of the text are aligned at the defined length", so
+    both ends are flush and only the boundaries between characters open -- and what is
+    measured is the run from the first character's head to the last one's end, which
+    is why the last character's own trailing space is no part of it. And the spacing
+    is shared out evenly rather than in proportion to the ems it falls between, which
+    is what [字間を均等に空け] says and what §3.8.4's [文字サイズ比で均等に] would have
+    said instead.
+
+    The boundaries that open are the ones a line could break at: "positions where line
+    breaks are prohibited: between grouped numerals (cl-24); between Western characters
+    (cl-27); between two inseparable characters (cl-08); and so on. These sequences
+    should be treated as a single block", and §3.7.3's own Note reads the space after
+    an opening bracket and the space before a closing bracket out of the adjustment for
+    the same reason. That is {!break_is_legal} exactly, §C.3's convention level and all,
+    so it is asked rather than restated.
+
+    Where {i no} boundary is open the whole of the extra goes after the last character:
+    "if there is only one character, it should be aligned to the left of the jidori
+    block", which is the same sentence about the same situation.
+
+    One bullet of §3.7.3 is left unimplemented deliberately. Its two locales disagree:
+    the English says to "add the same spacing to those space characters as is being
+    added to the other characters" and the Japanese says the opposite, that a space
+    takes the extra on one of its two sides and not on both. The reference engine opens
+    both sides, which is the English reading; see README.md, "Observable policies with
+    no written source". *)
+let jidori_extras (paragraph : Paragraph.t) (style : Style.t) ~(stacks : stack list)
+    ~(line_start : int) ~(line_end : int) : int array =
+  let count = Num.usub line_end line_start in
+  let out = Array.make (max count 1) 0 in
+  Array.iter
+    (fun (construct : Construct.t) ->
+      match construct.Construct.kind with
+      | Construct.Jidori { cells } -> (
+        let first, last = construct.Construct.range in
+        let low = max line_start (Paragraph.cluster_index_at_or_after paragraph first) in
+        let high = min line_end (Paragraph.cluster_index_at_or_after paragraph last) in
+        if high > low then begin
+          let natural = ref 0 in
+          for ordinal = low to high - 2 do
+            natural :=
+              Num.i32_add !natural
+                (cluster_advance_on_line paragraph style ordinal ~stacks ~line_start ~line_end)
+          done;
+          natural := Num.i32_add !natural (cluster_body_advance paragraph (high - 1));
+          let target =
+            Num.clamp_i32 (i64 cells *| i64 paragraph.Paragraph.text.size.Model.inline)
+          in
+          let extra = Num.i32_sub target !natural in
+          if extra > 0 then begin
+            let sites =
+              List.filter
+                (fun ordinal ->
+                  break_is_legal paragraph style
+                    paragraph.Paragraph.text.clusters.(ordinal + 1).first)
+                (List.init (Num.usub (high - 1) low) (fun index -> low + index))
+            in
+            match sites with
+            | [] -> out.(high - 1 - line_start) <- Num.i32_add out.(high - 1 - line_start) extra
+            | sites ->
+              let shares =
+                ruby_shares extra (List.map (fun _ -> 1) sites) (Style.remainder style)
+              in
+              List.iteri
+                (fun index ordinal ->
+                  out.(ordinal - line_start) <- Num.i32_add out.(ordinal - line_start) shares.(index))
+                sites
+          end
+        end)
+      | _ -> ())
+    paragraph.Paragraph.constructs;
+  out
+
+(** §3.2's orientation of one ruby character.
+
+    A reading is text set beside text, so it turns the way the line it is beside
+    turns: upright in horizontal composition, upright in vertical composition, and a
+    quarter turn clockwise where the ruby character arrived proportional and is
+    therefore Western text being set as Western text (§3.2.6). Nothing turns a
+    reading that its base is not turned by. *)
+let annotation_orientation (paragraph : Paragraph.t) (frame : Model.frame) :
+    Model.writing_mode * Layout.transform =
+  if paragraph.Paragraph.writing_mode = Horizontal_tb then (Horizontal_tb, Layout.Identity)
+  else if frame = Proportional then (Vertical_rl, Layout.Rotate_clockwise)
+  else (Vertical_rl, Layout.Identity)
+
+(* ----------------------------------------------------------------------------- *)
+(* §3.3.9's emphasis dots and §3.7.1's ornamented complexes *)
+(* ----------------------------------------------------------------------------- *)
+
+(** §3.3.9's emphasis dots: one mark per base character, half its size, centered on it.
+
+    "The character size of emphasis dots is the half size of the base characters to be
+    emphasized. Emphasis dots are attached to the right of the base characters in
+    vertical writing mode, or above them in horizontal writing mode. The center of
+    emphasis dots is aligned with that of the base characters."
+
+    {b What the mark is centered on is the advance the cluster takes on the line, and
+    not the character's own em box.} The two are the same number for ordinary
+    full-width text and differ wherever Table 1 puts a space after the character or the
+    shaper measured it proportionally, and JLReq's "center of the base characters"
+    settles neither; see README.md, "Observable policies with no written source". So is
+    the block coordinate of a mark on a warichu's second subline: the mark follows its
+    base character along the line and sits above the {i line} rather than above the
+    subline. *)
+let emphasis_attachments (paragraph : Paragraph.t) ~(line_start : int) ~(line_end : int)
+    ~(block_origin : int) (inlines : int array) (advances : int array) : Layout.attachment list =
+  let out = ref [] in
+  Array.iteri
+    (fun construct_ordinal (construct : Construct.t) ->
+      match construct.Construct.kind with
+      | Construct.Emphasis_dots { mark } ->
+        let first, last = construct.Construct.range in
+        for ordinal = line_start to line_end - 1 do
+          let cluster = paragraph.Paragraph.text.clusters.(ordinal) in
+          if first <= cluster.first && cluster.last <= last then begin
+            let base = size_of paragraph cluster in
+            let size =
+              { Model.inline = Model.half_of base.Model.inline;
+                Model.block = Model.half_of base.Model.block }
+            in
+            let local = ordinal - line_start in
+            let inline =
+              Num.i32_add inlines.(local) (Num.i32_sub advances.(local) size.Model.inline / 2)
+            in
+            out :=
+              {
+                Layout.attachment_construct = construct_ordinal;
+                Layout.attachment_range = (0, 0);
+                Layout.attachment_inline = inline;
+                Layout.attachment_block =
+                  (match paragraph.Paragraph.writing_mode with
+                  | Horizontal_tb -> Num.i32_sub block_origin size.Model.block
+                  | Vertical_rl -> Num.i32_add block_origin size.Model.block);
+                Layout.attachment_advance = 0;
+                Layout.attachment_size = size;
+                Layout.attachment_writing_mode = paragraph.Paragraph.writing_mode;
+                Layout.attachment_transform = Layout.Identity;
+                Layout.attachment_symbol = Some mark;
+              }
+              :: !out
+          end
+        done
+      | _ -> ())
+    paragraph.Paragraph.constructs;
+  List.rev !out
+
+(** §3.7.1's superscripts and subscripts, and the reference marks §3.9.2 classes
+    beside them: the annotation set solid and centered across the whole complex.
+
+    §3.7.1 leaves the geometry open -- "JIS X 4051 specifies the character size and the
+    block direction positioning of superscripts and subscripts alongside the base
+    character to be implementation definable parameters" -- and the caller states the
+    size, so what is left for the engine is where along the line the annotation sits.
+    The reference engine centers it on the complex, the way §3.3.5 centers a reading on
+    its base character, and lets it hang over both neighbors where it is longer than
+    the complex without opening the line at all. {b Neither the centering nor the
+    hanging is written down}, and neither reads [ruby.alignment]: §3.3.5's question is
+    about a reading and this is not one. See README.md, "Observable policies with no
+    written source".
+
+    What the annotation is centered on is the complex as the line finally set it: from
+    the first base character's own position to the last one's position plus its advance,
+    so that a line the adjustment ladders moved the base characters on carries its
+    annotation to where they went. That advance carries the space Table 1 states after
+    the complex's last character -- the same reading {!emphasis_attachments} makes of a
+    base character's center. *)
+let ornamented_attachments (paragraph : Paragraph.t) ~(line_start : int) ~(line_end : int)
+    ~(block_origin : int) (inlines : int array) (advances : int array) : Layout.attachment list =
+  let out = ref [] in
+  Array.iteri
+    (fun construct_ordinal (construct : Construct.t) ->
+      let annotation =
+        match construct.Construct.kind with
+        | Construct.Script { annotation } | Construct.Reference_mark { annotation } ->
+          Some annotation
+        | _ -> None
+      in
+      match annotation with
+      | None -> ()
+      | Some text ->
+        let first, last = construct.Construct.range in
+        let low = max line_start (Paragraph.cluster_index_at_or_after paragraph first) in
+        let high = min line_end (Paragraph.cluster_index_at_or_after paragraph last) in
+        if high > low then begin
+          let base =
+            Num.i32_sub
+              (Num.i32_add inlines.(high - 1 - line_start) advances.(high - 1 - line_start))
+              inlines.(low - line_start)
+          in
+          let reading =
+            Array.fold_left
+              (fun total (cluster : Model.cluster) -> Num.i32_add total cluster.advance)
+              0 text.Model.clusters
+          in
+          let start = Num.i32_add inlines.(low - line_start) (Num.i32_sub base reading / 2) in
+          let cursor = ref start in
+          Array.iter
+            (fun (cluster : Model.cluster) ->
+              let size = Model.cluster_size text cluster in
+              let frame = Model.cluster_frame text cluster in
+              let writing_mode, transform = annotation_orientation paragraph frame in
+              out :=
+                {
+                  Layout.attachment_construct = construct_ordinal;
+                  Layout.attachment_range = (cluster.first, cluster.last);
+                  Layout.attachment_inline = !cursor;
+                  Layout.attachment_block =
+                    (match paragraph.Paragraph.writing_mode with
+                    | Horizontal_tb -> Num.i32_sub block_origin size.Model.block
+                    | Vertical_rl -> Num.i32_add block_origin size.Model.block);
+                  Layout.attachment_advance = cluster.advance;
+                  Layout.attachment_size = size;
+                  Layout.attachment_writing_mode = writing_mode;
+                  Layout.attachment_transform = transform;
+                  Layout.attachment_symbol = None;
+                }
+                :: !out;
+              cursor := Num.i32_add !cursor cluster.advance)
+            text.Model.clusters
+        end)
+    paragraph.Paragraph.constructs;
+  List.rev !out
 
 (** Where a tab's segment must start for the stop to align it. *)
 let tab_target (paragraph : Paragraph.t) (style : Style.t) (stop : Paragraph.tab_stop)
-    ~(start : int) ~(finish : int) ~(line_start : int) ~(line_end : int) (width : int64) : int64 =
+    ~(stacks : stack list) ~(start : int) ~(finish : int) ~(line_start : int) ~(line_end : int)
+    (width : int64) : int64 =
   let position = i64 stop.Paragraph.position in
   match stop.Paragraph.tab_alignment with
   | Paragraph.Tab_start -> position
@@ -1761,21 +2489,23 @@ let tab_target (paragraph : Paragraph.t) (style : Style.t) (stop : Paragraph.tab
        for ordinal = start to finish - 1 do
          let cluster = paragraph.Paragraph.text.clusters.(ordinal) in
          let piece = piece_of paragraph cluster in
-         if String.equal piece "\t" || List.mem scalar (Utf8.scalars piece) then raise Exit;
+         if is_line_tab paragraph ordinal || List.mem scalar (Utf8.scalars piece) then raise Exit;
          before :=
-           !before +| i64 (cluster_advance_on_line paragraph style ordinal ~line_start ~line_end)
+           !before
+           +| i64 (cluster_advance_on_line paragraph style ordinal ~stacks ~line_start ~line_end)
        done
      with Exit -> ());
     position -| !before
 
-let segment_width (paragraph : Paragraph.t) (style : Style.t) ~(start : int) ~(finish : int)
-    ~(line_start : int) ~(line_end : int) : int64 =
+let segment_width (paragraph : Paragraph.t) (style : Style.t) ~(stacks : stack list)
+    ~(start : int) ~(finish : int) ~(line_start : int) ~(line_end : int) : int64 =
   let total = ref 0L in
   (try
      for ordinal = start to finish - 1 do
-       if is_tab paragraph paragraph.Paragraph.text.clusters.(ordinal) then raise Exit;
+       if is_line_tab paragraph ordinal then raise Exit;
        total :=
-         !total +| i64 (cluster_advance_on_line paragraph style ordinal ~line_start ~line_end)
+         !total
+         +| i64 (cluster_advance_on_line paragraph style ordinal ~stacks ~line_start ~line_end)
      done
    with Exit -> ());
   !total
@@ -1791,6 +2521,63 @@ let find_tab_stop (paragraph : Paragraph.t) (index : int) (cursor : int64) :
   in
   search index
 
+(** Every cluster's own advance on this line: what it sets, plus the space Table 1
+    puts after it, plus whatever §3.7.3's cells add at that boundary. *)
+let line_advances (paragraph : Paragraph.t) (style : Style.t) ~(stacks : stack list)
+    ~(line_start : int) ~(line_end : int) : int array =
+  let count = Num.usub line_end line_start in
+  let advances =
+    Array.init count (fun local ->
+        cluster_advance_on_line paragraph style (line_start + local) ~stacks ~line_start ~line_end)
+  in
+  let extras = jidori_extras paragraph style ~stacks ~line_start ~line_end in
+  for local = 0 to count - 1 do
+    advances.(local) <- Num.i32_add advances.(local) extras.(local)
+  done;
+  advances
+
+(** The space between a stacked structure and whatever follows it on the line.
+
+    The structure is one object on the line and Table 1 states the boundary after its
+    last character, so that space stands after the {i block} rather than on the subline
+    the character happens to sit on -- which is why a warichu ending in a comma is a
+    half em clear of what comes next however its two lines came out. A structure that
+    ends the line takes nothing, and neither does one ending in a Western word space,
+    which §B.2 note 13 has already taken away. *)
+let stack_trailing (paragraph : Paragraph.t) (style : Style.t) (stack : stack) ~(line_end : int) :
+    int =
+  let last = stack.stack_last - 1 in
+  if stack.stack_last >= line_end || last < 0 then 0
+  else if is_western_word_space paragraph last then 0
+  else boundary_space_after paragraph style last
+
+(** The step the cursor takes at each cluster, which is not the same number as the
+    advance wherever a structure occupies one position on the line and sets several
+    things inside it.
+
+    A warichu and a furawake charge the width of their widest subline to their own last
+    cluster and nothing to the rest: what the line has to make room for is the block,
+    and not the sum of the lines inside it. *)
+let line_steps (paragraph : Paragraph.t) (style : Style.t) (advances : int array)
+    ~(stacks : stack list) ~(line_start : int) ~(line_end : int) : int array =
+  let steps = Array.copy advances in
+  let put local value =
+    if local >= 0 && local < Array.length steps then steps.(local) <- value
+  in
+  List.iter
+    (fun stack ->
+      let width = stack_width advances ~line_start stack in
+      for ordinal = stack.stack_body_first to stack.stack_body_last - 1 do
+        put (ordinal - line_start)
+          (if ordinal + 1 = stack.stack_body_last then width else 0)
+      done;
+      let last = stack.stack_last - 1 - line_start in
+      if last >= 0 && last < Array.length steps then
+        steps.(last) <-
+          Num.i32_add steps.(last) (stack_trailing paragraph style stack ~line_end))
+    stacks;
+  steps
+
 (** How wide the clusters between two offsets set, before adjustment.
 
     A tab that finds no stop past the cursor makes the line unmeasurable rather
@@ -1800,43 +2587,48 @@ let find_tab_stop (paragraph : Paragraph.t) (index : int) (cursor : int64) :
     The space a reading forces between two base characters (§3.3.6, §F.3) is part of
     what the line sets and not an adjustment of it, so it is counted here: a line
     whose ruby does not fit is a line that is too wide, and the search has to see
-    that before it chooses. *)
+    that before it chooses. So is the width of a warichu or a furawake, which is the
+    whole point of dividing one into sublines: a note that would not fit on the line
+    written straight out fits when it is written on two. *)
 let measure_line (paragraph : Paragraph.t) (style : Style.t) ~(start : int) ~(finish : int)
     ~(line_index : int) : int64 =
   let line_start = Paragraph.cluster_index_at_or_after paragraph start in
   let line_end = Paragraph.cluster_index_at_or_after paragraph finish in
   let indent = line_head_indent paragraph style ~line_start ~line_index in
+  let stacks = line_stacks paragraph style ~line_start ~line_end in
   let ruby =
     Array.fold_left ( + ) 0
       (ruby_gaps ~line_start ~line_end
          (ruby_spans paragraph style ~line_start ~line_end ~indent))
+  in
+  let steps =
+    line_steps paragraph style
+      (line_advances paragraph style ~stacks ~line_start ~line_end)
+      ~stacks ~line_start ~line_end
   in
   let cursor = ref (i64 indent +| i64 ruby) in
   let tab_index = ref 0 in
   let exhausted = ref false in
   (try
      for ordinal = line_start to line_end - 1 do
-       let cluster = paragraph.Paragraph.text.clusters.(ordinal) in
-       if is_tab paragraph cluster then begin
+       if is_line_tab paragraph ordinal then begin
          let width =
-           segment_width paragraph style ~start:(ordinal + 1) ~finish:line_end ~line_start
+           segment_width paragraph style ~stacks ~start:(ordinal + 1) ~finish:line_end ~line_start
              ~line_end
          in
          match find_tab_stop paragraph !tab_index !cursor with
          | Some stop ->
            tab_index := !tab_index + 1;
            let target =
-             tab_target paragraph style stop ~start:(ordinal + 1) ~finish:line_end ~line_start
-               ~line_end width
+             tab_target paragraph style stop ~stacks ~start:(ordinal + 1) ~finish:line_end
+               ~line_start ~line_end width
            in
            if lt !cursor target then cursor := target
          | None ->
            exhausted := true;
            raise Exit
        end
-       else
-         cursor :=
-           !cursor +| i64 (cluster_advance_on_line paragraph style ordinal ~line_start ~line_end)
+       else cursor := !cursor +| i64 steps.(ordinal - line_start)
      done
    with Exit -> ());
   if !exhausted then Num.i64_max else !cursor
@@ -1861,19 +2653,6 @@ let local_orientation (paragraph : Paragraph.t) (ordinal : int) (frame : Model.f
   if paragraph.Paragraph.writing_mode = Horizontal_tb then (Horizontal_tb, Layout.Identity)
   else if tate_chu_yoko_range paragraph ordinal <> None then
     (Horizontal_tb, Layout.Tate_chu_yoko)
-  else if frame = Proportional then (Vertical_rl, Layout.Rotate_clockwise)
-  else (Vertical_rl, Layout.Identity)
-
-(** §3.2's orientation of one ruby character.
-
-    A reading is text set beside text, so it turns the way the line it is beside
-    turns: upright in horizontal composition, upright in vertical composition, and a
-    quarter turn clockwise where the ruby character arrived proportional and is
-    therefore Western text being set as Western text (§3.2.6). Nothing turns a
-    reading that its base is not turned by. *)
-let annotation_orientation (paragraph : Paragraph.t) (frame : Model.frame) :
-    Model.writing_mode * Layout.transform =
-  if paragraph.Paragraph.writing_mode = Horizontal_tb then (Horizontal_tb, Layout.Identity)
   else if frame = Proportional then (Vertical_rl, Layout.Rotate_clockwise)
   else (Vertical_rl, Layout.Identity)
 
@@ -1990,128 +2769,6 @@ let formula_break_penalty (paragraph : Paragraph.t) (offset : int) : int64 =
     | _ -> 200_000_000L
 
 (* ----------------------------------------------------------------------------- *)
-(* Breakability (§C.2, §C.3, Table 2) *)
-(* ----------------------------------------------------------------------------- *)
-
-(** §C.2 note 5's inseparable pairs: two of the same mark are one character, and
-    the two halves of a vertical kana repeat mark belong together. Two {i
-    different} inseparable characters do separate. *)
-let inseparable_member_pair (before : int option) (after : int option) : bool =
-  match (before, after) with
-  | Some left, Some right ->
-    (left = em_dash && right = em_dash)
-    || (left = horizontal_ellipsis && right = horizontal_ellipsis)
-    || (left = two_dot_leader && right = two_dot_leader)
-    || ((left = kana_repeat_upper || left = kana_repeat_voiced_upper)
-       && right = kana_repeat_lower)
-  | _ -> false
-
-(** §C.3's relaxation by reclassification: at every level but the very strict one a
-    prolonged sound mark and a small kana are treated as the script they belong to,
-    and an iteration mark the style permits at a line head is an ordinary
-    ideographic character. *)
-let reclassified_break_class (style : Style.t) (klass : int) (scalar : int option) : int =
-  if
-    scalar = Some iteration_mark
-    && Style.iteration_mark_at_line_head style <> "prohibited"
-    && Style.kinsoku_level style <> "very-strict"
-  then Spec.ideograph
-  else if
-    Style.relaxation_mechanism style = "reclassify" && Style.kinsoku_level style <> "very-strict"
-  then
-    if klass = 10 then 16
-    else if klass = 11 then
-      match scalar with Some scalar when Spec.is_hiragana scalar -> 15 | _ -> 16
-    else klass
-  else klass
-
-(** §C.3's relaxation by matrix: the four conventions differ in which classes they
-    let a line break beside even where Table 2 prohibits it. *)
-let c_3_relaxes_boundary (style : Style.t) ~(before : int) ~(after : int)
-    ~(before_scalar : int option) ~(after_scalar : int option) : bool =
-  let either_class classes = List.mem before classes || List.mem after classes in
-  let either_scalar scalar = before_scalar = Some scalar || after_scalar = Some scalar in
-  let iteration_relaxed =
-    Style.iteration_mark_at_line_head style <> "prohibited" && either_scalar iteration_mark
-  in
-  let matrix_kana = Style.relaxation_mechanism style = "matrix" && either_class [ 10; 11 ] in
-  match Style.kinsoku_level style with
-  | "very-loose" ->
-    either_class [ 3; 4; 5; 9; 12; 13 ]
-    || matrix_kana
-    || cl_08_same_kind before_scalar after_scalar
-  | "loose" ->
-    either_class [ 3 ]
-    || either_scalar katakana_middle_dot
-    || (before_scalar = Some horizontal_ellipsis && after_scalar = Some horizontal_ellipsis)
-    || (before_scalar = Some two_dot_leader && after_scalar = Some two_dot_leader)
-    || iteration_relaxed || matrix_kana
-    || either_scalar percent_sign
-    || either_scalar fullwidth_percent_sign
-  | "strict" -> iteration_relaxed || matrix_kana
-  | _ -> false
-
-(** Whether a line may end at [offset].
-
-    §C.3 states four prohibitions that hold at every convention level: nothing
-    separates an opening bracket from what follows, and nothing separates a closing
-    bracket, a full stop or a comma from what precedes. They are checked before the
-    level's own relaxations, which is why the newspaper convention still refuses to
-    strand a closing bracket.
-
-    §C.2 note 13's prohibition is not among the ones asked here, and neither is §C.2
-    note 7's. Table 2 states the [(cl-30, cl-30)] and [(cl-22, cl-22)] coordinates
-    blank and leaves the notes to say which of the two readings of blank is meant, and
-    both notes' answers -- that two characters of one tate-chu-yoko run, and two
-    characters of one base character group, have no opportunity between them -- are
-    settled before the search runs at all: {!Paragraph.check_indivisible_constructs}
-    refuses the request. A candidate that reached here inside a run would be one the
-    paragraph could not have been built with. *)
-let break_is_legal (paragraph : Paragraph.t) (style : Style.t) (offset : int) : bool =
-  let text = paragraph.Paragraph.text in
-  if offset = String.length text.source then true
-  else
-    let after_ordinal = Paragraph.cluster_index_at_or_after paragraph offset in
-    if after_ordinal = 0 then true
-    else if after_ordinal >= Array.length text.clusters then true
-    else if is_tab paragraph text.clusters.(after_ordinal) then true
-    else begin
-      let before_ordinal = after_ordinal - 1 in
-      let raw_before = class_of_cluster paragraph style before_ordinal in
-      let raw_after = class_of_cluster paragraph style after_ordinal in
-      let before_scalar = single_scalar paragraph text.clusters.(before_ordinal) in
-      let after_scalar = single_scalar paragraph text.clusters.(after_ordinal) in
-      if
-        raw_before = Spec.opening_bracket
-        || raw_after = Spec.closing_bracket
-        || raw_after = Spec.full_stop
-        || raw_after = Spec.comma
-      then false
-      else if
-        c_3_relaxes_boundary style ~before:raw_before ~after:raw_after ~before_scalar ~after_scalar
-      then true
-      else begin
-        let before = reclassified_break_class style raw_before before_scalar in
-        let after = reclassified_break_class style raw_after after_scalar in
-        match Spec.table_two_cell before after with
-        | None -> true
-        | Some cell ->
-          if cell.Spec.break_prohibited then false
-          else if before = Spec.inseparable && after = Spec.inseparable then
-            not (inseparable_member_pair before_scalar after_scalar)
-          else if before = 24 && after = 27 then
-            (* §C.2 note 10 leaves this one to the style. *)
-            Style.grouped_numeral_before_western style = "breakable"
-          else if before = 27 && after = 13 then
-            (* §C.2 note 11: a Western character used as a quantity symbol, or as a
-               European numeral, keeps its postfixed abbreviation. *)
-            text.clusters.(before_ordinal).role <> Some Quantity_symbol
-            && not (is_european_numeral before_scalar)
-          else cell.Spec.break_levels land Style.kinsoku_level_bit style = 0
-      end
-    end
-
-(* ----------------------------------------------------------------------------- *)
 (* Composition *)
 (* ----------------------------------------------------------------------------- *)
 
@@ -2126,6 +2783,46 @@ type node = {
   previous : int;
   line_count : int;
 }
+
+(** §3.6.3's fourth case, as a place the line may end.
+
+    "If there is no tab position corresponding to the target string, the string
+    should be set from the tab position of the next line" -- so a tab whose stops
+    the line has already run past does not stay where it is and take a default
+    width. It goes to the next line, and takes the text it aligns with it. The
+    search is where that happens: a tab sign is a place the line may end, whether
+    or not the caller stated a break there, and {!measure_line} makes any line that
+    keeps a stopless tab immeasurably wide, so the ending is chosen wherever the
+    stops have run out and nowhere else. {!break_is_legal} already lets a line end
+    before a tab -- §3.6.3's cut is the tab's own and answers to no character class,
+    which is why it can leave an opening bracket at the line end.
+
+    A sign standing inside a construct is the exception, and for the same reason:
+    the cut is not a break opportunity but a line boundary, and there is no line
+    boundary inside one object. A sign inside a warichu or a furawake is not even a
+    sign of this line ({!is_line_tab}), so it never runs any stops out to begin with.
+
+    A tab at offset zero is the head candidate already, and a caller who stated a
+    break there has said the same thing twice; both are dropped so that no two
+    candidates name one offset. *)
+let tab_candidates (paragraph : Paragraph.t) (stated : int list) : candidate list =
+  let clusters = paragraph.Paragraph.text.Model.clusters in
+  Array.to_list clusters
+  |> List.filter_map (fun (cluster : Model.cluster) ->
+         let offset = cluster.Model.first in
+         if
+           (not (is_tab paragraph cluster))
+           || offset = 0
+           || List.mem offset stated
+           || is_inside_construct paragraph offset
+         then None
+         else
+           Some
+             {
+               candidate_offset = offset;
+               candidate_mandatory = false;
+               candidate_discretionary = false;
+             })
 
 let prepare_candidates (paragraph : Paragraph.t) : candidate array =
   let head =
@@ -2144,7 +2841,13 @@ let prepare_candidates (paragraph : Paragraph.t) : candidate array =
             })
       (Array.to_list paragraph.Paragraph.breaks)
   in
-  Array.of_list (head :: rest)
+  let stated = List.map (fun candidate -> candidate.candidate_offset) rest in
+  let ordered =
+    List.sort
+      (fun left right -> compare left.candidate_offset right.candidate_offset)
+      (rest @ tab_candidates paragraph stated)
+  in
+  Array.of_list (head :: ordered)
 
 let search (paragraph : Paragraph.t) (style : Style.t) (candidates : candidate array) : node array
     =
@@ -2204,45 +2907,63 @@ let backtrack (nodes : node array) : int array =
   Array.of_list (walk (Array.length nodes - 1) [])
 
 (** Replace each tab's advance with the distance to the stop that aligns what
-    follows it. A tab with no stop left is one em wide. *)
-let apply_tabs (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~(line_end : int)
-    ~(line_index : int) (advances : int array) : unit =
+    follows it. A tab with no stop left is one em wide.
+
+    A stop is a position along the line, so the cursor it is compared against is the
+    line's own walk and not the sum of what the characters set: a warichu or a
+    furawake is one position on the line however many characters it holds, and the
+    cursor steps once past the whole block. {!line_steps} is where that is already
+    written down, and it can be read once here because a sign inside such a structure
+    is not a sign of this line ({!is_line_tab}) -- so no advance a structure governs
+    changes while the stops are being read. *)
+let apply_tabs (paragraph : Paragraph.t) (style : Style.t) ~(stacks : stack list)
+    ~(line_start : int) ~(line_end : int) ~(line_index : int) (advances : int array) : unit =
   let text = paragraph.Paragraph.text in
+  let count = Array.length advances in
+  let stacked = line_steps paragraph style advances ~stacks ~line_start ~line_end in
+  let governed = Array.make (max count 1) false in
+  let mark local = if local >= 0 && local < count then governed.(local) <- true in
+  List.iter
+    (fun stack ->
+      for ordinal = stack.stack_body_first to stack.stack_body_last - 1 do
+        mark (ordinal - line_start)
+      done;
+      mark (stack.stack_last - 1 - line_start))
+    stacks;
+  let step local = if governed.(local) then stacked.(local) else advances.(local) in
   let cursor = ref (i64 (line_head_indent paragraph style ~line_start ~line_index)) in
   let tab_index = ref 0 in
-  for local = 0 to Array.length advances - 1 do
+  for local = 0 to count - 1 do
     let ordinal = line_start + local in
-    if is_tab paragraph text.clusters.(ordinal) then begin
+    if is_line_tab paragraph ordinal then begin
       let width = ref 0L in
       (try
-         for following = local + 1 to Array.length advances - 1 do
-           if is_tab paragraph text.clusters.(line_start + following) then raise Exit;
-           width := !width +| i64 advances.(following)
+         for following = local + 1 to count - 1 do
+           if is_line_tab paragraph (line_start + following) then raise Exit;
+           width := !width +| i64 (step following)
          done
        with Exit -> ());
       match find_tab_stop paragraph !tab_index !cursor with
       | Some stop ->
         tab_index := !tab_index + 1;
         let target =
-          tab_target paragraph style stop ~start:(ordinal + 1) ~finish:line_end ~line_start
+          tab_target paragraph style stop ~stacks ~start:(ordinal + 1) ~finish:line_end ~line_start
             ~line_end !width
         in
         let distance = target -| !cursor in
         advances.(local) <- Num.clamp_i32 (if lt distance 0L then 0L else distance)
       | None -> advances.(local) <- text.size.inline
     end;
-    cursor := !cursor +| i64 advances.(local)
+    cursor := !cursor +| i64 (step local)
   done
 
 let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~(line_end : int)
     ~(line_index : int) ~(block_origin : int) ~(is_last : bool) : Layout.line =
   let text = paragraph.Paragraph.text in
   let count = Num.usub line_end line_start in
-  let advances =
-    Array.init count (fun local ->
-        cluster_advance_on_line paragraph style (line_start + local) ~line_start ~line_end)
-  in
-  apply_tabs paragraph style ~line_start ~line_end ~line_index advances;
+  let stacks = line_stacks paragraph style ~line_start ~line_end in
+  let advances = line_advances paragraph style ~stacks ~line_start ~line_end in
+  apply_tabs paragraph style ~stacks ~line_start ~line_end ~line_index advances;
   let indent = line_head_indent paragraph style ~line_start ~line_index in
   (* §3.3.6 and §F.3's space between base characters is geometry rather than
      adjustment, so it rides on the advances: the gap before cluster [local] is
@@ -2253,8 +2974,38 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
   for local = 0 to count - 1 do
     advances.(local) <- Num.i32_add advances.(local) gaps.(local + 1)
   done;
+  (* Where a warichu or a furawake sets its text on sublines of its own, the cursor
+     steps once past the whole block and the clusters inside it are placed at offsets
+     of their own. *)
+  let steps = line_steps paragraph style advances ~stacks ~line_start ~line_end in
+  let stack_inline = Array.make (max count 1) 0 in
+  let stack_block = Array.make (max count 1) 0 in
+  let in_stack = Array.make (max count 1) false in
+  let stack_head = Array.make (max count 1) false in
+  List.iter
+    (fun stack ->
+      let head = stack.stack_body_first - line_start in
+      if head >= 0 && head < count then stack_head.(head) <- true;
+      let offsets = stack_offsets paragraph stack in
+      Array.iteri
+        (fun index (first, last) ->
+          let offset = ref 0 in
+          for ordinal = first to last - 1 do
+            let local = ordinal - line_start in
+            if local >= 0 && local < count then begin
+              in_stack.(local) <- true;
+              stack_inline.(local) <- !offset;
+              stack_block.(local) <-
+                (match paragraph.Paragraph.writing_mode with
+                | Horizontal_tb -> Num.i32_add block_origin offsets.(index)
+                | Vertical_rl -> Num.i32_sub block_origin offsets.(index));
+              offset := Num.i32_add !offset advances.(local)
+            end
+          done)
+        stack.stack_sublines)
+    stacks;
   let content_width =
-    Array.fold_left (fun sum advance -> sum +| i64 advance) (i64 indent +| i64 gaps.(0)) advances
+    Array.fold_left (fun sum step -> sum +| i64 step) (i64 indent +| i64 gaps.(0)) steps
   in
   let remaining = i64 paragraph.Paragraph.line_extent -| content_width in
   let non_negative = if lt remaining 0L then 0L else remaining in
@@ -2280,12 +3031,26 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
   let placed = ref [] in
   let cursor = ref (i64 indent +| i64 gaps.(0) +| alignment_offset) in
   let block_extent = ref text.size.block in
+  (* §3.7.2 puts the whole furawake block inside the kihon-hanmen, so its height is
+     the line's; §3.4.2 says the opposite of a warichu -- "the line gap for the
+     kihon-hanmen needs to be designed wider than usual in preparation for the use of
+     the inline cutting note" -- so a warichu overhangs its line rather than growing
+     it, and neither the block nor the characters on it are asked how tall they are. *)
+  List.iter
+    (fun stack ->
+      if stack.stack_in_extent then begin
+        let height = stack_height paragraph stack in
+        if height > !block_extent then block_extent := height
+      end)
+    stacks;
+  let stack_origin = ref 0L in
   let inlines = Array.make (max count 1) 0 in
   for local = 0 to count - 1 do
     let ordinal = line_start + local in
     let cluster = text.clusters.(ordinal) in
     let size = size_of paragraph cluster in
     let frame = frame_of paragraph cluster in
+    if stack_head.(local) then stack_origin := !cursor;
     (* A tate-chu-yoko run is placed across the line rather than along it. Every
        member sits at the cursor, because the run occupies one position on the line
        and `advances` charges the whole of it to the run's last member; what tells
@@ -2299,25 +3064,31 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
        may be more than any one em on the line -- a five-digit run in a one-em
        measure is wider than the line's own characters -- or less. *)
     let block, advance =
-      match tate_chu_yoko_range paragraph ordinal with
-      | Some (first, last) ->
-        if ordinal = first then begin
-          let width = tate_chu_yoko_run_width paragraph ~first ~last in
-          if width > !block_extent then block_extent := width
-        end;
-        ( Num.i32_add block_origin (tate_chu_yoko_member_offset paragraph ordinal ~first ~last),
-          cluster.advance )
-      | None ->
-        if size.block > !block_extent then block_extent := size.block;
-        (block_origin, advances.(local))
+      if in_stack.(local) then (stack_block.(local), advances.(local))
+      else
+        match tate_chu_yoko_range paragraph ordinal with
+        | Some (first, last) ->
+          if ordinal = first then begin
+            let width = tate_chu_yoko_run_width paragraph ~first ~last in
+            if width > !block_extent then block_extent := width
+          end;
+          ( Num.i32_add block_origin (tate_chu_yoko_member_offset paragraph ordinal ~first ~last),
+            cluster.advance )
+        | None ->
+          if size.block > !block_extent then block_extent := size.block;
+          (block_origin, advances.(local))
+    in
+    let inline =
+      if in_stack.(local) then Num.i32_add (Num.clamp_i32 !stack_origin) stack_inline.(local)
+      else Num.clamp_i32 !cursor
     in
     let writing_mode, transform = local_orientation paragraph ordinal frame in
-    inlines.(local) <- Num.clamp_i32 !cursor;
+    inlines.(local) <- inline;
     placed :=
       {
         Layout.origin = Layout.From_cluster ordinal;
         Layout.range = (cluster.first, cluster.last);
-        Layout.inline = Num.clamp_i32 !cursor;
+        Layout.inline;
         Layout.block;
         Layout.advance;
         Layout.size = size;
@@ -2326,10 +3097,14 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
         Layout.transform = transform;
       }
       :: !placed;
-    cursor := !cursor +| i64 advances.(local);
+    cursor := !cursor +| i64 steps.(local);
     cursor := !cursor +| i64 adjustments.(local)
   done;
-  let attachments = ruby_attachments paragraph spans ~line_start ~block_origin inlines in
+  let attachments =
+    ruby_attachments paragraph spans ~line_start ~block_origin inlines
+    @ emphasis_attachments paragraph ~line_start ~line_end ~block_origin inlines advances
+    @ ornamented_attachments paragraph ~line_start ~line_end ~block_origin inlines advances
+  in
   let overhead =
     List.fold_left
       (fun widest (attachment : Layout.attachment) ->
