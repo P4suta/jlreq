@@ -253,10 +253,11 @@ transcribed.
 Twenty-six of them were found while this engine was written: two from §3.8.4's
 ladder and three from §3.2.5's tate-chu-yoko, found by the `expansion` and
 `tate-chu-yoko` censuses rather than by any conformance case; six from §3.3's ruby,
-seven from the constructs of §3.3.9, §3.7.1, §3.4, §3.7.3 and §3.7.4, and seven from
-§3.6's tab setting and §3.5's paragraph end. Every one of them is now published in
-`docs/decisions/`, bundled by subject, with the census that observed it and the
-sentence whose silence permits it:
+seven from the constructs of §3.3.9, §3.7.1, §3.4, §3.7.3 and §3.7.4, seven from
+§3.6's tab setting and §3.5's paragraph end, and one about Appendix A rather than
+about any section. Every one of them is now published in `docs/decisions/`, bundled
+by subject, with the census that observed it and the sentence whose silence permits
+it:
 
 | Reading | What it settles |
 | --- | --- |
@@ -280,9 +281,9 @@ which selects nothing today — and both are recorded in
 [expansion-ladder-scope](../../docs/decisions/expansion-ladder-scope.md) so that a later
 reader does not re-derive them.
 
-The comments in `lib/` and the cases in `test/` that name this section name the file
-that now carries the argument. A policy found from here on is recorded here first and
-promoted the same way.
+The comments in `lib/` and the cases in `test/` still name this section, which is why
+the heading stays: the table above is what they now resolve to. A policy found from
+here on is recorded here first and promoted the same way.
 
 ### Where the two engines disagree
 
