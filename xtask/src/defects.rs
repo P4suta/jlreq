@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -161,7 +161,7 @@ const RECORDED: [Defect; 12] = [
     Defect {
         id: "bracket-class-enumeration-mismatch",
         site: "3.9.2, A.28, A.29",
-        treatment: "kumihan's private classifier uses the three members §A.28 and §A.29 enumerate, \
+        treatment: "jlreq's private classifier uses the three members §A.28 and §A.29 enumerate, \
                     which is the only closed statement the document makes about either \
                     class. Whether a fourth bracket belongs is a silence for \
                     docs/decisions/ rather than an answer this stage may invent.",

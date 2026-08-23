@@ -2,7 +2,7 @@
 
 - Status: accepted; the historical crate enumeration is superseded by
   [ADR 0022](0022-unified-public-crate-and-process-conformance.md). The purity rule itself
-  is unchanged and now binds the single `kumihan` library.
+  is unchanged and now binds the single `jlreq` library.
 - Date: 2026-08-05
 
 ## Context
@@ -21,7 +21,7 @@ that already has its fonts, or a test that wants a fixed answer.
 ## Decision
 
 The crate names below record the pre-1.0 topology in which this decision was made. In the
-current topology, their code is private inside `kumihan`, and the same rule applies to the
+current topology, their code is private inside `jlreq`, and the same rule applies to the
 whole library.
 
 `jlreq-unit`, `jlreq-spec`, `jlreq-class`, `jlreq-spacing`, `jlreq-line`, `jlreq-inline`,

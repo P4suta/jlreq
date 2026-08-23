@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 #
@@ -11,67 +11,67 @@
 
 [[file]]
 path = "ROADMAP.md"
-sha256 = "97e1c4eb09fb9da11e087fd2213fb6354a673ce9c69fe2c3f14d8e586e36a212"
+sha256 = "25f7cb21ddb43c2bbdb6e0450b527709e8a19eba0a7daa4bce9ae9f58003ce0f"
 
 [[file]]
-path = "crates/kumihan-conformance/protocol.schema.json"
-sha256 = "cec3039f54f291e4fc058732bebb8ae23e66c6460ad83931253ec1a524151176"
+path = "crates/jlreq-conformance/protocol.schema.json"
+sha256 = "18b9799b32a8aaa857bd7a632394e116e444ea2923071e0741c884f343eff42c"
 
 [[file]]
-path = "crates/kumihan-conformance/suite.ndjson"
-sha256 = "7fadf51b3c159f4e2b466e80601a4232c999aa1b514b7558ff5281e026de17db"
+path = "crates/jlreq-conformance/suite.ndjson"
+sha256 = "8f8f70b5f193a140994c8ca42bde5e46a445f55465b6b098012f7ffd0ccbadcf"
 
 [[file]]
-path = "crates/kumihan/src/generated/appendix_a.rs"
-sha256 = "ba8bff9c1d196f2058aef7f206c2cd3d7b6d01ea43731c6a20ff0a981668e942"
+path = "crates/jlreq/src/generated/appendix_a.rs"
+sha256 = "a15fbbc79376857b1fa9ee4dab2b952917d19da3b68e49cb185a962e8180cef7"
 
 [[file]]
-path = "crates/kumihan/src/generated/folding.rs"
-sha256 = "375a55392f6b1a62762a8240a4e205db056dd668340bdd2af6f24b7591bc0072"
+path = "crates/jlreq/src/generated/folding.rs"
+sha256 = "e9252275a61aa1173010453f98ba50b2fa73a4e207e6a7cb75c602fe4ee07b7f"
 
 [[file]]
-path = "crates/kumihan/src/generated/ideograph.rs"
-sha256 = "a860d5b3e062022ed61d973012d4a50165c73b7653177a86ea49221edc1fae36"
+path = "crates/jlreq/src/generated/ideograph.rs"
+sha256 = "d373eb12d21a49e0e8f1486deb6393f6142299652cdb17bd5e47ffb153b57536"
 
 [[file]]
-path = "crates/kumihan/src/generated/script.rs"
-sha256 = "2e9212874853638f6c38de9cd1559003e10d0d5bc73b7414e717a8a413f16ee2"
+path = "crates/jlreq/src/generated/script.rs"
+sha256 = "4f52398632c2e28ac508726c2282f24109ddd19d72d048d4961e46cc5d995a72"
 
 [[file]]
-path = "crates/kumihan/src/generated/table1.rs"
-sha256 = "05f553d76d4ea0b64150c137fac317a993290df711720a11676992dcca8861b7"
+path = "crates/jlreq/src/generated/table1.rs"
+sha256 = "5812f8df8d1fb21f644bc6c5455be33df48e79188a452ec98c867d91289aa8b9"
 
 [[file]]
-path = "crates/kumihan/src/generated/table2.rs"
-sha256 = "a4814171f41f17f34754e8edb45b65f4c2e1494716d304c4cfaed7778935872a"
+path = "crates/jlreq/src/generated/table2.rs"
+sha256 = "96019ce3b0e56573d3469ab9add361c5e10c74efe4ccf3546fc72ec38d641e23"
 
 [[file]]
-path = "crates/kumihan/src/generated/table3.rs"
-sha256 = "3e6299d8478abb54f490abf49f2e9249032b7e75c176326f1e97c15c605f7b94"
+path = "crates/jlreq/src/generated/table3.rs"
+sha256 = "192b43ccf7eb5a4f14018927c308c4b564531754933218887804915dc3ae4445"
 
 [[file]]
-path = "crates/kumihan/src/generated/table4.rs"
-sha256 = "40c1662ac3ace0cadf88b66f225786b1416a93c7dd7c704e9a7f14bd2367381c"
+path = "crates/jlreq/src/generated/table4.rs"
+sha256 = "800b3eed5d30e8791c43b9380f40d924e14c214cc194fb1cb75ef563451050a3"
 
 [[file]]
-path = "crates/kumihan/src/generated/table5.rs"
-sha256 = "a085816d7ab781a6da21b84e369d293f1d8f9f7ffeb1e496e0deed511a316133"
+path = "crates/jlreq/src/generated/table5.rs"
+sha256 = "04807f9ab3c637200a27b0fecd52e1c9917ce6f26ad429665f7b8f4aa2f2d9ff"
 
 [[file]]
-path = "crates/kumihan/src/generated/table6.rs"
-sha256 = "54ab20802eff2ae1c5e5582881c3a01b4bc1ba35ff9d24a311abd5e7c073336e"
+path = "crates/jlreq/src/generated/table6.rs"
+sha256 = "387afbffa61adb57be7d92bdc58d1e99a5b6596d606f498ae40dc5fa4c8c2092"
 
 [[file]]
 path = "docs/api-1.0.toml"
-sha256 = "d9bd434a911a3d5fcb2d000068827fee1b2cffb661c47986fb2320eabbfa788a"
+sha256 = "3b4cd6e0d110ff44523f16d9aaa0074330f1b8f5234b9423264487c580d66c71"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"
-sha256 = "5fa1c867e1b356c08388ce336de5966ac479d2eff661bb87b05ff0a277afe4c1"
+sha256 = "e75e3651a359f3886308b0a01867d18538d4e62423498f405c9b5e1e8c204221"
 
 [[file]]
 path = "spec/PROVENANCE.toml"
-sha256 = "6bf439a9a2e7cf6c43e68140523ae025f581c5d3161dc51a069f93bbceaa1c26"
+sha256 = "8cbb75be7fb4ad0fd4b18faa3973f2f6b5a28439a78f42ef219489f9876c7904"
 
 [[file]]
 path = "spec/captured/invariants.tsv"
@@ -127,43 +127,43 @@ sha256 = "4cf9bc40c71990ac577d8504674253dc04d878f556602749d8d0707af2fbd874"
 
 [[file]]
 path = "spec/derived/anchors.tsv"
-sha256 = "cad653eff9aaf594a1b0ad321d000c66a535596be7df07065a0ddce4e954ac76"
+sha256 = "1d8d36d1f2a69b30c6817f3012a367fbab0efbd6455e0d2a1371b6fee40a36d6"
 
 [[file]]
 path = "spec/derived/appendix-a.tsv"
-sha256 = "319ded957224da4bce5f0d07286c9e59dc5d6ec9538bd60080c8854e4589ddf5"
+sha256 = "d47f6bf7a6d51d20c4e86419c35ef5ccaaf0c4baa9fb4ace55a0990e8360734c"
 
 [[file]]
 path = "spec/derived/classes.tsv"
-sha256 = "cd15ddfcc38e2002b12fbca25f534e1c86e58ff00744ce97d7d743ba01f03909"
+sha256 = "311fe44852e4f8057565d8b78a9976bcec628ef9ea199110d29832d0fb31120b"
 
 [[file]]
 path = "spec/derived/defects.tsv"
-sha256 = "2d312b6d1320588e9f173ed128cfb91e464b3a4f354b3e622dcabdca4bc4f188"
+sha256 = "1537dda983e5b4ba5a4ef0f8fd7984e7c00397a054cc6ad9080270e28f8bc169"
 
 [[file]]
 path = "spec/derived/folding.tsv"
-sha256 = "e95312f015eea1882b9bc45ee3176a5bacc87636b20542b935e217e54c081493"
+sha256 = "4e8abc525815527522e36bad9410d0f7fa8733d29010f8a518e92fbc233cefaf"
 
 [[file]]
 path = "spec/derived/ideographs.tsv"
-sha256 = "e95db689b15497d20356a7e70aec2f46dcb7e51336b92c4becd469e9f7dec928"
+sha256 = "cf61e33039cc37974f3e017e6381e94873df3e55701199a71877b18bbd01886d"
 
 [[file]]
 path = "spec/derived/notes.tsv"
-sha256 = "1bf3177871b4b0197964f0b24951f37e75b5f87fe35cdf51e4d52ac9edc7281c"
+sha256 = "b2302f2de103fef508cdeba8723ae88ac41083bfab9bf3d7e3aadbc82a32c334"
 
 [[file]]
 path = "spec/derived/questions.tsv"
-sha256 = "aa988703189460344a18ed4c7556b104d12eba8681a7e95516c5c27fe4ce36dc"
+sha256 = "49955d04fdcc519a7a2a1b3ecc85f030ab216ba84668357a13cfc657990937d6"
 
 [[file]]
 path = "spec/derived/rules.tsv"
-sha256 = "31720f702736262024c6c96f2ac1b7a865b989e837d86a2f91bbe2f1a0b712a6"
+sha256 = "a54974732b8077af7ce1a4c2ff7e41d4772cdae07dd8a9f341650231f49f4cab"
 
 [[file]]
 path = "spec/derived/scripts.tsv"
-sha256 = "af717d47dc4788b6519a6a522e950065de6953165c69b57f541e271f9bad1e6e"
+sha256 = "3b7c3d2e4e2f35912137c2fef54928c4cbf42f850bcd2483175ec11f5c78bfd1"
 
 [[file]]
 path = "spec/snapshot/index.html"
@@ -183,44 +183,44 @@ sha256 = "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
 
 [[file]]
 path = "xtask/src/api.rs"
-sha256 = "3352acdf7ad11f02265a35fbc17bce7177c6c2ed28a4dc8dfc07a5419d1ea94a"
+sha256 = "04ea79a347b720cfd3c0aca0dcf98cfd5c450bb335266a707cdbe7c821a11eae"
 
 [[file]]
 path = "xtask/src/attest.rs"
-sha256 = "d0241eec430479dd6bd3c8ec9985f47abaf80a6227fb45c6db762093e4ddd32e"
+sha256 = "23be98adeefbac0b1a9f67ce69880a0fe9b51c1f42f205ba128e3018d3d322b9"
 
 [[file]]
 path = "xtask/src/classes.rs"
-sha256 = "81b11296f5b17ad60b42b889822eb2926820513ef8c0712ac76df5de716ad9d9"
+sha256 = "6b005096ce0174f4de51bb83e747fe5516e24281e878c0efae5f7b499bf5610a"
 
 [[file]]
 path = "xtask/src/conform.rs"
-sha256 = "6fbbce2dc84da27dc475adf7597b13b2e17e3a29150ad4a2e9be3820b8948a26"
+sha256 = "b3456c6290e1f7bb10c8b140f97451dc9424e7e5c7b523ca0357eb190d2bcd09"
 
 [[file]]
 path = "xtask/src/defects.rs"
-sha256 = "182ea62967624917bc64be0615485e9966fb54ed52b2ca13ba2245fe8e92b036"
+sha256 = "3fa91d98659d777e884515e7df8a235246a945e06aa5ebc74e8bf09c803c790b"
 
 [[file]]
 path = "xtask/src/deferral.rs"
-sha256 = "8e11b8e81c165949f70b538759eed6f66f284e3b4fb445c81d8283f9b8b060b6"
+sha256 = "b27e7d9ab23a07156ab1a3b4ae7d4559892a3db3ef40309844da41cd625d1a4d"
 
 [[file]]
 path = "xtask/src/derive.rs"
-sha256 = "9680ce7d66ec2691ac36c4a81214b8bc64827d0e5f62cfb334a4808c3ccb631f"
+sha256 = "b4811f9b3fd18724d82f43c8a1ec82252e865c263c75872dd8a6b6ec9615747e"
 
 [[file]]
 path = "xtask/src/generate.rs"
-sha256 = "88c812e8028971664a6e76e08f1718625597c337718c3ddd20cb6d1b25280d15"
+sha256 = "0a179849cca8b659685aa55b80144fdb0c75faf64adfddce76fd1b9daab7595a"
 
 [[file]]
 path = "xtask/src/inventory.rs"
-sha256 = "27c01c00c9a9a5687bcc21aaf5fb6b393941136679598751026324340cf6b637"
+sha256 = "e5834aba23bf5a02a944573167de20d67cc4a6b0d8712e50ccc995bc780373f8"
 
 [[file]]
 path = "xtask/src/policy.rs"
-sha256 = "e817ab1a85b1b4d1b9c7941777d3a6b9d3229c040949072f78971fcc243c58d3"
+sha256 = "12e47247d7965060728f8482e5c17f8c5e6a83f3ef4f263a64b44cd56f77c3b7"
 
 [[file]]
 path = "xtask/src/spacing.rs"
-sha256 = "63fddb9f45f24fd0eb48247f5da1e091a66ac94dbcd3765dc41db5be3e11a385"
+sha256 = "4073acf8bcba3180e5a701d21d5b7fc1534475c12cc73360797faff13401d9a7"

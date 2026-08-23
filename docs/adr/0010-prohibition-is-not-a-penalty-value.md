@@ -88,7 +88,7 @@ Where the four remaining components sit is a silence. §C.3's closing paragraph 
 its four *levels* achieve — "the very strict rule is for the best appearance at the line
 head, while the strict rule is best to avoid inter-character spacing adjustment" — which is
 guidance on choosing a level, not a rule for ranking two candidate paragraphs. Their
-placement is therefore kumihan's, published as a reading of a silence, with two named orders
+placement is therefore jlreq's, published as a reading of a silence, with two named orders
 and a conformance case pinning each. The demerit type implements no ordering of its own,
 because a derived one would advertise as the library's the very order the library declines to
 fix.

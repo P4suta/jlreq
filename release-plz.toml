@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -15,16 +15,16 @@ git_release_enable = false
 changelog_update = false
 
 [[package]]
-name = "kumihan"
-version_group = "kumihan"
+name = "jlreq"
+version_group = "jlreq"
 changelog_update = false
 changelog_path = "./CHANGELOG.md"
-changelog_include = ["kumihan", "kumihan-conformance"]
+changelog_include = ["jlreq", "jlreq-conformance"]
 git_tag_enable = false
 git_tag_name = "v{{ version }}"
 git_release_enable = false
 git_release_draft = false
 
 [[package]]
-name = "kumihan-conformance"
-version_group = "kumihan"
+name = "jlreq-conformance"
+version_group = "jlreq"

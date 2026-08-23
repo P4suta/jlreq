@@ -1,9 +1,9 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Stage 2 generation for the unified engine: the six captured matrices of Appendices B
-//! through E, turned into private `static` arrays under `crates/kumihan/src/generated/`.
+//! through E, turned into private `static` arrays under `crates/jlreq/src/generated/`.
 //!
 //! `spec/captured/table<N>.en.tsv` is the input for each unit. The Japanese rendering,
 //! `table<N>.ja.tsv`, is not: `generate`'s own `Unit` reads one file, and the control that
@@ -47,12 +47,12 @@ pub(crate) const TABLE1: Unit = Unit {
 };
 
 /// Table 1 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE1: Unit = Unit {
+pub(crate) const UNIFIED_TABLE1: Unit = Unit {
     input: "spec/captured/table1.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table1.rs",
+    output: "crates/jlreq/src/generated/table1.rs",
     summary: "Table 1, \"Spacing between Characters\" (Appendix B).",
-    emit: emit_kumihan_table1,
+    emit: emit_unified_table1,
 };
 
 /// Table 2, "Possibilities for Line-breaking between Characters" (Appendix C).
@@ -65,12 +65,12 @@ pub(crate) const TABLE2: Unit = Unit {
 };
 
 /// Table 2 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE2: Unit = Unit {
+pub(crate) const UNIFIED_TABLE2: Unit = Unit {
     input: "spec/captured/table2.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table2.rs",
+    output: "crates/jlreq/src/generated/table2.rs",
     summary: "Table 2, \"Possibilities for Line-breaking between Characters\" (Appendix C).",
-    emit: emit_kumihan_table2,
+    emit: emit_unified_table2,
 };
 
 /// Table 3, JLReq's own reduction-priority reading (Appendix D).
@@ -83,12 +83,12 @@ pub(crate) const TABLE3: Unit = Unit {
 };
 
 /// Table 3 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE3: Unit = Unit {
+pub(crate) const UNIFIED_TABLE3: Unit = Unit {
     input: "spec/captured/table3.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table3.rs",
+    output: "crates/jlreq/src/generated/table3.rs",
     summary: "Table 3, JLReq's own reduction-priority reading (Appendix D).",
-    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
+    emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
 
 /// Table 4, the JIS X 4051 reduction-priority reading (Appendix D).
@@ -101,12 +101,12 @@ pub(crate) const TABLE4: Unit = Unit {
 };
 
 /// Table 4 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE4: Unit = Unit {
+pub(crate) const UNIFIED_TABLE4: Unit = Unit {
     input: "spec/captured/table4.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table4.rs",
+    output: "crates/jlreq/src/generated/table4.rs",
     summary: "Table 4, the JIS X 4051 reduction-priority reading (Appendix D).",
-    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
+    emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
 
 /// Table 5, the book-practice reduction-priority reading (Appendix D).
@@ -119,12 +119,12 @@ pub(crate) const TABLE5: Unit = Unit {
 };
 
 /// Table 5 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE5: Unit = Unit {
+pub(crate) const UNIFIED_TABLE5: Unit = Unit {
     input: "spec/captured/table5.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table5.rs",
+    output: "crates/jlreq/src/generated/table5.rs",
     summary: "Table 5, the book-practice reduction-priority reading (Appendix D).",
-    emit: |table| emit_kumihan_ranged(table, RangedTable::Reduction, "D.1"),
+    emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
 
 /// Table 6, "Opportunities for Inter-character Space Expansion" (Appendix E).
@@ -143,12 +143,12 @@ pub(crate) const TABLE6: Unit = Unit {
 };
 
 /// Table 6 behind the sole public library's dependency-free private boundary.
-pub(crate) const KUMIHAN_TABLE6: Unit = Unit {
+pub(crate) const UNIFIED_TABLE6: Unit = Unit {
     input: "spec/captured/table6.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/kumihan/src/generated/table6.rs",
+    output: "crates/jlreq/src/generated/table6.rs",
     summary: "Table 6, \"Opportunities for Inter-character Space Expansion\" (Appendix E).",
-    emit: |table| emit_kumihan_ranged(table, RangedTable::Expansion, "E"),
+    emit: |table| emit_unified_ranged(table, RangedTable::Expansion, "E"),
 };
 
 /// One transcribed row, read by column name rather than position (`generate::Record`'s
@@ -360,8 +360,8 @@ fn emit_table1(table: &Table) -> Result<Emission, String> {
     Ok(Emission { items, entries })
 }
 
-/// Emit Table 1 for `kumihan`, retaining observable JLReq references without `RuleId`.
-fn emit_kumihan_table1(table: &Table) -> Result<Emission, String> {
+/// Emit Table 1 for `jlreq`, retaining observable JLReq references without `RuleId`.
+fn emit_unified_table1(table: &Table) -> Result<Emission, String> {
     let rows = rows(table)?;
     let mut items = String::from(
         "use crate::spec::{RawHang, RawSpacingCell, RawTerm, em};\n\n\
@@ -457,8 +457,8 @@ fn emit_table2(table: &Table) -> Result<Emission, String> {
     Ok(Emission { items, entries })
 }
 
-/// Emit Table 2 for `kumihan`, retaining observable JLReq references without `RuleId`.
-fn emit_kumihan_table2(table: &Table) -> Result<Emission, String> {
+/// Emit Table 2 for `jlreq`, retaining observable JLReq references without `RuleId`.
+fn emit_unified_table2(table: &Table) -> Result<Emission, String> {
     let rows = rows(table)?;
     let mut items = String::from(
         "use crate::spec::RawBreakCell;\n\n\
@@ -606,8 +606,8 @@ fn emit_ranged(table: &Table, which: RangedTable, fallback: &str) -> Result<Emis
     Ok(Emission { items, entries })
 }
 
-/// Emit one of Tables 3 through 6 for `kumihan`, retaining JLReq references as strings.
-fn emit_kumihan_ranged(
+/// Emit one of Tables 3 through 6 for `jlreq`, retaining JLReq references as strings.
+fn emit_unified_ranged(
     table: &Table,
     which: RangedTable,
     fallback: &str,
@@ -797,17 +797,17 @@ mod tests {
     fn the_generation_units_hold_over_this_repository() {
         for unit in [
             super::TABLE1,
-            super::KUMIHAN_TABLE1,
+            super::UNIFIED_TABLE1,
             super::TABLE2,
-            super::KUMIHAN_TABLE2,
+            super::UNIFIED_TABLE2,
             super::TABLE3,
-            super::KUMIHAN_TABLE3,
+            super::UNIFIED_TABLE3,
             super::TABLE4,
-            super::KUMIHAN_TABLE4,
+            super::UNIFIED_TABLE4,
             super::TABLE5,
-            super::KUMIHAN_TABLE5,
+            super::UNIFIED_TABLE5,
             super::TABLE6,
-            super::KUMIHAN_TABLE6,
+            super::UNIFIED_TABLE6,
         ] {
             assert!(unit.input.starts_with("spec/captured/table"));
             assert!(unit.output.contains("/src/generated/table"));

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -7,7 +7,7 @@
 //! The conformance suite is the deliverable [ADR
 //! 0006](../../docs/adr/0006-conformance-suite-as-artifact.md) treats as a published
 //! artifact. `conform --check` validates the protocol-v1 schema and every case in
-//! `crates/kumihan-conformance/suite.ndjson`, then subtracts their declared coverage from
+//! `crates/jlreq-conformance/suite.ndjson`, then subtracts their declared coverage from
 //! `spec/derived/rules.tsv`.
 //!
 //! Each case is checked as a language-independent black-box request and expected response:
@@ -52,9 +52,9 @@ pub(crate) const GATE: Gate = Gate {
 /// this one.
 pub(crate) const CASES_DIR: &str = "crates/jlreq-conform/cases";
 /// The language-independent black-box suite for the unified product.
-pub(crate) const PROTOCOL_CASES_FILE: &str = "crates/kumihan-conformance/suite.ndjson";
-const PROTOCOL_SCHEMA_FILE: &str = "crates/kumihan-conformance/protocol.schema.json";
-const PROTOCOL: &str = "kumihan.conformance/1";
+pub(crate) const PROTOCOL_CASES_FILE: &str = "crates/jlreq-conformance/suite.ndjson";
+const PROTOCOL_SCHEMA_FILE: &str = "crates/jlreq-conformance/protocol.schema.json";
+const PROTOCOL: &str = "jlreq.conformance/1";
 const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// The committed schema, published so nobody else has to use our reader.
 const SCHEMA_FILE: &str = "crates/jlreq-conform/cases.schema.json";
@@ -68,7 +68,7 @@ const QUESTIONS_INVENTORY: &str = "spec/derived/questions.tsv";
 /// and never a rule a case may cover.
 const ANCHORS_INVENTORY: &str = "spec/derived/anchors.tsv";
 /// The crate that declares the fixed-point denominator.
-const UNIT_CRATE: &str = "crates/kumihan/src";
+const UNIT_CRATE: &str = "crates/jlreq/src";
 
 /// Validate the conformance suite and report one message per malformed thing.
 fn run(arguments: &[String]) -> io::Result<Vec<String>> {
@@ -2077,7 +2077,7 @@ fn items_of(stream: &Json) -> usize {
 ///
 /// This is the check ADR 0016 asks the runner to hold: an ordinal indexes the stream the
 /// surrounding object names, so a swapped base and annotation is a gate failure here
-/// exactly as it is a compile error inside kumihan.
+/// exactly as it is a compile error inside jlreq.
 fn check_range(range: Option<&Json>, length: usize, at: &str) -> Vec<String> {
     let Some(range) = range else {
         return Vec::new();
@@ -2500,7 +2500,7 @@ fn is_trim_rule(rule: &str) -> bool {
 /// One rule address, in the grammar ADR 0013 fixes.
 ///
 /// `section := digit+ ('.' digit+)* | [A-G] ('.' digit+)*`, and
-/// `address := section ('#' note)? | section '@' cell`. The `#` is kumihan's separator for
+/// `address := section ('#' note)? | section '@' cell`. The `#` is jlreq's separator for
 /// JLReq's "note N", which the published document gives no machine-readable identifier.
 #[derive(Debug, PartialEq, Eq)]
 struct RuleAddress {
@@ -3703,7 +3703,7 @@ mod tests {
 
     #[test]
     fn protocol_suite_rules_enter_the_same_coverage_set() {
-        let source = r#"{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"3.3.9/emphasis","rules":["3.3.9"],"request":{},"expected":{}}"#;
+        let source = r#"{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"3.3.9/emphasis","rules":["3.3.9"],"request":{},"expected":{}}"#;
         let (found, cases) = examine_protocol_suite("suite.ndjson", source);
         assert!(found.is_empty(), "{found:#?}");
         assert_eq!(cases.len(), 1);
@@ -3722,7 +3722,7 @@ mod tests {
     #[test]
     fn protocol_suite_rejects_carriage_returns() {
         let source = concat!(
-            "{\"protocol\":\"kumihan.conformance/1\",",
+            "{\"protocol\":\"jlreq.conformance/1\",",
             "\"spec\":\"jlreq-2020-08-11+unicode-17.0.0\",",
             "\"id\":\"external/crlf\",\"rules\":[\"3.1.9\"],",
             "\"request\":{},\"expected\":{}}\r\n",
@@ -3737,7 +3737,7 @@ mod tests {
     #[test]
     fn protocol_coverage_requires_every_observable_rule_in_the_external_suite() {
         let legacy = cases_of(&file_with(MINIMAL));
-        let source = r#"{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"external/one","rules":["3.1.9"],"request":{},"expected":{}}"#;
+        let source = r#"{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"external/one","rules":["3.1.9"],"request":{},"expected":{}}"#;
         let (found, protocol) = examine_protocol_suite("suite.ndjson", source);
         assert!(found.is_empty(), "{found:#?}");
 

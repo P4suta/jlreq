@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -6,7 +6,7 @@
 
 use std::hint::black_box;
 
-use kumihan::{
+use jlreq::{
     Alignment, Break, Cluster, Construct, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText,
     Size, Style, TabAlignment, TabStop, Widow, WritingMode,
 };
@@ -230,7 +230,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
 
-    let layout = kumihan::compose(&paragraph, &style(take(data, &mut cursor)));
+    let layout = jlreq::compose(&paragraph, &style(take(data, &mut cursor)));
     for line in layout.lines() {
         black_box((
             line.range(),

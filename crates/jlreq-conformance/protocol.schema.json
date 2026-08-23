@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/P4suta/jlreq/blob/main/crates/jlreq-conformance/protocol.schema.json",
+  "title": "jlreq conformance protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol", "spec", "id"],
+  "properties": {
+    "protocol": { "const": "jlreq.conformance/1" },
+    "spec": { "const": "jlreq-2020-08-11+unicode-17.0.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "rules": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "request": { "$ref": "#/$defs/request" },
+    "response": { "$ref": "#/$defs/response" },
+    "expected": { "$ref": "#/$defs/response" }
+  },
+  "oneOf": [
+    { "required": ["request"], "not": { "required": ["response"] } },
+    {
+      "required": ["response"],
+      "not": {
+        "anyOf": [{ "required": ["request"] }, { "required": ["expected"] }]
+      }
+    }
+  ],
+  "allOf": [
+    {
+      "if": { "required": ["expected"] },
+      "then": { "required": ["rules"] }
+    },
+    {
+      "if": { "required": ["rules"] },
+      "then": { "required": ["expected"] }
+    }
+  ],
+  "$defs": {
+    "i32": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "nonNegativeI32": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "positiveI32": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "offset": { "type": "integer", "minimum": 0 },
+    "range": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/offset" },
+        { "$ref": "#/$defs/offset" }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "scalar": { "type": "string", "minLength": 1, "maxLength": 1 },
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inline", "block"],
+      "properties": {
+        "inline": { "$ref": "#/$defs/positiveI32" },
+        "block": { "$ref": "#/$defs/positiveI32" }
+      }
+    },
+    "frame": { "enum": ["full-em", "proportional", "half-em"] },
+    "writingMode": { "enum": ["horizontal-tb", "vertical-rl"] },
+    "transform": { "enum": ["identity", "rotate-clockwise", "tate-chu-yoko"] },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["range", "advance"],
+      "properties": {
+        "range": { "$ref": "#/$defs/range" },
+        "advance": { "$ref": "#/$defs/nonNegativeI32" },
+        "size": { "$ref": "#/$defs/size" },
+        "frame": { "$ref": "#/$defs/frame" },
+        "role": {
+          "enum": [
+            "text",
+            "decimal-point",
+            "digit-group-separator",
+            "sentence-medial",
+            "sentence-terminator",
+            "grouped-numeral",
+            "unit-symbol",
+            "quantity-symbol",
+            "formula",
+            "warichu-bracket"
+          ]
+        }
+      }
+    },
+    "shapedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "size", "frame", "clusters"],
+      "properties": {
+        "source": { "type": "string" },
+        "size": { "$ref": "#/$defs/size" },
+        "frame": { "$ref": "#/$defs/frame" },
+        "clusters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cluster" }
+        }
+      }
+    },
+    "break": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "kind"],
+      "properties": {
+        "offset": { "$ref": "#/$defs/offset" },
+        "kind": { "enum": ["allowed", "mandatory", "discretionary"] }
+      }
+    },
+    "rubyRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "annotation"],
+      "properties": {
+        "base": { "$ref": "#/$defs/range" },
+        "annotation": { "$ref": "#/$defs/range" }
+      }
+    },
+    "construct": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range", "ruby_kind", "annotation", "runs"],
+          "properties": {
+            "kind": { "const": "ruby" },
+            "range": { "$ref": "#/$defs/range" },
+            "ruby_kind": { "enum": ["mono", "group", "jukugo"] },
+            "annotation": { "$ref": "#/$defs/shapedText" },
+            "runs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/rubyRun" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range"],
+          "properties": {
+            "kind": { "enum": ["tate-chu-yoko", "warichu", "formula"] },
+            "range": { "$ref": "#/$defs/range" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range", "mark"],
+          "properties": {
+            "kind": { "const": "emphasis-dots" },
+            "range": { "$ref": "#/$defs/range" },
+            "mark": { "$ref": "#/$defs/scalar" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range", "columns", "line_gap"],
+          "properties": {
+            "kind": { "const": "furawake" },
+            "range": { "$ref": "#/$defs/range" },
+            "columns": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "line_gap": { "$ref": "#/$defs/nonNegativeI32" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range", "cells"],
+          "properties": {
+            "kind": { "const": "jidori" },
+            "range": { "$ref": "#/$defs/range" },
+            "cells": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "range", "annotation"],
+          "properties": {
+            "kind": { "enum": ["reference-mark", "script"] },
+            "range": { "$ref": "#/$defs/range" },
+            "annotation": { "$ref": "#/$defs/shapedText" }
+          }
+        }
+      ]
+    },
+    "tabStop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "alignment"],
+      "properties": {
+        "position": { "$ref": "#/$defs/positiveI32" },
+        "alignment": { "enum": ["start", "center", "end", "character"] },
+        "character": { "$ref": "#/$defs/scalar" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "alignment": { "const": "character" } } },
+          "then": { "required": ["character"] },
+          "else": { "not": { "required": ["character"] } }
+        }
+      ]
+    },
+    "styleSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "enum": [
+            "jlreq-2020",
+            "book-2020",
+            "magazine-2020",
+            "newspaper-2020",
+            "jis-reading-2020"
+          ]
+        },
+        "kinsoku.level": { "enum": ["very-loose", "loose", "strict", "very-strict"] },
+        "adjustment.reduction_table": { "enum": ["table-3", "table-4", "table-5"] },
+        "spacing.line_end_punctuation": { "enum": ["half-em", "solid"] },
+        "spacing.line_end_full_stop_comma": { "enum": ["preferred", "jis"] },
+        "spacing.line_head_opening_bracket": {
+          "enum": ["pattern-1", "pattern-2", "pattern-3"]
+        },
+        "ruby.overhang_kana": { "enum": ["kana", "jis", "any", "none"] },
+        "ruby.overhang_indent": { "enum": ["permitted", "prohibited"] },
+        "ruby.alignment": { "enum": ["nakatsuki", "katatsuki"] },
+        "ruby.group_distribution": { "enum": ["jis", "flush"] },
+        "ruby.jukugo_layout": { "enum": ["group", "phonetic"] },
+        "kinsoku.iteration_mark_at_line_head": {
+          "enum": ["prohibited", "permitted", "replaced"]
+        },
+        "adjustment.hanging_punctuation": { "enum": ["none", "hanging"] },
+        "kinsoku.grouped_numeral_before_western": {
+          "enum": ["breakable", "unbreakable"]
+        },
+        "spacing.sentence_medial_dividing_mark": { "enum": ["solid", "quarter-em"] },
+        "adjustment.japanese_latin_expansion_ceiling": {
+          "enum": ["half-em", "third-em", "rigid"]
+        },
+        "adjustment.expansion_order": { "enum": ["jis", "implementation"] },
+        "adjustment.preference": { "enum": ["least-adjustment", "even-texture"] },
+        "adjustment.remainder": { "enum": ["leading", "trailing"] },
+        "classification.unlisted_code_point": { "enum": ["by-frame", "ideographic"] },
+        "classification.ambiguous_context": { "enum": ["lowest-class", "highest-class"] },
+        "classification.grouped_numeral_qualification": { "enum": ["by-width", "by-role"] },
+        "kinsoku.relaxation_mechanism": { "enum": ["reclassify", "matrix"] }
+      }
+    },
+    "style": {
+      "oneOf": [
+        {
+          "enum": [
+            "jlreq-2020",
+            "book-2020",
+            "magazine-2020",
+            "newspaper-2020",
+            "jis-reading-2020"
+          ]
+        },
+        { "$ref": "#/$defs/styleSettings" }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "size", "frame", "clusters", "line_extent"],
+      "properties": {
+        "source": { "type": "string" },
+        "size": { "$ref": "#/$defs/size" },
+        "frame": { "$ref": "#/$defs/frame" },
+        "clusters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cluster" }
+        },
+        "line_extent": { "$ref": "#/$defs/positiveI32" },
+        "breaks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/break" }
+        },
+        "constructs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/construct" }
+        },
+        "tab_stops": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tabStop" }
+        },
+        "first_line_indent": { "$ref": "#/$defs/i32" },
+        "alignment": { "enum": ["start", "center", "end", "justify"] },
+        "widow_minimum_clusters": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "writing_mode": { "$ref": "#/$defs/writingMode" },
+        "style": { "$ref": "#/$defs/style" }
+      }
+    },
+    "origin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cluster"],
+          "properties": { "cluster": { "$ref": "#/$defs/offset" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["construct"],
+          "properties": { "construct": { "$ref": "#/$defs/offset" } }
+        }
+      ]
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "range",
+        "inline",
+        "block",
+        "advance",
+        "size",
+        "frame",
+        "writing_mode",
+        "transform"
+      ],
+      "properties": {
+        "origin": { "$ref": "#/$defs/origin" },
+        "range": { "$ref": "#/$defs/range" },
+        "inline": { "$ref": "#/$defs/i32" },
+        "block": { "$ref": "#/$defs/i32" },
+        "advance": { "$ref": "#/$defs/nonNegativeI32" },
+        "size": { "$ref": "#/$defs/size" },
+        "frame": { "$ref": "#/$defs/frame" },
+        "writing_mode": { "$ref": "#/$defs/writingMode" },
+        "transform": { "$ref": "#/$defs/transform" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "construct",
+        "range",
+        "inline",
+        "block",
+        "advance",
+        "size",
+        "writing_mode",
+        "transform",
+        "symbol"
+      ],
+      "properties": {
+        "construct": { "$ref": "#/$defs/offset" },
+        "range": { "$ref": "#/$defs/range" },
+        "inline": { "$ref": "#/$defs/i32" },
+        "block": { "$ref": "#/$defs/i32" },
+        "advance": { "$ref": "#/$defs/nonNegativeI32" },
+        "size": { "$ref": "#/$defs/size" },
+        "writing_mode": { "$ref": "#/$defs/writingMode" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "symbol": {
+          "oneOf": [{ "$ref": "#/$defs/scalar" }, { "type": "null" }]
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "range",
+        "inline_origin",
+        "block_origin",
+        "inline_extent",
+        "block_extent",
+        "clusters",
+        "attachments"
+      ],
+      "properties": {
+        "range": { "$ref": "#/$defs/range" },
+        "inline_origin": { "$ref": "#/$defs/i32" },
+        "block_origin": { "$ref": "#/$defs/i32" },
+        "inline_extent": { "$ref": "#/$defs/nonNegativeI32" },
+        "block_extent": { "$ref": "#/$defs/nonNegativeI32" },
+        "clusters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placement" }
+        },
+        "attachments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attachment" }
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "range", "jlreq"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["info", "warning", "error"] },
+        "range": {
+          "oneOf": [{ "$ref": "#/$defs/range" }, { "type": "null" }]
+        },
+        "jlreq": { "type": "string", "minLength": 1 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lines", "diagnostics"],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/line" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      }
+    }
+  }
+}

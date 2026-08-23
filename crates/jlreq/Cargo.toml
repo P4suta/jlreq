@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "jlreq"
+publish = false
+description = "A no_std Japanese line-composition engine for pre-shaped text"
+keywords = ["japanese", "typesetting", "jlreq", "text-layout", "no-std"]
+categories = ["text-processing", "internationalization", "no-std"]
+readme = "README.md"
+documentation = "https://docs.rs/jlreq"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true

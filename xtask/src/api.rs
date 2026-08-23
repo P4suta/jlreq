@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -81,7 +81,7 @@
 //! a `pub use` re-exports it. That is the outer bound and it fails closed — a `pub` type is
 //! one export line away from an adopter's hands, so holding it to the frozen shape now is
 //! what keeps the shape from being decided by that line. The 1.0 surface governed by the
-//! active path is the sole `kumihan` library and the `kumihan::style` namespace, compared
+//! active path is the sole `jlreq` library and the `jlreq::style` namespace, compared
 //! exactly with `docs/api-1.0.toml`.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -94,7 +94,7 @@ use crate::shared::{self, Gate};
 /// The `api` gate, as the dispatcher sees it.
 pub(crate) const GATE: Gate = Gate {
     name: "api",
-    purpose: "kumihan matches docs/api-1.0.toml and its 22 typed Style mappings exactly",
+    purpose: "jlreq matches docs/api-1.0.toml and its 22 typed Style mappings exactly",
     reference: concat!(
         "docs/adr/0012-outcome-and-detail-compatibility.md ",
         "and docs/design/api-spine.md"
@@ -137,13 +137,13 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 }
 
 // -------------------------------------------------------------------------------------
-// The kumihan 1.0 allowlist
+// The jlreq 1.0 allowlist
 // -------------------------------------------------------------------------------------
 
 /// One public module whose directly exported item names are frozen for 1.0.
 #[derive(Debug)]
 struct AllowedModule {
-    /// `kumihan` for the crate root, or a public module path such as `kumihan::style`.
+    /// `jlreq` for the crate root, or a public module path such as `jlreq::style`.
     path: String,
     /// Every directly nameable item in that module, in no significant order.
     items: BTreeSet<String>,
@@ -154,7 +154,7 @@ struct AllowedModule {
 struct StyleChoiceMapping {
     /// Stable dotted path from `spec/derived/questions.tsv`.
     question: String,
-    /// Public enum in `kumihan::style`.
+    /// Public enum in `jlreq::style`.
     rust_type: String,
     /// Number of choices the dated specification records.
     count: usize,
@@ -255,7 +255,7 @@ fn check_style_choice_mappings(
         }
         if !style_items.contains(&mapping.rust_type) {
             violations.push(format!(
-                "docs/api-1.0.toml maps `{}` to `{}`, which kumihan::style does not export",
+                "docs/api-1.0.toml maps `{}` to `{}`, which jlreq::style does not export",
                 mapping.question, mapping.rust_type
             ));
         }
@@ -321,24 +321,20 @@ fn check_one_point_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> 
     let modules = allowed_modules(root)?;
     for module in &modules {
         let relative = match module.path.as_str() {
-            "kumihan" => "lib.rs".to_owned(),
-            path if path.starts_with("kumihan::") => {
+            "jlreq" => "lib.rs".to_owned(),
+            path if path.starts_with("jlreq::") => {
                 format!(
                     "{}.rs",
-                    path.trim_start_matches("kumihan::").replace("::", "/")
+                    path.trim_start_matches("jlreq::").replace("::", "/")
                 )
             },
             path => {
                 return Err(malformed(format!(
-                    "docs/api-1.0.toml names `{path}`; the only public Rust crate is `kumihan`"
+                    "docs/api-1.0.toml names `{path}`; the only public Rust crate is `jlreq`"
                 )));
             },
         };
-        let source_path = root
-            .join("crates")
-            .join("kumihan")
-            .join("src")
-            .join(relative);
+        let source_path = root.join("crates").join("jlreq").join("src").join(relative);
         let source = fs::read_to_string(source_path)?;
         violations.extend(check_allowed_items(module, &source));
     }
@@ -836,11 +832,11 @@ impl Surface {
         Ok(Self { members })
     }
 
-    /// Published members plus the blocked kumihan release candidate.
+    /// Published members plus the blocked jlreq release candidate.
     fn published(&self) -> impl Iterator<Item = &Member> {
-        self.members.iter().filter(|member| {
-            member.publication == Publication::Published || member.name == "kumihan"
-        })
+        self.members
+            .iter()
+            .filter(|member| member.publication == Publication::Published || member.name == "jlreq")
     }
 
     /// A member by its Rust path segment.
@@ -1032,7 +1028,7 @@ enum Openness {
     /// No `#[non_exhaustive]`: the caller may match it exhaustively and build it.
     #[default]
     Exhaustive,
-    /// `#[non_exhaustive]`: kumihan may still add detail here.
+    /// `#[non_exhaustive]`: jlreq may still add detail here.
     Open,
 }
 
@@ -2626,9 +2622,9 @@ fn check_policy_space(root: &Path, violations: &mut Vec<String>) -> io::Result<(
     let modules = allowed_modules(root)?;
     let style_items = modules
         .iter()
-        .find(|module| module.path == "kumihan::style")
+        .find(|module| module.path == "jlreq::style")
         .map(|module| &module.items)
-        .ok_or_else(|| malformed("docs/api-1.0.toml has no `kumihan::style` module".to_owned()))?;
+        .ok_or_else(|| malformed("docs/api-1.0.toml has no `jlreq::style` module".to_owned()))?;
     let derived = derived_questions(root)?.ok_or_else(|| {
         malformed(format!(
             "{POLICY_SPACE} does not exist, so the typed Style mapping cannot be checked"
@@ -2782,7 +2778,7 @@ mod tests {
     #[test]
     fn one_point_zero_allowlist_is_exact_in_both_directions() {
         let allowed = AllowedModule {
-            path: "kumihan".to_owned(),
+            path: "jlreq".to_owned(),
             items: ["Style".to_owned(), "compose".to_owned()]
                 .into_iter()
                 .collect(),
@@ -2886,10 +2882,10 @@ mod tests {
     }
 
     #[test]
-    fn the_kumihan_release_candidate_is_checked_before_publication() {
+    fn the_jlreq_release_candidate_is_checked_before_publication() {
         let surface = Surface {
             members: vec![
-                internal_member("kumihan", "pub struct PublicApi;\n"),
+                internal_member("jlreq", "pub struct PublicApi;\n"),
                 internal_member("jlreq-unit", "pub struct LegacyApi;\n"),
             ],
         };
@@ -2899,7 +2895,7 @@ mod tests {
             .collect();
         assert_eq!(
             checked,
-            ["kumihan"],
+            ["jlreq"],
             "publish=false keeps the release blocked, not the API gate blind"
         );
     }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -13,7 +13,7 @@ use crate::shared::{self, Gate};
 
 pub(crate) const GATE: Gate = Gate {
     name: "direction",
-    purpose: "kumihan's private modules depend only on the declared earlier pipeline layers",
+    purpose: "jlreq's private modules depend only on the declared earlier pipeline layers",
     reference: "ARCHITECTURE.md",
     run,
 };
@@ -95,7 +95,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     }
     let root = shared::workspace_root()?
         .join("crates")
-        .join("kumihan")
+        .join("jlreq")
         .join("src");
     let mut sources = BTreeMap::new();
     for path in shared::rust_sources(&root)? {
@@ -138,7 +138,7 @@ fn check_graph(sources: &BTreeMap<String, String>) -> Vec<String> {
     for module in sources.keys() {
         if !declared.contains(module.as_str()) {
             violations.push(format!(
-                "kumihan::{module} has no row in the module graph; update ARCHITECTURE.md and \
+                "jlreq::{module} has no row in the module graph; update ARCHITECTURE.md and \
                  xtask/src/direction.rs together"
             ));
         }
@@ -146,14 +146,14 @@ fn check_graph(sources: &BTreeMap<String, String>) -> Vec<String> {
     for layer in LAYERS {
         let Some(source) = sources.get(layer.name) else {
             violations.push(format!(
-                "the module graph names kumihan::{}, but no source module exists",
+                "the module graph names jlreq::{}, but no source module exists",
                 layer.name
             ));
             continue;
         };
         if layer.name != "lib" && source.contains("use crate::{") {
             violations.push(format!(
-                "kumihan::{} uses a crate-root grouped import; private dependencies must name \
+                "jlreq::{} uses a crate-root grouped import; private dependencies must name \
                  their source module so this gate can check their direction",
                 layer.name
             ));
@@ -161,7 +161,7 @@ fn check_graph(sources: &BTreeMap<String, String>) -> Vec<String> {
         for dependency in module_references(source, &declared) {
             if dependency != layer.name && !layer.may_depend_on.contains(&dependency.as_str()) {
                 violations.push(format!(
-                    "kumihan::{from} depends on kumihan::{dependency}; its row permits {allowed}",
+                    "jlreq::{from} depends on jlreq::{dependency}; its row permits {allowed}",
                     from = layer.name,
                     allowed = if layer.may_depend_on.is_empty() {
                         "no private modules".to_owned()
@@ -212,7 +212,7 @@ mod tests {
         assert!(
             found
                 .iter()
-                .any(|message| message.contains("model depends on kumihan::pipeline")),
+                .any(|message| message.contains("model depends on jlreq::pipeline")),
             "{found:#?}"
         );
     }

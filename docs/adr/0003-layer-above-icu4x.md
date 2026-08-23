@@ -22,7 +22,7 @@ would be answering a question that is already answered.
 
 ## Decision
 
-kumihan consumes break opportunities and advances and produces placement. It does not
+jlreq consumes break opportunities and advances and produces placement. It does not
 implement UAX #14, does not shape, does not do bidi, and does not rasterize.
 
 The public surface is shaped so an adopter can keep its existing stack: the input is text

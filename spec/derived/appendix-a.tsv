@@ -10,7 +10,7 @@
 # Source: spec/snapshot/index.html
 # Source SHA-256: cfb1def5bf1594d59080a26d8d03c2670bb3116490ab57ef6e131b166a7c832f
 # Reader: xtask/src/classes.rs, xtask/src/derive.rs
-# Reader SHA-256: ad771cad8de6bae9311db70920802ac43ce400a771a380b386503eb1fa346fcd
+# Reader SHA-256: 673b41ade1f0288a4217fb6569825225aeae5ce15032aa613602083e3d223982
 
 class	key	remark-en	remark-ja
 cl-01	2018	used in horizontal composition	横組で使用

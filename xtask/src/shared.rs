@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -29,7 +29,7 @@ use std::process::ExitCode;
 /// than a no-op, so this list cannot rot unnoticed.
 const NON_CORE_MEMBERS: &[&str] = &[
     // The language-independent protocol runner launches external processes and parses JSON.
-    "crates/kumihan-conformance",
+    "crates/jlreq-conformance",
     // The repository's own tooling, which is this program.
     "xtask",
 ];
@@ -634,11 +634,11 @@ mod tests {
         let core = core_crates().expect("the workspace manifest is readable");
         let names: Vec<&str> = core.iter().map(|each| each.name.as_str()).collect();
         assert!(
-            names.contains(&"kumihan"),
+            names.contains(&"jlreq"),
             "the unified no_std library is core: {names:?}"
         );
         assert!(
-            !names.contains(&"kumihan-conformance"),
+            !names.contains(&"jlreq-conformance"),
             "the process-oriented conformance product is not core: {names:?}"
         );
         for exempted in NON_CORE_MEMBERS {

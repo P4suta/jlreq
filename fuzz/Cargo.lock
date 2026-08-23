@@ -44,6 +44,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "jlreq"
+version = "0.0.0"
+
+[[package]]
+name = "jlreq-fuzz"
+version = "0.0.0"
+dependencies = [
+ "jlreq",
+ "libfuzzer-sys",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -51,18 +63,6 @@ checksum = "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3"
 dependencies = [
  "getrandom",
  "libc",
-]
-
-[[package]]
-name = "kumihan"
-version = "0.0.0"
-
-[[package]]
-name = "kumihan-fuzz"
-version = "0.0.0"
-dependencies = [
- "kumihan",
- "libfuzzer-sys",
 ]
 
 [[package]]

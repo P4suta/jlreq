@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 kumihan contributors
+SPDX-FileCopyrightText: 2026 jlreq contributors
 
 SPDX-License-Identifier: MIT OR Apache-2.0
 -->
@@ -23,7 +23,7 @@ tab kinds:
 
 That is the whole of what §3.6.2 says about this kind, and it leaves three questions
 unanswered. First, whether "a specified character" is a declaration a caller states
-directly — naming the occurrence itself — or a search kumihan performs over the run's own
+directly — naming the occurrence itself — or a search jlreq performs over the run's own
 text for a caller-named code point. Second, what happens when the named character occurs
 **zero** times in the run the tab type governs. Third, what happens when it occurs **more
 than once**. Nothing in §3.6.2, in §3.6.1's own general statement of tab setting's inputs,
@@ -34,13 +34,13 @@ than closing the question of what counts as "specified" or how many times it may
 ## The reading
 
 **`TabKind::Character` names the occurrence directly, by [`jlreq_unit::ItemIndex`], not by
-a bare `char` kumihan searches the run's own text for.** The variant is `Character { at:
+a bare `char` jlreq searches the run's own text for.** The variant is `Character { at:
 ItemIndex }`: `at` is an ordinal into the same running-text stream the governing
 [`jlreq_line::tab::tab_line`] call's own `text` argument indexes — the same index space
 every other item-addressing type in this workspace uses (ADR-0018) — not a byte offset and
 not a code point.
 
-Because the caller names the occurrence rather than kumihan discovering it by searching,
+Because the caller names the occurrence rather than jlreq discovering it by searching,
 the second and third questions are not separately decidable inside this crate at all, and
 this reading does not answer either of them by inventing a rule — it removes the occasion
 for either to arise. "Zero occurrences" cannot happen: `tab_line` validates that `at` names

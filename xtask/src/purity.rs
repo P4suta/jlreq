@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -6,8 +6,8 @@
 //!
 //! Checks the invariants around the sole public library and its conformance product:
 //!
-//! - `kumihan` has no normal dependencies and remains `#![no_std]` plus `alloc`;
-//! - `kumihan-conformance` depends only on the library and its product/test tooling;
+//! - `jlreq` has no normal dependencies and remains `#![no_std]` plus `alloc`;
+//! - `jlreq-conformance` depends only on the library and its product/test tooling;
 //! - core source names neither floating-point types nor floating-point literals;
 //! - manifests match the two-node product graph in `docs/design/api-spine.md`.
 //!
@@ -65,12 +65,12 @@ impl Adjacency {
 /// The product graph, transcribed rather than derived from the manifests it checks.
 const CRATE_GRAPH: &[Adjacency] = &[
     Adjacency {
-        crate_name: "kumihan",
+        crate_name: "jlreq",
         may_depend_on: &[],
     },
     Adjacency {
-        crate_name: "kumihan-conformance",
-        may_depend_on: &["kumihan", "serde_json", "harfrust", "icu_segmenter"],
+        crate_name: "jlreq-conformance",
+        may_depend_on: &["jlreq", "serde_json", "harfrust", "icu_segmenter"],
     },
 ];
 
@@ -84,7 +84,7 @@ const CRATE_GRAPH: &[Adjacency] = &[
 /// manifest rather than assumed from the path, so this pair cannot rot into applying one
 /// crate's row to another.
 const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] =
-    &[("kumihan-conformance", "crates/kumihan-conformance")];
+    &[("jlreq-conformance", "crates/jlreq-conformance")];
 
 /// One type in the retired cross-crate seam model, retained for parser regression tests.
 #[derive(Debug)]
@@ -113,7 +113,7 @@ const SEAM_OWNER: &str = "jlreq-unit";
 /// The crate root, as `shared::relative_name` spells it.
 const LIB: &str = "lib.rs";
 
-/// Production has no cross-crate seam: all layout layers are private modules of `kumihan`.
+/// Production has no cross-crate seam: all layout layers are private modules of `jlreq`.
 const SEAM: &[SeamType] = &[];
 
 /// One core crate's sources, read once and stripped to code.
@@ -1133,7 +1133,7 @@ mod tests {
     #[test]
     fn a_crate_may_declare_only_what_its_row_permits() {
         let mut violations = Vec::new();
-        check_row("kumihan", "[dependencies]\n", &mut violations);
+        check_row("jlreq", "[dependencies]\n", &mut violations);
         assert!(violations.is_empty(), "found {violations:?}");
     }
 
@@ -1141,7 +1141,7 @@ mod tests {
     fn the_unified_products_have_explicit_dependency_rows() {
         let library = CRATE_GRAPH
             .iter()
-            .find(|row| row.crate_name == "kumihan")
+            .find(|row| row.crate_name == "jlreq")
             .expect("the unified public library has a graph row");
         assert!(
             library.may_depend_on.is_empty(),
@@ -1150,9 +1150,9 @@ mod tests {
 
         let runner = CRATE_GRAPH
             .iter()
-            .find(|row| row.crate_name == "kumihan-conformance")
+            .find(|row| row.crate_name == "jlreq-conformance")
             .expect("the binary-only conformance product has a graph row");
-        assert!(runner.may_depend_on.contains(&"kumihan"));
+        assert!(runner.may_depend_on.contains(&"jlreq"));
         assert!(runner.may_depend_on.contains(&"serde_json"));
         assert!(runner.may_depend_on.contains(&"harfrust"));
         assert!(runner.may_depend_on.contains(&"icu_segmenter"));
@@ -1161,11 +1161,7 @@ mod tests {
     #[test]
     fn a_dependency_the_row_omits_is_a_violation_even_when_it_is_core() {
         let mut violations = Vec::new();
-        check_row(
-            "kumihan",
-            "[dependencies]\nserde = \"1\"\n",
-            &mut violations,
-        );
+        check_row("jlreq", "[dependencies]\nserde = \"1\"\n", &mut violations);
         assert_eq!(violations.len(), 1, "found {violations:?}");
         assert!(
             violations[0].contains("serde"),

@@ -2,7 +2,7 @@
 
 ## Scope
 
-kumihan performs pure computation over in-memory text. It does not read files, open
+jlreq performs pure computation over in-memory text. It does not read files, open
 network connections, execute code, or link native libraries, and the core is `no_std`
 ([ADR 0001](docs/adr/0001-no-std-no-io-no-font-in-core.md)). The realistic threat is
 untrusted text reaching the layout engine: a panic, an unbounded allocation, or
@@ -28,7 +28,7 @@ Expect an acknowledgement within seven days.
 
 ## Supported versions
 
-kumihan has no released or supported version yet. Security reports against the development
+jlreq has no released or supported version yet. Security reports against the development
 branch are still welcome and fixes land on `main`; there is currently no backport policy.
 
 | Version | Supported |
@@ -36,4 +36,4 @@ branch are still welcome and fixes land on `main`; there is currently no backpor
 | `0.0.0` development snapshot | Best effort |
 | Released versions | None exist |
 
-[advisories]: https://github.com/P4suta/kumihan/security/advisories/new
+[advisories]: https://github.com/P4suta/jlreq/security/advisories/new

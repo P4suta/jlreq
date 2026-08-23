@@ -10,7 +10,7 @@
 # Source: spec/snapshot/index.html
 # Source SHA-256: cfb1def5bf1594d59080a26d8d03c2670bb3116490ab57ef6e131b166a7c832f
 # Reader: xtask/src/derive.rs, xtask/src/inventory.rs, xtask/src/policy.rs
-# Reader SHA-256: ddf9aa0fecdddaff029c287c168b06de0db0170e98099c0e4f857375a67cd071
+# Reader SHA-256: 01fa49824771c2ca67ce29cd58d3d509120cce6211201de6774123276bba3ce8
 
 question	constant	address	permission	locale	permits	rule	answer_rules	statements	preferred	jlreq	jis_reading	book	magazine	newspaper	excludes	evidence
 # Which sections state two readings is a reading of prose and not a property a

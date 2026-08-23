@@ -19,7 +19,7 @@ gate compares different alphabets and the promise is empty.
 An internal identifier would be the easy choice and would defeat the point.
 [ADR 0006](0006-conformance-suite-as-artifact.md) writes the suite for browser engineers
 and Typst maintainers who will never read this code; a failure report saying
-`kumihan::MiddleDotSum` requires them to read our source to find out what we meant.
+`jlreq::MiddleDotSum` requires them to read our source to find out what we meant.
 
 JLReq already has an identifier space, and it is the one those readers hold: section
 numbers, appendix note ordinals, table cells. It also has hazards. The published HTML

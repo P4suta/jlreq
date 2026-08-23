@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -72,8 +72,8 @@ fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
     }
 
     for manifest in [
-        "crates/kumihan/Cargo.toml",
-        "crates/kumihan-conformance/Cargo.toml",
+        "crates/jlreq/Cargo.toml",
+        "crates/jlreq-conformance/Cargo.toml",
     ] {
         let source = fs::read_to_string(root.join(manifest))?;
         if !source.lines().any(|line| line.trim() == "publish = false") {
@@ -83,10 +83,10 @@ fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
         }
     }
 
-    let conformance = fs::read_to_string(root.join("crates/kumihan-conformance/Cargo.toml"))?;
-    if !conformance.contains("kumihan = { version = \"0.0.0\", path = \"../kumihan\" }") {
+    let conformance = fs::read_to_string(root.join("crates/jlreq-conformance/Cargo.toml"))?;
+    if !conformance.contains("jlreq = { version = \"0.0.0\", path = \"../jlreq\" }") {
         violations.push(
-            "crates/kumihan-conformance/Cargo.toml: the local kumihan dependency uses version 0.0.0"
+            "crates/jlreq-conformance/Cargo.toml: the local jlreq dependency uses version 0.0.0"
                 .to_owned(),
         );
     }

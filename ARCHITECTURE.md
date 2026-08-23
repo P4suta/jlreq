@@ -10,10 +10,10 @@ font I/O + shaping + UAX #14 + bidi              renderer / PDF / game engine
                  │                                           ▲
                  └── shaped clusters + break opportunities ──┤
                                                              │
-                         kumihan ───── placements + diagnostics
+                         jlreq ───── placements + diagnostics
 ```
 
-`kumihan` never loads a font, shapes a glyph, discovers a Unicode break opportunity,
+`jlreq` never loads a font, shapes a glyph, discovers a Unicode break opportunity,
 resolves paragraph bidi, or draws. The caller supplies those answers. The library owns
 Japanese normalization, spacing, construct behavior, line choice, and physical placement.
 
@@ -21,9 +21,9 @@ Japanese normalization, spacing, construct behavior, line choice, and physical p
 
 There are two public contracts:
 
-1. `kumihan`, a dependency-free Edition 2024 library with MSRV 1.85 and `#![no_std]` plus
+1. `jlreq`, a dependency-free Edition 2024 library with MSRV 1.85 and `#![no_std]` plus
    `alloc`;
-2. `kumihan-conformance`, a binary-only product that communicates with any engine through
+2. `jlreq-conformance`, a binary-only product that communicates with any engine through
    the versioned NDJSON protocol.
 
 `xtask` is repository tooling and is not a product crate.
@@ -99,7 +99,7 @@ reshaping.
 ## Style compatibility
 
 Every alternative in `spec/derived/questions.tsv` maps one-to-one to a dedicated
-`#[non_exhaustive]` enum in `kumihan::style`. `StyleBuilder::build` rejects contradictory
+`#[non_exhaustive]` enum in `jlreq::style`. `StyleBuilder::build` rejects contradictory
 combinations. Generic string settings, public `Question`/`Choice` values, and internal rule
 IDs are excluded.
 

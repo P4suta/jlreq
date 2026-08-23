@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -6,7 +6,7 @@
 //! folding, and the script property.
 //!
 //! Four derivations and four generation units, reading the vendored snapshot and emitting
-//! the private tables the unified `kumihan` engine looks up:
+//! the private tables the unified `jlreq` engine looks up:
 //!
 //! | derived | generated | what it is |
 //! | --- | --- | --- |
@@ -1372,10 +1372,10 @@ pub(crate) const APPENDIX_A_TABLE: Unit = Unit {
 };
 
 /// The same Appendix A data, migrated behind the sole public library's private boundary.
-pub(crate) const KUMIHAN_APPENDIX_A_TABLE: Unit = Unit {
+pub(crate) const UNIFIED_APPENDIX_A_TABLE: Unit = Unit {
     input: "spec/derived/appendix-a.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/kumihan/src/generated/appendix_a.rs",
+    output: "crates/jlreq/src/generated/appendix_a.rs",
     summary: "Appendix A: every enumerated key, the classes naming it, and the Remarks cell.",
     emit: emit_appendix_a,
 };
@@ -1400,10 +1400,10 @@ pub(crate) const IDEOGRAPH_TABLE: Unit = Unit {
 };
 
 /// The cl-19 ideograph predicate behind the sole public library's private boundary.
-pub(crate) const KUMIHAN_IDEOGRAPH_TABLE: Unit = Unit {
+pub(crate) const UNIFIED_IDEOGRAPH_TABLE: Unit = Unit {
     input: "spec/derived/ideographs.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/kumihan/src/generated/ideograph.rs",
+    output: "crates/jlreq/src/generated/ideograph.rs",
     summary: "The members of cl-19 that §A.19's table deliberately does not list.",
     emit: emit_ideograph,
 };
@@ -1418,10 +1418,10 @@ pub(crate) const FOLDING_TABLE: Unit = Unit {
 };
 
 /// The compatibility folding behind the sole public library's private boundary.
-pub(crate) const KUMIHAN_FOLDING_TABLE: Unit = Unit {
+pub(crate) const UNIFIED_FOLDING_TABLE: Unit = Unit {
     input: "spec/derived/folding.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/kumihan/src/generated/folding.rs",
+    output: "crates/jlreq/src/generated/folding.rs",
     summary: "The Wide and Narrow decompositions: the only folding §A's preamble permits.",
     emit: emit_folding,
 };
@@ -1436,10 +1436,10 @@ pub(crate) const SCRIPT_TABLE: Unit = Unit {
 };
 
 /// The kana scripts behind the sole public library's private boundary.
-pub(crate) const KUMIHAN_SCRIPT_TABLE: Unit = Unit {
+pub(crate) const UNIFIED_SCRIPT_TABLE: Unit = Unit {
     input: "spec/derived/scripts.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/kumihan/src/generated/script.rs",
+    output: "crates/jlreq/src/generated/script.rs",
     summary: "The two kana scripts §C.2 note 3's small-kana fallback reads.",
     emit: emit_script,
 };
