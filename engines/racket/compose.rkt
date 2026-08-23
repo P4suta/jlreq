@@ -78,8 +78,10 @@
 ;; A line that cannot be composed at all.
 (define impossible infinite-cost)
 
-;; An overfull line costs this much before its overrun is even counted, so that no
-;; number of merely short lines is ever preferred to one that does not fit.
+;; What an overfull line costs before its overrun is even counted. It is small on
+;; purpose: between two arrangements that both overrun, the one that overruns LESS
+;; has to win however many lines it takes to do it, so nothing may be charged per
+;; line that a square of the overrun cannot outweigh.
 ;;
 ;; It is also bounded from above, and the bound is what stops the ordering from
 ;; inverting: splitting one line that overruns by `a + b` into two that overrun by
@@ -88,14 +90,14 @@
 ;; and `tate-chu-yoko` censuses reach that comparison at `a = b = 500`, which puts the
 ;; ceiling at five hundred million; raising `badness-cap` far enough to need a bigger
 ;; charge than that trades one of those censuses for whatever the raise was for.
-(define overfull-charge 1000000000000000)
+(define overfull-charge 1000)
 
 ;; ... and its overrun counts a thousand times over, so that between two overfull
 ;; arrangements the one that overruns less wins.
 (define overfull-weight 1000)
 
 ;; The most a single line's shortfall may contribute.
-(define badness-cap 1000000000000)
+(define badness-cap 1000000000)
 
 ;; §3.8.1: the last line's end "need not be aligned to the other alignment
 ;; position", so its shortfall is charged at a hundredth.
@@ -107,16 +109,16 @@
 
 ;; §3.5.4: a last line shorter than the caller's minimum is what widow adjustment
 ;; exists to avoid, so it outranks every other term.
-(define widow-charge 100000000000000000)
+(define widow-charge 1000000000000000)
 
 ;; §3.7.4: on an independent formula line a break before a math operator is the
 ;; second priority, so it is charged more than any line-length argument can save.
-(define operator-break-charge 10000000000000)
+(define operator-break-charge 100000000000)
 
 ;; §3.4.3: a warichu cut between two main lines is cut as near its own middle as
 ;; the caller's own break opportunities allow, and this is what makes the balance
 ;; of the two halves outrank the balance of the two lines.
-(define warichu-balance-weight 1000000000)
+(define warichu-balance-weight 10000000000)
 
 ;; ----------------------------------------------------------------------------
 ;; Items
@@ -187,12 +189,18 @@
           ;; cl-29 are their own classes precisely because they stand where the line
           ;; does -- so a cluster the caller gave the warichu-bracket role is not
           ;; part of the block.
-          [(and (not (eq? (cluster-role one) 'warichu-bracket))
-                (for/or ([each (in-list (paragraph-constructs para))] [at (in-naturals)])
-                  (and (eq? (construct-kind each) 'warichu)
-                       (>= (cluster-start one) (construct-start each))
-                       (< (cluster-start one) (construct-end each))
-                       (list 'warichu at))))
+          [(for/or ([each (in-list (paragraph-constructs para))] [at (in-naturals)])
+             (and (eq? (construct-kind each) 'warichu)
+                  (>= (cluster-start one) (construct-start each))
+                  (< (cluster-start one) (construct-end each))
+                  ;; `text?` is whether this cluster is set on the note's own rows;
+                  ;; a bracket stands on the main line instead. `last?` is whether it
+                  ;; is the structure's own last character, which carries no space of
+                  ;; its own: what Table 1 states after it stands after the whole
+                  ;; block and is not the character's (§3.4).
+                  (list 'warichu at
+                        (not (eq? (cluster-role one) 'warichu-bracket))
+                        (>= (cluster-end one) (construct-end each)))))
            => values]
           [else #f])))
 
@@ -334,7 +342,11 @@
         (cluster-start (car clusters))
         (cluster-end (last clusters))
         along
-        (extent along across)
+        ;; The size is the character size the structure is set at, not the block's
+        ;; own two extents: it is what every fraction Table 1 states beside the
+        ;; structure is a fraction OF, and a block three characters wide is not a
+        ;; character three ems wide.
+        (cluster-size-of para (car clusters))
         (cluster-frame-of para (car clusters))
         #f
         (classify-cluster para (car clusters) style)
@@ -394,9 +406,15 @@
                at)))
        (walk (add1 stop) (cons (cons index stop) out))])))
 
+;; The note whose ROWS this item is set on, or #f. A bracket belongs to the
+;; construct and stands on the main line, so it is not one of these.
 (define (warichu-of one)
   (let ([found (item-structure one)])
-    (and found (eq? (car found) 'warichu) found)))
+    (and found
+         (eq? (car found) 'warichu)
+         (= (length found) 4)
+         (caddr found)
+         (list 'warichu (cadr found)))))
 
 ;; The layout of every warichu run on one line.
 ;;
@@ -537,8 +555,12 @@
         [(after-head-space? items first count index) '()]
         ;; Inside one warichu block the boundaries are the block's own business:
         ;; the note is one position on the main line and the space between two of
-        ;; its characters is inside that position rather than beside it.
-        [(hash-ref spots (+ first index) #f) '()]
+        ;; its characters is inside that position rather than beside it. The
+        ;; boundary where the block BEGINS is on the line, and Table 1 states it.
+        [(let ([before (hash-ref spots (+ first index -1) #f)]
+               [after (hash-ref spots (+ first index) #f)])
+           (and before after (= (spot-run before) (spot-run after))))
+         '()]
         [else
          (boundary-contributions (vector-ref items (+ first index -1))
                                  (vector-ref items (+ first index))
@@ -1080,7 +1102,14 @@
               (if (eq? (ornament-kind found) 'emphasis-dots)
                   (list 'ornament (ornament-index found) (item-start one))
                   (list 'ornament (ornament-index found))))
-            (struct-copy item one [class 21] [complex name] [run name])])))
+            ;; §3.9.2 gives the two constructs two classes: cl-20 is "characters as
+            ;; reference marks", the characters of the seal itself, and cl-21 is the
+            ;; ornamented character complex a superscript or a run of emphasis dots
+            ;; makes of its base.
+            (struct-copy item one
+                         [class (if (eq? (ornament-kind found) 'reference-mark) 20 21)]
+                         [complex name]
+                         [run name])])))
      (define separations (make-hasheqv))
      (define attachments (make-hasheqv))
      ;; §3.7.3: a jidori spreads its own run across a declared number of full-em
@@ -1493,7 +1522,31 @@
 ;; sets across the line, which is the sum of its members' advances and has nothing to
 ;; do with any one member's size.
 (define (block-room one)
-  (extent-block (item-size one)))
+  (case (item-kind one)
+    [(cluster) (extent-block (item-size one))]
+    ;; A tate-chu-yoko run needs the whole string it sets across the line, which is
+    ;; the sum of its members' advances and has nothing to do with any one member.
+    [(tate-chu-yoko)
+     (max (extent-block (item-size one))
+          (for/fold ([sum 0]) ([found (in-list (item-members one))])
+            (chk+ sum (piece-advance found))))]
+    ;; A stacked structure needs the span its own rows cover: where each row was put
+    ;; and how deep it is.
+    [else
+     (define blocks
+       (for/list ([found (in-list (item-members one))])
+         (cons (piece-block found) (extent-block (piece-size found)))))
+     (cond
+       [(null? blocks) (extent-block (item-size one))]
+       [else
+        (define top
+          (for/fold ([most #f]) ([each (in-list blocks)])
+            (define edge (chk+ (car each) (cdr each)))
+            (if (or (not most) (> edge most)) edge most)))
+        (define bottom
+          (for/fold ([least #f]) ([each (in-list blocks)])
+            (if (or (not least) (< (car each) least)) (car each) least)))
+        (max (extent-block (item-size one)) (chk- top bottom))])]))
 
 ;; One item's placements. `designed` is the advance the answer reports for it, which
 ;; belongs to the item as a whole and is carried by its first member.

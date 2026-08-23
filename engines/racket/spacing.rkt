@@ -160,6 +160,11 @@
            (or (and (= value 5) (eq? role 'decimal-point))
                (and (= value 7) (eq? role 'digit-group-separator))))))
 
+;; Whether the item is the last character of a §3.4 structure.
+(define (ends-structure? one)
+  (let ([found (item-structure one)])
+    (and found (eq? (car found) 'warichu) (= (length found) 4) (list-ref found 3))))
+
 ;; Drop the terms `owner` contributes.
 (define (without terms owner)
   (filter (lambda (one) (not (eq? (contribution-owner one) owner))) terms))
@@ -176,8 +181,16 @@
         (or (formula-terms before after) (table-one-terms before after))))
   (define withdrawn
     (let* ([step-one (if (withdraws-own-space? before writing-mode) (without stated 'before) stated)]
-           [step-two (if (withdraws-own-space? after writing-mode) (without step-one 'after) step-one)])
-      step-two))
+           [step-two (if (withdraws-own-space? after writing-mode) (without step-one 'after) step-one)]
+           ;; §3.4: a stacked structure's own last character carries no space, and
+           ;; the structure does. The bracket that closes an inline cutting note is
+           ;; the last character of the STRUCTURE rather than of the line, so the
+           ;; space Table 1 states after it stands after the whole block and is no
+           ;; part of the bracket's own. What the character AFTER the structure owns
+           ;; is still its own and still stands, which is the quarter em a middle dot
+           ;; takes after a note.
+           [step-three (if (ends-structure? before) (without step-two 'before) step-two)])
+      step-three))
   (append withdrawn
           (sentence-terminator-terms before after)
           (sentence-medial-terms before after style)))

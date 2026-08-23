@@ -116,7 +116,11 @@
   (define room (max 0 (chk- want have)))
   (define sites (sub1 (length bases)))
   (cond
-    [(or (zero? room) (<= sites 0)) '()]
+    [(zero? room) '()]
+    ;; A run of one character has no internal boundary to share the cells out over,
+    ;; and the cells are still what the run occupies: §3.7.3 gives the run a width
+    ;; and the run is one character wide, so the rest of the width stands after it.
+    [(<= sites 0) (list (cons (add1 (car (last bases))) room))]
     [else
      (define share (div-trunc room sites))
      (define left (rem-trunc room sites))
