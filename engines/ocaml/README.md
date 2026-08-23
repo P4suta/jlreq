@@ -248,263 +248,41 @@ this second implementation is for.
 The exception the rule leaves open is a policy that is *observable* — two engines
 have to agree on it to pass the same case — and stated in no sentence of JLReq and
 no file under `docs/`. Those are read from `crates/jlreq/src/pipeline.rs`, never
-transcribed, and listed here so that a reviewer can see the whole set at once. Each
-is a candidate for `docs/decisions/`.
+transcribed.
 
-§3.8.4's ladder contributed two, both found by the `expansion` census rather than
-by any conformance case:
+Twenty-six of them were found while this engine was written: two from §3.8.4's
+ladder and three from §3.2.5's tate-chu-yoko, found by the `expansion` and
+`tate-chu-yoko` censuses rather than by any conformance case; six from §3.3's ruby,
+seven from the constructs of §3.3.9, §3.7.1, §3.4, §3.7.3 and §3.7.4, and seven from
+§3.6's tab setting and §3.5's paragraph end. Every one of them is now published in
+`docs/decisions/`, bundled by subject, with the census that observed it and the
+sentence whose silence permits it:
 
-- **The Japanese–Latin ceiling is asked at cl-19 against cl-27 and nowhere else.**
-  §3.8.4 step (b) names three Japanese classes (cl-15, cl-16, cl-19) and three Latin
-  ones (cl-24, cl-25, cl-27), which is nine coordinates in each direction, and
-  §3.8.4's own Note — the sentence the `rigid` answer comes from — names
-  `漢字等（cl-19）など` and the same three Latin classes in Japanese while expanding
-  that to all three Japanese classes in English. `adjustment.japanese_latin_expansion_ceiling`
-  is consulted at `(19, 27)` and `(27, 19)` alone; at the other sixteen stage-two
-  coordinates Table 6's own half em stands whatever the style answers. Neither
-  sentence says this, and `spec/derived/questions.tsv` carries no scope column.
-- **Step (d) re-levels the second and third stages' boundaries and the residual
-  cells, but a Western word space only when Table 6's own cl-26 row makes that
-  boundary residual too.** §E.1 says the fourth step adds space "to equalize the
-  spacing of 1st, 2nd, 3rd and 4th steps", which reads as all four stages including
-  step (a)'s word spaces; the reference engine excludes a first-stage site that is
-  not independently residual.
+| Reading | What it settles |
+| --- | --- |
+| [expansion-ladder-scope](../../docs/decisions/expansion-ladder-scope.md) | Which coordinates §3.8.4's Japanese–Latin ceiling is asked at, and which sites step (d) re-levels |
+| [tate-chu-yoko-spacing-sources](../../docs/decisions/tate-chu-yoko-spacing-sources.md) | Whether §3.2.5's prose or Table 1's cl-30 row states the space beside a run, and whether the ladders read cl-30 cells §3.2.5 set no space at |
+| [construct-break-refusal](../../docs/decisions/construct-break-refusal.md) | Whether a break stated inside an indivisible construct is refused or declined, at which coordinate for each construct, and where §3.7.4 lets a formula break |
+| [ruby-overhang-permission](../../docs/decisions/ruby-overhang-permission.md) | Whether §3.3.8 rule 2's kana neighbor is a script or a class, and whose em a Table 1 `hang` term was measured in |
+| [ruby-distribution-and-rounding](../../docs/decisions/ruby-distribution-and-rounding.md) | What §3.3.6 does for a run of one, what its outer units are, which way an odd unit falls, and what §F.3's self-referring total evaluates to |
+| [ornamented-complex-geometry](../../docs/decisions/ornamented-complex-geometry.md) | What an emphasis mark is centered on, how many complexes an emphasis run is, and where §3.7.1's annotation sits |
+| [stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md) | Which positions a warichu may divide at, whether its balance sentence is a bound, and whose advance a structure's trailing space is part of |
+| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, and what §3.6.1's count is counted over |
+| [unstated-alignment](../../docs/decisions/unstated-alignment.md) | What a request that states no `alignment` asks for |
+| [inexpressible-advance-remarks](../../docs/decisions/inexpressible-advance-remarks.md) | Whether an Appendix A Remarks cell naming only an advance the protocol cannot express excludes its listing |
+| [jidori-inserted-space-locale-split](../../docs/decisions/jidori-inserted-space-locale-split.md) | How many sides of an inserted space §3.7.3 opens, where its two renderings state opposite rules |
 
-§3.2.5's tate-chu-yoko contributed three, all found by the `tate-chu-yoko` census
-rather than by any conformance case:
+The last of those is not a silence but a divergence between the two locales of one
+sentence, so it is published as `Adjudicated` rather than `Unstated`. Two further
+questions were checked against the reference engine and found to be *readings* rather
+than policies — §E.1's `1/4–1/2` cells under Table 5, and `adjustment.expansion_order`,
+which selects nothing today — and both are recorded in
+[expansion-ladder-scope](../../docs/decisions/expansion-ladder-scope.md) so that a later
+reader does not re-derive them.
 
-- **§3.2.5's prose is the whole of the spacing beside a run, and its own Note is
-  not.** The section states four amounts — a half em after a comma (cl-07), a
-  closing bracket (cl-02) or a mid-line full stop (cl-06), a half em before an
-  opening bracket (cl-01), solid otherwise — and then says that "the details … are
-  described as a complete table in §B". Table 1's cl-30 row and column state those
-  four *and six more*: a quarter em against a middle dot (cl-05) in both directions,
-  and against cl-21, cl-24, cl-25 and cl-27 in both directions. The reference engine
-  sets the four and not the six, so the prose wins over the sentence that points at
-  the table. Neither sentence says which of them is the exception.
-- **The reduction and expansion ladders read their matrices at face value at the
-  same coordinates.** Table 3 states `1/4-0 stage 4` at (cl-30, cl-05) and Table 6
-  states `1/4-1/2 stage 2` at (cl-30, cl-27), and both apply — even though §3.2.5
-  put no space at that boundary for §3.8.3 to take back. The observable consequence
-  is that a run on a line that had to give space back ends up a quarter em *inside*
-  the character before it. The expansion ceiling, by contrast, is measured against
-  the space §3.2.5 actually set and not against Table 1's; the census pins that one
-  at 156 requests.
-- **A break stated inside a run is refused, not declined.** §C.2 note 13 says there
-  is no line break opportunity between two characters of one run, which an engine
-  could implement by never taking the opportunity. The reference engine refuses the
-  request instead, with `input.break-inside-construct`, for an `allowed` break and a
-  `mandatory` one alike — and in horizontal composition too, where a tate-chu-yoko
-  construct changes nothing else at all. §3.3's base character groups are refused the
-  same way and at a narrower coordinate: a break inside one *run* of a ruby construct
-  is refused, and one at a run boundary — which §C.2 note 8 grants a jukugo compound
-  outright — is answered. §C.2 note 6 and §3.7.1 refuse one inside a `script` or a
-  `reference-mark` construct, §3.7.3 one inside a jidori, and §3.7.4 one inside a
-  formula that is not beside a math symbol or a math operator. Two structures divide
-  and the built-in suite states breaks inside both: a warichu (§3.4.2) and a furawake
-  (§3.7.2). An emphasis run divides too, because §3.3.9 makes each of its base
-  characters a complex of its own.
-
-§3.3's ruby contributed six, all found by the `ruby` census rather than by any
-conformance case. Ruby is the one subject where the matrices and the prose overlap
-most — sixty of Table 1's cells carry §B.1's `hang` annotation, and every rule
-§3.3.8 states has a cell — so most of these are about which of the two the reference
-engine reads at a coordinate where they differ:
-
-- **§3.3.8 rule 2's kana neighbor is read by script and not by class.** The rule
-  names "hiragana (cl-15), katakana (cl-16), prolonged sound mark (cl-10) or small
-  kana (cl-11)", which is two scripts and two classes spelled in them, and Table 1
-  carries a `ruby hang` cell for each of the four. The reference engine reads
-  `spec/derived/scripts.tsv` instead, and the two readings part at exactly the marks
-  the scripts and the classes disagree about: U+30FC, the prolonged sound mark, is
-  cl-10 — which the rule names — and Script=Common, and a reading is *not* set over
-  it; U+30FD and U+30FE, the katakana iteration marks, are cl-09 — which the rule
-  does not name — and Script=Katakana, and a reading is. `ruby.overhang_kana`'s `jis`
-  answer takes katakana out of the same test, so U+309D, a *hiragana* iteration mark,
-  still gets a reading over it there. Table 1's four kana cells select nothing at all.
-  Nothing before M6 could see this: cl-09 and cl-10 are the same row and the same
-  column in all six matrices except at those four ruby coordinates.
-- **A `hang` term measured from the ruby object's own em is not a space a reading may
-  go over.** Table 1 marks ten of its cl-22 and cl-23 cells `<amount> be|af hang`, and
-  the side names whose em the amount was taken from. Where it is the neighbor's — the
-  half em after a closing bracket before the object, the half em before an opening
-  bracket after it, the quarter em beside a middle dot — the reading goes over it,
-  which is what §3.3.8 describes. Where it is the ruby object's own — the quarter em at
-  `(cl-22, cl-24)`, `(cl-22, cl-25)`, `(cl-22, cl-27)` and their mirrors — it does not.
-  The annotation says `hang` in both.
-- **A run over one base character whose reading is longer is set by §3.3.5 and not by
-  §3.3.6.** §3.3.6's two methods are both stated over "the inter-character spacing
-  between each adjacent base character" and the end gaps that go with it, and a run
-  over one base character has no adjacent base character. The reference engine centers
-  the reading on it and lets it hang over both neighbors — so `ruby.group_distribution`
-  selects nothing for such a run, `flush` and `jis` alike, which is visible because the
-  two answers do differ at the same ratio for a run over two.
-- **A group run's leading and trailing shares are spacing on the line and never an
-  overhang.** For a run over two or more base characters §3.3.6's `1 : 2 : … : 2 : 1`
-  puts one unit before the first base character and one after the last, and those two
-  are inserted even where §3.3.8's own permission would have let the reading over the
-  neighbor instead. A mono run's two shares are the opposite: always an overhang, as
-  far as the permission goes, and spacing only for what is left.
-- **§3.3.5's centering takes the lower half of an odd difference, and the space its
-  overflow forces takes `adjustment.remainder`.** A reading 1665 units wide on a
-  1000-unit base character opens 333 units before that base character and 332 after
-  — the remainder answer's own order — while the reading itself starts 332 back from
-  it rather than 333. One is a center and the other is two adjustment sites, and
-  §3.3.5 and §3.3.8 rule 1 are silent about both roundings.
-- **§F.3's total is the least one the compound fits at.** §F.3 states it as a formula:
-  "Total inter-character spacing = (the sum of the length of those ruby characters
-  forced out from the corresponding base character) - (the sum of the length of those
-  ruby characters which overhang other base characters) - (the sum … which overhang
-  other non-base characters)." The second and third terms are geometric facts about a
-  compound whose base characters have already been pushed apart *by the total being
-  computed*, so the formula refers to its own result and an engine cannot evaluate it
-  in the order it is written. The reference engine's answer is the smallest total at
-  which every reading has somewhere to go — a ruby character's em into the base
-  character beside it, and §3.3.8's own allowance outside the compound — which is
-  what this engine finds by bisection. At a ruby em that divides the base character
-  exactly the two are the same number, which is why half the suite's own §F cases
-  cannot tell them apart.
-
-§3.3.9, §3.7.1, §3.4, §3.7.3 and §3.7.4 contributed seven more, six of them found by
-the `constructs` census rather than by any conformance case. The four classes those
-sections build — cl-20, cl-21, cl-28 and cl-29 — have no Appendix A key, so nothing
-before M7 could reach their rows and columns at all:
-
-- **§3.3.9's "center of the base characters" is the center of the advance the line
-  gave it, spacing and all.** The mark is half its base character and centered on it,
-  and the two readings of what it is centered on — the character's own em box, or what
-  the character occupies on the line — part wherever Table 1 states a space after the
-  base character. An emphasis run is cl-21, so a quarter em stands after it before an
-  ideograph, and the mark sits an eighth of an em later than the em-box reading would
-  put it. The same reading decides where §3.7.1's annotation is centered.
-- **§3.3.9 makes each base character its own ornamented character complex, and §3.7.1
-  makes the whole construct one.** §B.2 note 9, §C.2 note 6 and §E.2 note 5 are all
-  stated about "two consecutive characters belonging to the same ornamented character
-  complex (cl-21)", and JLReq never says how many complexes an emphasis run is. The
-  reference engine answers one per character: Table 6's quarter em opens between two
-  emphasized characters of one run and never inside one superscript's complex, and a
-  break stated inside an emphasis run is answered while one inside a `script` or a
-  `reference-mark` construct is refused.
-- **§3.7.1's annotation is centered on its complex, hangs over both neighbors where it
-  is longer, and opens the line nowhere.** §3.7.1 says the geometry is "implementation
-  definable" and says the annotation is "set after the base character"; the reference
-  engine sets it across the complex instead and lets it overhang without §3.3.8's kind
-  of permission and without §3.3.6's kind of spacing. `ruby.alignment` selects nothing
-  there either — §3.3.5's question is about a reading and this is not one.
-- **§3.4.2's "a position where line breaking is permitted" is a position the caller
-  stated.** A warichu divides at one of the request's own break opportunities where it
-  offers any, and at whichever cluster boundary balances the two lines best where it
-  offers none — so the sentence is a restriction where the caller made one and nothing
-  where the caller did not. Table 2 is not consulted: a warichu divides after an
-  opening bracket, which §C.3 forbids a line to.
-- **§3.4.2's "the length of the second line should not be longer than the length of the
-  first line" is a preference among the stated positions and not a bound on them.**
-  Where every position the caller offered leaves the second line longer, the least
-  unbalanced of them is taken rather than the note being left undivided. Two positions
-  that balance equally are settled by the earlier one.
-- **A stacked structure's own last character carries no space, and the structure does.**
-  The bracket that closes a warichu is the last character of the *structure* rather
-  than of the line, so the space Table 1 states after it stands after the whole block
-  and is no part of the bracket's reported advance — which is visible at
-  `(cl-29, cl-05)`, the quarter em a middle dot takes after a warichu. The same holds
-  at the end of every subline: the character that ends one takes nothing after it, and
-  Table 1's line-end column is asked of the line and of nothing else.
-- **§3.7.4's two named break classes are the whole of where a formula may break.**
-  "A line break in a mathematical formula is done, when possible, at an equals sign
-  (cl-17) ... or at an operator (cl-18)" reads as a preference, and the reference
-  engine reads it as a rule: a break with a math symbol or a math operator on either
-  side of it is answered and every other break inside a formula is *refused*, for a
-  display formula and an inline one alike.
-
-§3.6's tab setting and §3.5's paragraph end contributed seven more. They were found
-by probing the reference engine directly with tab stops the eighty-nine cases never
-state, and all seven then held across the 37,559 requests of the `tabs` and `widow`
-censuses:
-
-- **A tab sign whose stops the line has gone past ends the line, and that cut
-  answers to no character class.** §3.6.3's fourth case — "if there is no tab
-  position corresponding to the target string, the string should be set from the tab
-  position of the next line" — says where the string goes and not that the line ends
-  before the sign rather than the sign taking some default width where it stands.
-  The reference engine ends the line there, and does so at boundaries Table 2 would
-  never let a line end at: a line whose last character is an opening bracket (cl-01)
-  is the answer when the sign follows one. The cut is §3.6's and not §3.1's.
-- **A tab sign standing at the line head with no stop left keeps its line and takes
-  one em.** It is the one place §3.6.3's fourth sentence has nothing to say, because
-  there is no earlier boundary to send the sign to. The width taken is one em of the
-  paragraph's own size, which is a number §3.6 never mentions.
-- **A sign standing inside a construct keeps its line too, for the same reason.**
-  Every construct is at least one object on the line, and §3.6.3's cut is not a break
-  opportunity that a rule about characters could permit or forbid — it is a line
-  boundary, so the only thing that can withhold it is there being no boundary at that
-  point. A sign inside an emphasis run, a superscript, a reference mark, a jidori, a
-  formula or a base character group runs its stops out and takes one em where it
-  stands; a construct that begins or ends exactly at the sign leaves the cut
-  available, because the sign is then beside the construct rather than in it.
-- **Stops are taken in the order they stand along the line, not the order the request
-  lists them.** A request may list them descending; each sign takes the nearest stop
-  ahead of the cursor either way. §3.6.3 says "in order" and the only order a line
-  has is position.
-- **A stop must lie strictly inside the measure, and that is checked whether or not
-  the source holds a tab sign.** A stop at the measure exactly is refused. §3.6 says
-  a stop is a position in the line and says nothing about the ends of one.
-- **§3.6.1's count of stops is enforced between mandatory breaks, and a surplus is
-  allowed.** "If there is more than one tab sign, it is necessary to set the same
-  numbers of tab positions and tab types as the number of tab signs" counts signs
-  *in a line*, and which line a sign lands on is what composition decides — so the
-  only division into lines that validation can see is the caller's own mandatory
-  breaks. The reference engine refuses a stretch between two of them that holds more
-  signs than there are stops, and accepts one that holds fewer, so "the same number"
-  is read as a floor and not as an equality.
-- **A request that states no alignment is justified, and that is not the same answer
-  as `start`.** The protocol schema gives `alignment` four values and no default.
-  §3.8.1 is what an unstated one means: "within a paragraph, lines are created by
-  separating character sequences at places where line breaking is not prohibited",
-  and every line but a short last one is then adjusted to the measure — while
-  `start` is one of §3.5.3's four answers, which a caller who wants a flush short
-  line asks for. It is observable wherever a non-last line comes up short and Table 6
-  offers it a site, which of the eighty-nine cases only
-  `3.5.4/widow-keeps-two-clusters-on-last-line` reaches: the line a widow minimum
-  shortened is opened back out to the full measure.
-
-One bullet of §3.7.3 is not a policy but a divergence between the two locales of the
-same sentence, and is recorded here because a reader will otherwise re-derive it:
-
-- §3.7.3's own list says of an inserted Western word space (cl-26) or ideographic
-  space (cl-14), in English, to "add the same spacing to those space characters as is
-  being added to the other characters", and in Japanese the opposite — 空白の前及び
-  後ろの2箇所ではなく，空白の前（又は後ろ）だけとする, one of the space's two sides and
-  not both. The reference engine opens both, which is the English reading, and this
-  engine matches it. `spec/derived/` carries the two texts and settles neither.
-
-One more is about Appendix A rather than about any section:
-
-- **A Remarks cell naming only an advance the protocol cannot express excludes its
-  listing, rather than qualifying nothing.** `字幅は四分角` (a quarter em) and
-  `字幅は三分角` (a third of an em) name widths the `frame` vocabulary — `full-em`,
-  `half-em`, `proportional` — has no word for. Reading them as "no width stated"
-  makes the listing available at every frame; reading them as "a width no caller can
-  declare" makes it available at none. Two keys tell the readings apart, and the
-  reference engine takes the second at both. U+0020 SPACE is listed as a grouped
-  numeral (§A.24) and a unit symbol's character (§A.25) at a quarter em and as the
-  Western word space (§A.26) unqualified, so it stays cl-26 however the caller
-  labels the occurrence; U+2010 HYPHEN is listed as a hyphen (§A.03) at a quarter em
-  and as a Western character (§A.27) proportional, so a proportional hyphen is
-  cl-27.
-
-Two more were checked against the reference engine and found to be *readings*
-rather than policies, and are recorded here because a later reader will otherwise
-re-derive them:
-
-- §E.1 states that the `1/4–1/2` cells "shall not be expanded" when Table 5 is
-  adopted as the reduction method. Neither engine implements it, and
-  `spec/derived/questions.tsv`'s `excludes` column — the file both engines read for
-  exactly this kind of cross-question constraint — carries no such pair. Adding one
-  is the concrete change that would make it real for both engines at once.
-- `adjustment.expansion_order` selects nothing today. Its `implementation` answer is
-  §3.8.4 step (d)'s Note, whose only coordinate is cl-27 against cl-27, which
-  `docs/conformance-deferrals.toml` classifies `[[non-observable]]`. Both engines
-  answer the same layout for both answers.
+The comments in `lib/` and the cases in `test/` that name this section name the file
+that now carries the argument. A policy found from here on is recorded here first and
+promoted the same way.
 
 ### Where the two engines disagree
 
@@ -512,7 +290,17 @@ Two coordinates are not policies this engine adopted but places the two engines
 answer differently, and the rule above is what to do about them: return to JLReq,
 record the disagreement, and do not settle it by copying. Both are the same
 question — what a tab sign is doing when it stands inside a structure that does not
-set its text along the line.
+set its text along the line. Both are filed against this repository, with the
+protocol-v1 request that reproduces each one and both engines' answers:
+
+- [#12](https://github.com/P4suta/kumihan/issues/12) — a tab sign that is the first
+  character of a tate-chu-yoko run.
+- [#13](https://github.com/P4suta/kumihan/issues/13) — a tab sign inside a warichu or
+  a furawake.
+
+A reading reaches `docs/decisions/` once one of them is settled; until then
+[tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) publishes
+what the two engines *do* agree on about §3.6.3 and names these two as excluded.
 
 §3.6.3 corresponds the signs of a line with the stops of that line. A warichu's and
 a furawake's sublines run beside the line and a tate-chu-yoko run runs across it;
