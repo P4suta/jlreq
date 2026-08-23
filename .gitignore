@@ -25,6 +25,14 @@
 # against without the PDF ever entering the history.
 /spec/upstream/
 
+# dune build output for engines/. The dune project root is the repository root
+# (a dune rule cannot depend on a file above it, and the engines read spec/), so
+# the build directory lands here rather than under engines/. The engine binary
+# the conformance runner is given lives inside it:
+# _build/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
+/_build/
+/engines/ocaml/_opam/
+
 # mise local overrides (per-developer, never committed)
 /mise.local.toml
 /.mise.local.toml

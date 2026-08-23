@@ -1,0 +1,13 @@
+; SPDX-FileCopyrightText: 2026 jlreq contributors
+;
+; SPDX-License-Identifier: MIT OR Apache-2.0
+
+; Only two directories exist as far as dune is concerned. Everything else in the
+; repository -- `crates/`, `xtask/`, `fuzz/`, `target/`, `docs/` -- is invisible,
+; so `dune build` never walks the Cargo output and never sees a stray `dune` file.
+(dirs engines spec)
+
+; `spec/` holds data and no build rules. Marking it data-only stops dune from
+; looking for `dune` files inside it while keeping every file available as a
+; dependency of a rule.
+(data_only_dirs spec)

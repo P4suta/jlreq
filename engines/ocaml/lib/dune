@@ -1,0 +1,16 @@
+; SPDX-FileCopyrightText: 2026 jlreq contributors
+;
+; SPDX-License-Identifier: MIT OR Apache-2.0
+
+; Layer 1: the engine itself.
+;
+; It depends on the specification data and on nothing else -- no opam package, no
+; `unix`, no `str`. It does not know that JSON exists; the protocol lives one layer
+; up in `jlreq_proto`, and OCaml's ban on cyclic modules is what enforces the
+; direction, the same job `xtask direction` does on the Rust side.
+
+(library
+ (name jlreq)
+ (libraries jlreq_specdata)
+ (flags
+  (:standard -w +a-4-40-41-42-44-45-70 -strict-sequence -strict-formats -safe-string)))
