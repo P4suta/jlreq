@@ -54,7 +54,7 @@ pre-commit:
 
     reuse:
       tags: license
-      glob: "{**/*.rs,**/*.toml,**/*.md,**/*.yml,Justfile,REUSE.toml,LICENSES/*}"
+      glob: "{**/*.rs,**/*.ml,**/*.mli,**/*.toml,**/*.md,**/*.yml,Justfile,REUSE.toml,LICENSES/*}"
       run: mise exec -- just reuse
 
 pre-push:

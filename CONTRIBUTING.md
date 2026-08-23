@@ -8,6 +8,15 @@ mise run hooks          # install the git hooks
 mise exec -- just       # list the available commands
 ```
 
+`mise install` covers everything ordinary Rust development needs. Working on an
+independent reference engine under [`engines/`](engines/) additionally needs that engine's
+own toolchain — OCaml and `dune` for `engines/ocaml/`, Racket and `raco` for
+`engines/racket/` — which `mise.toml` deliberately does not manage
+([ADR 0024](docs/adr/0024-independent-reference-engines.md)). The pinned version of each is
+recorded in `.github/workflows/ci.yml`, which is the single source of truth for it; without
+the toolchain installed, `just conform-engines` (part of `just ci`) prints a `SKIPPED` line
+and stays green rather than failing.
+
 ## The loop
 
 ```sh
