@@ -293,43 +293,88 @@ let style (settings : (string * string) list) : Jlreq_proto.Json.t =
     (("profile", Jlreq_proto.Json.String "jlreq-2020")
     :: List.map (fun (name, value) -> (name, Jlreq_proto.Json.String value)) (resolve settings))
 
-(** A request whose clusters are [texts], one em each.
+type piece = {
+  piece_text : string;
+  piece_size : int option;
+      (** An inline em of its own, where a census varies one. [None] is the
+          paragraph's, which is what every cluster of the class-pair censuses is. *)
+}
 
-    [allow_breaks] marks every internal cluster boundary [allowed]; the schema
-    refuses offset zero and the end of the source, so the boundaries are exactly
-    the starts of the second and later clusters. *)
-let request ~(texts : string list) ~(line_extent : int) ~(allow_breaks : bool)
-    ~(style : Jlreq_proto.Json.t) : Jlreq_proto.Json.t =
-  let source = String.concat "" texts in
+let plain (text : string) : piece = { piece_text = text; piece_size = None }
+let sized (text : string) (inline : int) : piece = { piece_text = text; piece_size = Some inline }
+
+(** Which break opportunities a request states.
+
+    The schema refuses offset zero and the end of the source, so the boundaries a
+    request can name are exactly the starts of the second and later clusters. *)
+type breaks =
+  | No_break  (** Nothing but the paragraph end, which is a break by definition. *)
+  | Every_boundary  (** Every internal cluster boundary, [allowed]. *)
+  | Mandatory_after of int
+      (** One [mandatory] break after the nth cluster, so that what precedes it is a
+          line and is not the last one. *)
+
+(** A request whose clusters are [pieces], one em each unless a piece states its own.
+
+    Everything a census does not vary is fixed here: a full-em frame, horizontal
+    composition, and one cluster per piece whose advance is its em. *)
+let request ~(pieces : piece list) ~(line_extent : int) ~(breaks : breaks)
+    ~(alignment : string) ~(style : Jlreq_proto.Json.t) : Jlreq_proto.Json.t =
+  let source = String.concat "" (List.map (fun piece -> piece.piece_text) pieces) in
   let clusters, boundaries, _ =
     List.fold_left
-      (fun (clusters, boundaries, start) text ->
-        let stop = start + String.length text in
+      (fun (clusters, boundaries, start) piece ->
+        let stop = start + String.length piece.piece_text in
+        let advance = Option.value ~default:em piece.piece_size in
+        let own_size =
+          match piece.piece_size with
+          | None -> []
+          | Some inline ->
+            [
+              ( "size",
+                Jlreq_proto.Json.Object
+                  [
+                    ("inline", Jlreq_proto.Json.of_int inline);
+                    ("block", Jlreq_proto.Json.of_int em);
+                  ] );
+            ]
+        in
         let cluster =
           Jlreq_proto.Json.Object
-            [
-              ("range", Jlreq_proto.Json.Array [ Jlreq_proto.Json.of_int start; Jlreq_proto.Json.of_int stop ]);
-              ("advance", Jlreq_proto.Json.of_int em);
-            ]
+            ([
+               ("range", Jlreq_proto.Json.Array [ Jlreq_proto.Json.of_int start; Jlreq_proto.Json.of_int stop ]);
+               ("advance", Jlreq_proto.Json.of_int advance);
+             ]
+            @ own_size)
         in
         let boundaries = if start = 0 then boundaries else start :: boundaries in
         (cluster :: clusters, boundaries, stop))
-      ([], [], 0) texts
+      ([], [], 0) pieces
+  in
+  let boundaries = List.rev boundaries in
+  let stated =
+    match breaks with
+    | No_break -> []
+    | Every_boundary -> List.map (fun offset -> (offset, "allowed")) boundaries
+    | Mandatory_after count -> (
+      match List.nth_opt boundaries (count - 1) with
+      | Some offset -> [ (offset, "mandatory") ]
+      | None -> fault "a census asks for a break after cluster %d of %d" count (List.length pieces))
   in
   let breaks =
-    if not allow_breaks then []
+    if stated = [] then []
     else
       [
         ( "breaks",
           Jlreq_proto.Json.Array
-            (List.rev_map
-               (fun offset ->
+            (List.map
+               (fun (offset, kind) ->
                  Jlreq_proto.Json.Object
                    [
                      ("offset", Jlreq_proto.Json.of_int offset);
-                     ("kind", Jlreq_proto.Json.String "allowed");
+                     ("kind", Jlreq_proto.Json.String kind);
                    ])
-               boundaries) );
+               stated) );
       ]
   in
   Jlreq_proto.Json.Object
@@ -342,7 +387,7 @@ let request ~(texts : string list) ~(line_extent : int) ~(allow_breaks : bool)
      ]
     @ breaks
     @ [
-        ("alignment", Jlreq_proto.Json.String "start");
+        ("alignment", Jlreq_proto.Json.String alignment);
         ("writing_mode", Jlreq_proto.Json.String "horizontal-tb");
         ("style", style);
       ])
@@ -388,7 +433,8 @@ let spacing_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
         (fun (variant, texts) ->
           emit
             (Printf.sprintf "census/spacing/%s+%s/%s" before.rep_label after.rep_label variant)
-            (request ~texts ~line_extent:wide_extent ~allow_breaks:false ~style:(style [])))
+            (request ~pieces:(List.map plain texts) ~line_extent:wide_extent ~breaks:No_break
+               ~alignment:"start" ~style:(style [])))
         (spacing_variants before.rep_text after.rep_text))
 
 (** The four levels §C.3 grades the prohibitions by. Table 2's [not 3,4] cells are
@@ -403,10 +449,98 @@ let break_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
           emit
             (Printf.sprintf "census/break/%s+%s/%s" before.rep_label after.rep_label level)
             (request
-               ~texts:[ before.rep_text; after.rep_text ]
-               ~line_extent:em ~allow_breaks:true
+               ~pieces:(List.map plain [ before.rep_text; after.rep_text ])
+               ~line_extent:em ~breaks:Every_boundary ~alignment:"start"
                ~style:(style [ ("kinsoku.level", level) ])))
         kinsoku_levels)
+
+(** The pair between two ideographs, on a line exactly as wide as the four ems it
+    holds.
+
+    Nothing can break -- the request states no opportunity, so the paragraph is one
+    line -- and every unit of space any of the five Table 1 coordinates puts on that
+    line has to be given back by §3.8.3's ladder or reported as an overrun. A pair
+    whose own cell is solid fits exactly and is the control. *)
+let reduction_interior (before : string) (after : string) : piece list =
+  List.map plain [ filler; before; after; filler ]
+
+(** The same pair with the line ending on it, which is the only way to put the
+    pair's own trailing member against Table 3, 4 or 5's [line-end] column and to
+    reach §3.8.2's hanging punctuation. *)
+let reduction_tail (before : string) (after : string) : piece list =
+  List.map plain [ filler; before; after ]
+
+let reduction_variants =
+  [
+    ("table-3", reduction_interior, 4 * em, [ ("adjustment.reduction_table", "table-3") ]);
+    ("table-4", reduction_interior, 4 * em, [ ("adjustment.reduction_table", "table-4") ]);
+    ("table-5", reduction_interior, 4 * em, [ ("adjustment.reduction_table", "table-5") ]);
+    ("trailing", reduction_interior, 4 * em, [ ("adjustment.remainder", "trailing") ]);
+    ("line-end", reduction_tail, 3 * em, []);
+    ("hanging", reduction_tail, 3 * em, [ ("adjustment.hanging_punctuation", "hanging") ]);
+  ]
+
+let reduction_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
+  each_pair (fun before after ->
+      List.iter
+        (fun (variant, shape, line_extent, settings) ->
+          emit
+            (Printf.sprintf "census/reduction/%s+%s/%s" before.rep_label after.rep_label variant)
+            (request
+               ~pieces:(shape before.rep_text after.rep_text)
+               ~line_extent ~breaks:No_break ~alignment:"start" ~style:(style settings)))
+        reduction_variants)
+
+(** The pair between two ideographs on a justified line with a second line after
+    it.
+
+    §3.8.4 opens a justified line that is not the last one, so the request states a
+    mandatory break after the fourth cluster: the four ems before it are a line
+    with room left over, and the fifth cluster is the last line, which is meant to
+    be short and is left alone. *)
+let expansion_pieces (before : string) (after : string) : piece list =
+  List.map plain [ filler; before; after; filler; filler ]
+
+(** The same line with the trailing member of the pair set at half the em.
+
+    Table 6 names a class pair and no neighbor (ADR 0021), so an engine has to
+    decide which character's em a quarter of an em is a quarter of. On a line whose
+    every cluster is the same size that decision is invisible; here it is not. *)
+let expansion_mixed (before : string) (after : string) : piece list =
+  [ plain filler; plain before; sized after (em / 2); plain filler; plain filler ]
+
+(** Two measures, because §3.8.4's ladder has two regimes. Three quarters of an em
+    of room over three boundaries sits inside the ceilings the first three stages
+    state, and two ems does not: the second measure is the only way to reach step
+    (d), which opens every stage's own boundaries past their ceilings until the line
+    is full. *)
+let expansion_variants =
+  [
+    ("stage", expansion_pieces, (4 * em) + (em * 3 / 4), []);
+    ("residual", expansion_pieces, 6 * em, []);
+    ( "third-em",
+      expansion_pieces,
+      (4 * em) + (em * 3 / 4),
+      [ ("adjustment.japanese_latin_expansion_ceiling", "third-em") ] );
+    ( "rigid",
+      expansion_pieces,
+      (4 * em) + (em * 3 / 4),
+      [ ("adjustment.japanese_latin_expansion_ceiling", "rigid") ] );
+    ("table-5", expansion_pieces, (4 * em) + (em * 3 / 4), [ ("adjustment.reduction_table", "table-5") ]);
+    ("mixed-em", expansion_mixed, (4 * em) + (em * 3 / 4), []);
+  ]
+
+let expansion_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
+  each_pair (fun before after ->
+      List.iter
+        (fun (variant, shape, line_extent, settings) ->
+          emit
+            (Printf.sprintf "census/expansion/%s+%s/%s" before.rep_label after.rep_label variant)
+            (request
+               ~pieces:(shape before.rep_text after.rep_text)
+               ~line_extent ~breaks:(Mandatory_after 4) ~alignment:"justify"
+               ~style:(style settings)))
+        expansion_variants)
 
 type kind = {
   kind_name : string;
@@ -414,8 +548,8 @@ type kind = {
   kind_emit : (string -> Jlreq_proto.Json.t -> unit) -> unit;
 }
 
-(** The registry. M2's reduction census and M3's expansion census are one entry
-    each; nothing else in this file changes when they arrive. *)
+(** The registry. A census is a name, a sentence and a function that emits
+    requests; nothing else in this file knows how many there are. *)
 let kinds =
   [
     {
@@ -427,6 +561,16 @@ let kinds =
       kind_name = "break";
       kind_summary = "every ordered class pair on a one-cluster line, at all four levels (Table 2)";
       kind_emit = break_census;
+    };
+    {
+      kind_name = "reduction";
+      kind_summary = "every ordered class pair on a line too narrow for its own spacing (Tables 3-5)";
+      kind_emit = reduction_census;
+    };
+    {
+      kind_name = "expansion";
+      kind_summary = "every ordered class pair on a justified line with room left over (Table 6)";
+      kind_emit = expansion_census;
     };
   ]
 
