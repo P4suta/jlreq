@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -16,8 +16,8 @@ use std::{
 use serde_json::{Map, Value};
 use validation::{validate_request, validate_response};
 
-const PROTOCOL: &str = "kumihan.conformance/1";
-const SPEC: &str = kumihan::SPECIFICATION;
+const PROTOCOL: &str = "jlreq.conformance/1";
+const SPEC: &str = jlreq::SPECIFICATION;
 const BUILTIN_SUITE: &str = include_str!("../suite.ndjson");
 #[cfg(test)]
 const PROTOCOL_SCHEMA: &str = include_str!("../protocol.schema.json");
@@ -41,7 +41,7 @@ fn main() -> ExitCode {
 }
 
 fn usage() {
-    eprintln!("usage: kumihan-conformance <run|validate|list> [arguments]");
+    eprintln!("usage: jlreq-conformance <run|validate|list> [arguments]");
 }
 
 fn validate_command(arguments: &[String]) -> ExitCode {
@@ -52,7 +52,7 @@ fn validate_command(arguments: &[String]) -> ExitCode {
     let input = match read_suite(arguments.first().map(String::as_str)) {
         Ok(input) => input,
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             return ExitCode::from(2);
         },
     };
@@ -62,7 +62,7 @@ fn validate_command(arguments: &[String]) -> ExitCode {
             ExitCode::SUCCESS
         },
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             ExitCode::from(2)
         },
     }
@@ -76,7 +76,7 @@ fn list_command(arguments: &[String]) -> ExitCode {
     let input = match read_suite_or_builtin(arguments.first().map(String::as_str)) {
         Ok(input) => input,
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             return ExitCode::from(2);
         },
     };
@@ -88,7 +88,7 @@ fn list_command(arguments: &[String]) -> ExitCode {
             ExitCode::SUCCESS
         },
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             ExitCode::from(2)
         },
     }
@@ -96,20 +96,20 @@ fn list_command(arguments: &[String]) -> ExitCode {
 
 fn run_command(arguments: &[String]) -> ExitCode {
     if arguments.is_empty() || arguments.len() > 2 {
-        eprintln!("usage: kumihan-conformance run ENGINE [SUITE.ndjson]");
+        eprintln!("usage: jlreq-conformance run ENGINE [SUITE.ndjson]");
         return ExitCode::from(2);
     }
     let input = match read_suite_or_builtin(arguments.get(1).map(String::as_str)) {
         Ok(input) => input,
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             return ExitCode::from(2);
         },
     };
     let cases = match parse_cases(&input) {
         Ok(cases) => cases,
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             return ExitCode::from(2);
         },
     };
@@ -120,7 +120,7 @@ fn run_command(arguments: &[String]) -> ExitCode {
             ExitCode::from(1)
         },
         Err(error) => {
-            eprintln!("kumihan-conformance: {error}");
+            eprintln!("jlreq-conformance: {error}");
             ExitCode::from(2)
         },
     }
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn request_body_is_validated_instead_of_treated_as_an_opaque_object() {
         let message = json!({
-            "protocol": "kumihan.conformance/1",
+            "protocol": "jlreq.conformance/1",
             "spec": "jlreq-2020-08-11+unicode-17.0.0",
             "id": "missing-input",
             "request": {}
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn response_body_is_validated_instead_of_treated_as_an_opaque_object() {
         let message = json!({
-            "protocol": "kumihan.conformance/1",
+            "protocol": "jlreq.conformance/1",
             "spec": "jlreq-2020-08-11+unicode-17.0.0",
             "id": "bad-output",
             "response": {"lines": "not-an-array", "diagnostics": []}
@@ -443,7 +443,7 @@ mod tests {
     #[test]
     fn repeated_symbol_attachment_has_no_shaped_range() {
         let response = json!({
-            "protocol": "kumihan.conformance/1",
+            "protocol": "jlreq.conformance/1",
             "spec": "jlreq-2020-08-11+unicode-17.0.0",
             "id": "emphasis",
             "response": {
@@ -481,7 +481,7 @@ mod tests {
         assert!(parse_messages(&unknown.to_string(), false).is_err());
 
         let mixed_output = json!({
-            "protocol": "kumihan.conformance/1",
+            "protocol": "jlreq.conformance/1",
             "spec": "jlreq-2020-08-11+unicode-17.0.0",
             "id": "mixed",
             "response": {"lines": [], "diagnostics": []},

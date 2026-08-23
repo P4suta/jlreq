@@ -1,6 +1,6 @@
 # Language-independent conformance protocol
 
-`kumihan-conformance` is a binary-only product. It runs a suite against an external engine
+`jlreq-conformance` is a binary-only product. It runs a suite against an external engine
 process through NDJSON; an engine in Rust, C++, JavaScript, Python, or any other language
 sees the same black-box contract.
 
@@ -11,7 +11,7 @@ line it implements:
 
 ```json
 {
-  "protocol": "kumihan.conformance/1",
+  "protocol": "jlreq.conformance/1",
   "spec": "jlreq-2020-08-11+unicode-17.0.0",
   "id": "quick-start/two-lines",
   "request": {
@@ -28,7 +28,7 @@ The response repeats `protocol`, `spec`, and `id`, replacing `request` with `res
 Mismatch is an input/protocol error, never a conformance difference. Messages are one JSON
 object per UTF-8 line; blank lines are ignored.
 
-The committed [`protocol.schema.json`](../../crates/kumihan-conformance/protocol.schema.json)
+The committed [`protocol.schema.json`](../../crates/jlreq-conformance/protocol.schema.json)
 is the portable format contract. The sample suite and engine are in the same directory.
 The CLI validates request and response bodies, closed enum vocabularies, ranges, integer
 bounds, UTF-8 cluster coverage, and unknown fields in addition to the envelope version.
@@ -36,9 +36,9 @@ bounds, UTF-8 cluster coverage, and unknown fields in addition to the envelope v
 ## Commands
 
 ```text
-kumihan-conformance list [SUITE.ndjson]
-kumihan-conformance validate [SUITE.ndjson|-]
-kumihan-conformance run ENGINE [SUITE.ndjson]
+jlreq-conformance list [SUITE.ndjson]
+jlreq-conformance validate [SUITE.ndjson|-]
+jlreq-conformance run ENGINE [SUITE.ndjson]
 ```
 
 With no suite path, `list` and `run` use the built-in suite. `validate` reads stdin unless a
@@ -87,18 +87,18 @@ All numbers are integers in the caller's units. Array order is significant and s
 
 ## Included sample engine
 
-`kumihan-sample-engine` implements protocol v1 on top of the Rust API. It is intentionally a
+`jlreq-sample-engine` implements protocol v1 on top of the Rust API. It is intentionally a
 separate executable rather than an in-process adapter, so the repository tests the same
 pipe behavior a non-Rust implementation uses.
 
 ```powershell
-cargo build -p kumihan-conformance --bins
-$engine = (Resolve-Path target/debug/kumihan-sample-engine.exe).Path
-cargo run -p kumihan-conformance -- run $engine
+cargo build -p jlreq-conformance --bins
+$engine = (Resolve-Path target/debug/jlreq-sample-engine.exe).Path
+cargo run -p jlreq-conformance -- run $engine
 ```
 
 The package has no library target. JSON parsing dependencies remain confined to this
-product and never become dependencies or features of `kumihan`.
+product and never become dependencies or features of `jlreq`.
 
 Suite envelopes carry a non-empty `rules` array beside `request` and `expected`. This is
 runner-only provenance used by the coverage gate; `run` strips it before sending the request

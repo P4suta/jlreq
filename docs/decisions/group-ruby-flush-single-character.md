@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 kumihan contributors
+SPDX-FileCopyrightText: 2026 jlreq contributors
 
 SPDX-License-Identifier: MIT OR Apache-2.0
 -->
@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: what `flush` does for a group-ruby run of exactly one ruby character
 
 - Applies to: the private ruby placement round in
-  [`pipeline`](../../crates/kumihan/src/pipeline.rs), selected by the typed
+  [`pipeline`](../../crates/jlreq/src/pipeline.rs), selected by the typed
   `GroupRubyDistribution::Flush` style setting.
 - Standing: `Unstated`
 - JLReq: §3.3.6
@@ -40,7 +40,7 @@ rather than by a special case: `flush`'s own leading offset is `InlineExtent::ZE
 never derived from `distribute`, and its own interior weights are built over the run's
 `count - 1` interior sites. At `count == 1` that is zero sites, so
 the `flush` weight vector in
-[`pipeline.rs`](../../crates/kumihan/src/pipeline.rs) is empty and `proportional_shares`
+[`pipeline.rs`](../../crates/jlreq/src/pipeline.rs) is empty and `proportional_shares`
 yields no shares at all. The run's one character is therefore placed exactly at the base's
 own start with nothing consumed from the surplus in either direction.
 
@@ -82,5 +82,5 @@ holds — would settle the question outright and this reading would be revisited
 
 Protocol-v1 case
 `3.3.6/group-ruby-single-character-flush-start-aligned` in the bundled
-[`suite.ndjson`](../../crates/kumihan-conformance/suite.ndjson) fixes the observable result;
+[`suite.ndjson`](../../crates/jlreq-conformance/suite.ndjson) fixes the observable result;
 the public Rust tests independently compare the `jis` and `flush` positions.

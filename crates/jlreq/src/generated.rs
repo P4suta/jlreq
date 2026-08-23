@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Machine-generated specification tables owned privately by `kumihan`.
+//! Machine-generated specification tables owned privately by `jlreq`.
 //!
 //! Every Rust file inside `src/generated/` is emitted from the vendored snapshot by
 //! `cargo run -p xtask -- generate`. This hand-written module is intentionally adjacent

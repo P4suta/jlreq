@@ -1,13 +1,13 @@
-# kumihan
+# jlreq
 
-`kumihan` is a Japanese line-composition engine for already-shaped text. It accepts UTF-8
+`jlreq` is a Japanese line-composition engine for already-shaped text. It accepts UTF-8
 source text, caller-unit cluster advances, break opportunities, and document structures;
 it returns lines, placements, attachments, and stable diagnostics.
 
 The public surface is deliberately limited to:
 
-- the dependency-free `kumihan` Rust library (`no_std + alloc`), and
-- the language-independent `kumihan-conformance` process protocol.
+- the dependency-free `jlreq` Rust library (`no_std + alloc`), and
+- the language-independent `jlreq-conformance` process protocol.
 
 Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
 remain the caller's responsibility.
@@ -22,7 +22,7 @@ cases.
 ## Quick start
 
 ```rust
-use kumihan::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
 let source = "日本語組版";
 let clusters = source.char_indices().map(|(start, ch)| {
@@ -32,14 +32,14 @@ let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters
 let paragraph = Paragraph::builder(text, 4_000)
     .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
     .build()?;
-let layout = kumihan::compose(&paragraph, &Style::book_2020());
+let layout = jlreq::compose(&paragraph, &Style::book_2020());
 
 for line in layout.lines() {
     for placement in line.clusters() {
         draw(placement);
     }
 }
-# Ok::<(), kumihan::InputError>(())
+# Ok::<(), jlreq::InputError>(())
 ```
 
 All input ranges are UTF-8 byte ranges. `ShapedText` owns the source and clusters;
@@ -64,7 +64,7 @@ group, and jukugo runs. Horizontal and vertical paragraphs share the same logica
 model; placements include the local writing mode and transform needed by a renderer.
 
 The 22 alternative points derived from JLReq 2020 are dedicated enums in
-`kumihan::style`. There is no public generic question/choice vocabulary and no public rule
+`jlreq::style`. There is no public generic question/choice vocabulary and no public rule
 identifier. `Style::default()` is permanently equal to `Style::jlreq_2020()`; dated book,
 magazine, newspaper, and JIS-reading profiles are also available.
 
@@ -74,18 +74,18 @@ The specification identifier is
 
 ## Language-independent conformance
 
-`kumihan-conformance` speaks NDJSON with an external engine process. Every message carries:
+`jlreq-conformance` speaks NDJSON with an external engine process. Every message carries:
 
 ```json
-{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"..."}
+{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"..."}
 ```
 
 The fixed commands and exit codes are:
 
 ```text
-kumihan-conformance list [SUITE.ndjson]
-kumihan-conformance validate [SUITE.ndjson|-]
-kumihan-conformance run ENGINE [SUITE.ndjson]
+jlreq-conformance list [SUITE.ndjson]
+jlreq-conformance validate [SUITE.ndjson|-]
+jlreq-conformance run ENGINE [SUITE.ndjson]
 
 0  all cases conform / input validates
 1  one or more result differences
@@ -93,19 +93,19 @@ kumihan-conformance run ENGINE [SUITE.ndjson]
 ```
 
 The package contains no library target. Its committed JSON Schema, built-in suite, and
-`kumihan-sample-engine` executable form an end-to-end protocol example. See
+`jlreq-sample-engine` executable form an end-to-end protocol example. See
 [`docs/design/conformance.md`](docs/design/conformance.md).
 
-[`crates/kumihan-conformance/tests/reference_integration.rs`](crates/kumihan-conformance/tests/reference_integration.rs)
+[`crates/jlreq-conformance/tests/reference_integration.rs`](crates/jlreq-conformance/tests/reference_integration.rs)
 keeps direct ICU4X line-break-byte-offset and HarfRust glyph-cluster adapters compiling and
-running. Both dependencies are test-only; neither is a `kumihan` dependency or feature.
+running. Both dependencies are test-only; neither is a `jlreq` dependency or feature.
 
 ## Repository layout
 
 | Path | Role |
 | --- | --- |
-| `crates/kumihan` | the only public Rust library |
-| `crates/kumihan-conformance` | binary-only black-box runner and sample engine |
+| `crates/jlreq` | the only public Rust library |
+| `crates/jlreq-conformance` | binary-only black-box runner and sample engine |
 | `xtask` | specification generation and architectural gates |
 | `spec/`, `data/` | vendored specification inputs, derived data, and provenance |
 
@@ -118,7 +118,7 @@ coherent behavior, verify Green, then refactor under the gates.
 just check          # formatting, lint, architecture, provenance, and repository hygiene
 just test           # workspace tests plus doctests
 just ci             # all practical CI checks, including no_std and WASM
-cargo run -p kumihan-conformance -- list
+cargo run -p jlreq-conformance -- list
 ```
 
 The candidate 1.0 names are tracked in [`docs/api-1.0.toml`](docs/api-1.0.toml). This is a

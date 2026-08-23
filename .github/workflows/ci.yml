@@ -1,13 +1,13 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# CI for kumihan (JLReq 2020 Japanese line composition, including the JIS X 4051
+# CI for jlreq (JLReq 2020 Japanese line composition, including the JIS X 4051
 # alternatives JLReq records; complete JIS X 4051 conformance is not claimed).
 #
 # Layout under test:
-#   - kumihan              dependency-free no_std + alloc public library.
-#   - kumihan-conformance  binary-only protocol runner and sample engine.
+#   - jlreq              dependency-free no_std + alloc public library.
+#   - jlreq-conformance  binary-only protocol runner and sample engine.
 #   - xtask          repository policy checks shared by Just and CI.
 #
 # Policy:

@@ -1,15 +1,15 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Compile- and run-tested adapters for the two upstream layers kumihan deliberately
-//! does not own. These dependencies are dev-only and never become kumihan features.
+//! Compile- and run-tested adapters for the two upstream layers jlreq deliberately
+//! does not own. These dependencies are dev-only and never become jlreq features.
 
 use std::collections::BTreeMap;
 
 use harfrust::GlyphBuffer;
 use icu_segmenter::{LineSegmenter, options::LineBreakOptions};
-use kumihan::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
 fn clusters_from_harfrust(
     source: &str,
@@ -84,15 +84,13 @@ fn icu4x_byte_offsets_feed_breaks_without_conversion() {
         .build()
         .expect("ICU4X offsets are accepted verbatim");
     assert_eq!(
-        kumihan::compose(&paragraph, &Style::default())
-            .lines()
-            .len(),
+        jlreq::compose(&paragraph, &Style::default()).lines().len(),
         3
     );
 }
 
 #[test]
-fn harfrust_infos_and_positions_aggregate_to_kumihan_clusters() {
+fn harfrust_infos_and_positions_aggregate_to_jlreq_clusters() {
     let clusters = aggregate_glyph_clusters("日本", [(0, 400), (0, 600), (3, 1_000)])
         .expect("two glyphs in one HarfRust cluster are aggregated");
     assert_eq!(clusters.len(), 2);

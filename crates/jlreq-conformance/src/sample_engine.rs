@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -9,7 +9,7 @@ use std::{
     process::ExitCode,
 };
 
-use kumihan::{
+use jlreq::{
     Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
     RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
@@ -23,14 +23,14 @@ use kumihan::{
 };
 use serde_json::{Map, Value, json};
 
-const PROTOCOL: &str = "kumihan.conformance/1";
-const SPEC: &str = kumihan::SPECIFICATION;
+const PROTOCOL: &str = "jlreq.conformance/1";
+const SPEC: &str = jlreq::SPECIFICATION;
 
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("kumihan-sample-engine: {error}");
+            eprintln!("jlreq-sample-engine: {error}");
             ExitCode::from(2)
         },
     }
@@ -54,7 +54,7 @@ fn run() -> Result<(), String> {
             .get("request")
             .ok_or_else(|| "request is required".to_owned())?;
         let (paragraph, style) = parse_request(request)?;
-        let layout = kumihan::compose(&paragraph, &style);
+        let layout = jlreq::compose(&paragraph, &style);
         println!(
             "{}",
             json!({
@@ -515,7 +515,7 @@ fn choice<T: Copy>(name: &str, value: &str, choices: &[(&str, T)]) -> Result<T, 
         .ok_or_else(|| format!("unknown value {value:?} for style setting {name:?}"))
 }
 
-fn layout_json(layout: &kumihan::Layout) -> Value {
+fn layout_json(layout: &jlreq::Layout) -> Value {
     json!({
         "lines": layout.lines().iter().map(|line| json!({
             "range": [line.range().start, line.range().end],
@@ -525,8 +525,8 @@ fn layout_json(layout: &kumihan::Layout) -> Value {
             "block_extent": line.block_extent(),
             "clusters": line.clusters().iter().map(|placement| json!({
                 "origin": match placement.origin() {
-                    kumihan::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
-                    kumihan::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
+                    jlreq::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
+                    jlreq::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
                     _ => json!({"unknown": true}),
                 },
                 "range": [placement.range().start, placement.range().end],
@@ -553,9 +553,9 @@ fn layout_json(layout: &kumihan::Layout) -> Value {
         "diagnostics": layout.diagnostics().iter().map(|diagnostic| json!({
             "code": diagnostic.code(),
             "severity": match diagnostic.severity() {
-                kumihan::Severity::Info => "info",
-                kumihan::Severity::Warning => "warning",
-                kumihan::Severity::Error => "error",
+                jlreq::Severity::Info => "info",
+                jlreq::Severity::Warning => "warning",
+                jlreq::Severity::Error => "error",
                 _ => "unknown",
             },
             "range": diagnostic.range().map(|range| [range.start, range.end]),
@@ -600,11 +600,11 @@ fn parse_size(value: &Value) -> Result<Size, String> {
         .map_err(|error| render_input_error(&error))
 }
 
-fn render_input_error(error: &kumihan::InputError) -> String {
+fn render_input_error(error: &jlreq::InputError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 
-fn render_style_error(error: kumihan::style::StyleError) -> String {
+fn render_style_error(error: jlreq::style::StyleError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 

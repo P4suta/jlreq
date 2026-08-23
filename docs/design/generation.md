@@ -63,13 +63,13 @@ spec/
     table1.ja.tsv            transcribed from tables/table_ja2.pdf
     ...                      through table6
   upstream/                  gitignored; the PDFs, if a developer fetched them
-crates/kumihan/src/generated/*.rs  committed output of stage 2
+crates/jlreq/src/generated/*.rs  committed output of stage 2
 data/manifest.toml           SHA-256 of every file the pipeline reads or writes
 docs/decisions/*.md          this project's published readings of silences
 ```
 
 The active stage-2 outputs are Appendix A membership, compatibility folding, ideograph and
-script ranges, plus Tables 1 through 6, all under `crates/kumihan/src/generated/`. Rule and
+script ranges, plus Tables 1 through 6, all under `crates/jlreq/src/generated/`. Rule and
 policy inventories remain derived TSV inputs for repository gates; internal runtime rule
 identifiers are deliberately not generated into the public library.
 
@@ -85,7 +85,7 @@ asserts the known off-by-one so a corrected upstream fails loudly.
 **Stage 1**, `cargo run -p xtask -- derive`, reads `spec/snapshot/` and emits
 `spec/derived/*.tsv` and nothing else.
 
-**Stage 2**, `cargo run -p xtask -- generate`, emits `crates/kumihan/src/generated/*.rs` from
+**Stage 2**, `cargo run -p xtask -- generate`, emits `crates/jlreq/src/generated/*.rs` from
 `spec/derived/` and `spec/captured/`.
 
 Both are byte-identity gates, both are dependency-free, and both run in CI on every commit.

@@ -35,7 +35,7 @@ from `fuzz/`.
   instead of suppressing the finding. If a lint is genuinely wrong for this codebase,
   change the shared configuration and say why in the commit message.
 
-- **The core stays pure.** `kumihan` must not gain `std`, I/O, font, or
+- **The core stays pure.** `jlreq` must not gain `std`, I/O, font, or
   floating-point dependencies. `mise exec -- just purity` enforces this; see
   [ADR 0001](docs/adr/0001-no-std-no-io-no-font-in-core.md),
   [ADR 0005](docs/adr/0005-integer-layout-units.md), and
@@ -81,7 +81,7 @@ from `fuzz/`.
   pipeline.
 
 - **Every observable rule gets a protocol case.** A mechanically observable rule without a
-  request/response case in `crates/kumihan-conformance/suite.ndjson` is incomplete. Editorial
+  request/response case in `crates/jlreq-conformance/suite.ndjson` is incomplete. Editorial
   or non-observable statements belong in
   [docs/conformance-deferrals.toml](docs/conformance-deferrals.toml) with primary evidence;
   an empty case is not coverage. `just conform` checks the inventory in both directions.

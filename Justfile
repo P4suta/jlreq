@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -8,11 +8,11 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 export RUSTDOCFLAGS := "-D warnings"
 
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
-core_crates := "-p kumihan"
+core_crates := "-p jlreq"
 
 # Mutation testing targets the sole public library; xtask is repository tooling and the
 # conformance product is an external black-box runner.
-mutant_crates := "-p kumihan"
+mutant_crates := "-p jlreq"
 
 # A developer must be able to inspect an archive before committing; CI packages a clean
 # checkout and therefore deliberately omits Cargo's dirty-tree escape hatch.
@@ -55,11 +55,11 @@ doc:
     cargo doc --workspace --all-features --no-deps
 
 # Build and verify the public library archive, then inspect every file Cargo would put in the
-# CLI archive. Cargo cannot create that second archive until its exact-version kumihan
+# CLI archive. Cargo cannot create that second archive until its exact-version jlreq
 # dependency has been published; the CLI's workspace build, tests, and MSRV run separately.
 package:
-    cargo package -p kumihan --locked {{package_dirty}}
-    cargo package -p kumihan-conformance --locked {{package_dirty}} --list
+    cargo package -p jlreq --locked {{package_dirty}}
+    cargo package -p jlreq-conformance --locked {{package_dirty}} --list
 
 # Compile no-default, every individual feature, and representative feature pairs.
 feature-matrix:
@@ -99,7 +99,7 @@ purity:
 placeholder:
     cargo run --quiet -p xtask -- placeholder
 
-# Hold kumihan to the exact 1.0 surface and all 22 typed Style mappings.
+# Hold jlreq to the exact 1.0 surface and all 22 typed Style mappings.
 api:
     cargo run --quiet -p xtask -- api
 
@@ -172,12 +172,12 @@ zizmor:
 
 # Verify every workspace crate at the shared declared MSRV.
 msrv:
-    cargo msrv verify --path crates/kumihan
-    cargo msrv verify --path crates/kumihan-conformance
+    cargo msrv verify --path crates/jlreq
+    cargo msrv verify --path crates/jlreq-conformance
     cargo msrv verify --path xtask
 
 # Mutation-test the crates with real logic against their own `#[cfg(test)]` suites, or one
-# crate if `crate` is given (e.g. `just mutants kumihan`). It remains a scheduled report
+# crate if `crate` is given (e.g. `just mutants jlreq`). It remains a scheduled report
 # outside `ci-required` because a full mutation run is intentionally slow.
 #
 # `--test-tool nextest` matches `just test`. No `-D warnings` here unlike the other gates:

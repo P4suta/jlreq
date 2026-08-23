@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -8,5 +8,5 @@ contact_links:
     url: https://www.w3.org/TR/jlreq/
     about: The specification this library implements. Available in Japanese and English.
   - name: Security vulnerability
-    url: https://github.com/P4suta/kumihan/security/advisories/new
+    url: https://github.com/P4suta/jlreq/security/advisories/new
     about: Report privately instead of opening an issue. See SECURITY.md for what counts.

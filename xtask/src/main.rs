@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Repository maintenance tasks for the kumihan workspace.
+//! Repository maintenance tasks for the jlreq workspace.
 //!
 //! Run with `cargo run -p xtask -- <task>`, or through the `Justfile` recipes.
 //!

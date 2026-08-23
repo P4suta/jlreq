@@ -46,7 +46,7 @@ The alternatives are worse for stated reasons. Refusing to answer leaves `resolv
 answer, which is what it exists to have. Answering cl-19 unconditionally puts a proportional
 Latin glyph the shaper produced into the class §3.2.6 excludes it from. Deriving the class
 from a Unicode property other than `Unified_Ideograph` — from `Script`, or from
-`East_Asian_Width` — would make kumihan's answer depend on a property JLReq never cites and
+`East_Asian_Width` — would make jlreq's answer depend on a property JLReq never cites and
 would change with every Unicode revision, which is the coupling
 [ADR 0008](../adr/0008-classification-is-a-function-of-an-occurrence.md) keeps to the two
 places the specification asks for it.

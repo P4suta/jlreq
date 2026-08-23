@@ -1,6 +1,6 @@
 # The candidate 1.0 API spine
 
-This is the human-readable contract for the only public Rust library, `kumihan`. The exact
+This is the human-readable contract for the only public Rust library, `jlreq`. The exact
 directly exported names and the 22 Style mappings are machine-readable in
 [`docs/api-1.0.toml`](../api-1.0.toml) and checked in both directions by `xtask api`.
 
@@ -29,7 +29,7 @@ let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters
 let paragraph = Paragraph::builder(text, 20_000)
     .breaks(break_offsets.map(Break::allowed))
     .build()?;
-let layout = kumihan::compose(&paragraph, &Style::book_2020());
+let layout = jlreq::compose(&paragraph, &Style::book_2020());
 
 for line in layout.lines() {
     for placement in line.clusters() {
@@ -104,7 +104,7 @@ rejects contradictions at `build()`. Profiles are:
 - `newspaper_2020`; and
 - `jis_reading_2020` (the alternatives JLReq records, not complete JIS X 4051 conformance).
 
-The `kumihan::style` namespace contains the 22 dedicated choice enums. Their complete names
+The `jlreq::style` namespace contains the 22 dedicated choice enums. Their complete names
 and specification paths live in `docs/api-1.0.toml`; generic `Question`, `Choice`, and
 string-setting types are intentionally absent.
 

@@ -40,7 +40,7 @@ direction and no arithmetic accepting the other, so mixing them is a compile err
 than a review finding. There is no width, no height, no x, and no y in the workspace.
 Mapping the two axes onto screen coordinates happens in the caller's renderer, and no
 helper for it is offered — such a helper needs a handedness, an origin, and a sign that
-kumihan cannot validate, and in vertical writing the block axis runs right to left, so a
+jlreq cannot validate, and in vertical writing the block axis runs right to left, so a
 wrong sign renders a plausible mirrored page.
 
 Separation by type is only as strong as the conversions that exist, and this decision states

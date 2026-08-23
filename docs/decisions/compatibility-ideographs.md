@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 kumihan contributors
+SPDX-FileCopyrightText: 2026 jlreq contributors
 
 SPDX-License-Identifier: MIT OR Apache-2.0
 -->
@@ -61,7 +61,7 @@ own table, onto the letter `I` and out of the class. A canonical decomposition o
 onto `U+585A` is a different mapping again, and admitting it would put a third folding into
 a lookup whose two are already the subject of a written decision.
 
-**Normalization is the caller's, by [ADR 0003](../adr/0003-layer-above-icu4x.md).** kumihan
+**Normalization is the caller's, by [ADR 0003](../adr/0003-layer-above-icu4x.md).** jlreq
 sits above the Unicode toolchain rather than beside it: a caller who wants `U+FA10` treated
 as `U+585A` runs NFC first, which is one line of `icu_normalizer` and is exactly what NFC is
 for. Doing it here would be this library reimplementing a normalization it declines to own,

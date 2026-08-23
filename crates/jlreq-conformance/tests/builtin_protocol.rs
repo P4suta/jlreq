@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -13,15 +13,15 @@ use std::{
 
 fn temporary_suite(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
-        "kumihan-conformance-{label}-{}.ndjson",
+        "jlreq-conformance-{label}-{}.ndjson",
         std::process::id()
     ))
 }
 
 #[test]
 fn sample_engine_matches_the_builtin_black_box_suite() {
-    let status = Command::new(env!("CARGO_BIN_EXE_kumihan-conformance"))
-        .args(["run", env!("CARGO_BIN_EXE_kumihan-sample-engine")])
+    let status = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
+        .args(["run", env!("CARGO_BIN_EXE_jlreq-sample-engine")])
         .status()
         .expect("the conformance runner starts the sample engine");
     assert!(status.success(), "built-in suite differed: {status}");
@@ -40,12 +40,12 @@ fn builtin_suite_publishes_the_single_character_flush_ruby_reading() {
 
 #[test]
 fn sample_engine_reports_builder_input_errors_with_exit_two() {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_kumihan-sample-engine"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_jlreq-sample-engine"))
         .stdin(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("the sample engine starts");
-    let request = r#"{"protocol":"kumihan.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"missing-tab-stop","request":{"source":"A\tB","size":{"inline":1000,"block":1000},"frame":"proportional","clusters":[{"range":[0,1],"advance":500},{"range":[1,2],"advance":500},{"range":[2,3],"advance":500}],"line_extent":5000}}"#;
+    let request = r#"{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"missing-tab-stop","request":{"source":"A\tB","size":{"inline":1000,"block":1000},"frame":"proportional","clusters":[{"range":[0,1],"advance":500},{"range":[1,2],"advance":500},{"range":[2,3],"advance":500}],"line_extent":5000}}"#;
     child
         .stdin
         .take()
@@ -74,10 +74,10 @@ fn runner_returns_one_when_an_engine_differs() {
 
     let path = temporary_suite("mismatch");
     fs::write(&path, format!("{case}\n")).expect("the mismatching suite is written");
-    let output = Command::new(env!("CARGO_BIN_EXE_kumihan-conformance"))
+    let output = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
         .args([
             "run",
-            env!("CARGO_BIN_EXE_kumihan-sample-engine"),
+            env!("CARGO_BIN_EXE_jlreq-sample-engine"),
             path.to_str().expect("the temporary path is UTF-8"),
         ])
         .output()
@@ -95,7 +95,7 @@ fn runner_returns_one_when_an_engine_differs() {
 fn validator_returns_two_for_a_protocol_error() {
     let path = temporary_suite("invalid");
     fs::write(&path, "{}\n").expect("the invalid suite is written");
-    let output = Command::new(env!("CARGO_BIN_EXE_kumihan-conformance"))
+    let output = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
         .args([
             "validate",
             path.to_str().expect("the temporary path is UTF-8"),

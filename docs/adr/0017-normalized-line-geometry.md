@@ -32,7 +32,7 @@ Composition works in one geometry, and it is the specification's. Every occurren
 five classes has its half-width intrinsic advance, and every conditional space is explicit
 at a boundary. A caller-declared frame that already contains a conditional space is
 normalized by subtracting that amount, and the subtraction is reported: `Line::trims` names
-the item, the amount, the side it came off, and the rule that states it. kumihan therefore
+the item, the amount, the side it came off, and the rule that states it. jlreq therefore
 never silently shortens an advance the caller supplied — it reports every unit it took and
 cites the sentence, which is what [ADR 0002](0002-caller-supplied-metrics.md) requires of
 anything that touches a caller's measurement.

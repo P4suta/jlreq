@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/P4suta/kumihan/blob/main/crates/kumihan-conformance/protocol.schema.json",
-  "title": "kumihan conformance protocol v1",
+  "$id": "https://github.com/P4suta/jlreq/blob/main/crates/jlreq-conformance/protocol.schema.json",
+  "title": "jlreq conformance protocol v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["protocol", "spec", "id"],
   "properties": {
-    "protocol": { "const": "kumihan.conformance/1" },
+    "protocol": { "const": "jlreq.conformance/1" },
     "spec": { "const": "jlreq-2020-08-11+unicode-17.0.0" },
     "id": { "type": "string", "minLength": 1 },
     "rules": {

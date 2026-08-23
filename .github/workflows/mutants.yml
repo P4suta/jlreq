@@ -1,9 +1,9 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Mutation testing (cargo-mutants) for the sole public Rust library. xtask is tooling and
-# kumihan-conformance is tested through its process protocol.
+# jlreq-conformance is tested through its process protocol.
 #
 # This is a scheduled report rather than a required gate: a complete mutation run is slow,
 # and surviving mutants are evidence for the next independently-authored test rather than a
@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        crate: [kumihan]
+        crate: [jlreq]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable

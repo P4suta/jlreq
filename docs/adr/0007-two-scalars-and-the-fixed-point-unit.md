@@ -34,7 +34,7 @@ states, in units of 1/720 of the ideographic em: 120 for the fractions JLReq nam
 multiplied by 6 so that a quantity at either named ruby scale is still exact when stated
 in base ems, which is what lets a conformance case be reviewed by a human. `Advance` is a
 length in the caller's own unit — font units, 1/64 px, points, whatever the advances
-already are — which kumihan adds, compares, and negates but never interprets. Returned
+already are — which jlreq adds, compares, and negates but never interprets. Returned
 positions are in that same unit, so the caller converts nothing.
 
 The two meet in one bridge, `Em::resolve`, which takes a `Scale` and a carried remainder.

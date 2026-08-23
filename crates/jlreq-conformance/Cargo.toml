@@ -1,16 +1,16 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 [package]
-name = "kumihan-conformance"
+name = "jlreq-conformance"
 publish = false
-description = "Language-independent black-box conformance runner for kumihan engines"
-default-run = "kumihan-conformance"
+description = "Language-independent black-box conformance runner for jlreq engines"
+default-run = "jlreq-conformance"
 keywords = ["japanese", "typesetting", "jlreq", "conformance", "text-layout"]
 categories = ["command-line-utilities", "development-tools::testing"]
 readme = "README.md"
-documentation = "https://github.com/P4suta/kumihan/tree/main/crates/kumihan-conformance"
+documentation = "https://github.com/P4suta/jlreq/tree/main/crates/jlreq-conformance"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -20,15 +20,15 @@ repository.workspace = true
 homepage.workspace = true
 
 [[bin]]
-name = "kumihan-conformance"
+name = "jlreq-conformance"
 path = "src/main.rs"
 
 [[bin]]
-name = "kumihan-sample-engine"
+name = "jlreq-sample-engine"
 path = "src/sample_engine.rs"
 
 [dependencies]
-kumihan = { version = "0.0.0", path = "../kumihan" }
+jlreq = { version = "0.0.0", path = "../jlreq" }
 serde_json = "1.0"
 
 [dev-dependencies]

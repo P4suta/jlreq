@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Black-box acceptance tests for the intentionally small public API.
 
-use kumihan::{
+use jlreq::{
     Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
     RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
@@ -17,7 +17,7 @@ use kumihan::{
     },
 };
 
-fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, kumihan::InputError> {
+fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, jlreq::InputError> {
     let clusters = source.char_indices().map(|(start, character)| {
         Cluster::new(start..start.saturating_add(character.len_utf8()), advance)
     });
@@ -120,7 +120,7 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
                 .writing_mode(mode)
                 .build()
                 .expect("valid construct paragraph");
-            let layout = kumihan::compose(&paragraph, &Style::default());
+            let layout = jlreq::compose(&paragraph, &Style::default());
             assert_eq!(layout.lines().len(), 1);
             assert_eq!(layout.lines()[0].clusters().len(), 1);
         }
@@ -137,19 +137,19 @@ fn jidori_fills_declared_cells_and_keeps_its_outer_boundary_separate() {
             .alignment(Alignment::Start)
             .build()
             .expect("valid jidori paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             [0, 3_000, 4_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::advance)
+                .map(jlreq::ClusterPlacement::advance)
                 .collect::<Vec<_>>(),
             [3_000, 1_000, 1_000]
         );
@@ -167,7 +167,7 @@ fn jidori_leaves_trailing_space_when_no_internal_boundary_can_expand() {
             .alignment(Alignment::Start)
             .build()
             .expect("valid closed jidori paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 4_000);
         assert_eq!(line.clusters()[0].inline(), 0);
@@ -187,7 +187,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid upright paragraph");
-    let upright_layout = kumihan::compose(&upright, &Style::default());
+    let upright_layout = jlreq::compose(&upright, &Style::default());
     let upright_cluster = &upright_layout.lines()[0].clusters()[0];
     assert_eq!(upright_cluster.writing_mode(), WritingMode::VerticalRl);
     assert_eq!(upright_cluster.transform(), CoordinateTransform::Identity);
@@ -199,7 +199,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid rotated paragraph");
-    let rotated_layout = kumihan::compose(&rotated, &Style::default());
+    let rotated_layout = jlreq::compose(&rotated, &Style::default());
     assert!(rotated_layout.lines()[0].clusters().iter().all(|cluster| {
         cluster.writing_mode() == WritingMode::VerticalRl
             && cluster.transform() == CoordinateTransform::RotateClockwise
@@ -213,7 +213,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid tate-chu-yoko paragraph");
-    let tate_chu_yoko_layout = kumihan::compose(&tate_chu_yoko, &Style::default());
+    let tate_chu_yoko_layout = jlreq::compose(&tate_chu_yoko, &Style::default());
     assert!(
         tate_chu_yoko_layout.lines()[0]
             .clusters()
@@ -249,7 +249,7 @@ fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
         .build()
         .expect("valid tate-chu-yoko paragraph");
 
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     let first = &layout.lines()[0];
     assert_eq!(first.inline_extent(), 4_000);
     assert_eq!(first.block_extent(), 1_200);
@@ -315,7 +315,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
             .writing_mode(WritingMode::VerticalRl)
             .build()
             .expect("valid punctuation paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         let first_digit = line
             .clusters()
@@ -353,7 +353,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         .writing_mode(WritingMode::VerticalRl)
         .build()
         .expect("valid line-end paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines()[0].inline_extent(), 1_500);
     assert_eq!(layout.lines()[0].clusters()[0].advance(), 1_500);
 
@@ -373,7 +373,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         .writing_mode(WritingMode::VerticalRl)
         .build()
         .expect("valid multi-key paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0].clusters()[1].inline(),
         1_500,
@@ -388,12 +388,12 @@ fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
         .build()
         .expect("valid Appendix A paragraph");
 
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     let line = &layout.lines()[0];
     assert_eq!(
         line.clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         vec![0, 1_500, 2_500]
     );
@@ -421,10 +421,10 @@ fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
             .sentence_medial_dividing_mark(choice)
             .build()
             .expect("consistent dividing-mark style");
-        kumihan::compose(&paragraph, &style).lines()[0]
+        jlreq::compose(&paragraph, &style).lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>()
     };
 
@@ -469,14 +469,14 @@ fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
     let one_line = Paragraph::builder(text.clone(), 4_000)
         .build()
         .expect("valid one-line paragraph");
-    let layout = kumihan::compose(&one_line, &Style::default());
+    let layout = jlreq::compose(&one_line, &Style::default());
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 4_000);
     assert_eq!(
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 3_000],
         "a sentence-final dividing mark carries a fixed one-em following space"
@@ -486,7 +486,7 @@ fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
         .breaks([Break::allowed(6)])
         .build()
         .expect("valid wrapping paragraph");
-    let layout = kumihan::compose(&wrapped, &Style::default());
+    let layout = jlreq::compose(&wrapped, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].inline_extent(), 2_000);
     assert_eq!(layout.lines()[1].clusters()[0].inline(), 0);
@@ -514,7 +514,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .unlisted_code_point(choice)
             .build()
             .expect("consistent unlisted style");
-        kumihan::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+        jlreq::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
     };
     assert_eq!(unlisted(UnlistedCodePoint::ByFrame), 950);
     assert_eq!(unlisted(UnlistedCodePoint::Ideographic), 700);
@@ -539,7 +539,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .ambiguous_context(choice)
             .build()
             .expect("consistent ambiguity style");
-        kumihan::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+        jlreq::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
     };
     assert_eq!(ambiguous(AmbiguousContext::LowestClass), 1_000);
     assert_eq!(ambiguous(AmbiguousContext::HighestClass), 1_250);
@@ -566,7 +566,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .grouped_numeral_qualification(choice)
             .build()
             .expect("consistent grouped-numeral style");
-        kumihan::compose(&paragraph, &style).lines().len()
+        jlreq::compose(&paragraph, &style).lines().len()
     };
     assert_eq!(grouped(GroupedNumeralQualification::ByWidth), 2);
     assert_eq!(grouped(GroupedNumeralQualification::ByRole), 1);
@@ -598,12 +598,12 @@ fn table_one_spaces_japanese_and_western_text_by_the_referents_em() {
         let paragraph = Paragraph::builder(text, 3_000)
             .build()
             .expect("valid mixed-size paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         (
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect(),
             line.inline_extent(),
         )
@@ -643,12 +643,12 @@ fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
             .writing_mode(mode)
             .build()
             .expect("valid punctuation paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         (
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect(),
             line.inline_extent(),
         )
@@ -711,7 +711,7 @@ fn western_word_space_collapses_only_at_true_line_edges() {
         breaks: impl IntoIterator<Item = Break>,
         alignment: Alignment,
         line_extent: i32,
-    ) -> kumihan::Layout {
+    ) -> jlreq::Layout {
         let clusters = source.char_indices().map(|(start, character)| {
             Cluster::new(
                 start..start.saturating_add(character.len_utf8()),
@@ -730,7 +730,7 @@ fn western_word_space_collapses_only_at_true_line_edges() {
             .alignment(alignment)
             .build()
             .expect("valid word-space paragraph");
-        kumihan::compose(&paragraph, &Style::default())
+        jlreq::compose(&paragraph, &Style::default())
     }
 
     let edged = compose_ascii(" AB ", [], Alignment::Start, 2_000);
@@ -812,7 +812,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
             .writing_mode(mode)
             .build()
             .expect("valid balanced warichu paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 1);
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 3_000);
@@ -820,14 +820,14 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             vec![0, 1_000, 1_500, 1_000, 1_500, 2_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::block)
+                .map(jlreq::ClusterPlacement::block)
                 .collect::<Vec<_>>(),
             if mode == WritingMode::HorizontalTb {
                 vec![0, 0, 0, 500, 500, 0]
@@ -857,7 +857,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         .constructs([Construct::warichu(0..5)])
         .build()
         .expect("word-space breaks are valid inside warichu");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 250);
     assert_eq!(
@@ -880,7 +880,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         .constructs([Construct::warichu(0..10)])
         .build()
         .expect("valid straddling warichu paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..5);
     assert_eq!(layout.lines()[1].range(), 5..10);
@@ -888,8 +888,8 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         layout
             .lines()
             .iter()
-            .flat_map(kumihan::Line::clusters)
-            .map(kumihan::ClusterPlacement::range)
+            .flat_map(jlreq::Line::clusters)
+            .map(jlreq::ClusterPlacement::range)
             .collect::<Vec<_>>(),
         (0..10).map(|start| start..start + 1).collect::<Vec<_>>()
     );
@@ -905,7 +905,7 @@ fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
             .writing_mode(mode)
             .build()
             .expect("one declared split builds two furiwake lines");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 1);
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 2_000);
@@ -913,14 +913,14 @@ fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             vec![0, 0, 1_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::block)
+                .map(jlreq::ClusterPlacement::block)
                 .collect::<Vec<_>>(),
             if mode == WritingMode::HorizontalTb {
                 vec![-600, 600, 600]
@@ -963,7 +963,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(3..6)])
         .build()
         .expect("valid inline formula paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
@@ -985,12 +985,12 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..5)])
         .build()
         .expect("valid display formula paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::advance)
+            .map(jlreq::ClusterPlacement::advance)
             .collect::<Vec<_>>(),
         vec![750, 1_250, 500, 1_000, 500],
         "display equations have quarter-em equality spacing and solid operators"
@@ -1002,7 +1002,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..3)])
         .build()
         .expect("either side of an equality token is a valid caller-declared break");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].inline_extent(), 500);
     assert_eq!(layout.lines()[1].inline_extent(), 1_750);
@@ -1014,12 +1014,12 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..8)])
         .build()
         .expect("valid independent formula alternatives");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(
         layout
             .lines()
             .iter()
-            .map(kumihan::Line::range)
+            .map(jlreq::Line::range)
             .collect::<Vec<_>>(),
         vec![0..2, 2..8],
         "a feasible break before an equality symbol precedes one before an operator"
@@ -1057,7 +1057,7 @@ fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
             .writing_mode(mode)
             .build()
             .expect("valid emphasis paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.block_extent(), 1_500);
         assert_eq!(line.attachments().len(), 2);
@@ -1086,7 +1086,7 @@ fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
         ])
         .build()
         .expect("two disjoint emphasis runs are valid");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines()[0].attachments().len(), 2);
     assert_eq!(
         layout.lines()[0].block_extent(),
@@ -1127,7 +1127,7 @@ fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
         .writing_mode(mode)
         .build()
         .expect("valid ruby paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.block_extent(), 1_700);
         assert_eq!(line.attachments().len(), 2);
@@ -1160,10 +1160,10 @@ fn group_ruby_distribution_changes_leading_and_interior_shares() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("consistent group-ruby style");
-        kumihan::compose(&paragraph, &style).lines()[0]
+        jlreq::compose(&paragraph, &style).lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>()
     };
 
@@ -1202,7 +1202,7 @@ fn single_character_group_ruby_flush_stays_at_the_base_start() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("consistent group-ruby style");
-        kumihan::compose(&paragraph, &style).lines()[0].attachments()[0].inline()
+        jlreq::compose(&paragraph, &style).lines()[0].attachments()[0].inline()
     };
 
     assert_eq!(compose_with(GroupRubyDistribution::Jis), 850);
@@ -1233,7 +1233,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("valid group-ruby style");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
 
     let jis = compose_with(GroupRubyDistribution::Jis);
@@ -1241,7 +1241,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         jis.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [250, 1_750],
         "JIS distributes the surplus at a 1:2:1 leading/interior/trailing ratio"
@@ -1250,7 +1250,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         jis.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1260,7 +1260,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         flush.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 2_000],
         "flush aligns both ends and puts the whole surplus between base characters"
@@ -1269,7 +1269,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         flush.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1299,14 +1299,14 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .constructs([Construct::ruby(ruby)])
         .build()
         .expect("valid ruby paragraph");
-        kumihan::compose(&paragraph, &Style::default())
+        jlreq::compose(&paragraph, &Style::default())
     };
 
     let mono_layout = compose_kind(mono.clone());
     let mono_inline: Vec<_> = mono_layout.lines()[0]
         .attachments()
         .iter()
-        .map(kumihan::Attachment::inline)
+        .map(jlreq::Attachment::inline)
         .collect();
     assert_eq!(mono_inline, [250, 1_000, 1_500]);
 
@@ -1314,7 +1314,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let jukugo_inline: Vec<_> = jukugo_layout.lines()[0]
         .attachments()
         .iter()
-        .map(kumihan::Attachment::inline)
+        .map(jlreq::Attachment::inline)
         .collect();
     assert_eq!(jukugo_inline, mono_inline);
 
@@ -1322,7 +1322,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let group_inline: Vec<_> = group_layout.lines()[0]
         .attachments()
         .iter()
-        .map(kumihan::Attachment::inline)
+        .map(jlreq::Attachment::inline)
         .collect();
     assert_eq!(group_inline, [84, 751, 1_417]);
 
@@ -1340,7 +1340,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid adjusted ruby paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         assert_eq!(
             layout.lines()[0].clusters()[1].inline(),
             expected_second_base,
@@ -1357,7 +1357,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .constructs([Construct::ruby(ruby)])
         .build()
         .expect("mono and jukugo may split at a declared run boundary");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 2);
         assert_eq!(layout.lines()[0].attachments().len(), 1);
         assert_eq!(layout.lines()[0].attachments()[0].range(), 0..3);
@@ -1407,7 +1407,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             .writing_mode(mode)
             .build()
             .expect("valid phonetic jukugo paragraph");
-            kumihan::compose(&paragraph, &phonetic)
+            jlreq::compose(&paragraph, &phonetic)
         };
 
     let forward = compose(
@@ -1425,7 +1425,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         forward.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_000, 3_000],
         "F.2 prefers overhanging the following base and then the following kana"
@@ -1434,7 +1434,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         forward.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1454,7 +1454,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         backward.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_000, 3_000],
         "F.2 falls back to the preceding permitted character when the following one forbids overhang"
@@ -1463,7 +1463,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         backward.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1484,7 +1484,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             expanded.lines()[0]
                 .clusters()
                 .iter()
-                .map(kumihan::ClusterPlacement::inline)
+                .map(jlreq::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             [0, 1_250, 2_500, 3_500],
             "F.3 splits the remaining ruby-character width around the run with three ruby characters"
@@ -1493,7 +1493,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             expanded.lines()[0]
                 .attachments()
                 .iter()
-                .map(kumihan::Attachment::inline)
+                .map(jlreq::Attachment::inline)
                 .collect::<Vec<_>>(),
             [1_000, 1_500, 2_000, 2_500, 3_000]
         );
@@ -1515,7 +1515,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         four_ruby.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_250, 3_500],
         "F.4's four-ruby example assigns one ruby-character width around only the eligible base"
@@ -1524,7 +1524,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         four_ruby.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1544,7 +1544,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_head.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_500, 2_500],
         "F.3 keeps both starts flush at line head and puts the whole assigned space after the first base"
@@ -1553,7 +1553,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_head.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000]
     );
@@ -1573,7 +1573,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_end.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_500],
         "F.3 keeps both ends flush at line end and puts the whole assigned space before the final base"
@@ -1582,7 +1582,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_end.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1606,7 +1606,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         proportional.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_322, 3_072, 4_500, 5_500],
         "F.3 apportions the total expansion in the 3:4 solid-reading-length ratio and sends the integer remainder leading"
@@ -1615,7 +1615,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         proportional.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [
             1_000, 1_500, 2_000, 2_500, 3_000, 3_500, 4_000, 4_500, 5_000
@@ -1646,12 +1646,12 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     .alignment(Alignment::Start)
     .build()
     .expect("valid long-ruby paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_250, 2_750, 4_000],
         "a long group ruby distributes the base at the JIS 1:2:1 ratio"
@@ -1661,7 +1661,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         layout.lines()[0]
             .attachments()
             .iter()
-            .map(kumihan::Attachment::inline)
+            .map(jlreq::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000, 3_500]
     );
@@ -1677,7 +1677,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid overhang-neighbor paragraph");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
     let ideograph = compose_preceding('前', Style::default());
     let opening = compose_preceding('「', Style::default());
@@ -1747,7 +1747,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid ruby-indent paragraph");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
     let permitted = compose_indent(Style::default());
     let prohibited = compose_indent(
@@ -1772,12 +1772,12 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     .alignment(Alignment::Start)
     .build()
     .expect("valid overhang-fixpoint paragraph");
-    let fixpoint = kumihan::compose(&fixpoint, &Style::default());
+    let fixpoint = jlreq::compose(&fixpoint, &Style::default());
     assert_eq!(
         fixpoint
             .lines()
             .iter()
-            .map(kumihan::Line::range)
+            .map(jlreq::Line::range)
             .collect::<Vec<_>>(),
         [0..3, 3..6, 6..12],
         "break search remeasures the ruby after each candidate changes its neighbors"
@@ -1807,10 +1807,10 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         .writing_mode(mode)
         .build()
         .expect("valid construct-run paragraph");
-        kumihan::compose(&paragraph, &Style::default()).lines()[0]
+        jlreq::compose(&paragraph, &Style::default()).lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect()
     }
 
@@ -1877,12 +1877,12 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid single tate-chu-yoko run");
-    let same_tcy = kumihan::compose(&same_tcy, &Style::default());
+    let same_tcy = jlreq::compose(&same_tcy, &Style::default());
     assert_eq!(
         same_tcy.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 0, 1_250],
         "members of one tate-chu-yoko run share an inline item and cannot expand internally"
@@ -1914,12 +1914,12 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid mixed-size complex paragraph");
-    let mixed = kumihan::compose(&mixed, &Style::default());
+    let mixed = jlreq::compose(&mixed, &Style::default());
     assert_eq!(
         mixed.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_100, 2_250, 3_750],
         "the outer second-order site takes 250 first, then third-order shares split the remaining 250 as 100 and 150"
@@ -2019,7 +2019,7 @@ fn complex_break_rules_distinguish_internal_and_run_boundaries() {
         .build()
         .expect("the boundary between distinct ornamented complexes is breakable");
     assert_eq!(
-        kumihan::compose(&separate, &Style::default()).lines().len(),
+        jlreq::compose(&separate, &Style::default()).lines().len(),
         2
     );
 }
@@ -2047,7 +2047,7 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid tab paragraph");
-    let layout = kumihan::compose(&tabbed, &Style::default());
+    let layout = jlreq::compose(&tabbed, &Style::default());
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 3_000);
 
     let source = "日本語";
@@ -2057,7 +2057,7 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
         .widow(Widow::MinimumClusters(2))
         .build()
         .expect("valid mixed-break paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..6);
 }
@@ -2096,7 +2096,7 @@ fn tab_alignments_are_direction_independent() {
                 .writing_mode(writing_mode)
                 .build()
                 .expect("valid tab paragraph");
-            let layout = kumihan::compose(&paragraph, &Style::default());
+            let layout = jlreq::compose(&paragraph, &Style::default());
             assert_eq!(
                 [
                     layout.lines()[0].clusters()[2].inline(),
@@ -2116,7 +2116,7 @@ fn exhausted_tab_positions_continue_on_the_next_line() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid overflowing tab paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::default());
+    let layout = jlreq::compose(&paragraph, &Style::default());
 
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..4);
@@ -2135,9 +2135,7 @@ fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
     assert_eq!(paragraph.breaks()[0].offset(), 3);
     assert!(paragraph.breaks()[1].is_mandatory());
     assert_eq!(
-        kumihan::compose(&paragraph, &Style::default())
-            .lines()
-            .len(),
+        jlreq::compose(&paragraph, &Style::default()).lines().len(),
         2
     );
 }
@@ -2151,7 +2149,7 @@ fn table_two_prohibits_a_closing_bracket_at_every_kinsoku_level() {
         .build()
         .expect("valid break opportunities");
 
-    let layout = kumihan::compose(&paragraph, &Style::newspaper_2020());
+    let layout = jlreq::compose(&paragraph, &Style::newspaper_2020());
     assert_eq!(layout.lines()[0].range(), 0..6);
 }
 
@@ -2161,7 +2159,7 @@ fn lines_at_only_boundary(text: ShapedText, offset: usize, style: &Style) -> Opt
         .alignment(Alignment::Start)
         .build()
         .ok()?;
-    Some(kumihan::compose(&paragraph, style).lines().len())
+    Some(jlreq::compose(&paragraph, style).lines().len())
 }
 
 #[test]
@@ -2309,7 +2307,7 @@ fn reduction_tables_apply_their_distinct_floor_to_an_overfull_boundary() {
             .reduction_table(table)
             .build()
             .expect("consistent reduction style");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
 
     for table in [ReductionTable::Table3, ReductionTable::Table4] {
@@ -2330,11 +2328,11 @@ fn reduction_uses_lower_priority_stages_only_after_earlier_ones() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid staged paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
     let positions: Vec<_> = layout.lines()[0]
         .clusters()
         .iter()
-        .map(kumihan::ClusterPlacement::inline)
+        .map(jlreq::ClusterPlacement::inline)
         .collect();
 
     assert_eq!(positions, [0, 1_000, 2_000, 3_400]);
@@ -2358,7 +2356,7 @@ fn western_word_space_reduces_first_and_keeps_a_quarter_em() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid Western-space paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_250);
     assert_eq!(layout.lines()[0].inline_extent(), 2_250);
@@ -2384,7 +2382,7 @@ fn generated_reduction_tables_include_the_line_end_axis() {
             .reduction_table(table)
             .build()
             .expect("consistent reduction style");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
 
     assert_eq!(
@@ -2416,7 +2414,7 @@ fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
             .line_head_opening_bracket(pattern)
             .build()
             .expect("consistent line-head style");
-        kumihan::compose(&paragraph, &style).lines()[0].clusters()[0].inline()
+        jlreq::compose(&paragraph, &style).lines()[0].clusters()[0].inline()
     };
     assert_eq!(compose_first(LineHeadOpeningBracket::Pattern1), 1_000);
     assert_eq!(compose_first(LineHeadOpeningBracket::Pattern2), 1_500);
@@ -2432,7 +2430,7 @@ fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
             .line_head_opening_bracket(pattern)
             .build()
             .expect("consistent line-head style");
-        kumihan::compose(&paragraph, &style).lines()[1].clusters()[0].inline()
+        jlreq::compose(&paragraph, &style).lines()[1].clusters()[0].inline()
     };
     assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern1), 0);
     assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern2), 500);
@@ -2459,7 +2457,7 @@ fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
             .hanging_punctuation(hanging)
             .build()
             .expect("consistent hanging style");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
 
     let none = compose_with(HangingPunctuation::None);
@@ -2471,7 +2469,7 @@ fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
         hanging.lines()[0]
             .clusters()
             .iter()
-            .map(kumihan::ClusterPlacement::inline)
+            .map(jlreq::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000],
         "hanging changes line accounting, not the shaped placements"
@@ -2488,7 +2486,7 @@ fn optimal_search_counts_reducible_space_before_choosing_a_break() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid reducible search paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 3_000);
@@ -2502,7 +2500,7 @@ fn table_six_does_not_expand_a_boundary_it_marks_closed() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid closed-expansion paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].inline_extent(), 2_000);
 }
@@ -2534,7 +2532,7 @@ fn japanese_latin_expansion_ceiling_changes_the_stage_distribution() {
             .japanese_latin_expansion_ceiling(ceiling)
             .build()
             .expect("consistent expansion style");
-        kumihan::compose(&paragraph, &style)
+        jlreq::compose(&paragraph, &style)
     };
 
     let half = compose_with(JapaneseLatinExpansionCeiling::HalfEm);
@@ -2566,7 +2564,7 @@ fn western_word_space_expands_to_half_an_em_at_the_first_stage() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid Western expansion paragraph");
-    let layout = kumihan::compose(&paragraph, &Style::jlreq_2020());
+    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_500);
@@ -2579,7 +2577,7 @@ fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
         .breaks([Break::allowed(3)])
         .build()
         .expect("valid paragraph");
-    let mut composer = kumihan::Composer::new();
+    let mut composer = jlreq::Composer::new();
     let first = composer.compose(&paragraph, &Style::default());
     let second = composer.compose(&paragraph, &Style::book_2020());
     assert_eq!(first.lines().len(), 2);
@@ -2598,7 +2596,7 @@ fn line_extent_is_occupied_width_not_the_shifted_end_coordinate() {
             .alignment(alignment)
             .build()
             .expect("valid aligned paragraph");
-        let layout = kumihan::compose(&paragraph, &Style::default());
+        let layout = jlreq::compose(&paragraph, &Style::default());
         assert_eq!(layout.lines()[0].inline_origin(), origin);
         assert_eq!(layout.lines()[0].inline_extent(), 1_000);
     }

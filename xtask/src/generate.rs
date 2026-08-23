@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
@@ -7,7 +7,7 @@
 //! Stage 1 is the `derive` gate, which reads the vendored snapshot and emits
 //! `spec/derived/*.tsv`. Stage 2 is this module: it turns the tab-separated files under
 //! `spec/derived/` and `spec/captured/` into the Rust modules committed at
-//! `crates/kumihan/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
+//! `crates/jlreq/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
 //! what keeps this program's empty dependency table intact, and the SHA-256 below is
 //! hand-written for the same reason.
 //!
@@ -107,7 +107,7 @@ const FRAME: &str = "xtask/src/generate.rs";
 ///
 /// A constant rather than the clock: the output must be byte-identical on every run, so
 /// nothing this gate writes may depend on the day it ran.
-const COPYRIGHT: &str = "2026 kumihan contributors";
+const COPYRIGHT: &str = "2026 jlreq contributors";
 
 /// The license identifier every emitted file carries.
 const LICENSE: &str = "MIT OR Apache-2.0";
@@ -159,16 +159,16 @@ pub(crate) struct Unit {
 /// adding a generated table touches this list and nothing else in this file. The units
 /// still to arrive are the appendix notes and the captured matrices.
 const UNITS: &[Unit] = &[
-    classes::KUMIHAN_APPENDIX_A_TABLE,
-    classes::KUMIHAN_IDEOGRAPH_TABLE,
-    classes::KUMIHAN_FOLDING_TABLE,
-    classes::KUMIHAN_SCRIPT_TABLE,
-    spacing::KUMIHAN_TABLE1,
-    spacing::KUMIHAN_TABLE2,
-    spacing::KUMIHAN_TABLE3,
-    spacing::KUMIHAN_TABLE4,
-    spacing::KUMIHAN_TABLE5,
-    spacing::KUMIHAN_TABLE6,
+    classes::UNIFIED_APPENDIX_A_TABLE,
+    classes::UNIFIED_IDEOGRAPH_TABLE,
+    classes::UNIFIED_FOLDING_TABLE,
+    classes::UNIFIED_SCRIPT_TABLE,
+    spacing::UNIFIED_TABLE1,
+    spacing::UNIFIED_TABLE2,
+    spacing::UNIFIED_TABLE3,
+    spacing::UNIFIED_TABLE4,
+    spacing::UNIFIED_TABLE5,
+    spacing::UNIFIED_TABLE6,
 ];
 
 /// Superseded Rust outputs whose declarations remain compiled but are no longer rendered.
@@ -304,7 +304,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 
     println!(
         "{NAME}: examined {units} active generation unit(s), {modules} module(s) under \
-         crates/kumihan/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
+         crates/jlreq/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
          in {MANIFEST_PATH}",
         units = UNITS.len(),
         modules = found.len(),
@@ -705,8 +705,8 @@ fn ledger() -> BTreeSet<String> {
         "xtask/src/attest.rs",
         "docs/api-1.0.toml",
         "xtask/src/api.rs",
-        "crates/kumihan-conformance/suite.ndjson",
-        "crates/kumihan-conformance/protocol.schema.json",
+        "crates/jlreq-conformance/suite.ndjson",
+        "crates/jlreq-conformance/protocol.schema.json",
         "docs/conformance-deferrals.toml",
         "ROADMAP.md",
         "xtask/src/conform.rs",
@@ -1401,7 +1401,7 @@ mod tests {
 
         // REUSE-IgnoreStart
         // The header this asserts on is the emitted file's, not this one's.
-        assert!(file.starts_with("// SPDX-FileCopyrightText: 2026 kumihan contributors\n"));
+        assert!(file.starts_with("// SPDX-FileCopyrightText: 2026 jlreq contributors\n"));
         assert!(file.contains("// SPDX-License-Identifier: MIT OR Apache-2.0\n"));
         // REUSE-IgnoreEnd
         assert!(file.contains("//! A fixture.\n"));
@@ -1614,8 +1614,8 @@ mod tests {
             "spec/captured/table1.ja.tsv",
             "spec/captured/invariants.tsv",
             "docs/api-1.0.toml",
-            "crates/kumihan-conformance/suite.ndjson",
-            "crates/kumihan-conformance/protocol.schema.json",
+            "crates/jlreq-conformance/suite.ndjson",
+            "crates/jlreq-conformance/protocol.schema.json",
             "docs/conformance-deferrals.toml",
             "xtask/src/classes.rs",
             "xtask/src/attest.rs",

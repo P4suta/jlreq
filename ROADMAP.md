@@ -2,7 +2,7 @@
 
 ## Current status: unreleased 0.0.0
 
-kumihan has not reached 0.1. Both product packages set `publish = false`; there is no
+jlreq has not reached 0.1. Both product packages set `publish = false`; there is no
 released compatibility contract, support line, release date, or implied path to 1.0.
 Passing the repository's implementation and conformance gates is evidence about the current
 tree, not a release decision.
@@ -56,7 +56,7 @@ These are design goals to evaluate before a stable release, not current promises
 - `Style::default()` remains identical to `Style::jlreq_2020()`.
 - A future JLReq revision adds a dated profile and specification identifier rather than
   reinterpreting an existing profile.
-- The conformance protocol uses a new `kumihan.conformance/N` identifier for incompatible
+- The conformance protocol uses a new `jlreq.conformance/N` identifier for incompatible
   envelope or body changes.
 - Integer layout results remain bit-identical across supported targets.
 
@@ -64,4 +64,4 @@ These are design goals to evaluate before a stable release, not current promises
 
 Font I/O, shaping, UAX #14 discovery, bidi resolution, rasterization, and drawing stay
 outside the library. These belong to integrations that feed shaped clusters and break
-opportunities into `kumihan` and consume its renderer-ready placements.
+opportunities into `jlreq` and consume its renderer-ready placements.

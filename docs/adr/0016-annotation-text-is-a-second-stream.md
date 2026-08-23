@@ -6,7 +6,7 @@
 ## Context
 
 [ADR 0002](0002-caller-supplied-metrics.md) makes the caller's text and its measured
-advances the single carrier of what kumihan is told. The obvious model is one array of
+advances the single carrier of what jlreq is told. The obvious model is one array of
 items per paragraph, and every construct naming a range of it. That model is right for
 three of the constructs and wrong for two, and the difference is not stylistic.
 

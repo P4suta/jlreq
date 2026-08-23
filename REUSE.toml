@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 kumihan contributors
+# SPDX-FileCopyrightText: 2026 jlreq contributors
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 #
@@ -17,13 +17,13 @@ path = [
   ".github/CODEOWNERS",
 ]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 kumihan contributors"
+SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 [[annotations]]
 path = ["**/tests/fixtures/**", "fuzz/corpus/**"]
 precedence = "override"
-SPDX-FileCopyrightText = "2026 kumihan contributors"
+SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 # The conformance suite. JSON has no comments, so the format contract and the cases
@@ -32,21 +32,11 @@ SPDX-License-Identifier = "MIT OR Apache-2.0"
 # (docs/design/conformance.md, docs/adr/0006).
 [[annotations]]
 path = [
-  "crates/jlreq-conform/cases.schema.json",
-  "crates/jlreq-conform/cases/**",
-  "crates/jlreq-conform/answers/**",
+  "crates/jlreq-conformance/protocol.schema.json",
+  "crates/jlreq-conformance/suite.ndjson",
 ]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 kumihan contributors"
-SPDX-License-Identifier = "MIT OR Apache-2.0"
-
-[[annotations]]
-path = [
-  "crates/kumihan-conformance/protocol.schema.json",
-  "crates/kumihan-conformance/suite.ndjson",
-]
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 kumihan contributors"
+SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 # The vendored specification and everything read out of it. The snapshot is W3C's

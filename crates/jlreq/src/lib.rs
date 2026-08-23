@@ -1,15 +1,15 @@
-// SPDX-FileCopyrightText: 2026 kumihan contributors
+// SPDX-FileCopyrightText: 2026 jlreq contributors
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Japanese line composition for already-shaped text.
 //!
-//! kumihan owns Japanese spacing, line selection, inline constructs, and physical
+//! jlreq owns Japanese spacing, line selection, inline constructs, and physical
 //! placement. Font loading, shaping, Unicode line segmentation, bidi resolution, and
 //! rendering stay with the caller. Every input position is a UTF-8 byte offset.
 //!
 //! ```
-//! use kumihan::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+//! use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 //!
 //! let source = "日本語組版";
 //! let clusters = source.char_indices().map(|(start, ch)| {
@@ -20,10 +20,10 @@
 //! let paragraph = Paragraph::builder(text, 4_000)
 //!     .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
 //!     .build()?;
-//! let layout = kumihan::compose(&paragraph, &Style::book_2020());
+//! let layout = jlreq::compose(&paragraph, &Style::book_2020());
 //!
 //! assert_eq!(layout.lines().len(), 2);
-//! # Ok::<(), kumihan::InputError>(())
+//! # Ok::<(), jlreq::InputError>(())
 //! ```
 
 #![no_std]

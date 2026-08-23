@@ -52,7 +52,7 @@ and §3.1.12 fix — so no choice of this question ever reorders that pair; the 
 permutations differ only in where `badness` falls relative to it.
 
 Every answer `Preference::compare` produces carries `Standing::Unstated`, because the
-ranking is kumihan's own construction over a silence and not the specification's, and
+ranking is jlreq's own construction over a silence and not the specification's, and
 `Demerits` deliberately implements neither `PartialOrd` nor `Ord` for the same reason: a
 derived order would advertise as the specification's a permutation the specification only
 partly states.

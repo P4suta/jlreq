@@ -1,4 +1,4 @@
-# ADR-0012: kumihan may add detail, never an outcome
+# ADR-0012: jlreq may add detail, never an outcome
 
 - Status: accepted
 - Date: 2026-08-05
@@ -23,10 +23,10 @@ still means what it meant.
 
 ## Decision
 
-One rule governs input types, output types, and policy types alike: kumihan may add detail,
+One rule governs input types, output types, and policy types alike: jlreq may add detail,
 and may never add an outcome.
 
-Every public type is open in the direction kumihan writes it and closed in the direction
+Every public type is open in the direction jlreq writes it and closed in the direction
 the caller reads it. Input types are `#[non_exhaustive]`, obtained from a named constructor
 and configured by consuming builder methods, so a new field never breaks a call site.
 Policy is opaque, so growing the set of questions is invisible. Output types are
