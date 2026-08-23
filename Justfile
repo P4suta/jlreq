@@ -216,7 +216,12 @@ mutants crate="":
 # outside the Cargo workspace and no Rust gate reads them, so the recipes below are the
 # only things that build, test or run them. They are POSIX shell scripts; `conform-engines`
 # is the one `just ci` calls and the one that knows about Windows.
+#
+# Dune creates DUNE_BUILD_DIR itself but refuses to create its parent, so a clean checkout
+# with no `target/` yet (CI, before any cargo build has made one) fails before dune gets a
+# chance to build anything. Creating it first makes this recipe work on its own.
 ocaml-build:
+    mkdir -p {{DUNE_BUILD_DIR}}
     dune build engines/ocaml
 
 # Build the OCaml engine and run its own unit tests: the startup census of the
