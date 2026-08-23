@@ -34,6 +34,15 @@
 # `dune build`, which still writes here.
 /_build/
 
+# Racket build output for engines/racket. `raco make` writes a `compiled/` directory
+# beside every source directory it touches — there is no equivalent of DUNE_BUILD_DIR to
+# redirect it into /target — and `raco exe` writes the executable the conformance runner
+# is handed. Neither is ever committed: the engine is built from source by
+# `just build-engine-racket`, and the specification tables it embeds come from spec/ at
+# compile time (engines/racket/embed.rkt).
+engines/racket/**/compiled/
+engines/racket/bin/
+
 # opam local switches: engines/ocaml is where a developer is told to create one, and the
 # repository root is where ocaml/setup-ocaml creates one in CI. Neither is ever committed,
 # and `reuse lint` reads this file to know that.

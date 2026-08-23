@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M5 of the Racket reference engine: 9 conformance case(s).
+#
+# Tate-chu-yoko.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M5 is complete when the cumulative suite through M5 runs green:
+#
+#   cat engines/racket/milestones/M{1..5}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+3.2.3/vertical-two-digits-tate-chu-yoko
+3.2.5/tate-chu-yoko-solid-centered-group
+3.2.5/tate-chu-yoko-half-em-punctuation-boundaries
+3.2.5/tate-chu-yoko-reverse-punctuation-boundaries-solid
+3.2.5/tate-chu-yoko-full-stop-and-comma-before-half-em
+3.2.5/tate-chu-yoko-full-stop-at-line-end-keeps-half-em
+3.2.5/tate-chu-yoko-hiragana-katakana-neighbors-solid
+E.2-note-12/tate-chu-yoko-run-aware-expansion
+C.2-note-13/tate-chu-yoko-runs-govern-breaks

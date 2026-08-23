@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M7 of the Racket reference engine: 4 conformance case(s).
+#
+# Emphasis dots and the ornamented complex.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M7 is complete when the cumulative suite through M7 runs green:
+#
+#   cat engines/racket/milestones/M{1..7}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+3.3.9/emphasis-horizontal-mixed-size
+3.3.9/emphasis-vertical-mixed-size
+B.2-note-9/ornamented-complex-run-aware-expansion
+C.2-note-6/ornamented-runs-govern-breaks

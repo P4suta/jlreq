@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M1 of the Racket reference engine: 18 conformance case(s).
+#
+# Classification, Table 1 spacing, Table 2 breakability, whole-paragraph
+# optimization, and line geometry.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M1 is complete when the cumulative suite through M1 runs green:
+#
+#   cat engines/racket/milestones/M{1..1}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+quick-start/two-lines
+3.1.3/construct-middle-dots-are-solid-in-locale-union
+3.1.3/decimal-middle-dot-exception-is-vertical-only
+3.2.2/western-word-space-restores-supplied-interior-width
+B/table-one-japanese-western-quarter-em
+C/table-two-closing-bracket-common-to-all-levels
+C.2-note-11/quantity-symbol-is-unbreakable
+3.1.5/pattern-2-first-and-wrapped-opening-brackets
+3.1.6/sentence-medial-role-opens-quarter-em-on-both-sides
+3.9.2/unlisted-code-point-ideographic-override
+3.9.2/ambiguous-context-highest-class-override
+3.9.2/grouped-numeral-by-role-without-role-is-western
+3.1.6/sentence-terminator-inserts-one-em
+3.1.6/sentence-terminator-space-is-withdrawn-at-wrap
+3.5.3/end-alignment-shifts-origin-without-changing-extent
+B.2-note-12/unit-symbol-before-middle-dot
+B.2-note-2/closing-bracket-at-line-end
+C.2-note-5/same-inseparable-pair-refuses-break

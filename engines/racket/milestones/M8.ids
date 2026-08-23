@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M8 of the Racket reference engine: 10 conformance case(s).
+#
+# Warichu, furawake, jidori and formulae.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M8 is complete when the cumulative suite through M8 runs green:
+#
+#   cat engines/racket/milestones/M{1..8}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+3.4.1/warichu-two-balanced-sublines-horizontal
+3.4.1/warichu-two-balanced-sublines-vertical
+3.4.3/warichu-straddles-balanced-main-lines
+B.2-note-13/warichu-word-spaces-collapse-at-subline-edges
+3.7.2/furawake-declared-sublines-horizontal
+3.7.2/furawake-declared-sublines-vertical
+3.7.4/inline-formula-full-em-symbol-and-outer-quarter-ems
+3.7.4/display-formula-equality-quarter-em-operator-solid
+3.7.4/display-formula-prefers-break-before-equality
+3.7.3/jidori-fills-declared-cells
