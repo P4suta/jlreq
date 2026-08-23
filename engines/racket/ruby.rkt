@@ -132,9 +132,12 @@
 
 ;; What one construct does to the line.
 ;;
-;; `separations` maps a boundary -- the index of the item the space stands BEFORE --
-;; to the amount forced in there. `attachments` is where the reading goes.
-(struct plan (separations attachments) #:transparent)
+;; `separations` maps an item to the space forced in BEFORE it and `tails` to the
+;; space forced in AFTER it. They are two hashes and not one because a run can end a
+;; line: the space its reading needs after it is then at the line end AND at the head
+;; of the next line, and a boundary keyed only by the item after it would lose one of
+;; the two. `attachments` is where the reading goes.
+(struct plan (separations tails attachments) #:transparent)
 
 ;; A share of `total` for each weight, with the remainder going to the leading
 ;; shares or the trailing ones as `adjustment.remainder` answers.
@@ -228,10 +231,20 @@
     (and (eq? (ruby-kind one) 'jukugo)
          (for/or ([piece (in-list (ruby-runs one))]) (>= (length (run-annotations piece)) 3))))
   (cond
+    ;; §3.3.7 names two methods for a jukugo compound one of whose runs is too long
+    ;; to stay with its base: the one JIS X 4051 specifies, which is §3.3.6's own
+    ;; group method applied to the whole compound, and the one decided by the
+    ;; phonetic structure, which is Appendix F's. `ruby.jukugo_layout` chooses.
+    [(and compound? (answer-is? style "ruby.jukugo_layout" "group"))
+     (plan-distributed one bases (whole-reading one) style)]
     [compound? (plan-compound one bases lead trail style)]
     [(and (eq? (ruby-kind one) 'group) (> (vector-length bases) 1))
-     (plan-distributed one bases style)]
+     (plan-distributed one bases (run-annotations (car (ruby-runs one))) style)]
     [else (plan-per-run one bases lead trail style)]))
+
+;; Every reading cluster of the construct, in order.
+(define (whole-reading one)
+  (append* (for/list ([piece (in-list (ruby-runs one))]) (run-annotations piece))))
 
 (define (total-of widths)
   (for/fold ([sum 0]) ([one (in-list widths)]) (chk+ sum one)))
@@ -258,6 +271,7 @@
 (define (plan-per-run one bases lead trail style)
   (define katatsuki? (answer-is? style "ruby.alignment" "katatsuki"))
   (define separations (make-hash))
+  (define tails (make-hash))
   (define attachments '())
   (for ([piece (in-list (ruby-runs one))] [rank (in-naturals)])
     (define here (run-bases piece bases))
@@ -270,9 +284,16 @@
       ;; that centering then forces is two adjustment sites and takes
       ;; `adjustment.remainder`'s own order, so the two roundings are not the same
       ;; number and are not computed from each other.
+      ;; §3.3.5(b): katatsuki starts the reading with its base character. Its own
+      ;; text for the three-or-more case states two methods, and the second -- which
+      ;; way the overflow leans -- is a choice among overhangs onto the adjacent
+      ;; characters. Where the reading is longer than its base there is no choice
+      ;; left to make that is not an overhang, and what remains is (b)(i): the same
+      ;; centering nakatsuki states. So the two alignments part only where the
+      ;; reading FITS (docs/decisions/mono-ruby-separation-split.md).
       (define offset
         (cond
-          [(positive? overflow) (if katatsuki? 0 (- (div-trunc overflow 2)))]
+          [(positive? overflow) (- (div-trunc overflow 2))]
           [katatsuki? 0]
           [else (div-trunc (chk- width reading) 2)]))
       (define split (shares overflow (list 1 1) style))
@@ -286,8 +307,7 @@
       (when (positive? before)
         (hash-update! separations anchor (lambda (found) (max found before)) 0))
       (when (positive? after)
-        (define beyond (add1 (base-index (last here))))
-        (hash-update! separations beyond (lambda (found) (max found after)) 0))
+        (hash-update! tails (base-index (last here)) (lambda (found) (max found after)) 0))
       (let walk ([rest (run-annotations piece)] [at offset])
         (unless (null? rest)
           (define found (car rest))
@@ -297,16 +317,14 @@
                                   (annotation-advance found) (annotation-size found) #f)
                       attachments))
           (walk (cdr rest) (chk+ at (annotation-advance found)))))))
-  (plan separations (reverse attachments)))
+  (plan separations tails (reverse attachments)))
 
 ;; ----------------------------------------------------------------------------
 ;; §3.3.6: a group run over two or more base characters
 ;; ----------------------------------------------------------------------------
 
-(define (plan-distributed one bases style)
+(define (plan-distributed one bases readings style)
   (define flush? (answer-is? style "ruby.group_distribution" "flush"))
-  (define piece (car (ruby-runs one)))
-  (define readings (run-annotations piece))
   (define widths (for/list ([found (in-list readings)]) (annotation-advance found)))
   (define reading (total-of widths))
   (define base-widths (for/list ([found (in-vector bases)]) (base-advance found)))
@@ -317,7 +335,7 @@
     [(<= reading width)
      (define-values (offsets gaps)
        (spread (chk- width reading) widths (distribution-weights (length widths) flush?) style))
-     (plan (make-hash)
+     (plan (make-hash) (make-hash)
            (for/list ([found (in-list readings)] [at (in-list offsets)])
              (attachment (ruby-index one) anchor 0 0 at
                          (annotation-start found) (annotation-end found)
@@ -329,13 +347,14 @@
        (spread (chk- reading width) base-widths
                (distribution-weights (vector-length bases) flush?) style))
      (define separations (make-hash))
+     (define tails (make-hash))
      (for ([found (in-vector bases)] [amount (in-list gaps)])
        (when (positive? amount)
          (hash-set! separations (base-index found) amount)))
      (define final (last gaps))
      (when (positive? final)
-       (hash-set! separations (add1 (base-index (vector-ref bases (sub1 (vector-length bases))))) final))
-     (plan separations
+       (hash-set! tails (base-index (vector-ref bases (sub1 (vector-length bases)))) final))
+     (plan separations tails
            (let walk ([rest readings] [at (- (car gaps))] [out '()])
              (cond
                [(null? rest) (reverse out)]
@@ -377,15 +396,16 @@
             (if (< index count) (list-ref asking index) 0))))
   (define gaps (shares total weights style))
   (define separations (make-hash))
+  (define tails (make-hash))
   (for ([piece (in-list runs)] [amount (in-list gaps)])
     (define here (run-bases piece bases))
     (when (and (pair? here) (positive? amount))
       (hash-set! separations (base-index (car here)) amount)))
   (define final (last gaps))
   (when (positive? final)
-    (hash-set! separations (add1 (base-index (vector-ref bases (sub1 (vector-length bases))))) final))
+    (hash-set! tails (base-index (vector-ref bases (sub1 (vector-length bases)))) final))
   (define anchor (base-index (vector-ref bases 0)))
-  (plan separations
+  (plan separations tails
         (let walk ([rest runs] [at (- (chk+ (car gaps) lead-used))] [out '()])
           (cond
             [(null? rest) (reverse out)]

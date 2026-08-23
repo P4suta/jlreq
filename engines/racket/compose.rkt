@@ -590,11 +590,18 @@
                                  style
                                  #t)])))
   (define gaps (vector-map total-of gap-terms))
+  ;; The space §3.3 and §3.7 force in. A run that ends a line needs the space after
+  ;; it at the line END and the space before it at the head of the line it starts,
+  ;; so the two are kept apart: at an interior boundary whichever of the two is
+  ;; larger stands, and at either edge the one that names it does.
   (define fixed
     (for/vector ([index (in-range (add1 count))])
       (cond
-        [(< index count) (item-separation (vector-ref items (+ first index)))]
-        [else (item-tail (vector-ref items last))])))
+        [(= index 0) (item-separation (vector-ref items first))]
+        [(= index count) (item-tail (vector-ref items last))]
+        [else
+         (max (item-tail (vector-ref items (+ first index -1)))
+              (item-separation (vector-ref items (+ first index))))])))
   (define forced (for/fold ([sum 0]) ([one (in-vector fixed)]) (chk+ sum one)))
   ;; §3.6: a tab sign takes up whatever space puts what follows it at a stop, which
   ;; is not known until the line is walked -- so the walk happens here, once the
@@ -1196,6 +1203,7 @@
          (define found (warichu-bracket-class one ornamented index))
          (if found (struct-copy item one [class found]) one)))
      (define separations (make-hasheqv))
+     (define tails (make-hasheqv))
      (define attachments (make-hasheqv))
      ;; §3.7.3: a jidori spreads its own run across a declared number of full-em
      ;; cells, and what the run does not fill is space between its characters.
@@ -1211,7 +1219,9 @@
                                                 (extent-inline (paragraph-size para))
                                                 bases
                                                 style))])
-         (hash-update! separations (car pair) (lambda (standing) (max standing (cdr pair))) 0)))
+         (if (>= (car pair) count)
+             (hash-update! tails (sub1 count) (lambda (standing) (max standing (cdr pair))) 0)
+             (hash-update! separations (car pair) (lambda (standing) (max standing (cdr pair))) 0))))
      (for ([one (in-list ornaments)])
        (define bases
          (for/vector ([index (in-range count)]
@@ -1244,13 +1254,15 @@
                       style))
          (for ([(index amount) (in-hash (plan-separations found))])
            (hash-update! separations index (lambda (standing) (max standing amount)) 0))
+         (for ([(index amount) (in-hash (plan-tails found))])
+           (hash-update! tails index (lambda (standing) (max standing amount)) 0))
          (for ([piece (in-list (plan-attachments found))])
            (hash-update! attachments (attachment-anchor piece)
                          (lambda (standing) (cons piece standing)) '()))))
      (for/vector ([one (in-vector bracketed)] [index (in-naturals)])
        (struct-copy item one
                     [separation (hash-ref separations index 0)]
-                    [tail (if (= index (sub1 count)) (hash-ref separations count 0) 0)]
+                    [tail (hash-ref tails index 0)]
                     [attachments (reverse (hash-ref attachments index '()))]))]))
 
 ;; §3.3.8: how far a reading may reach back before the first base character of its
