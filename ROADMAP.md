@@ -41,9 +41,14 @@ the current tests exercise the workstream; it does not mean stable or released.
 [`engines/ocaml/`](engines/ocaml/README.md) is a from-scratch OCaml implementation of the
 conformance protocol, gated on a milestone sequence of its own
 (`engines/ocaml/milestones/`) that is unrelated to the Rust workstream numbers above. It
-currently claims milestone 0 — the transport, envelope, and specification tables, with no
-layout logic yet — and advances toward the full eighty-nine-case built-in suite one
-disjoint milestone per pull request. `engines/racket/` will follow the same shape. See
+advanced toward the built-in suite one disjoint milestone per pull request and now claims
+milestone 9, the last one: all eighty-nine cases answer bit for bit, so `just ocaml-gate`
+and `just conform-ocaml` are the same run and the required CI job holds the engine to the
+whole suite. Ten synthetic censuses agree with the Rust engine across 111,090 further
+requests, and the twenty-six observable policies the exercise turned up — rules two engines
+must share to pass the same case, stated in no sentence of JLReq and no file under `docs/` —
+are listed in `engines/ocaml/README.md` and are candidates for `docs/decisions/`.
+`engines/racket/` will follow the same shape. See
 [ADR 0024](docs/adr/0024-independent-reference-engines.md).
 
 ## Before any release
