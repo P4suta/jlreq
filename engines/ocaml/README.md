@@ -85,7 +85,8 @@ and exits `1` itself.
 ```text
 engines/ocaml/
   lib/specdata/     the TSV files, embedded at build time      library jlreq_specdata
-  lib/              num utf8 tsv tables …                      library jlreq
+  lib/              num utf8 tsv tables spec model normalize
+                    style construct layout paragraph pipeline  library jlreq
   proto/            json protocol                              library jlreq_proto
   bin/              the NDJSON loop                            jlreq_ocaml_engine.exe
   probe/            development probes, on no gate's path       diffcase.exe census.exe
@@ -231,25 +232,55 @@ the toolchain in front of it: a developer with no opam switch gets a loud
 toolchain is a gate that gets routed around. CI has the toolchain and enforces
 it.
 
-## Where M0 stands
+## Where M1 stands
 
-M0 is the skeleton. The engine answers every request with
-
-```json
-{"lines": [], "diagnostics": []}
-```
-
-which is well formed, passes `jlreq-conformance validate`, and is the wrong
-answer for all but an empty paragraph. So the expected result today is:
+M1 is the composition core: classification (§3.9.2 and Appendix A), Table 1
+spacing, Table 2 breakability with §C.3's four conventions, whole-paragraph break
+optimization, line reduction by Tables 3 through 5, and line geometry. Every one
+of the eighty-nine requests is parsed completely — a construct this engine cannot
+yet *set* is still read, validated and classified — so the milestones that follow
+change what the pipeline does with a structure and not whether the wire layer
+knows it is there.
 
 ```text
-just conform-ocaml
-→ 89 DIFF lines, "89 conformance case(s) differed", exit 1
+just ocaml-milestone 1    → exit 0    (18 cases)
+just conform-ocaml        → 51 DIFF lines, exit 1
 ```
 
-Exit `1` with no protocol error is what M0 aims at: the transport, the envelope,
-the JSON and the specification tables are all correct, and only the layout is
-missing. Exit `2` would mean something in that list is broken.
+Exit `1` with no protocol error is the contract: the transport, the envelope, the
+JSON, the specification tables and the request model are all correct, and only
+the layout of the structures M2 onward own is missing. Exit `2` would mean
+something in that list is broken.
+
+Where the whole built-in suite stands against `milestones/`:
+
+| M | Subject | Passing |
+| --- | --- | --- |
+| M1 | classification, spacing, breakability, geometry | 18 / 18 |
+| M2 | reduction (Tables 3–5), hanging | 7 / 7 |
+| M3 | expansion (Table 6), justification, reclassification | 4 / 10 |
+| M4 | vertical composition, rotation, orientation | 5 / 5 |
+| M5 | tate-chu-yoko | 0 / 9 |
+| M6 | ruby | 0 / 23 |
+| M7 | emphasis dots, ornamented complexes | 0 / 4 |
+| M8 | warichu, furawake, jidori, formulae | 3 / 10 |
+| M9 | tab stops, widows, indentation | 1 / 3 |
+
+M2 and M4 fall out of M1's work rather than being claimed: reduction is needed by
+M1's own overfull cases, and vertical composition is one orientation rule over
+the same geometry. `milestones/CURRENT` claims only what the milestone sequence
+has reached.
+
+Both class-pair censuses agree with the Rust engine at every request:
+
+```text
+just census spacing   → 2116 request(s), 0 differing response(s)
+just census break     → 2116 request(s), 0 differing response(s)
+```
+
+That is 529 class pairs read back out of Table 1 in four line positions and out of
+Table 2 at all four §C.3 levels, from two independent transcriptions of the same
+six PDF pages, agreeing bit for bit.
 
 The startup census in `lib/tables.ml` is checked against the real files and holds
 today:
