@@ -32,16 +32,14 @@
 ;; meaning of the request, and answering it as though the field were absent
 ;; produces a plausible wrong answer instead of an error.
 ;;
-;; Where R0 stops
+;; What this module does and does not decide
 ;;
-;; This milestone reads the envelope and nothing inside `request`. Every request is
-;; answered with an empty layout, which the runner reports as eighty-nine DIFFs and
-;; exit 1 -- the engine is being written to fix those, one milestone at a time, and
-;; a DIFF is not a protocol failure. What R0 does claim is the transport: the
-;; envelope is validated, the response validates against the schema, and a
-;; malformed line is refused rather than skipped.
+;; The envelope is this module's whole subject: the two version fields, the id, and
+;; that `request` is an object. What is inside `request` belongs to model.rkt, which
+;; reads it, and to compose.rkt, which answers it. A refusal from either is an input
+;; error and reaches the runner the same way a malformed envelope does.
 
-(require json racket/string)
+(require json racket/string "model.rkt" "compose.rkt")
 
 (provide protocol
          specification
@@ -143,16 +141,66 @@
 ;; Writing
 ;; ----------------------------------------------------------------------------
 
-;; The response a paragraph that composes to nothing produces: no lines and no
-;; diagnostics. It is a complete, schema-valid response, which is the point --
-;; R0's answer is wrong and well formed, not absent.
+;; The response a paragraph with nothing on any line produces: no lines and no
+;; diagnostics. A request whose `clusters` array is empty is answered with this,
+;; which is a complete, schema-valid answer rather than an absent one.
 (define (empty-layout)
   (hasheq 'lines '() 'diagnostics '()))
 
-;; Answer one request. R0 answers every request the same way; the milestones after
-;; it are what make this read `request-body`.
+;; Answer one request: read the body, compose it, and put the layout back in the
+;; envelope the id came in.
 (define (answer one)
-  (response-envelope (request-id one) (empty-layout)))
+  (define-values (lines notes) (compose (parse-request (request-body one))))
+  (response-envelope (request-id one) (layout->json lines notes)))
+
+;; The layout, as the schema's own two arrays.
+(define (layout->json lines notes)
+  (hasheq 'lines (for/list ([one (in-list lines)]) (line->json one))
+          'diagnostics (for/list ([one (in-list notes)]) (diagnostic->json one))))
+
+(define (line->json one)
+  (hasheq 'range (list (line-start one) (line-end one))
+          'inline_origin (line-inline-origin one)
+          'block_origin (line-block-origin one)
+          'inline_extent (line-inline-extent one)
+          'block_extent (line-block-extent one)
+          'clusters (for/list ([each (in-list (line-clusters one))]) (placement->json each))
+          'attachments '()))
+
+(define (placement->json one)
+  (hasheq 'origin (hasheq 'cluster (placed-index one))
+          'range (list (placed-start one) (placed-end one))
+          'inline (placed-inline one)
+          'block (placed-block one)
+          'advance (placed-advance one)
+          'size (hasheq 'inline (extent-inline (placed-size one))
+                        'block (extent-block (placed-size one)))
+          'frame (frame->json (placed-frame one))
+          'writing_mode (writing-mode->json (placed-writing-mode one))
+          'transform (transform->json (placed-transform one))))
+
+;; A diagnostic is (code severity start end address), with `start` #f where it names
+;; no range of the source.
+(define (diagnostic->json one)
+  (hasheq 'code (list-ref one 0)
+          'severity (list-ref one 1)
+          'range (if (list-ref one 2) (list (list-ref one 2) (list-ref one 3)) (json-null))
+          'jlreq (list-ref one 4)))
+
+(define (frame->json value)
+  (case value
+    [(full-em) "full-em"]
+    [(proportional) "proportional"]
+    [else "half-em"]))
+
+(define (writing-mode->json value)
+  (if (eq? value 'vertical-rl) "vertical-rl" "horizontal-tb"))
+
+(define (transform->json value)
+  (case value
+    [(rotate-clockwise) "rotate-clockwise"]
+    [(tate-chu-yoko) "tate-chu-yoko"]
+    [else "identity"]))
 
 (define (response-envelope id response)
   (hasheq 'protocol protocol 'spec specification 'id id 'response response))

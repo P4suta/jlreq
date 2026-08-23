@@ -6,10 +6,20 @@
 
 (require rackunit json racket/port "../protocol.rkt")
 
+;; A request the engine can answer and that composes to nothing: no clusters, so
+;; no lines and no diagnostics. It is the one request whose answer is fixed
+;; whatever the layout rules do, which is what makes it the envelope's own fixture.
+(define empty-request
+  (hasheq 'source ""
+          'size (hasheq 'inline 1000 'block 1000)
+          'frame "full-em"
+          'clusters '()
+          'line_extent 1000))
+
 (define (envelope #:protocol [wire protocol]
                   #:spec [revision specification]
                   #:id [id "case/one"]
-                  #:request [body (hasheq)])
+                  #:request [body empty-request])
   (hasheq 'protocol wire 'spec revision 'id id 'request body))
 
 (define (line-of value)
@@ -29,7 +39,7 @@
 
   (define one (line->request (line-of (envelope))))
   (check-equal? (request-id one) "case/one")
-  (check-equal? (request-body one) (hasheq))
+  (check-equal? (request-body one) empty-request)
 
   ;; A blank line is skipped rather than refused: it is not a request and it is not
   ;; malformed input either.
@@ -64,8 +74,8 @@
   ;; Writing
   ;; ------------------------------------------------------------------
 
-  ;; R0 answers every request with a complete, schema-valid, empty layout. It is
-  ;; the wrong answer and the right shape; the runner reports each as a DIFF.
+  ;; A paragraph with no clusters composes to no lines and no diagnostics, which is
+  ;; a complete, schema-valid answer rather than an absent one.
   (check-equal? (empty-layout) (hasheq 'lines '() 'diagnostics '()))
   (check-true (jsexpr? (answer one)))
 
