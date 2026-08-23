@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M2 of the Racket reference engine: 7 conformance case(s).
+#
+# Reduction: Tables 3, 4 and 5, and hanging punctuation.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M2 is complete when the cumulative suite through M2 runs green:
+#
+#   cat engines/racket/milestones/M{1..2}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+D/line-end-full-stop-table-3-reduces
+D/line-end-full-stop-table-4-is-rigid
+3.8.2/hanging-closes-the-post-reduction-shortfall
+3.1.4/middle-dot-pair-reduces
+D.2-note-2/full-stop-middle-dot-reduction
+D.2-note-3/comma-middle-dot-reduction-stages
+D.2-note-5/table-3-reduces-middle-dot-line-end

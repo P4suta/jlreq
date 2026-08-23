@@ -11,6 +11,8 @@
 #   - xtask          repository policy checks shared by Just and CI.
 #   - engines/ocaml      an independent reference engine, outside the Cargo workspace,
 #                        built and gated by the conform-ocaml job alone.
+#   - engines/racket     a second independent reference engine, on the same terms, built
+#                        and gated by the conform-racket job alone.
 #
 # Policy:
 #   - Every third-party action is SHA-pinned (Dependabot bumps them weekly); the comment
@@ -246,6 +248,42 @@ jobs:
           dune-cache: true
       - run: opam exec -- just ocaml-gate
 
+  conform-racket:
+    # The independent Racket reference engine (engines/racket/README.md), on the same
+    # terms as conform-ocaml: it shares no code with the Rust engine, builds its tables
+    # from spec/ rather than from crates/jlreq/src/generated/, and is gated by the
+    # cumulative suite engines/racket/milestones/CURRENT points at rather than by the
+    # whole one.
+    name: conform-racket (independent Racket engine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: -D warnings
+      # The single source for the Racket version, alongside engines/racket/README.md.
+      # A full version number and not `stable`: every computation in the engine is exact
+      # integer arithmetic, so the answers do not depend on the release, and the pin is
+      # for reproducibility of the build.
+      RACKET_VERSION: "9.3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@b20dedce73af6905cdc30d6611090c9b67557c8d # v2.85.12
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: ${{ env.RACKET_VERSION }}
+          variant: CS
+          distribution: minimal
+      # `distribution: minimal` ships `raco pkg`, `raco setup` and `raco link` and no
+      # other command, so every `raco` the recipes call — `make`, `exe` and `test` —
+      # arrives with compiler-lib; rackunit-lib is the test framework. engines/racket/info.rkt
+      # declares the same two collections, and this line is what has to agree with it.
+      - name: install the collections the engine builds and tests with
+        run: raco pkg install --skip-installed --batch --auto --no-docs compiler-lib rackunit-lib
+      - run: just racket-gate
+
   doc:
     name: doc (rustdoc, warnings are errors)
     runs-on: ubuntu-latest
@@ -365,6 +403,7 @@ jobs:
       - purity
       - design
       - conform-ocaml
+      - conform-racket
       - doc
       - package
       - typos

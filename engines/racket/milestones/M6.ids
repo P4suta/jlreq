@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M6 of the Racket reference engine: 23 conformance case(s).
+#
+# Ruby, all three kinds: mono, group and jukugo, with association and
+# overhang.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M6 is complete when the cumulative suite through M6 runs green:
+#
+#   cat engines/racket/milestones/M{1..6}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+F.2/following-overhang-precedes-expansion
+F.3/expansion-is-proportional-to-reading-length
+F.4/four-ruby-run-expands-only-eligible-base
+F.1/two-or-fewer-stay-with-base
+3.3.4/ruby-above-horizontal-mixed-size
+3.3.4/ruby-right-vertical-mixed-size
+3.3.1/mono-ruby-preserves-per-base-associations
+3.3.1/group-ruby-preserves-whole-word-association
+3.3.1/jukugo-ruby-splits-only-at-run-boundary
+3.3.1/mono-ruby-internal-boundary-expands
+3.3.1/jukugo-ruby-internal-boundary-does-not-expand
+E.2-note-6/simple-ruby-complex-run-aware-expansion
+B.2-note-11/jukugo-ruby-complex-run-aware-expansion
+B.2-note-1/opening-bracket-allows-ruby-overhang
+B.2-note-8/ideographic-space-allows-ruby-overhang
+B.2-note-8/paragraph-indent-permits-ruby-overhang
+B.2-note-8/paragraph-indent-can-prohibit-ruby-overhang
+B.2-note-7/any-ruby-overhang-includes-non-japanese-character
+3.3.6/group-ruby-flush-distributes-only-interior-space
+3.3.6/long-group-ruby-jis-distributes-the-base
+3.3.6/long-group-ruby-flush-distributes-only-the-base-interior
+C.2-note-7/ruby-runs-govern-breaks
+3.3.6/group-ruby-single-character-flush-start-aligned

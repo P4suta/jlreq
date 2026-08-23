@@ -38,6 +38,21 @@ ocaml_engine := dune_build_dir / "default/engines/ocaml/bin/jlreq_ocaml_engine.e
 # Nothing reads it but the run that just wrote it.
 milestone_dir := "target" / "ocaml-milestone"
 
+# The independent Racket reference engine (engines/racket/README.md). `raco exe` writes a
+# real executable rather than a script, which is the shape the runner needs on every
+# platform: it starts the engine with `Command::new(path)` and no interpreter of its own.
+# Both this path and the `compiled/` directories `raco make` writes are gitignored.
+#
+# `racket` and `raco` are deliberately not resolved here. The engines' toolchains are
+# outside mise (the version of record is the RACKET_VERSION in .github/workflows/ci.yml
+# and engines/racket/README.md), so a developer who has installed Racket puts it on PATH
+# and one who has not gets the loud SKIPPED line from `conform-engines`.
+racket_engine := "engines" / "racket/bin/jlreq-engine-racket"
+
+# Scratch space for the partial suite `racket-milestone` selects, kept apart from the
+# OCaml one so that running both engines' gates in one shell cannot interleave.
+racket_milestone_dir := "target" / "racket-milestone"
+
 # The development probes (engines/ocaml/probe/). They are not the engine and no gate
 # builds them: `diffcase` explains one case's difference field by field, and `census`
 # generates the synthetic pair suites a milestone is debugged against.
@@ -277,12 +292,69 @@ _ocaml-milestone m:
 ocaml-gate:
     just ocaml-milestone "$(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' engines/ocaml/milestones/CURRENT)"
 
-# The engine gate as `just ci` runs it. It is deliberately not a hard dependency on an
-# OCaml toolchain: a developer working on the Rust side has no opam switch, and a local
-# gate that fails for that reason is a gate that gets routed around. The skip is loud, and
-# the required conform-ocaml job in CI is what actually enforces it.
+# Build the independent Racket reference engine (engines/racket/README.md).
+#
+# `raco make` compiles the module graph to bytecode and `raco exe` embeds it in an
+# executable. The specification tables are pasted into the bytecode at compile time
+# rather than opened at run time (engines/racket/embed.rkt), so the result is the
+# argument-free, path-free executable docs/design/conformance.md's runner contract
+# requires — `raco distribute` is deliberately not in the chain, because there is no
+# runtime-path file left for it to gather.
+build-engine-racket:
+    mkdir -p engines/racket/bin
+    raco make engines/racket/main.rkt
+    raco exe -o {{racket_engine}} engines/racket/main.rkt
+
+# Run the Racket engine's own unit tests: the integer contract, the TSV reader, the
+# envelope, the startup census of the specification tables, and the cross-check of the
+# Japanese transcription against the English one this engine reads.
+#
+# The tests directory and not the whole engine: `raco test` on a directory runs every
+# module it finds, and running `main.rkt` means starting the NDJSON loop on this
+# terminal's stdin.
+test-engine-racket:
+    raco test engines/racket/tests
+
+# Run the whole built-in suite against the Racket engine. Before milestone M9 this is
+# expected to report differences and exit 1 — a wrong answer is what the engine is still
+# being written to fix. Exit 2 is different and is a real failure: it means the transport,
+# the JSON or the specification tables are broken. `racket-gate` is what gates a merge,
+# and at M9 it becomes this recipe by construction.
+conform-racket: build-engine-racket
+    cargo run --quiet -p jlreq-conformance -- run {{racket_engine}}
+
+# Run the cases of milestones M1 through M<m> against the Racket engine: everything the
+# engine claims to answer bit for bit, and nothing it does not. `m` is `0` until M1 lands,
+# where no case is claimed yet and the unit tests are the whole gate.
+racket-milestone m: build-engine-racket test-engine-racket
+    {{ if m == "0" { "echo 'milestone 0: no conformance case is claimed yet'" } else { "just _racket-milestone " + m } }}
+
+# The rest of `racket-milestone` for m >= 1, which needs more statements than the single
+# conditional line of its caller can hold. Private because it is that recipe's body: the
+# milestone files partition the suite, so the selection must find exactly as many cases as
+# it named — an identifier matching nothing (a typo, or a case renamed in the suite) would
+# otherwise shrink the gate without saying so.
+_racket-milestone m:
+    mkdir -p {{racket_milestone_dir}}
+    i=1; while [ "$i" -le {{m}} ]; do cat engines/racket/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{racket_milestone_dir}}/ids.txt
+    grep -F -f {{racket_milestone_dir}}/ids.txt crates/jlreq-conformance/suite.ndjson > {{racket_milestone_dir}}/suite.ndjson
+    test "$(wc -l < {{racket_milestone_dir}}/ids.txt)" -eq "$(wc -l < {{racket_milestone_dir}}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
+    cargo run --quiet -p jlreq-conformance -- run {{racket_engine}} {{racket_milestone_dir}}/suite.ndjson
+
+# The Racket engine gate CI runs, and the one place that says how much of the suite that
+# engine is held to today. engines/racket/milestones/CURRENT names that milestone, so
+# advancing it is one digit in one file, reviewed in the pull request that earns it, and
+# no workflow has to be edited to keep up.
+racket-gate:
+    just racket-milestone "$(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' engines/racket/milestones/CURRENT)"
+
+# Both engine gates as `just ci` runs them. Neither is a hard dependency on its toolchain:
+# a developer working on the Rust side has no opam switch and no Racket, and a local gate
+# that fails for that reason is a gate that gets routed around. Each skip is loud, and the
+# required conform-ocaml and conform-racket jobs in CI are what actually enforce them.
 conform-engines:
     {{ if os() == "windows" { "if (Get-Command dune -ErrorAction SilentlyContinue) { just ocaml-gate } else { Write-Output 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)' }" } else { "if command -v dune > /dev/null 2>&1; then just ocaml-gate; else echo 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)'; fi" } }}
+    {{ if os() == "windows" { "if (Get-Command raco -ErrorAction SilentlyContinue) { just racket-gate } else { Write-Output 'SKIPPED conform-racket: no Racket toolchain (CI enforces it)' }" } else { "if command -v raco > /dev/null 2>&1; then just racket-gate; else echo 'SKIPPED conform-racket: no Racket toolchain (CI enforces it)'; fi" } }}
 
 # Explain one conformance case's difference field by field, which `DIFF <case-id>` does
 # not. The comparison is structural, so a key order is never reported and a missing key
@@ -332,6 +404,32 @@ census kind: ocaml-build
 # Print the representative code point a census addresses each character class by, as TSV.
 census-classes: ocaml-build
     {{census_probe}} classes
+
+# The same census, against the Racket engine.
+#
+#   just census-racket spacing
+#   census-racket spacing: 2116 request(s), 0 differing response(s) -- target/census/spacing.racket.diff
+#
+# The generator and the canonicalizer are `engines/ocaml/probe/census.ml`, reused rather
+# than reimplemented: a census is a stream of requests and a normalizer for the answers,
+# neither of which is an implementation of JLReq, so writing a second one would test two
+# probes against each other instead of two engines. The independence rule is about the
+# layout logic (docs/design/conformance.md), and this borrows none of it — which is why
+# this recipe needs both toolchains while `conform-racket` needs only Racket.
+#
+# `diff` compares the Rust answer against the Racket one, so a `<` line is what was
+# expected and a `>` line is what this engine said. Both streams are canonicalized first,
+# because key order is not part of an answer.
+census-racket kind: build-engine-racket ocaml-build
+    cargo build --quiet -p jlreq-conformance --bins
+    mkdir -p {{census_dir}}
+    {{census_probe}} generate {{kind}} > {{census_dir}}/{{kind}}.requests.ndjson
+    {{racket_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.racket.raw
+    {{sample_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.rust.raw
+    {{census_probe}} normalize < {{census_dir}}/{{kind}}.racket.raw > {{census_dir}}/{{kind}}.racket.ndjson
+    {{census_probe}} normalize < {{census_dir}}/{{kind}}.rust.raw > {{census_dir}}/{{kind}}.rust.ndjson
+    diff {{census_dir}}/{{kind}}.rust.ndjson {{census_dir}}/{{kind}}.racket.ndjson > {{census_dir}}/{{kind}}.racket.diff || true
+    echo "census-racket {{kind}}: $(wc -l < {{census_dir}}/{{kind}}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{census_dir}}/{{kind}}.racket.diff || true) differing response(s) -- {{census_dir}}/{{kind}}.racket.diff"
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
