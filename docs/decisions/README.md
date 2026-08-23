@@ -23,6 +23,17 @@ the one this project takes ([conformance.md](../design/conformance.md)). The pro
 individual reading preserves names from the implementation it adjudicated; this index links
 to the current private owner after the crate unification.
 
+The first table below is the set of readings the Rust engine's own development produced. The
+second is a set the *second* engine found: writing an independent implementation
+([engines/ocaml/](../../engines/ocaml/README.md)) turned up rules that two engines have to
+agree on to pass the same case and that JLReq states in no sentence and `docs/` stated in no
+file. Those were listed in the OCaml engine's README while the port was in progress and are
+promoted here, bundled by subject rather than one file per rule, because a policy an engine
+had to be told about is a reading whether it was found by argument or by measurement. Each
+one names how it was observed — which census, and which of the eighty-nine built-in cases
+reaches it, where any does — so that a reader can reproduce the observation rather than take
+the claim.
+
 | Reading | Question | Where it applies |
 | --- | --- | --- |
 | [ambiguous-context](ambiguous-context.md) | Which class, when Appendix A names several and nothing separates them | [`spec` / `normalize`](../../crates/jlreq/src/normalize.rs) |
@@ -41,6 +52,37 @@ to the current private owner after the crate unification.
 | [mono-ruby-separation-split](mono-ruby-separation-split.md) | How mono-ruby overhang surplus splits and how demands at a shared boundary combine | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
 | [group-ruby-flush-single-character](group-ruby-flush-single-character.md) | What §3.3.6's `flush` method does for a group-ruby run of exactly one ruby character | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
 | [jukugo-group-layout-distribution](jukugo-group-layout-distribution.md) | Which of §3.3.6's two methods §3.3.7¶2's `group` answer means | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
+
+Promoted from the second engine's observations:
+
+| Reading | Question | How it was observed |
+| --- | --- | --- |
+| [expansion-ladder-scope](expansion-ladder-scope.md) | Which coordinates §3.8.4's Japanese–Latin ceiling is asked at, and which sites its fourth step re-levels | `just census expansion` |
+| [tate-chu-yoko-spacing-sources](tate-chu-yoko-spacing-sources.md) | Whether §3.2.5's prose or Table 1's cl-30 row states the space beside a run, and whether the ladders read cl-30 cells §3.2.5 set no space at | `just census tate-chu-yoko` |
+| [construct-break-refusal](construct-break-refusal.md) | Whether a break the caller states inside an indivisible construct is refused or declined, and where §3.7.4 lets a formula break | `just census tate-chu-yoko`, `ruby`, `constructs` |
+| [ruby-overhang-permission](ruby-overhang-permission.md) | Whether §3.3.8 rule 2's kana neighbor is a script or a class, and whose em a Table 1 `hang` term was measured in | `just census ruby` |
+| [ruby-distribution-and-rounding](ruby-distribution-and-rounding.md) | What §3.3.6 does for a run of one, what its outer units are, which way an odd unit falls, and what §F.3's self-referring total evaluates to | `just census ruby` |
+| [ornamented-complex-geometry](ornamented-complex-geometry.md) | What an emphasis mark is centered on, how many complexes an emphasis run is, and where §3.7.1's annotation sits | `just census constructs` |
+| [stacked-structure-geometry](stacked-structure-geometry.md) | Which positions a warichu may divide at, whether its balance sentence is a bound, and whose advance a structure's trailing space is part of | `just census constructs` |
+| [tab-line-correspondence](tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, and what §3.6.1's count is counted over | `just census tabs` |
+| [unstated-alignment](unstated-alignment.md) | What a request that states no `alignment` asks for | `just census tabs`, `widow`; case `3.5.4/widow-keeps-two-clusters-on-last-line` |
+| [inexpressible-advance-remarks](inexpressible-advance-remarks.md) | Whether an Appendix A Remarks cell naming only an unexpressible advance excludes its listing or qualifies nothing | `just census vertical` |
+| [jidori-inserted-space-locale-split](jidori-inserted-space-locale-split.md) | How many sides of an inserted space §3.7.3 opens, where its two renderings state opposite rules | `just census constructs` |
+
+Every reading in the second table applies to the layout round in
+[`pipeline`](../../crates/jlreq/src/pipeline.rs) — except
+[inexpressible-advance-remarks](inexpressible-advance-remarks.md), which applies to
+[`spec`](../../crates/jlreq/src/spec.rs) — and to the corresponding round of
+[`engines/ocaml/lib/`](../../engines/ocaml/lib/pipeline.ml). Each file names both.
+
+Two coordinates the same work turned up are **not** in either table, because they are not
+readings this project publishes: they are places the two reference engines answer
+differently, and the rule is to settle a disagreement by returning to JLReq and to `spec/`
+rather than by copying one engine's answer into the other. Both concern a tab sign standing
+inside a structure that does not set its text along the line, and both are reported as
+issues on this repository and named from
+[engines/ocaml/README.md](../../engines/ocaml/README.md). A reading arrives here once one of
+them is settled.
 
 These are Markdown and not TOML. An earlier revision of `docs/design/api-spine.md` named
 them `*.toml`, on the model of the other machine-read files in this repository; they are
