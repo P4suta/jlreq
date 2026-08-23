@@ -301,8 +301,9 @@ diffcase case *arguments: ocaml-build
     {{diffcase_probe}} {{case}} --engine {{ocaml_engine}} --reference {{sample_engine}} --suite crates/jlreq-conformance/suite.ndjson {{arguments}}
 
 # Generate one synthetic census, run it through both engines, and report how many answers
-# disagree. `kind` is `spacing`, `break`, `reduction` or `expansion`; the registry that
-# names them is `kinds` in `engines/ocaml/probe/census.ml` and nothing else knows the list.
+# disagree. `kind` is `spacing`, `break`, `reduction`, `expansion`, `vertical` or
+# `tate-chu-yoko`; the registry that names them is `kinds` in
+# `engines/ocaml/probe/census.ml` and nothing else knows the list.
 #
 #   just census spacing
 #   census spacing: 2116 request(s), 2116 differing response(s) -- target/census/spacing.diff

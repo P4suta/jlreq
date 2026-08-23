@@ -12,9 +12,9 @@
     the fix is a cell rather than a paragraph.
 
     {v
-    just census spacing     # 2116 requests, both engines, one diff
-    just census break
-    just census-classes     # the representative code point chosen for each class
+    just census spacing        # 2116 requests, both engines, one diff
+    just census tate-chu-yoko
+    just census-classes        # the representative code point chosen for each class
     v}
 
     The suites are development assets and are never added to [suite.ndjson]: the
@@ -36,14 +36,18 @@
     left out because no matrix axis carries them, and cl-20 through cl-23 and cl-30
     because Appendix A lists no code point in them: they are what a character
     becomes inside a construct, and the milestones that build those constructs are
-    where their census belongs.
+    where their census belongs. cl-30 has one now -- a character standing inside a
+    tate-chu-yoko run is cl-30 whatever it is, so the {!tate_chu_yoko_census} reaches
+    that row and column by building the run rather than by naming a key.
 
-    {1 Adding the reduction and expansion censuses}
+    {1 Adding a census}
 
     {!kinds} is the whole registry: a census is a name, a sentence, and a function
-    that emits requests. M2's reduction census and M3's expansion census are one
-    entry each -- the same pairs at a line extent that forces the paragraph to give
-    back or take up space -- and no other part of this file has to know.
+    that emits requests. Each one is a single entry -- the reduction and expansion
+    censuses walk the same pairs at a line extent that forces the paragraph to give
+    back or take up space, and the vertical and tate-chu-yoko censuses walk them in
+    the other writing mode and beside a construct -- and no other part of this file
+    has to know.
 
     This is a development probe. It is outside the engine, the runner never starts
     it, and it may read files at run time, which the engine itself may not
@@ -295,13 +299,51 @@ let style (settings : (string * string) list) : Jlreq_proto.Json.t =
 
 type piece = {
   piece_text : string;
-  piece_size : int option;
-      (** An inline em of its own, where a census varies one. [None] is the
-          paragraph's, which is what every cluster of the class-pair censuses is. *)
+  piece_size : (int * int) option;
+      (** An inline and a block em of its own, where a census varies one. [None] is
+          the paragraph's, which is what every cluster of the class-pair censuses
+          is. *)
+  piece_advance : int option;  (** [None] is the paragraph's em. *)
+  piece_frame : string option;  (** [None] is the paragraph's full-em frame. *)
+  piece_role : string option;  (** What the caller says the occurrence is used as. *)
 }
 
-let plain (text : string) : piece = { piece_text = text; piece_size = None }
-let sized (text : string) (inline : int) : piece = { piece_text = text; piece_size = Some inline }
+let plain (text : string) : piece =
+  { piece_text = text; piece_size = None; piece_advance = None; piece_frame = None; piece_role = None }
+
+(** The same character at an inline em of its own, which is the only way to see
+    which of a boundary's two characters an amount was measured from. *)
+let sized (text : string) (inline : int) : piece =
+  { (plain text) with piece_size = Some (inline, em); piece_advance = Some inline }
+
+(** The same character with a role the caller declares.
+
+    Several rules read the role rather than the code point -- §3.1.3's decimal point
+    and digit group separator are vertical-only, §B.2 note 12's unit symbol is not --
+    and a census that states one on every class in turn is how the scope of such a
+    rule becomes visible. *)
+let roled (text : string) (role : string) : piece = { (plain text) with piece_role = Some role }
+
+(** The same character in a frame of its own.
+
+    §3.9.2 reads the frame: the same code point is a Western character when it
+    arrives proportional and an ideographic one when it does not, and §3.2.4 turns
+    that into an orientation -- a fixed-width Western character is quasi-Japanese and
+    stands upright where a proportional one is rotated. *)
+let framed (text : string) (frame : string) (advance : int) : piece =
+  { (plain text) with piece_frame = Some frame; piece_advance = Some advance }
+
+(** One member of a tate-chu-yoko run: a proportional character with an advance and
+    a block em of its own, so that a census can vary the run's width across the line
+    and its height along it independently. *)
+let member (text : string) ~(advance : int) ~(block : int) : piece =
+  {
+    piece_text = text;
+    piece_size = Some (em, block);
+    piece_advance = Some advance;
+    piece_frame = Some "proportional";
+    piece_role = None;
+  }
 
 (** Which break opportunities a request states.
 
@@ -310,34 +352,68 @@ let sized (text : string) (inline : int) : piece = { piece_text = text; piece_si
 type breaks =
   | No_break  (** Nothing but the paragraph end, which is a break by definition. *)
   | Every_boundary  (** Every internal cluster boundary, [allowed]. *)
+  | Boundaries_before of int list
+      (** [allowed] at the start of each named cluster, and nowhere else.
+
+          A census that puts a construct on the line cannot offer every boundary: a
+          tate-chu-yoko run is indivisible, and a request that asks for a break
+          inside one is refused rather than answered, which would end the census
+          rather than measure anything. This states the boundaries that exist. *)
   | Mandatory_after of int
       (** One [mandatory] break after the nth cluster, so that what precedes it is a
           line and is not the last one. *)
 
+(** One construct over a half-open range of {i piece} indices. The census names the
+    clusters it means and this is where they become the byte offsets the protocol
+    carries. *)
+type span = {
+  span_kind : string;
+  span_first : int;
+  span_last : int;  (** One past the last piece the construct covers. *)
+}
+
+let tate_chu_yoko (first : int) (last : int) : span =
+  { span_kind = "tate-chu-yoko"; span_first = first; span_last = last }
+
 (** A request whose clusters are [pieces], one em each unless a piece states its own.
 
-    Everything a census does not vary is fixed here: a full-em frame, horizontal
-    composition, and one cluster per piece whose advance is its em. *)
+    Everything a census does not vary is fixed here: a full-em frame and one cluster
+    per piece whose advance is its em. *)
 let request ~(pieces : piece list) ~(line_extent : int) ~(breaks : breaks)
-    ~(alignment : string) ~(style : Jlreq_proto.Json.t) : Jlreq_proto.Json.t =
+    ~(alignment : string) ?(writing_mode = "horizontal-tb") ?(spans : span list = [])
+    ~(style : Jlreq_proto.Json.t) () : Jlreq_proto.Json.t =
   let source = String.concat "" (List.map (fun piece -> piece.piece_text) pieces) in
+  let starts = Array.make (List.length pieces + 1) 0 in
   let clusters, boundaries, _ =
     List.fold_left
       (fun (clusters, boundaries, start) piece ->
+        let index = List.length clusters in
+        starts.(index) <- start;
         let stop = start + String.length piece.piece_text in
-        let advance = Option.value ~default:em piece.piece_size in
+        starts.(index + 1) <- stop;
+        let advance = Option.value ~default:em piece.piece_advance in
         let own_size =
           match piece.piece_size with
           | None -> []
-          | Some inline ->
+          | Some (inline, block) ->
             [
               ( "size",
                 Jlreq_proto.Json.Object
                   [
                     ("inline", Jlreq_proto.Json.of_int inline);
-                    ("block", Jlreq_proto.Json.of_int em);
+                    ("block", Jlreq_proto.Json.of_int block);
                   ] );
             ]
+        in
+        let own_frame =
+          match piece.piece_frame with
+          | None -> []
+          | Some frame -> [ ("frame", Jlreq_proto.Json.String frame) ]
+        in
+        let own_role =
+          match piece.piece_role with
+          | None -> []
+          | Some role -> [ ("role", Jlreq_proto.Json.String role) ]
         in
         let cluster =
           Jlreq_proto.Json.Object
@@ -345,17 +421,48 @@ let request ~(pieces : piece list) ~(line_extent : int) ~(breaks : breaks)
                ("range", Jlreq_proto.Json.Array [ Jlreq_proto.Json.of_int start; Jlreq_proto.Json.of_int stop ]);
                ("advance", Jlreq_proto.Json.of_int advance);
              ]
-            @ own_size)
+            @ own_size @ own_frame @ own_role)
         in
         let boundaries = if start = 0 then boundaries else start :: boundaries in
         (cluster :: clusters, boundaries, stop))
       ([], [], 0) pieces
   in
   let boundaries = List.rev boundaries in
+  let constructs =
+    if spans = [] then []
+    else
+      [
+        ( "constructs",
+          Jlreq_proto.Json.Array
+            (List.map
+               (fun span ->
+                 if span.span_first < 0 || span.span_last > List.length pieces then
+                   fault "a census puts a %s over pieces %d..%d of %d" span.span_kind
+                     span.span_first span.span_last (List.length pieces);
+                 Jlreq_proto.Json.Object
+                   [
+                     ("kind", Jlreq_proto.Json.String span.span_kind);
+                     ( "range",
+                       Jlreq_proto.Json.Array
+                         [
+                           Jlreq_proto.Json.of_int starts.(span.span_first);
+                           Jlreq_proto.Json.of_int starts.(span.span_last);
+                         ] );
+                   ])
+               spans) );
+      ]
+  in
   let stated =
     match breaks with
     | No_break -> []
     | Every_boundary -> List.map (fun offset -> (offset, "allowed")) boundaries
+    | Boundaries_before indices ->
+      List.map
+        (fun index ->
+          if index < 1 || index >= List.length pieces then
+            fault "a census offers a break before piece %d of %d" index (List.length pieces);
+          (starts.(index), "allowed"))
+        indices
     | Mandatory_after count -> (
       match List.nth_opt boundaries (count - 1) with
       | Some offset -> [ (offset, "mandatory") ]
@@ -385,10 +492,10 @@ let request ~(pieces : piece list) ~(line_extent : int) ~(breaks : breaks)
        ("clusters", Jlreq_proto.Json.Array (List.rev clusters));
        ("line_extent", Jlreq_proto.Json.of_int line_extent);
      ]
-    @ breaks
+    @ breaks @ constructs
     @ [
         ("alignment", Jlreq_proto.Json.String alignment);
-        ("writing_mode", Jlreq_proto.Json.String "horizontal-tb");
+        ("writing_mode", Jlreq_proto.Json.String writing_mode);
         ("style", style);
       ])
 
@@ -434,7 +541,7 @@ let spacing_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
           emit
             (Printf.sprintf "census/spacing/%s+%s/%s" before.rep_label after.rep_label variant)
             (request ~pieces:(List.map plain texts) ~line_extent:wide_extent ~breaks:No_break
-               ~alignment:"start" ~style:(style [])))
+               ~alignment:"start" ~style:(style []) ()))
         (spacing_variants before.rep_text after.rep_text))
 
 (** The four levels §C.3 grades the prohibitions by. Table 2's [not 3,4] cells are
@@ -451,7 +558,7 @@ let break_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
             (request
                ~pieces:(List.map plain [ before.rep_text; after.rep_text ])
                ~line_extent:em ~breaks:Every_boundary ~alignment:"start"
-               ~style:(style [ ("kinsoku.level", level) ])))
+               ~style:(style [ ("kinsoku.level", level) ]) ()))
         kinsoku_levels)
 
 (** The pair between two ideographs, on a line exactly as wide as the four ems it
@@ -488,7 +595,7 @@ let reduction_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
             (Printf.sprintf "census/reduction/%s+%s/%s" before.rep_label after.rep_label variant)
             (request
                ~pieces:(shape before.rep_text after.rep_text)
-               ~line_extent ~breaks:No_break ~alignment:"start" ~style:(style settings)))
+               ~line_extent ~breaks:No_break ~alignment:"start" ~style:(style settings) ()))
         reduction_variants)
 
 (** The pair between two ideographs on a justified line with a second line after
@@ -539,8 +646,239 @@ let expansion_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
             (request
                ~pieces:(shape before.rep_text after.rep_text)
                ~line_extent ~breaks:(Mandatory_after 4) ~alignment:"justify"
-               ~style:(style settings)))
+               ~style:(style settings) ()))
         expansion_variants)
+
+(* ----------------------------------------------------------------------------- *)
+(* Vertical composition (§3.1.3, §3.2.3, §3.2.4, §3.2.6) *)
+(* ----------------------------------------------------------------------------- *)
+
+(** The pair between two ideographs in a vertical line wide enough to hold it all.
+
+    Vertical composition is not a different set of tables; it is the same ones asked
+    in a context that changes three answers. §3.9.2 reads the frame, so a Western
+    code point classifies differently upright than rotated; §3.1.3 hands two marks a
+    vertical-only exception; and §3.2's orientation gives each placement its own
+    writing mode and transform, which are two response fields the horizontal
+    censuses never see anything but one value in. *)
+let vertical_interior (before : piece) (after : piece) : piece list =
+  [ plain filler; before; after; plain filler ]
+
+(** The variants, each of which changes exactly one thing about the pair.
+
+    [upright] is the control: full-em clusters in a vertical line, which is the
+    spacing census's [interior] variant asked again in the other writing mode.
+    [rotated] sets both members proportional, which §3.2.6 turns a quarter turn
+    clockwise and §3.9.2 may reclassify on the way. [quasi-japanese] sets them in a
+    half-em frame instead, which §3.2.4 reads as Japanese and leaves standing up --
+    the same code point, the same advance, a different answer to both fields. The
+    two role variants state §3.1.3's roles on every class in turn, because the
+    section names two marks and the engines have to agree on what the role does to
+    the twenty-one classes it does not name. *)
+let vertical_variants =
+  [
+    ("upright", fun (before : string) (after : string) -> vertical_interior (plain before) (plain after));
+    ("rotated", fun before after ->
+      vertical_interior (framed before "proportional" (em / 2)) (framed after "proportional" (em / 2)));
+    ("quasi-japanese", fun before after ->
+      vertical_interior (framed before "half-em" (em / 2)) (framed after "half-em" (em / 2)));
+    ("decimal-point", fun before after ->
+      vertical_interior (roled before "decimal-point") (plain after));
+    ("digit-group", fun before after ->
+      vertical_interior (roled before "digit-group-separator") (plain after));
+  ]
+
+let vertical_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
+  each_pair (fun before after ->
+      List.iter
+        (fun (variant, shape) ->
+          emit
+            (Printf.sprintf "census/vertical/%s+%s/%s" before.rep_label after.rep_label variant)
+            (request
+               ~pieces:(shape before.rep_text after.rep_text)
+               ~line_extent:wide_extent ~breaks:No_break ~alignment:"start"
+               ~writing_mode:"vertical-rl" ~style:(style []) ());
+          (* The same pair on a line with room for one cluster and every boundary
+             offered, which is the break census asked in vertical composition: the
+             classes the frame and §3.1.3 change are the ones Table 2 is read at. *)
+          emit
+            (Printf.sprintf "census/vertical/%s+%s/%s-break" before.rep_label after.rep_label
+               variant)
+            (request
+               ~pieces:(shape before.rep_text after.rep_text)
+               ~line_extent:em ~breaks:Every_boundary ~alignment:"start"
+               ~writing_mode:"vertical-rl" ~style:(style []) ()))
+        vertical_variants)
+
+(* ----------------------------------------------------------------------------- *)
+(* Tate-chu-yoko (§3.2.5, §C.2 note 13, §E.2 note 12) *)
+(* ----------------------------------------------------------------------------- *)
+
+(** A run of [count] members, each a European numeral.
+
+    The advances are deliberately unequal and deliberately not divisible by two, so
+    that a run's total width is odd for the odd member counts: §3.2.5 centers the
+    whole string on the line and says nothing about which way half of an odd number
+    rounds, which is invisible on any run whose members are all the same round
+    width. The block ems differ too, because what the run takes up {i along} the line
+    is a height and the members do not have to share one. *)
+let run_members (count : int) : piece list =
+  let widths = [| 300; 433; 500; 267 |] and blocks = [| 1000; 1200; 900; 1000 |] in
+  List.init count (fun index ->
+      member
+        (String.make 1 (Char.chr (Char.code '1' + index)))
+        ~advance:widths.(index mod Array.length widths)
+        ~block:blocks.(index mod Array.length blocks))
+
+(** How far along the line a run of [count] members reaches: its tallest member's
+    block em, which is what the vertical line sees of a horizontal string. Kept here
+    so that a census can state a measure that is exactly full. *)
+let run_extent (count : int) : int =
+  let blocks = [| 1000; 1200; 900; 1000 |] in
+  let widest = ref 0 in
+  List.iteri
+    (fun index () ->
+      let block = blocks.(index mod Array.length blocks) in
+      if block > !widest then widest := block)
+    (List.init count (fun _ -> ()));
+  !widest
+
+(** One run between the pair, which is the shape every cl-30 coordinate of Tables 1
+    through 6 is reachable by: the pair's leading member is what stands before the
+    run and its trailing member is what stands after it. *)
+let tate_chu_yoko_one (count : int) (before : string) (after : string) :
+    piece list * span list =
+  ([ plain before ] @ run_members count @ [ plain after ], [ tate_chu_yoko 1 (1 + count) ])
+
+(** Two runs back to back, which is the only shape that reaches the [(cl-30, cl-30)]
+    coordinate at all -- and the only one that tells §C.2 note 13 and §E.2 note 12
+    apart from the blank and the quarter em their tables state there, because the
+    same coordinate {i inside} one run is what the two notes withdraw. *)
+let tate_chu_yoko_two (before : string) (after : string) : piece list * span list =
+  ( [ plain before ] @ run_members 2 @ run_members 2 @ [ plain after ],
+    [ tate_chu_yoko 1 3; tate_chu_yoko 3 5 ] )
+
+(** The same two runs with a fifth cluster after a mandatory break, so the line that
+    holds them is justified and is not the paragraph's last. *)
+let tate_chu_yoko_justified (before : string) (after : string) : piece list * span list =
+  let pieces, spans = tate_chu_yoko_two before after in
+  (pieces @ [ plain filler ], spans)
+
+(** The same justified line with the character after the second run at half the em.
+
+    Table 6 names a class pair and no neighbor (ADR 0021), so a boundary beside a run
+    has to be measured from one of the two ems -- the run's member or the character
+    it stands against -- and on a line whose every cluster is the same size that
+    choice cannot be seen. Three boundaries share the line's shortfall in proportion
+    to those ems, so here it can. *)
+let tate_chu_yoko_mixed (before : string) (after : string) : piece list * span list =
+  let pieces, spans = tate_chu_yoko_two before after in
+  match List.rev pieces with
+  | _ :: leading -> (List.rev (sized after (em / 2) :: leading) @ [ plain filler ], spans)
+  | [] -> fault "the tate-chu-yoko census built an empty line"
+
+type tate_chu_yoko_variant = {
+  tcy_name : string;
+  tcy_shape : string -> string -> piece list * span list;
+  tcy_extent : int;
+  tcy_breaks : breaks;
+  tcy_alignment : string;
+  tcy_settings : (string * string) list;
+}
+
+(** A run's own width along the line is its tallest member's block em, so a line
+    that holds [before], one run and [after] is two ems plus that: stating the
+    measure exactly forces every unit Table 1 puts around the run to come back out
+    through §3.8.3, and stating it three quarters of an em over forces §3.8.4 to put
+    some in. *)
+let tate_chu_yoko_variants =
+  [
+    {
+      tcy_name = "solid";
+      tcy_shape = tate_chu_yoko_one 2;
+      tcy_extent = wide_extent;
+      tcy_breaks = No_break;
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "single";
+      tcy_shape = tate_chu_yoko_one 1;
+      tcy_extent = wide_extent;
+      tcy_breaks = No_break;
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "odd";
+      tcy_shape = tate_chu_yoko_one 3;
+      tcy_extent = wide_extent;
+      tcy_breaks = No_break;
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "adjacent";
+      tcy_shape = tate_chu_yoko_two;
+      tcy_extent = wide_extent;
+      tcy_breaks = No_break;
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "reduce";
+      tcy_shape = tate_chu_yoko_one 2;
+      tcy_extent = (2 * em) + run_extent 2;
+      tcy_breaks = No_break;
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "justify";
+      tcy_shape = tate_chu_yoko_justified;
+      tcy_extent = (2 * em) + (2 * run_extent 2) + (em * 3 / 4);
+      tcy_breaks = Mandatory_after 6;
+      tcy_alignment = "justify";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "justify-mixed-em";
+      tcy_shape = tate_chu_yoko_mixed;
+      tcy_extent = (2 * em) + (2 * run_extent 2) + (em * 3 / 4);
+      tcy_breaks = Mandatory_after 6;
+      tcy_alignment = "justify";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "break";
+      tcy_shape = tate_chu_yoko_two;
+      tcy_extent = em;
+      tcy_breaks = Boundaries_before [ 1; 3; 5 ];
+      tcy_alignment = "start";
+      tcy_settings = [];
+    };
+    {
+      tcy_name = "break-very-loose";
+      tcy_shape = tate_chu_yoko_two;
+      tcy_extent = em;
+      tcy_breaks = Boundaries_before [ 1; 3; 5 ];
+      tcy_alignment = "start";
+      tcy_settings = [ ("kinsoku.level", "very-loose") ];
+    };
+  ]
+
+let tate_chu_yoko_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =
+  each_pair (fun before after ->
+      List.iter
+        (fun variant ->
+          let pieces, spans = variant.tcy_shape before.rep_text after.rep_text in
+          emit
+            (Printf.sprintf "census/tate-chu-yoko/%s+%s/%s" before.rep_label after.rep_label
+               variant.tcy_name)
+            (request ~pieces ~line_extent:variant.tcy_extent ~breaks:variant.tcy_breaks
+               ~alignment:variant.tcy_alignment ~writing_mode:"vertical-rl" ~spans
+               ~style:(style variant.tcy_settings) ()))
+        tate_chu_yoko_variants)
 
 type kind = {
   kind_name : string;
@@ -571,6 +909,16 @@ let kinds =
       kind_name = "expansion";
       kind_summary = "every ordered class pair on a justified line with room left over (Table 6)";
       kind_emit = expansion_census;
+    };
+    {
+      kind_name = "vertical";
+      kind_summary = "every ordered class pair in a vertical line, upright, rotated and roled";
+      kind_emit = vertical_census;
+    };
+    {
+      kind_name = "tate-chu-yoko";
+      kind_summary = "every ordered class pair beside a tate-chu-yoko run, and two runs beside each other";
+      kind_emit = tate_chu_yoko_census;
     };
   ]
 
