@@ -51,7 +51,8 @@
          "adjust.rkt"
          "ruby.rkt"
          "ornament.rkt"
-         "structure.rkt")
+         "structure.rkt"
+         "tabs.rkt")
 
 (provide compose
          (struct-out placed)
@@ -79,14 +80,22 @@
 
 ;; An overfull line costs this much before its overrun is even counted, so that no
 ;; number of merely short lines is ever preferred to one that does not fit.
-(define overfull-charge 10000000)
+;;
+;; It is also bounded from above, and the bound is what stops the ordering from
+;; inverting: splitting one line that overruns by `a + b` into two that overrun by
+;; `a` and by `b` costs one more charge and saves `2 * weight * a * b` of overrun, so
+;; a charge larger than that would prefer the single unsplittable line. The `vertical`
+;; and `tate-chu-yoko` censuses reach that comparison at `a = b = 500`, which puts the
+;; ceiling at five hundred million; raising `badness-cap` far enough to need a bigger
+;; charge than that trades one of those censuses for whatever the raise was for.
+(define overfull-charge 1000000000000000)
 
 ;; ... and its overrun counts a thousand times over, so that between two overfull
 ;; arrangements the one that overruns less wins.
 (define overfull-weight 1000)
 
 ;; The most a single line's shortfall may contribute.
-(define badness-cap 1000000)
+(define badness-cap 1000000000000)
 
 ;; §3.8.1: the last line's end "need not be aligned to the other alignment
 ;; position", so its shortfall is charged at a hundredth.
@@ -98,16 +107,16 @@
 
 ;; §3.5.4: a last line shorter than the caller's minimum is what widow adjustment
 ;; exists to avoid, so it outranks every other term.
-(define widow-charge 1000000000)
+(define widow-charge 100000000000000000)
 
 ;; §3.7.4: on an independent formula line a break before a math operator is the
 ;; second priority, so it is charged more than any line-length argument can save.
-(define operator-break-charge 100000000000)
+(define operator-break-charge 10000000000000)
 
 ;; §3.4.3: a warichu cut between two main lines is cut as near its own middle as
 ;; the caller's own break opportunities allow, and this is what makes the balance
 ;; of the two halves outrank the balance of the two lines.
-(define warichu-balance-weight 1000000)
+(define warichu-balance-weight 1000000000)
 
 ;; ----------------------------------------------------------------------------
 ;; Items
@@ -467,7 +476,13 @@
 ;; `fixed` is the space §3.3 forced in at each of the same positions. It is not a
 ;; Table 1 amount and neither ladder touches it: a reading that had nowhere to go is
 ;; not an adjustment site, it is the reason the line is the width it is.
-(struct shape (advances gaps fixed extent overrun hung) #:transparent)
+;; `slack` is how far short of the measure the line came BEFORE §3.8.4 opened it
+;; out, which is the number a paragraph is judged on: justification hides the
+;; difference between a line that was nearly full and one that was half empty, and
+;; §3.8.1 is about where the lines end rather than about how they were stretched.
+;; `cut` is §3.6.3's fourth case: a tab sign on this line has run its stops out, so
+;; the line has to end before it and this arrangement is not one.
+(struct shape (advances gaps fixed extent overrun hung slack cut) #:transparent)
 
 ;; §3.2.2 and §B.2 note 13: a Western word space at the line head or the line end
 ;; occupies no visible space, and gets its width back the moment the same text sits
@@ -508,10 +523,7 @@
     (define index (+ first offset))
     (define found (hash-ref spots index #f))
     (and found (if (= index (spot-last found)) (hash-ref stack-widths (spot-run found)) 0)))
-  (define raw-advances
-    (for/vector ([offset (in-range count)])
-      (or (stacked offset) (item-advance (vector-ref items (+ first offset))))))
-  (define advances
+  (define shaped
     (for/vector ([offset (in-range count)])
       (define one (vector-ref items (+ first offset)))
       (or (stacked offset)
@@ -555,6 +567,12 @@
         [(< index count) (item-separation (vector-ref items (+ first index)))]
         [else (item-tail (vector-ref items last))])))
   (define forced (for/fold ([sum 0]) ([one (in-vector fixed)]) (chk+ sum one)))
+  ;; §3.6: a tab sign takes up whatever space puts what follows it at a stop, which
+  ;; is not known until the line is walked -- so the walk happens here, once the
+  ;; advances and the amounts beside them are known. It changes the advance of the
+  ;; signs and of nothing else.
+  (define-values (advances cut?)
+    (tab-walk para items first last count shaped gaps fixed indent))
   (define natural
     (+ indent
        forced
@@ -565,16 +583,66 @@
   (cond
     [(negative? room)
      (define-values (kept-advances kept-gaps left)
-       (reduce para style items first last advances gaps raw-advances raw-gap-terms (- room)))
+       (reduce para style items first last advances gaps advances raw-gap-terms (- room)))
      (define reduced (+ indent forced (sum-of kept-advances) (sum-of kept-gaps)))
      (define hung (hang-of para style items last (- reduced measure)))
-     (shape kept-advances kept-gaps fixed (- reduced hung) (max 0 (- reduced hung measure)) hung)]
+     (shape kept-advances kept-gaps fixed (- reduced hung) (max 0 (- reduced hung measure))
+            hung 0 cut?)]
     [(and (positive? room) (eq? alignment 'justify) (not last-line?))
      (define-values (open-advances open-gaps)
        (expand para style items first last advances gaps raw-gap-terms room))
      (shape open-advances open-gaps fixed
-            (+ indent forced (sum-of open-advances) (sum-of open-gaps)) 0 0)]
-    [else (shape advances gaps fixed natural 0 0)]))
+            (+ indent forced (sum-of open-advances) (sum-of open-gaps)) 0 0 room cut?)]
+    [else (shape advances gaps fixed natural 0 0 (max 0 room) cut?)]))
+
+;; §3.6.3: what every tab sign of one line takes up, and whether the line has to end
+;; before one of them.
+;;
+;; The walk is left to right because a sign's own advance depends on where the sign
+;; stands, which depends on every advance before it -- an earlier sign's included.
+(define (tab-walk para items first last count shaped gaps fixed indent)
+  (define signs
+    (for/list ([offset (in-range count)]
+               #:when (tab-sign? para (vector-ref items (+ first offset))))
+      offset))
+  (cond
+    [(null? signs) (values shaped #f)]
+    [else
+     (define stops (stops-in-order para))
+     (define out (vector-copy shaped))
+     (define cut #f)
+     (let walk ([offset 0] [cursor (chk+ (chk+ indent (vector-ref gaps 0)) (vector-ref fixed 0))])
+       (when (< offset count)
+         (when (memv offset signs)
+           (define ahead
+             (for/first ([one (in-list stops)] #:when (> (tab-stop-position one) cursor)) one))
+           (cond
+             [ahead
+              (define target (tab-target ahead (string-after para items first count offset)))
+              (vector-set! out offset (max 0 (chk- target cursor)))]
+             ;; §3.6.3's fourth case has nothing to say to a sign at the line head:
+             ;; there is no earlier boundary to send the string back to. It keeps its
+             ;; line and takes one em of the paragraph's own size.
+             [(zero? offset) (vector-set! out offset (extent-inline (paragraph-size para)))]
+             [else (set! cut #t)]))
+         (walk (add1 offset)
+               (chk+ (chk+ (chk+ cursor (vector-ref out offset)) (vector-ref gaps (add1 offset)))
+                     (vector-ref fixed (add1 offset))))))
+     (values out cut)]))
+
+;; The string one sign puts at its stop: what stands between it and the next sign,
+;; or the line end, as `(width . text)` pairs.
+(define (string-after para items first count offset)
+  (let walk ([at (add1 offset)] [out '()])
+    (cond
+      [(>= at count) (reverse out)]
+      [(tab-sign? para (vector-ref items (+ first at))) (reverse out)]
+      [else
+       (define one (vector-ref items (+ first at)))
+       (walk (add1 at)
+             (cons (cons (item-advance one)
+                         (source-slice (paragraph-source para) (item-start one) (item-end one)))
+                   out))])))
 
 (define (sum-of values)
   (for/fold ([sum 0]) ([one (in-vector values)]) (chk+ sum one)))
@@ -1125,12 +1193,20 @@
   (define count (vector-length items))
   (for/hash ([index (in-range 1 count)]
              #:when (let ([kind (hash-ref kinds index #f)])
-                      (and kind
-                           (or (eq? kind 'mandatory)
-                               (breakable? para style
-                                           (vector-ref items (sub1 index))
-                                           (vector-ref items index))))))
-    (values index (hash-ref kinds index))))
+                      (or
+                       ;; §3.6.3's fourth case: a tab sign that has run its stops out
+                       ;; takes the rest of the line with it to the next one. The cut
+                       ;; is §3.6's and not §3.1's -- it is a line boundary rather
+                       ;; than a break opportunity, so it needs neither the caller's
+                       ;; own `breaks` nor Table 2's permission, and it falls at
+                       ;; boundaries Table 2 would never let a line end at.
+                       (tab-sign? para (vector-ref items index))
+                       (and kind
+                            (or (eq? kind 'mandatory)
+                                (breakable? para style
+                                            (vector-ref items (sub1 index))
+                                            (vector-ref items index)))))))
+    (values index (hash-ref kinds index 'allowed))))
 
 ;; The arrangement §3.1.12's own comparison asks for: the one with the least total
 ;; cost, and the earliest first break among equals.
@@ -1180,11 +1256,12 @@
   (define extent (shape-extent found))
   (define base
     (cond
-      [(> extent measure)
-       (define over (- extent measure))
+      [(shape-cut found) impossible]
+      [(positive? (shape-overrun found))
+       (define over (shape-overrun found))
        (chk+ (sat* (sat* over over) overfull-weight) overfull-charge)]
       [else
-       (define slack (- measure extent))
+       (define slack (shape-slack found))
        (define square (min (sat* slack slack) badness-cap))
        (if last-line? (div-trunc square last-line-divisor) square)]))
   (chk+ (chk+ (chk+ base (if discretionary? discretionary-charge 0))
@@ -1343,8 +1420,14 @@
         ;; what it was set at inside the block; the block's own width is the line's.
         [found (spot-advance found)]
         [else
+         ;; §3.6: a tab sign's advance is what the line gave it and not what it was
+         ;; shaped with, because taking up the space to the stop is the whole of
+         ;; what the sign does.
          (define own
-           (if (collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0 (item-advance one)))
+           (cond
+             [(tab-sign? para one) (vector-ref advances offset)]
+             [(collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0]
+             [else (item-advance one)]))
          (chk+ (chk+ own (designed-gap para style items first last offset count))
                (vector-ref fixed (add1 offset)))])))
   (let walk ([offset 0]
