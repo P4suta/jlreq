@@ -118,7 +118,7 @@ directory.
 just diffcase quick-start/two-lines          # against the suite's own `expected`
 just diffcase quick-start/two-lines --rust   # against the Rust engine's live answer
 just census spacing                          # generate, run both engines, diff
-just census break
+just census tate-chu-yoko
 just census-classes                          # the representative chosen for each class
 ```
 
@@ -144,9 +144,34 @@ so Appendix A lists no code point in them.
 | --- | ---: | --- |
 | `spacing` | 2,116 | 529 pairs × `pair`, `head`, `end`, `interior`, on a line too wide to break or adjust: Table 1 read back out |
 | `break` | 2,116 | 529 pairs × the four §C.3 levels, on a one-cluster line with every boundary `allowed`: Table 2 read back out |
+| `reduction` | 3,174 | 529 pairs × Tables 3, 4 and 5, the trailing remainder, the line end and hanging punctuation, on a line exactly as wide as the four ems it holds: §3.8.3's ladder read back out |
+| `expansion` | 3,174 | 529 pairs × two measures and the three ceilings, plus `table-5` and one line with the trailing member at half the em, justified with a line after it: §3.8.4's ladder read back out |
+| `vertical` | 5,290 | 529 pairs × upright, rotated, quasi-Japanese, and §3.1.3's two roles, each on a wide line and on a line with room for one cluster: the same tables asked in the other writing mode, and §3.2's orientation of every placement |
+| `tate-chu-yoko` | 4,761 | 529 pairs standing before and after a run of one, two or three members, two runs side by side, and the same line reduced, justified, justified with a neighbor at half the em, and broken: §3.2.5's geometry and every cl-30 coordinate of Tables 1 through 6 |
 
-The reduction and expansion censuses join the `kinds` registry in `census.ml` at
-M2 and M3; nothing else in the file changes.
+The registry that names them is `kinds` in `census.ml`, and nothing else in the
+file knows how many there are. A census is a name, a sentence and a function that
+emits requests.
+
+Four things the censuses are deliberately shaped for. Every `expansion` line carries
+three interior boundaries, because §3.8.4's stages and their ceilings are
+indistinguishable from "hand the whole shortfall to the only place that will take
+it" on a line with one — which is the shape all six of the built-in suite's
+expansion cases have. The `mixed-em` variants set one cluster at half the em,
+because Table 6 names a class pair and no neighbor (ADR 0021), so an engine has to
+decide whose em a quarter of an em is a quarter of, and on a line of one size that
+decision is invisible. The `tate-chu-yoko` runs carry members of unequal and odd
+advances, because §3.2.5 centers the whole string and says nothing about which way
+half of an odd width rounds, and members of unequal block ems, because what a run
+takes up along the line and what it takes up across one are two different numbers
+that a square member makes look like one. And the `vertical` census states §3.1.3's
+two roles on every class in turn, because the section names two marks and the
+engines have to agree about the twenty-one classes it does not name.
+
+`tate-chu-yoko` is also the only census that cannot offer every boundary as a break.
+A run is indivisible (§C.2 note 13) and a request that states a break inside one is
+*refused* rather than answered, which would end the census rather than measure
+anything, so its break variants name the three boundaries that exist.
 
 Both answer streams are canonicalized before `diff` sees them, because key order
 is not part of an answer — the Rust side's `serde_json` sorts the keys, this side
@@ -187,6 +212,90 @@ the other engine and copying the answer, and never by majority vote. A rule that
 is observable in the Rust engine but written down nowhere is exactly the finding
 this second implementation is for.
 
+### Observable policies with no written source
+
+The exception the rule leaves open is a policy that is *observable* — two engines
+have to agree on it to pass the same case — and stated in no sentence of JLReq and
+no file under `docs/`. Those are read from `crates/jlreq/src/pipeline.rs`, never
+transcribed, and listed here so that a reviewer can see the whole set at once. Each
+is a candidate for `docs/decisions/`.
+
+§3.8.4's ladder contributed two, both found by the `expansion` census rather than
+by any conformance case:
+
+- **The Japanese–Latin ceiling is asked at cl-19 against cl-27 and nowhere else.**
+  §3.8.4 step (b) names three Japanese classes (cl-15, cl-16, cl-19) and three Latin
+  ones (cl-24, cl-25, cl-27), which is nine coordinates in each direction, and
+  §3.8.4's own Note — the sentence the `rigid` answer comes from — names
+  `漢字等（cl-19）など` and the same three Latin classes in Japanese while expanding
+  that to all three Japanese classes in English. `adjustment.japanese_latin_expansion_ceiling`
+  is consulted at `(19, 27)` and `(27, 19)` alone; at the other sixteen stage-two
+  coordinates Table 6's own half em stands whatever the style answers. Neither
+  sentence says this, and `spec/derived/questions.tsv` carries no scope column.
+- **Step (d) re-levels the second and third stages' boundaries and the residual
+  cells, but a Western word space only when Table 6's own cl-26 row makes that
+  boundary residual too.** §E.1 says the fourth step adds space "to equalize the
+  spacing of 1st, 2nd, 3rd and 4th steps", which reads as all four stages including
+  step (a)'s word spaces; the reference engine excludes a first-stage site that is
+  not independently residual.
+
+§3.2.5's tate-chu-yoko contributed three, all found by the `tate-chu-yoko` census
+rather than by any conformance case:
+
+- **§3.2.5's prose is the whole of the spacing beside a run, and its own Note is
+  not.** The section states four amounts — a half em after a comma (cl-07), a
+  closing bracket (cl-02) or a mid-line full stop (cl-06), a half em before an
+  opening bracket (cl-01), solid otherwise — and then says that "the details … are
+  described as a complete table in §B". Table 1's cl-30 row and column state those
+  four *and six more*: a quarter em against a middle dot (cl-05) in both directions,
+  and against cl-21, cl-24, cl-25 and cl-27 in both directions. The reference engine
+  sets the four and not the six, so the prose wins over the sentence that points at
+  the table. Neither sentence says which of them is the exception.
+- **The reduction and expansion ladders read their matrices at face value at the
+  same coordinates.** Table 3 states `1/4-0 stage 4` at (cl-30, cl-05) and Table 6
+  states `1/4-1/2 stage 2` at (cl-30, cl-27), and both apply — even though §3.2.5
+  put no space at that boundary for §3.8.3 to take back. The observable consequence
+  is that a run on a line that had to give space back ends up a quarter em *inside*
+  the character before it. The expansion ceiling, by contrast, is measured against
+  the space §3.2.5 actually set and not against Table 1's; the census pins that one
+  at 156 requests.
+- **A break stated inside a run is refused, not declined.** §C.2 note 13 says there
+  is no line break opportunity between two characters of one run, which an engine
+  could implement by never taking the opportunity. The reference engine refuses the
+  request instead, with `input.break-inside-construct`, for an `allowed` break and a
+  `mandatory` one alike — and in horizontal composition too, where a tate-chu-yoko
+  construct changes nothing else at all. The other structures are not refused: the
+  built-in suite states breaks inside a warichu, a furawake, a formula and a ruby.
+
+One more is about Appendix A rather than about any section:
+
+- **A Remarks cell naming only an advance the protocol cannot express excludes its
+  listing, rather than qualifying nothing.** `字幅は四分角` (a quarter em) and
+  `字幅は三分角` (a third of an em) name widths the `frame` vocabulary — `full-em`,
+  `half-em`, `proportional` — has no word for. Reading them as "no width stated"
+  makes the listing available at every frame; reading them as "a width no caller can
+  declare" makes it available at none. Two keys tell the readings apart, and the
+  reference engine takes the second at both. U+0020 SPACE is listed as a grouped
+  numeral (§A.24) and a unit symbol's character (§A.25) at a quarter em and as the
+  Western word space (§A.26) unqualified, so it stays cl-26 however the caller
+  labels the occurrence; U+2010 HYPHEN is listed as a hyphen (§A.03) at a quarter em
+  and as a Western character (§A.27) proportional, so a proportional hyphen is
+  cl-27.
+
+Two more were checked against the reference engine and found to be *readings*
+rather than policies, and are recorded here because a later reader will otherwise
+re-derive them:
+
+- §E.1 states that the `1/4–1/2` cells "shall not be expanded" when Table 5 is
+  adopted as the reduction method. Neither engine implements it, and
+  `spec/derived/questions.tsv`'s `excludes` column — the file both engines read for
+  exactly this kind of cross-question constraint — carries no such pair. Adding one
+  is the concrete change that would make it real for both engines at once.
+- `adjustment.expansion_order` selects nothing today. Its `implementation` answer is
+  §3.8.4 step (d)'s Note, whose only coordinate is cl-27 against cl-27, which
+  `docs/conformance-deferrals.toml` classifies `[[non-observable]]`. Both engines
+  answer the same layout for both answers.
+
 ## Milestones
 
 `milestones/M1.ids` through `M9.ids` partition the eighty-nine built-in cases
@@ -212,7 +321,7 @@ monotonically and `M1..M9` is the whole suite. A milestone is complete when the
 cumulative suite through it runs to exit `0`:
 
 ```bash
-just ocaml-milestone 3   # select M1..M3 out of the built-in suite and run them
+just ocaml-milestone 5   # select M1..M5 out of the built-in suite and run them
 ```
 
 The selection is checked: the recipe fails if an identifier in an `.ids` file
@@ -232,24 +341,31 @@ the toolchain in front of it: a developer with no opam switch gets a loud
 toolchain is a gate that gets routed around. CI has the toolchain and enforces
 it.
 
-## Where M1 stands
+## Where M5 stands
 
 M1 is the composition core: classification (§3.9.2 and Appendix A), Table 1
 spacing, Table 2 breakability with §C.3's four conventions, whole-paragraph break
-optimization, line reduction by Tables 3 through 5, and line geometry. Every one
-of the eighty-nine requests is parsed completely — a construct this engine cannot
-yet *set* is still read, validated and classified — so the milestones that follow
-change what the pipeline does with a structure and not whether the wire layer
-knows it is there.
+optimization, and line geometry. M2 is §3.8.3's reduction ladder — Tables 3, 4 and
+5, and §3.8.2's hanging punctuation — and M3 is §3.8.4's expansion ladder: Table 6,
+the Western word space, the Japanese–Latin ceiling, and step (d)'s residual. M4 is
+§3.2's orientation: a proportional cluster rotated a quarter turn (§3.2.6), a
+fixed-width Western character standing up as quasi-Japanese (§3.2.4), and §3.1.3's
+two vertical-only exceptions. M5 is §3.2.5's tate-chu-yoko — a horizontal string set
+solid and centered across the vertical line, one thing on the line for spacing,
+breaking and adjustment alike (§C.2 note 13, §E.2 note 12).
+Every one of the eighty-nine requests is parsed completely — a construct this
+engine cannot yet *set* is still read, validated and classified — so the milestones
+that follow change what the pipeline does with a structure and not whether the wire
+layer knows it is there.
 
 ```text
-just ocaml-milestone 1    → exit 0    (18 cases)
-just conform-ocaml        → 51 DIFF lines, exit 1
+just ocaml-milestone 5    → exit 0    (49 cases)
+just conform-ocaml        → 36 DIFF lines, exit 1
 ```
 
 Exit `1` with no protocol error is the contract: the transport, the envelope, the
 JSON, the specification tables and the request model are all correct, and only
-the layout of the structures M2 onward own is missing. Exit `2` would mean
+the layout of the structures M6 onward own is missing. Exit `2` would mean
 something in that list is broken.
 
 Where the whole built-in suite stands against `milestones/`:
@@ -258,29 +374,45 @@ Where the whole built-in suite stands against `milestones/`:
 | --- | --- | --- |
 | M1 | classification, spacing, breakability, geometry | 18 / 18 |
 | M2 | reduction (Tables 3–5), hanging | 7 / 7 |
-| M3 | expansion (Table 6), justification, reclassification | 4 / 10 |
+| M3 | expansion (Table 6), justification, reclassification | 10 / 10 |
 | M4 | vertical composition, rotation, orientation | 5 / 5 |
-| M5 | tate-chu-yoko | 0 / 9 |
+| M5 | tate-chu-yoko | 9 / 9 |
 | M6 | ruby | 0 / 23 |
 | M7 | emphasis dots, ornamented complexes | 0 / 4 |
 | M8 | warichu, furawake, jidori, formulae | 3 / 10 |
 | M9 | tab stops, widows, indentation | 1 / 3 |
 
-M2 and M4 fall out of M1's work rather than being claimed: reduction is needed by
-M1's own overfull cases, and vertical composition is one orientation rule over
-the same geometry. `milestones/CURRENT` claims only what the milestone sequence
-has reached.
+M4 fell out of M1's work rather than being claimed — vertical composition is one
+orientation rule over the same geometry — and it stayed green through M5's changes
+to the same code. `milestones/CURRENT` claims only what the milestone sequence has
+reached.
 
-Both class-pair censuses agree with the Rust engine at every request:
+All six censuses agree with the Rust engine at every request:
 
 ```text
-just census spacing   → 2116 request(s), 0 differing response(s)
-just census break     → 2116 request(s), 0 differing response(s)
+just census spacing        → 2116 request(s), 0 differing response(s)
+just census break          → 2116 request(s), 0 differing response(s)
+just census reduction      → 3174 request(s), 0 differing response(s)
+just census expansion      → 3174 request(s), 0 differing response(s)
+just census vertical       → 5290 request(s), 0 differing response(s)
+just census tate-chu-yoko  → 4761 request(s), 0 differing response(s)
 ```
 
-That is 529 class pairs read back out of Table 1 in four line positions and out of
-Table 2 at all four §C.3 levels, from two independent transcriptions of the same
-six PDF pages, agreeing bit for bit.
+That is 529 class pairs read back out of Table 1 in four line positions, out of
+Table 2 at all four §C.3 levels, out of Tables 3 through 5 on a line that has to
+give the spacing back, and out of Table 6 on a justified line with room left over
+— from two independent transcriptions of the same six PDF pages, agreeing bit for
+bit. Then the same pairs again in vertical composition, where §3.9.2 reads the
+frame differently and every placement carries an orientation, and again with a
+tate-chu-yoko run standing between them, which is the only way to reach the cl-30
+row and column of all six matrices at all. 20,631 requests in all, and no answer
+differs by one unit.
+
+The two vertical censuses found three things the eighty-nine cases do not reach:
+two readings of Appendix A's `字幅は四分角` that differ at U+0020 and U+2010, and
+the fact that §3.2.5's prose rather than Table 1's cl-30 cells is what the
+reference engine sets. All three are in "Observable policies with no written
+source" above.
 
 The startup census in `lib/tables.ml` is checked against the real files and holds
 today:
