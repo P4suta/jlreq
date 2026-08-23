@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# The milestone the OCaml engine currently claims. `just ocaml-gate` runs the
+# cumulative suite M1..M<this number>, and the conform-ocaml job in CI runs
+# `just ocaml-gate`, so this one digit is what CI holds the engine to.
+#
+# `0` means no conformance case is claimed yet and the engine's own unit tests
+# are the whole gate. `9` means the cumulative suite is the entire built-in
+# suite, at which point the gate and `just conform-ocaml` are the same run.
+#
+# Advance this in the pull request that makes the milestone pass, never before
+# it: the number is a claim about what the engine answers bit for bit. `#` lines
+# and blank lines are comments; the file is otherwise one number.
+0

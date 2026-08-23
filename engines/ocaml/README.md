@@ -40,31 +40,37 @@ cannot depend on a file above its project root, and this engine reads the
 specification tables out of `spec/`. Run everything from the repository root.
 
 ```bash
-dune build engines/ocaml            # build the engine
-dune runtest engines/ocaml          # run the unit tests
-dune build                          # both, plus everything else dune owns
+just ocaml-build                    # build the engine
+just ocaml-test                     # build it, then run the unit tests
+just conform-ocaml                  # run all eighty-nine built-in cases against it
+just ocaml-gate                     # run the cumulative suite milestones/CURRENT claims
+just ocaml-milestone 3              # run the cumulative suite M1..M3
 ```
 
 The executable lands at a fixed path, which is what the runner is given:
 
 ```bash
 cargo run -p jlreq-conformance -- \
-  run _build/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
+  run target/dune/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
 ```
 
 `.exe` is dune's name for a native executable on every platform, Unix included.
 
-> **Known conflict with `just attest`, to be settled when the engines are wired
-> into CI.** Dune copies every file a rule depends on into its build directory, so
-> a build leaves copies of `spec/captured/table*.tsv` under `_build/default/spec/`.
-> The confinement check in `xtask attest` walks the whole working tree, skipping
-> only `.git` and `target`, and reports those copies as a transcription outside
-> `spec/captured/`. Until `_build` joins `SKIPPED_DIRECTORIES` in
-> `xtask/src/attest.rs` (or the build directory is redirected with
-> `DUNE_BUILD_DIR`), run `dune clean` before `just attest`, `just design` or
-> `just ci`. Nothing else in the Rust gates is affected: `engines/` is outside the
-> Cargo workspace, and `purity`, `api`, `direction`, `derive`, `generate`,
-> `conform` and `repository` are all green with the engine present.
+**Why `target/dune` and not `_build`.** Dune copies every file a rule depends on
+into its build directory, and these rules depend on `spec/captured/table*.tsv`, so
+a build under the default `_build/` leaves copies of the transcription at the
+repository root. `xtask attest` reports them: it confines the capture to
+`spec/captured/` so that a reviewer can read it as one directory, and it skips
+only `.git` and `target` while it looks (ADR 0009). The `Justfile` therefore
+exports `DUNE_BUILD_DIR` into `target/`, where both stay true at once — and where
+`.gitignore` and `cargo clean` already know to treat the contents as build
+output. Running `dune build` by hand instead still writes `_build/`, which is
+gitignored but *is* scanned, so `just attest`, `just design` and `just ci` will
+report those copies until a `dune clean`. Use the recipes.
+
+Nothing else in the Rust gates is affected: `engines/` is outside the Cargo
+workspace, and `purity`, `api`, `direction`, `derive`, `generate`, `conform` and
+`repository` are all green with the engine present.
 
 The engine takes no arguments and reads no files at run time. It reads NDJSON
 request envelopes from stdin, writes one response envelope per request to stdout,
@@ -83,7 +89,7 @@ engines/ocaml/
   proto/            json protocol                              library jlreq_proto
   bin/              the NDJSON loop                            jlreq_ocaml_engine.exe
   test/             dune runtest
-  milestones/       M1.ids … M9.ids
+  milestones/       M1.ids … M9.ids, and CURRENT
 ```
 
 The three libraries stack in one direction, `jlreq_specdata → jlreq → jlreq_proto`,
@@ -146,14 +152,25 @@ monotonically and `M1..M9` is the whole suite. A milestone is complete when the
 cumulative suite through it runs to exit `0`:
 
 ```bash
-# The cumulative identifier set through Mn.
-cat engines/ocaml/milestones/M{1..3}.ids | grep -v '^#' | grep -v '^$' > /tmp/ids
-# Select those cases out of the built-in suite into a partial suite, then:
-cargo run -p jlreq-conformance -- run ENGINE /tmp/partial.ndjson
+just ocaml-milestone 3   # select M1..M3 out of the built-in suite and run them
 ```
 
-A `just ocaml-milestone <n>` recipe that does the selection is part of the CI and
-tooling integration, not of this milestone.
+The selection is checked: the recipe fails if an identifier in an `.ids` file
+names no case in the suite, so a typo or a renamed case cannot shrink the gate
+quietly.
+
+`milestones/CURRENT` holds one number — the milestone the engine claims today.
+`just ocaml-gate` runs the cumulative suite through it, and the `conform-ocaml`
+job in CI runs `just ocaml-gate`, so that one digit is what a merge is held to.
+Advance it in the pull request that makes the milestone pass, never before.
+At `9` the cumulative suite is the whole suite and the gate is
+`just conform-ocaml`.
+
+`just conform-engines`, which `just ci` runs, is the same gate with a check for
+the toolchain in front of it: a developer with no opam switch gets a loud
+`SKIPPED` line and a green run, because a local gate that fails for a missing
+toolchain is a gate that gets routed around. CI has the toolchain and enforces
+it.
 
 ## Where M0 stands
 
@@ -167,7 +184,7 @@ which is well formed, passes `jlreq-conformance validate`, and is the wrong
 answer for all but an empty paragraph. So the expected result today is:
 
 ```text
-cargo run -p jlreq-conformance -- run _build/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
+just conform-ocaml
 → 89 DIFF lines, "89 conformance case(s) differed", exit 1
 ```
 

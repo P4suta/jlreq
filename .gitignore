@@ -25,12 +25,19 @@
 # against without the PDF ever entering the history.
 /spec/upstream/
 
-# dune build output for engines/. The dune project root is the repository root
-# (a dune rule cannot depend on a file above it, and the engines read spec/), so
-# the build directory lands here rather than under engines/. The engine binary
-# the conformance runner is given lives inside it:
-# _build/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
+# dune build output for engines/. The dune project root is the repository root (a dune
+# rule cannot depend on a file above it, and the engines read spec/), so a default build
+# directory lands here rather than under engines/. The Just recipes redirect it into
+# /target instead, which is already ignored above and which `attest` skips when it looks
+# for transcriptions outside spec/captured/ — dune copies those tables into whatever
+# build directory it is given (engines/ocaml/README.md). This entry covers a bare
+# `dune build`, which still writes here.
 /_build/
+
+# opam local switches: engines/ocaml is where a developer is told to create one, and the
+# repository root is where ocaml/setup-ocaml creates one in CI. Neither is ever committed,
+# and `reuse lint` reads this file to know that.
+/_opam/
 /engines/ocaml/_opam/
 
 # mise local overrides (per-developer, never committed)
