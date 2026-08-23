@@ -171,7 +171,10 @@
         (cluster-role one)
         class
         transform
-        'cluster
+        ;; §3.6: a tab sign is not a character standing on the line, it is the space
+        ;; between two things that are. Nothing beside it is a character adjacency,
+        ;; so Table 1 states nothing there.
+        (if (tab-character? para one) 'tab 'cluster)
         (list (piece-of para one index transform (paragraph-writing-mode para)))
         #f
         #f
@@ -203,6 +206,10 @@
                         (>= (cluster-end one) (construct-end each)))))
            => values]
           [else #f])))
+
+(define (tab-character? para one)
+  (define text (source-slice (paragraph-source para) (cluster-start one) (cluster-end one)))
+  (and (= (string-length text) 1) (char=? (string-ref text 0) #\tab)))
 
 ;; §3.2.5: the clusters of one tate-chu-yoko run are one thing on the line.
 ;;
@@ -639,9 +646,21 @@
            (define ahead
              (for/first ([one (in-list stops)] #:when (> (tab-stop-position one) cursor)) one))
            (cond
+             ;; §3.6.3: a sign standing inside a construct keeps its line and takes
+             ;; one em where it stands. Every construct is at least one object on
+             ;; the line, so a coordinate inside one is not a position a stop could
+             ;; name; a construct that begins or ends exactly at the sign leaves the
+             ;; sign beside it rather than in it.
+             [(inside-construct? para (vector-ref items (+ first offset)))
+              (vector-set! out offset (extent-inline (paragraph-size para)))]
              [ahead
-              (define target (tab-target ahead (string-after para items first count offset)))
-              (vector-set! out offset (max 0 (chk- target cursor)))]
+              (define target
+                (tab-target ahead (string-after para items first count offset out gaps fixed)))
+              ;; The sign takes up the whole distance to where the string goes.
+              ;; Nothing stands between the two: Table 1 states no amount after a
+              ;; sign, because the amount after a sign is the sign.
+              (define beside (vector-ref fixed (add1 offset)))
+              (vector-set! out offset (max 0 (chk- (chk- target cursor) beside)))]
              ;; §3.6.3's fourth case has nothing to say to a sign at the line head:
              ;; there is no earlier boundary to send the string back to. It keeps its
              ;; line and takes one em of the paragraph's own size.
@@ -652,17 +671,27 @@
                      (vector-ref fixed (add1 offset))))))
      (values out cut)]))
 
+;; Whether the item stands strictly inside a construct the caller declared.
+(define (inside-construct? para one)
+  (for/or ([each (in-list (paragraph-constructs para))])
+    (and (> (item-start one) (construct-start each))
+         (< (item-end one) (construct-end each)))))
+
 ;; The string one sign puts at its stop: what stands between it and the next sign,
 ;; or the line end, as `(width . text)` pairs.
-(define (string-after para items first count offset)
+(define (string-after para items first count offset advances gaps fixed)
   (let walk ([at (add1 offset)] [out '()])
     (cond
       [(>= at count) (reverse out)]
       [(tab-sign? para (vector-ref items (+ first at))) (reverse out)]
       [else
        (define one (vector-ref items (+ first at)))
+       ;; What the character takes up on the line, which is its own advance and the
+       ;; space that stands after it: §3.6.2's stop is a position the STRING is put
+       ;; at, and the string is as wide as the line makes it.
        (walk (add1 at)
-             (cons (cons (item-advance one)
+             (cons (cons (chk+ (chk+ (vector-ref advances at) (vector-ref gaps (add1 at)))
+                               (vector-ref fixed (add1 at)))
                          (source-slice (paragraph-source para) (item-start one) (item-end one)))
                    out))])))
 
@@ -1591,7 +1620,7 @@
 ;; do with any one member's size.
 (define (block-room one)
   (case (item-kind one)
-    [(cluster) (extent-block (item-size one))]
+    [(cluster tab) (extent-block (item-size one))]
     ;; A tate-chu-yoko run needs the whole string it sets across the line, which is
     ;; the sum of its members' advances and has nothing to do with any one member.
     [(tate-chu-yoko)
@@ -1641,7 +1670,7 @@
                    (item-frame one)
                    writing-mode
                    (item-transform one)))]
-    [(eq? (item-kind one) 'cluster)
+    [(memq (item-kind one) '(cluster tab))
      (list (placed (item-index one)
                    (item-start one)
                    (item-end one)

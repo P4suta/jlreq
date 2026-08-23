@@ -182,11 +182,22 @@
 ;; ----------------------------------------------------------------------------
 
 ;; The space between two occurrences of one line.
+;; §3.6: a tab sign is the space between two characters and not a character.
+(define (tab? one)
+  (eq? (item-kind one) 'tab))
+
 (define (boundary-contributions before after writing-mode style [literal? #f])
   (define stated
-    (if literal?
-        (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))
-        (or (formula-terms before after) (table-one-terms before after))))
+    (cond
+      ;; The space after a tab sign is the sign: §3.6.2 puts the string at the stop
+      ;; and the sign is what takes up the distance, so there is nothing left at
+      ;; that boundary for Table 1 to state. The boundary BEFORE a sign is an
+      ;; ordinary one -- what stands there is the space the character before the
+      ;; sign takes, and the sign begins after it.
+      [(tab? before) '()]
+      [literal?
+       (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))]
+      [else (or (formula-terms before after) (table-one-terms before after))]))
   (define withdrawn
     (let* ([step-one (if (withdraws-own-space? before writing-mode) (without stated 'before) stated)]
            [step-two (if (withdraws-own-space? after writing-mode) (without step-one 'after) step-one)]
