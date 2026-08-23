@@ -26,7 +26,13 @@ There are two public contracts:
 2. `jlreq-conformance`, a binary-only product that communicates with any engine through
    the versioned NDJSON protocol.
 
-`xtask` is repository tooling and is not a product crate.
+`xtask` is repository tooling and is not a product crate. `engines/` — independent
+reference implementations of the protocol, starting with `engines/ocaml/` — is tooling in
+the same sense: neither a Cargo workspace member nor a product, and out of scope for every
+gate whose scope is the Cargo graph (`purity`, `api`, `direction`, `derive`, `generate`,
+`deny`, `shear`, `msrv`). See
+[docs/design/conformance.md](docs/design/conformance.md#independent-reference-engines) and
+[ADR 0024](docs/adr/0024-independent-reference-engines.md).
 
 ## Logical pipeline
 

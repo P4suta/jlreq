@@ -4,6 +4,13 @@
 
 # Install tools with `mise install`. Rust configuration is in rust-toolchain.toml.
 
+# The reference engines under engines/ are deliberately outside this file. Their
+# toolchains (OCaml and opam today) are not part of the product build, and the versions
+# they are held to live in the conform-ocaml job of .github/workflows/ci.yml, which is the
+# single source of them; engines/ocaml/README.md records them for a reader. A developer
+# who has not installed them still passes `just ci`, where `conform-engines` skips loudly
+# and the CI job is the enforcing gate.
+
 [tools]
 rust = "stable"
 

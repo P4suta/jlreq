@@ -108,6 +108,16 @@ running. Both dependencies are test-only; neither is a `jlreq` dependency or fea
 | `crates/jlreq-conformance` | binary-only black-box runner and sample engine |
 | `xtask` | specification generation and architectural gates |
 | `spec/`, `data/` | vendored specification inputs, derived data, and provenance |
+| `engines/` | independent, non-product reference engines that speak protocol v1 |
+
+## Independent reference engines
+
+Protocol independence is only a claim until a second implementation tests it.
+[`engines/ocaml/`](engines/ocaml/README.md) is a from-scratch OCaml implementation of
+protocol v1, built directly from `spec/` and barred from reading `crates/jlreq/src/`;
+`engines/racket/` follows the same rule. Neither is a Cargo workspace member or a product;
+see [`docs/design/conformance.md`](docs/design/conformance.md#independent-reference-engines)
+and [ADR 0024](docs/adr/0024-independent-reference-engines.md).
 
 ## Development
 

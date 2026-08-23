@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+opam-version: "2.0"
+name: "jlreq-engine"
+synopsis: "An independent OCaml implementation of the jlreq conformance protocol"
+description: """
+A second implementation of W3C's Requirements for Japanese Text Layout, written
+against the specification and the transcribed tables under spec/ rather than
+against the Rust engine in this repository. It exists to test the claim that the
+conformance protocol is language independent, and to cross-check the Rust engine
+by N-version comparison: the two share no code, and they read the two independent
+transcriptions of Appendices B through E.
+
+Not a product. Nothing depends on it, it is outside the Cargo workspace, and it
+is never published.
+"""
+maintainer: "jlreq contributors"
+authors: "jlreq contributors"
+license: "MIT OR Apache-2.0"
+homepage: "https://github.com/P4suta/jlreq"
+bug-reports: "https://github.com/P4suta/jlreq/issues"
+dev-repo: "git+https://github.com/P4suta/jlreq.git"
+
+# The engine has no dependencies and is meant to keep none. The core Rust crate
+# is dependency-free and no_std; an independent reference implementation that
+# pulled in a JSON library would be testing that library's agreement with
+# serde_json rather than this project's agreement with JLReq. The JSON reader,
+# the UTF-8 scanner and the TSV reader are all in this tree.
+depends: [
+  "ocaml" {>= "5.1"}
+  "dune" {>= "3.16"}
+]
+
+# The build lives at the repository root, not here: a dune rule cannot depend on
+# a file above its project root, and the engine's tables are read out of spec/.
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]

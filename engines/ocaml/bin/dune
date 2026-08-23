@@ -1,0 +1,18 @@
+; SPDX-FileCopyrightText: 2026 jlreq contributors
+;
+; SPDX-License-Identifier: MIT OR Apache-2.0
+
+; The engine the conformance runner starts.
+;
+;   dune build engines/ocaml
+;   cargo run -p jlreq-conformance -- run \
+;     _build/default/engines/ocaml/bin/jlreq_ocaml_engine.exe
+;
+; The `.exe` suffix is dune's name for the native executable on every platform,
+; Unix included; there is no separate Windows spelling to teach the runner.
+
+(executable
+ (name jlreq_ocaml_engine)
+ (libraries jlreq jlreq_proto)
+ (flags
+  (:standard -w +a-4-40-41-42-44-45-70 -strict-sequence -strict-formats -safe-string)))

@@ -1,0 +1,17 @@
+; SPDX-FileCopyrightText: 2026 jlreq contributors
+;
+; SPDX-License-Identifier: MIT OR Apache-2.0
+
+; Layer 2: the wire format.
+;
+; This library may depend on `jlreq`; `jlreq` may not depend on this one, and
+; cannot, because OCaml has no cyclic libraries. That one-way edge is the whole
+; point of the split: the engine computes a layout in integers and knows nothing
+; about JSON, exactly as the Rust `jlreq` crate carries no serialization and the
+; adapter lives in `jlreq-conformance`.
+
+(library
+ (name jlreq_proto)
+ (libraries jlreq)
+ (flags
+  (:standard -w +a-4-40-41-42-44-45-70 -strict-sequence -strict-formats -safe-string)))

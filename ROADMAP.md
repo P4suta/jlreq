@@ -36,6 +36,16 @@ the current tests exercise the workstream; it does not mean stable or released.
 
 ## M5 — Vertical composition
 
+## Independent reference engines
+
+[`engines/ocaml/`](engines/ocaml/README.md) is a from-scratch OCaml implementation of the
+conformance protocol, gated on a milestone sequence of its own
+(`engines/ocaml/milestones/`) that is unrelated to the Rust workstream numbers above. It
+currently claims milestone 0 — the transport, envelope, and specification tables, with no
+layout logic yet — and advances toward the full eighty-nine-case built-in suite one
+disjoint milestone per pull request. `engines/racket/` will follow the same shape. See
+[ADR 0024](docs/adr/0024-independent-reference-engines.md).
+
 ## Before any release
 
 - Keep development test-first: reproduce an observable failure, verify Red, implement the

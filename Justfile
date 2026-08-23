@@ -18,6 +18,26 @@ mutant_crates := "-p jlreq"
 # checkout and therefore deliberately omits Cargo's dirty-tree escape hatch.
 package_dirty := if env_var_or_default("CI", "") == "true" { "" } else { "--allow-dirty" }
 
+# Where dune builds the reference engines in engines/, which is deliberately not its
+# default `_build/` at the repository root. Dune copies every file a rule depends on into
+# its build directory and the engines' rules depend on spec/captured/table*.tsv, so a
+# default build leaves copies of the transcription outside spec/captured/ — where
+# `just attest` reports them, because it confines the capture to the one directory a
+# reviewer can read as one and skips only `.git` and `target` while it looks
+# (docs/adr/0009). Building inside `target/` keeps the capture confined and the engines
+# buildable at once. Dune takes a build directory outside the project root only as an
+# absolute path, hence `justfile_directory()`.
+dune_build_dir := "target" / "dune"
+export DUNE_BUILD_DIR := justfile_directory() / dune_build_dir
+
+# The engine executable the conformance runner is handed. `.exe` is dune's name for a
+# native executable on every platform, Unix included.
+ocaml_engine := dune_build_dir / "default/engines/ocaml/bin/jlreq_ocaml_engine.exe"
+
+# Scratch space for the partial suite `ocaml-milestone` selects out of the built-in one.
+# Nothing reads it but the run that just wrote it.
+milestone_dir := "target" / "ocaml-milestone"
+
 # List the available development commands.
 default:
     @just --list
@@ -192,6 +212,64 @@ msrv:
 mutants crate="":
     cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} --test-tool nextest --no-times --colors=never -j 4
 
+# Build the independent OCaml reference engine (engines/ocaml/README.md). The engines are
+# outside the Cargo workspace and no Rust gate reads them, so the recipes below are the
+# only things that build, test or run them. They are POSIX shell scripts; `conform-engines`
+# is the one `just ci` calls and the one that knows about Windows.
+#
+# Dune creates DUNE_BUILD_DIR itself but refuses to create its parent, so a clean checkout
+# with no `target/` yet (CI, before any cargo build has made one) fails before dune gets a
+# chance to build anything. Creating it first makes this recipe work on its own.
+ocaml-build:
+    mkdir -p {{DUNE_BUILD_DIR}}
+    dune build engines/ocaml
+
+# Build the OCaml engine and run its own unit tests: the startup census of the
+# specification tables, and the cross-check of the English transcription against the
+# Japanese one this engine reads.
+ocaml-test: ocaml-build
+    dune runtest engines/ocaml
+
+# Run the whole built-in suite against the OCaml engine. Before milestone M9 this is
+# expected to report differences and exit 1 — a wrong answer is what the engine is still
+# being written to fix. Exit 2 is different and is a real failure: it means the transport,
+# the JSON or the specification tables are broken. `ocaml-gate` is what gates a merge, and
+# at M9 it becomes this recipe by construction.
+conform-ocaml: ocaml-build
+    cargo run --quiet -p jlreq-conformance -- run {{ocaml_engine}}
+
+# Run the cases of milestones M1 through M<m> against the OCaml engine: everything the
+# engine claims to answer bit for bit, and nothing it does not. `m` is `0` until M1 lands,
+# where no case is claimed yet and the unit tests are the whole gate.
+ocaml-milestone m: ocaml-test
+    {{ if m == "0" { "echo 'milestone 0: no conformance case is claimed yet'" } else { "just _ocaml-milestone " + m } }}
+
+# The rest of `ocaml-milestone` for m >= 1, which needs more statements than the single
+# conditional line of its caller can hold. Private because it is that recipe's body: the
+# milestone files partition the suite, so the selection must find exactly as many cases as
+# it named — an identifier matching nothing (a typo, or a case renamed in the suite) would
+# otherwise shrink the gate without saying so.
+_ocaml-milestone m:
+    mkdir -p {{milestone_dir}}
+    i=1; while [ "$i" -le {{m}} ]; do cat engines/ocaml/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{milestone_dir}}/ids.txt
+    grep -F -f {{milestone_dir}}/ids.txt crates/jlreq-conformance/suite.ndjson > {{milestone_dir}}/suite.ndjson
+    test "$(wc -l < {{milestone_dir}}/ids.txt)" -eq "$(wc -l < {{milestone_dir}}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
+    cargo run --quiet -p jlreq-conformance -- run {{ocaml_engine}} {{milestone_dir}}/suite.ndjson
+
+# The engine gate CI runs, and the one place that says how much of the suite the engine is
+# held to today. engines/ocaml/milestones/CURRENT names that milestone, so advancing it is
+# one digit in one file, reviewed in the pull request that earns it, and no workflow has to
+# be edited to keep up.
+ocaml-gate:
+    just ocaml-milestone "$(sed -e 's/#.*$//' -e '/^[[:space:]]*$/d' engines/ocaml/milestones/CURRENT)"
+
+# The engine gate as `just ci` runs it. It is deliberately not a hard dependency on an
+# OCaml toolchain: a developer working on the Rust side has no opam switch, and a local
+# gate that fails for that reason is a gate that gets routed around. The skip is loud, and
+# the required conform-ocaml job in CI is what actually enforces it.
+conform-engines:
+    {{ if os() == "windows" { "if (Get-Command dune -ErrorAction SilentlyContinue) { just ocaml-gate } else { Write-Output 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)' }" } else { "if command -v dune > /dev/null 2>&1; then just ocaml-gate; else echo 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)'; fi" } }}
+
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
 design: purity placeholder api direction derive-check generate-check attest conform repository
@@ -202,5 +280,5 @@ check: fmt-check toml-check typos lint design shear reuse actionlint zizmor
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv conform-engines
     @echo "local CI passed"

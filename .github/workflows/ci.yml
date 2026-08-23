@@ -9,6 +9,8 @@
 #   - jlreq              dependency-free no_std + alloc public library.
 #   - jlreq-conformance  binary-only protocol runner and sample engine.
 #   - xtask          repository policy checks shared by Just and CI.
+#   - engines/ocaml      an independent reference engine, outside the Cargo workspace,
+#                        built and gated by the conform-ocaml job alone.
 #
 # Policy:
 #   - Every third-party action is SHA-pinned (Dependabot bumps them weekly); the comment
@@ -213,6 +215,37 @@ jobs:
       # it.
       - run: just design
 
+  conform-ocaml:
+    # The independent OCaml reference engine (engines/ocaml/README.md) answering the
+    # conformance protocol from an implementation that shares no code with the Rust one
+    # and reads the other locale's transcription of Appendices B through E.
+    #
+    # The gate is the cumulative suite engines/ocaml/milestones/CURRENT points at, not the
+    # whole one: the engine is written a milestone at a time and is held to exactly what it
+    # claims, so a merge is blocked by a regression rather than by work not yet done. At M9
+    # that file reaches 9, the cumulative suite is all eighty-nine cases, and this gate and
+    # `just conform-ocaml` are the same run.
+    name: conform-ocaml (independent OCaml engine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@b20dedce73af6905cdc30d6611090c9b67557c8d # v2.85.12
+        with:
+          tool: just@1.50.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # `dune-cache: true` is also what installs dune into the switch. The action puts opam
+      # on PATH but deliberately not the switch's own bin directory, so the gate runs under
+      # `opam exec --`; everything inside it is the recipe a developer runs locally.
+      - uses: ocaml/setup-ocaml@f92e0606b7ae4873dd1238465ea4bf6f8e40d85c # v3.7.2
+        with:
+          ocaml-compiler: "5.5.0"
+          dune-cache: true
+      - run: opam exec -- just ocaml-gate
+
   doc:
     name: doc (rustdoc, warnings are errors)
     runs-on: ubuntu-latest
@@ -331,6 +364,7 @@ jobs:
       - fuzz
       - purity
       - design
+      - conform-ocaml
       - doc
       - package
       - typos

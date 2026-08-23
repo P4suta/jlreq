@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Milestone M4 of the OCaml reference engine: 5 conformance case(s).
+#
+# Vertical composition: rotation and orientation.
+#
+# One case identifier per line, in the order `jlreq-conformance list` prints
+# them. A `#` line and a blank line are comments. The nine files partition the
+# eighty-nine built-in cases: every case is in exactly one of them, so the
+# cumulative suite M1..Mn grows monotonically and M1..M9 is the whole suite.
+#
+# M4 is complete when the cumulative suite through M4 runs green:
+#
+#   cat engines/ocaml/milestones/M{1..4}.ids | ...select from suite.ndjson...
+#   cargo run -p jlreq-conformance -- run ENGINE PARTIAL.ndjson   # exit 0
+
+3.2.3/vertical-full-em-western-upright
+3.2.3/vertical-proportional-western-rotated
+3.1.3/vertical-digit-group-comma-withdraws-half-em
+3.1.3/vertical-decimal-middle-dot-withdraws-quarter-ems
+3.2.4/vertical-fixed-western-is-quasi-japanese
