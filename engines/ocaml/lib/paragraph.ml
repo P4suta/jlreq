@@ -123,6 +123,48 @@ let check_constructs (text : Model.shaped_text) (constructs : Construct.t array)
         constructs)
     constructs
 
+(** §C.2 note 13, as a refusal rather than as a break the search declines to take.
+
+    A tate-chu-yoko run is one thing on the line -- a horizontal string set inside a
+    vertical one (§3.2.5) -- and the note says there is no line break opportunity
+    between two of its characters. A caller who states one is describing a paragraph
+    that does not exist, because half a run is not something a line can end with, so
+    the request is refused rather than answered with the opportunity quietly dropped.
+    The run's own two edges are ordinary break opportunities, and so is the boundary
+    between two runs set one after the other, which is the coordinate the note's
+    second sentence is about.
+
+    It is refused in horizontal composition too, where a tate-chu-yoko construct
+    changes nothing else at all: the structure is indivisible because of what it is
+    and not because of the direction the line happens to run in.
+
+    The other eight structures are not checked here, and the built-in suite states
+    breaks inside four of them. A warichu splits into sublines (§3.7.2), a furawake
+    into columns, and a display formula breaks at its operators (§3.7.4), so a break
+    inside one of those is exactly what the caller means by it. Ruby splits at its
+    declared run boundaries and nowhere else, which is a narrower rule than either
+    of these two and belongs to the milestone that sets ruby. *)
+let check_indivisible_constructs (breaks : break_opportunity list)
+    (constructs : Construct.t array) : unit =
+  Array.iteri
+    (fun ordinal (construct : Construct.t) ->
+      match construct.Construct.kind with
+      | Construct.Tate_chu_yoko ->
+        let first, last = construct.Construct.range in
+        List.iter
+          (fun opportunity ->
+            if first < opportunity.offset && opportunity.offset < last then
+              fail
+                "a break is at byte %d, inside construct %d, which covers bytes %d..%d and is \
+                 indivisible"
+                opportunity.offset ordinal first last)
+          breaks
+      | Construct.Ruby _ | Construct.Warichu | Construct.Formula | Construct.Emphasis_dots _
+      | Construct.Furawake _ | Construct.Jidori _ | Construct.Reference_mark _
+      | Construct.Script _ ->
+        ())
+    constructs
+
 (** Build a paragraph, or refuse the input.
 
     @raise Invalid on anything a composed paragraph may not contain.
@@ -173,6 +215,7 @@ let build ~(text : Model.shaped_text) ~(line_extent : int)
     tab_stops;
   let constructs = Array.of_list constructs in
   check_constructs text constructs;
+  check_indivisible_constructs breaks constructs;
   (match widow with
   | Minimum_clusters minimum when minimum < 1 ->
     fail "the widow minimum is %d clusters" minimum

@@ -23,11 +23,19 @@
     apply it, which is a wrong answer rather than a missing feature.
 
     [四分角] (a quarter em) and [三分角] (a third of an em) name advances the
-    protocol has no [Frame] for -- it spells [full-em], [half-em] and
-    [proportional] and nothing else -- so they qualify nothing here. A cell naming
-    only those is read as stating no frame at all, which is how an unqualified cell
-    reads, and every key carrying one is listed under some other class whose own
-    Remarks decide the outcome.
+    protocol has no [Frame] for: it spells [full-em], [half-em] and [proportional]
+    and nothing else. They are read as a width no caller can declare rather than as
+    no width at all, so a cell naming only those excludes its listing at every
+    frame. The two readings differ at exactly two keys, and both are observable.
+    U+0020 SPACE is listed as a grouped numeral (§A.24) and a unit symbol's
+    character (§A.25) [字幅は四分角] and as the Western word space (§A.26) with no
+    qualification, so reading the quarter em as unstated would make a full-em space
+    a grouped numeral as soon as the caller declared a role. U+2010 HYPHEN is listed
+    as a hyphen (§A.03) [字幅は四分角] and as a Western character (§A.27)
+    [プロポーショナル], so it would stay a hyphen even when the caller shaped it
+    proportionally. Neither reading is written down; this one is the reference
+    implementation's and is recorded in README.md under "Observable policies with no
+    written source".
 
     {1 Narrowing}
 
@@ -121,12 +129,18 @@ type usage =
   | Vertical_only
 
 (** The frames a Remarks cell names, as a bit set. Zero means the cell states no
-    advance, which permits every frame. *)
+    advance, which permits every frame.
+
+    {!frame_unnameable} is the fourth bit: a width Appendix A states and the
+    protocol cannot carry. It is never any occurrence's frame, so a listing that
+    names it and nothing else is permitted at no frame -- which is the whole point
+    of distinguishing it from {!frames_unstated}. *)
 type frames = int
 
 let frame_full_em : frames = 1
 let frame_half_em : frames = 2
 let frame_proportional : frames = 4
+let frame_unnameable : frames = 8
 let frames_unstated : frames = 0
 
 let frame_bit (frame : Model.frame) : frames =
@@ -146,14 +160,16 @@ let starts_at (text : string) (offset : int) (word : string) : bool =
 
 (** One advance word.
 
-    [全角] and [半角] are the two the protocol has frames for. [四分角] and
-    [三分角] are advances it does not name, and contribute nothing rather than
-    being guessed onto the nearest frame. *)
+    [全角], [半角] and [プロポーショナル] are the three the protocol has frames for.
+    [四分角] and [三分角] are advances it does not name; they are collected as
+    {!frame_unnameable} rather than guessed onto the nearest frame, so a listing
+    qualified by one of them is available only where the cell names a nameable width
+    beside it. *)
 let advance_word = function
   | "全角" -> Some frame_full_em
   | "半角" -> Some frame_half_em
   | "プロポーショナル" -> Some frame_proportional
-  | "四分角" | "三分角" -> Some frames_unstated
+  | "四分角" | "三分角" -> Some frame_unnameable
   | _ -> None
 
 let advance_words = [ "全角"; "半角"; "プロポーショナル"; "四分角"; "三分角" ]

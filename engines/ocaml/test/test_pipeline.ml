@@ -41,10 +41,11 @@ type piece = {
   advance : int;
   own_frame : Model.frame option;
   own_role : Model.role option;
+  own_size : Model.size option;
 }
 
-let p ?frame ?role ?(advance = 1000) at =
-  { at; advance; own_frame = frame; own_role = role }
+let p ?frame ?role ?size ?(advance = 1000) at =
+  { at; advance; own_frame = frame; own_role = role; own_size = size }
 
 let kanji = "\xe2\x80\xbb" (* U+203B REFERENCE MARK, cl-19 *)
 let ideographic_space = "\xe3\x80\x80" (* U+3000, cl-14 *)
@@ -69,7 +70,9 @@ let placed ?(paragraph_frame = Model.Full_em) ?(alignment = Paragraph.Justify)
     List.fold_left
       (fun (clusters, offsets, start) piece ->
         let stop = start + String.length piece.at in
-        ( cluster ?frame:piece.own_frame ?role:piece.own_role start stop piece.advance :: clusters,
+        ( cluster ?size:piece.own_size ?frame:piece.own_frame ?role:piece.own_role start stop
+            piece.advance
+          :: clusters,
           stop :: offsets,
           stop ))
       ([], [], 0) pieces
@@ -97,6 +100,78 @@ let first_line (lines : int list list) : string =
 
 let ceiling (answer : string) : Style.t =
   Style.build [ ("adjustment.japanese_latin_expansion_ceiling", answer) ]
+
+(* ----------------------------------------------------------------------------- *)
+(* Vertical composition and tate-chu-yoko *)
+(* ----------------------------------------------------------------------------- *)
+
+let opening_bracket = "\xe3\x80\x88" (* U+3008, cl-01 *)
+let closing_bracket = "\xe3\x80\x89" (* U+3009, cl-02 *)
+let middle_dot = "\xe3\x83\xbb" (* U+30FB, cl-05 *)
+let full_stop = "\xe3\x80\x82" (* U+3002, cl-06 *)
+let ideographic_comma = "\xe3\x80\x81" (* U+3001, cl-07 *)
+let hyphen = "\xe2\x80\x90" (* U+2010, cl-03 or cl-27 *)
+
+(** The paragraph built from [pieces], with each named piece range covered by a
+    tate-chu-yoko construct.
+
+    [runs] and [breaks] are stated in {i piece} indices rather than byte offsets,
+    because every check below is about which cluster went where and none of them is
+    about UTF-8. *)
+let compose_pieces ?(mode = Model.Vertical_rl) ?(style = Style.default ())
+    ?(alignment = Paragraph.Start) ?(runs : (int * int) list = [])
+    ?(breaks : (int * Paragraph.break_kind) list = []) ~(extent : int) (pieces : piece list) :
+    Layout.t =
+  let source = String.concat "" (List.map (fun piece -> piece.at) pieces) in
+  let bounds = Array.make (List.length pieces + 1) 0 in
+  let clusters, _ =
+    List.fold_left
+      (fun (clusters, start) piece ->
+        let index = List.length clusters in
+        let stop = start + String.length piece.at in
+        bounds.(index) <- start;
+        bounds.(index + 1) <- stop;
+        ( cluster ?size:piece.own_size ?frame:piece.own_frame ?role:piece.own_role start stop
+            piece.advance
+          :: clusters,
+          stop ))
+      ([], 0) pieces
+  in
+  let constructs =
+    List.map
+      (fun (first, last) ->
+        { Construct.range = (bounds.(first), bounds.(last)); Construct.kind = Construct.Tate_chu_yoko })
+      runs
+  in
+  let breaks =
+    List.map
+      (fun (index, kind) -> { Paragraph.offset = bounds.(index); Paragraph.kind = kind })
+      breaks
+  in
+  let paragraph =
+    Paragraph.build ~text:(text source (List.rev clusters)) ~line_extent:extent ~breaks
+      ~constructs ~alignment ~writing_mode:mode ()
+  in
+  Pipeline.compose paragraph style
+
+(** One placement as [inline:block:advance:mode/transform] -- where it went, what it
+    contributed, and the two fields §3.2's orientation decides. *)
+let show_placement (placement : Layout.placement) : string =
+  Printf.sprintf "%d:%d:%d:%s/%s" placement.Layout.inline placement.Layout.block
+    placement.Layout.advance
+    (Model.writing_mode_name placement.Layout.writing_mode)
+    (Layout.transform_name placement.Layout.transform)
+
+(** One line as [(inline extent/block extent) placement...]. *)
+let show_line (line : Layout.line) : string =
+  Printf.sprintf "(%d/%d) %s" line.Layout.inline_extent line.Layout.block_extent
+    (String.concat " " (List.map show_placement line.Layout.clusters))
+
+let lines_of (layout : Layout.t) : string =
+  String.concat " | " (List.map show_line layout.Layout.lines)
+
+let vertical ?mode ?style ?alignment ?runs ?breaks ~extent pieces : string =
+  lines_of (compose_pieces ?mode ?style ?alignment ?runs ?breaks ~extent pieces)
 
 let compose_json (envelope : string) : string =
   match Jlreq_proto.Protocol.request_of_line envelope with
@@ -355,6 +430,111 @@ let run () =
   Check.equal_string "and the last line of a paragraph is left short too"
     ~expected:"0 1000 2000 3000"
     ~actual:(first_line (placed ~extent:5200 ~break_after:4 three_kanji));
+
+  (* Vertical composition: §3.2's three orientations. A tate-chu-yoko member is set
+     horizontally inside the vertical line, a proportional cluster is rotated a
+     quarter turn (§3.2.6), and a Western character in a fixed frame is
+     quasi-Japanese and stands up (§3.2.4). *)
+  let digit ?(advance = 500) ?size at = p ~frame:Model.Proportional ~advance ?size at in
+  Check.equal_string "vertical composition orients each cluster for itself"
+    ~expected:"(2250/1000) 0:0:750:vertical-rl/rotate-clockwise 750:0:500:vertical-rl/identity 1250:0:1000:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:4000
+         [ digit "1"; p ~frame:Model.Half_em ~advance:500 "A"; p kanji ]);
+  Check.equal_string "and horizontal composition sets everything upright"
+    ~expected:"(2250/1000) 0:0:750:horizontal-tb/identity 750:0:500:horizontal-tb/identity 1250:0:1000:horizontal-tb/identity"
+    ~actual:
+      (vertical ~mode:Model.Horizontal_tb ~extent:4000
+         [ digit "1"; p ~frame:Model.Half_em ~advance:500 "A"; p kanji ]);
+
+  (* §3.2.5: the string is set solid from left to right and the whole of it is
+     centered on the line, so a member sits half the run's width back from where an
+     ordinary cluster would and every member after it follows by its own advance. *)
+  Check.equal_string "a tate-chu-yoko run is centered across the line" ~expected:"(1000/1000) 0:-500:500:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko"
+    ~actual:(vertical ~extent:4000 ~runs:[ (0, 2) ] [ digit "1"; digit "2" ]);
+  Check.equal_string "and half of an odd width is taken toward the line's own origin"
+    ~expected:"(1000/1233) 0:-616:300:horizontal-tb/tate-chu-yoko 0:-316:433:horizontal-tb/tate-chu-yoko 0:117:500:horizontal-tb/tate-chu-yoko"
+    ~actual:
+      (vertical ~extent:4000 ~runs:[ (0, 3) ]
+         [ digit ~advance:300 "1"; digit ~advance:433 "2"; digit ~advance:500 "3" ]);
+  (* The run is as wide across the line as its members are long and as long as its
+     tallest member is wide: the two ems change places with the member. *)
+  Check.equal_string "a member's block em is what the run takes up along the line"
+    ~expected:"(1400/1000) 0:-500:500:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko"
+    ~actual:
+      (vertical ~extent:4000 ~runs:[ (0, 2) ]
+         [
+           digit "1";
+           digit ~size:{ Model.inline = 1000; Model.block = 1400 } "2";
+         ]);
+
+  (* §3.2.5's four amounts: a half em after a comma, a closing bracket or a full
+     stop, a half em before an opening bracket, and solid against everything else --
+     including the six cl-30 coordinates Table 1 gives a quarter em to. *)
+  Check.equal_string "a run takes a half em after a comma and before an opening bracket"
+    ~expected:"(4000/1000) 0:0:1500:vertical-rl/identity 1500:-500:500:horizontal-tb/tate-chu-yoko 1500:0:500:horizontal-tb/tate-chu-yoko 3000:0:1000:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:6000 ~runs:[ (1, 3) ]
+         [ p ideographic_comma; digit "1"; digit "2"; p opening_bracket ]);
+  Check.equal_string "and is solid against an ideograph and against a middle dot"
+    ~expected:"(3250/1000) 0:0:1000:vertical-rl/identity 1000:-500:500:horizontal-tb/tate-chu-yoko 1000:0:500:horizontal-tb/tate-chu-yoko 2000:0:1250:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:6000 ~runs:[ (1, 3) ]
+         [ p kanji; digit "1"; digit "2"; p middle_dot ]);
+  Check.equal_string "a half em after a closing bracket, and after a full stop"
+    ~expected:"(5000/1000) 0:0:1500:vertical-rl/identity 1500:-250:500:horizontal-tb/tate-chu-yoko 2500:0:1500:vertical-rl/identity 4000:-250:500:horizontal-tb/tate-chu-yoko"
+    ~actual:
+      (vertical ~extent:8000 ~runs:[ (1, 2); (3, 4) ]
+         [ p closing_bracket; digit "1"; p full_stop; digit "2" ]);
+  (* The run is one thing on the line, so the space §3.2.5 puts after it is stated
+     against the next character of the paragraph and survives the line ending. *)
+  Check.equal_string "the half em before an opening bracket survives a line end"
+    ~expected:"(1500/1000) 0:-500:500:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko | (1000/1000) 0:-1000:1000:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:2000 ~runs:[ (0, 2) ]
+         ~breaks:[ (2, Paragraph.Mandatory) ]
+         [ digit "1"; digit "2"; p opening_bracket ]);
+
+  (* §E.2 note 12: the (cl-30, cl-30) cell belongs to two characters of different
+     runs. Three runs give two such boundaries and three internal ones, and only the
+     two open. *)
+  Check.equal_string "expansion opens between two runs and never inside one"
+    ~expected:"(3500/1000) 0:-500:500:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko 1250:-500:500:horizontal-tb/tate-chu-yoko 1250:0:500:horizontal-tb/tate-chu-yoko 2500:-500:500:horizontal-tb/tate-chu-yoko 2500:0:500:horizontal-tb/tate-chu-yoko | (1000/1000) 0:-1000:1000:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:3500 ~alignment:Paragraph.Justify
+         ~runs:[ (0, 2); (2, 4); (4, 6) ] ~breaks:[ (6, Paragraph.Mandatory) ]
+         [ digit "1"; digit "2"; digit "3"; digit "4"; digit "5"; digit "6"; p kanji ]);
+
+  (* §C.2 note 13, which this engine answers by refusing the request rather than by
+     declining the opportunity. *)
+  Check.raises "a break inside a tate-chu-yoko run" (fun () ->
+      compose_pieces ~extent:4000 ~runs:[ (0, 2) ] ~breaks:[ (1, Paragraph.Allowed) ]
+        [ digit "1"; digit "2" ]);
+  Check.raises "and a mandatory one, which is no more divisible" (fun () ->
+      compose_pieces ~extent:4000 ~runs:[ (0, 2) ] ~breaks:[ (1, Paragraph.Mandatory) ]
+        [ digit "1"; digit "2" ]);
+  Check.raises "and one in horizontal composition, where the run sets nothing"
+    (fun () ->
+      compose_pieces ~mode:Model.Horizontal_tb ~extent:4000 ~runs:[ (0, 2) ]
+        ~breaks:[ (1, Paragraph.Allowed) ] [ digit "1"; digit "2" ]);
+  Check.returns "a break at the run's own edge" (fun () ->
+      compose_pieces ~extent:4000 ~runs:[ (0, 2) ] ~breaks:[ (2, Paragraph.Allowed) ]
+        [ digit "1"; digit "2"; p kanji ]);
+  Check.returns "and one between two runs set side by side" (fun () ->
+      compose_pieces ~extent:4000 ~runs:[ (0, 2); (2, 4) ] ~breaks:[ (2, Paragraph.Allowed) ]
+        [ digit "1"; digit "2"; digit "3"; digit "4" ]);
+
+  (* §A.24 and §A.25 list U+0020 at a quarter em, which is a width the protocol has
+     no frame for, so neither listing is reachable and the space stays the Western
+     word space however the caller labels it. §A.03 lists U+2010 the same way, so a
+     proportional hyphen is the Western character §A.27 lists. *)
+  Check.equal_string "a space the caller calls a grouped numeral is still a word space"
+    ~expected:"(3000/1000) 0:0:1000:vertical-rl/identity 1000:0:1000:vertical-rl/identity 2000:0:1000:vertical-rl/identity"
+    ~actual:
+      (vertical ~extent:6000
+         [ p kanji; p ~role:Model.Grouped_numeral " "; p kanji ]);
+  Check.equal_string "and a proportional hyphen is a Western character" ~expected:"(3000/1000) 0:0:1250:vertical-rl/identity 1250:0:750:vertical-rl/rotate-clockwise 2000:0:1000:vertical-rl/identity"
+    ~actual:(vertical ~extent:6000 [ p kanji; digit hyphen; p kanji ]);
 
   (* A request the protocol does not carry is an error, not a default. *)
   Check.raises "an unknown request field" (fun () ->

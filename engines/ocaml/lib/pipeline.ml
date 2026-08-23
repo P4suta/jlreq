@@ -81,12 +81,65 @@ let enclosing (paragraph : Paragraph.t) (ordinal : int) (matches : Construct.kin
     in
     search 0
 
+(** The cluster ordinals of the tate-chu-yoko run [ordinal] is a member of.
+
+    Horizontal composition has none: §3.2.5 is a rule about setting a horizontal
+    string inside a vertical line, and a paragraph that is already horizontal has
+    nothing to turn. A tate-chu-yoko construct in a horizontal paragraph therefore
+    leaves its characters entirely alone -- their class, their orientation and their
+    spacing are what they would have been without it. *)
 let tate_chu_yoko_range (paragraph : Paragraph.t) (ordinal : int) : (int * int) option =
   if paragraph.Paragraph.writing_mode <> Vertical_rl then None
   else enclosing paragraph ordinal (function Construct.Tate_chu_yoko -> true | _ -> false)
 
 let formula_range (paragraph : Paragraph.t) (ordinal : int) : (int * int) option =
   enclosing paragraph ordinal (function Construct.Formula -> true | _ -> false)
+
+(** Whether the boundary after [ordinal] falls {i inside} one tate-chu-yoko run.
+
+    §C.2 note 13 and §E.2 note 12 are the same sentence about two different tables:
+    two characters in tate-chu-yoko (cl-30) belonging to the same run are one thing
+    on the line, so no line break falls between them and no space is opened between
+    them, and the [(cl-30, cl-30)] cell each table states applies only where the two
+    belong to {i different} runs. *)
+let is_internal_tate_chu_yoko_boundary (paragraph : Paragraph.t) (ordinal : int) : bool =
+  match tate_chu_yoko_range paragraph ordinal with
+  | Some (_, last) -> ordinal + 1 < last
+  | None -> false
+
+(** How wide the run's members set, taken left to right and solid (§3.2.5).
+
+    This is the run's extent {i across} the line rather than along it: the string is
+    set horizontally, and only then is the whole of it placed on the vertical line.
+    Each member contributes its own shaped advance, because "solid" is exactly the
+    statement that nothing is added between them. *)
+let tate_chu_yoko_run_width (paragraph : Paragraph.t) ~(first : int) ~(last : int) : int =
+  let total = ref 0 in
+  for member = first to last - 1 do
+    match cluster_at paragraph member with
+    | Some cluster -> total := Num.i32_add !total cluster.advance
+    | None -> ()
+  done;
+  !total
+
+(** Where the run's member at [ordinal] sits across the line, measured from the
+    line's own block origin.
+
+    §3.2.5: "set from left to right using solid setting, then align the whole string
+    to the center of the vertical line". Centering the string on the line puts its
+    first member half the run's width back from where an ordinary cluster of the
+    line would sit, and every member after that follows the one before it by that
+    one's own advance. Half is taken toward zero, so a run of an odd total width
+    leans by one unit toward the line's own origin rather than away from it. *)
+let tate_chu_yoko_member_offset (paragraph : Paragraph.t) (ordinal : int) ~(first : int)
+    ~(last : int) : int =
+  let preceding = ref 0 in
+  for member = first to ordinal - 1 do
+    match cluster_at paragraph member with
+    | Some cluster -> preceding := Num.i32_add !preceding cluster.advance
+    | None -> ()
+  done;
+  Num.i32_sub !preceding (tate_chu_yoko_run_width paragraph ~first ~last / 2)
 
 let is_internal_jidori_boundary (paragraph : Paragraph.t) (ordinal : int) : bool =
   match cluster_at paragraph ordinal with
@@ -284,34 +337,50 @@ let formula_boundary_space_after (paragraph : Paragraph.t) (ordinal : int) : int
       | _ -> Some 0)
     | _ -> None
 
-(** §3.2.3's spacing beside a tate-chu-yoko run, or [None] where none is involved. *)
-let tate_chu_yoko_boundary_space_after (paragraph : Paragraph.t) (ordinal : int) : int option =
-  if paragraph.Paragraph.writing_mode <> Vertical_rl then None
-  else
-    let count = Array.length paragraph.Paragraph.text.clusters in
-    match tate_chu_yoko_range paragraph ordinal with
-    | Some (first, last) ->
-      if first <> ordinal || last >= count then Some 0
-      else
-        let following = paragraph.Paragraph.text.clusters.(last) in
-        if scalar_satisfies paragraph following is_opening_bracket then
-          Some (Model.half_inline_size paragraph.Paragraph.text following)
-        else Some 0
-    | None ->
-      let following_ordinal = ordinal + 1 in
-      if following_ordinal >= count then None
-      else if
-        match tate_chu_yoko_range paragraph following_ordinal with
-        | Some (first, _) -> first <> following_ordinal
-        | None -> true
-      then None
-      else
-        let current = paragraph.Paragraph.text.clusters.(ordinal) in
-        if
-          scalar_satisfies paragraph current (fun scalar ->
-              is_closing_bracket scalar || is_full_stop scalar || is_comma scalar)
-        then Some (Model.half_inline_size paragraph.Paragraph.text current)
-        else Some 0
+(** §3.2.5's spacing beside a tate-chu-yoko run, as Table 1's two components, or
+    [None] where no run stands on either side of the boundary.
+
+    §3.2.5 states four amounts and nothing else. A run takes a half em after a comma
+    (cl-07), after a closing bracket (cl-02) and after a full stop (cl-06); it takes
+    a half em before an opening bracket (cl-01); and it is solid against everything
+    else, hiragana, katakana and ideographic characters included. Table 1's cl-30 row
+    and column state those four coordinates and six more -- a quarter em against a
+    middle dot (cl-05) and against the four Western and ornamented classes, in both
+    directions -- and §3.2.5's own Note says that the table is the complete
+    statement. The reference implementation reads the prose as exhaustive and the
+    Note as a pointer rather than a widening, and this engine matches it. The
+    disagreement is between two sentences of JLReq and is settled by neither; see
+    README.md, "Observable policies with no written source".
+
+    Two characters of one run are solid because §3.2.5 sets the string solid, and
+    two characters of {i different} runs are solid because Table 1 says so at
+    [(cl-30, cl-30)] -- the one coordinate where the prose and the table already
+    agree on nothing being added.
+
+    The classes are the ones §3.9.2 gives the occurrences, so an opening bracket
+    that is itself a run's first member is cl-30 and not cl-01: what a run stands
+    against is the run, never the character the run happens to begin with. *)
+let tate_chu_yoko_boundary_components (paragraph : Paragraph.t) (style : Style.t)
+    (ordinal : int) : (int * int) option =
+  let text = paragraph.Paragraph.text in
+  let half_of_cluster cluster = Model.half_inline_size text cluster in
+  match tate_chu_yoko_range paragraph ordinal with
+  | Some (_, last) ->
+    if ordinal + 1 <> last then Some (0, 0)
+    else (
+      match cluster_at paragraph (ordinal + 1) with
+      | Some following when class_of_cluster paragraph style (ordinal + 1) = Spec.opening_bracket
+        ->
+        Some (0, half_of_cluster following)
+      | _ -> Some (0, 0))
+  | None -> (
+    match (cluster_at paragraph ordinal, tate_chu_yoko_range paragraph (ordinal + 1)) with
+    | Some current, Some (first, _) when first = ordinal + 1 ->
+      let klass = class_of_cluster paragraph style ordinal in
+      if klass = Spec.closing_bracket || klass = Spec.full_stop || klass = Spec.comma then
+        Some (half_of_cluster current, 0)
+      else Some (0, 0)
+    | _ -> None)
 
 (** Table 1's space at the boundary after [ordinal], with the answers §3.1.6 leaves
     open applied.
@@ -355,9 +424,16 @@ let ordinary_boundary_space_after (paragraph : Paragraph.t) (style : Style.t) (o
     end
   | _ -> 0
 
+(** The space at the boundary after [ordinal]: §3.2.5's where a tate-chu-yoko run is
+    on one side of it, §3.7.4's where a formula is, and Table 1's otherwise.
+
+    Only the space {i set on the line} is overridden. §3.8.3's and §3.8.4's ladders
+    read Tables 3 through 6 and Table 1's own two components at face value, which at
+    a cl-30 coordinate is not the same number; that is deliberate and it is where the
+    two readings of §3.2.5 become observable. *)
 let boundary_space_after (paragraph : Paragraph.t) (style : Style.t) (ordinal : int) : int =
-  match tate_chu_yoko_boundary_space_after paragraph ordinal with
-  | Some amount -> amount
+  match tate_chu_yoko_boundary_components paragraph style ordinal with
+  | Some (leading, trailing) -> Num.i32_add leading trailing
   | None -> (
     match formula_boundary_space_after paragraph ordinal with
     | Some amount -> amount
@@ -387,15 +463,22 @@ let line_end_space_after (paragraph : Paragraph.t) (style : Style.t) (ordinal : 
 (* Advances *)
 (* ----------------------------------------------------------------------------- *)
 
-(** A cluster's own contribution, before any spacing.
+(** A cluster's own contribution to the line, before any spacing.
 
-    A tate-chu-yoko run is one thing on the line, as long as its tallest member's
-    block em. A math token inside a formula occupies its em rather than its shaped
-    advance. Everything else is what the shaper measured. *)
+    A tate-chu-yoko run is one thing on the line, and takes up along the line what
+    its tallest member is across one: the string inside it is set horizontally, so
+    what the vertical line sees is that string's height. The whole of it is charged
+    to the run's {i last} member and nothing to the members before, so that the
+    cursor stands still while a run is placed and moves on once, past the run and
+    past the space Table 1 puts after it -- which is stated at the run's last
+    boundary and nowhere else.
+
+    A math token inside a formula occupies its em rather than its shaped advance.
+    Everything else is what the shaper measured. *)
 let cluster_body_advance (paragraph : Paragraph.t) (ordinal : int) : int =
   match tate_chu_yoko_range paragraph ordinal with
   | Some (first, last) ->
-    if first <> ordinal then 0
+    if ordinal + 1 <> last then 0
     else begin
       let widest = ref 0 in
       for member = first to last - 1 do
@@ -418,11 +501,22 @@ let cluster_body_advance (paragraph : Paragraph.t) (ordinal : int) : int =
     Three things depend on where the line ends. A Western word space at either edge
     of a line disappears entirely (§3.2.2). The last cluster takes Table 1's
     line-end cell rather than the cell for its neighbor. Everything between takes
-    the ordinary boundary space. *)
+    the ordinary boundary space.
+
+    A tate-chu-yoko member is not asked where the line ends at all. §3.2.5 makes the
+    run one thing on the line, so what follows it is stated by §3.2.5 against the
+    next character of the {i paragraph} -- the run keeps the half em it takes before
+    an opening bracket even when the bracket is the first thing on the next line --
+    and Table 1's line-end column, which states nothing at cl-30 anyway, is not
+    consulted. *)
 let cluster_advance_on_line (paragraph : Paragraph.t) (style : Style.t) (ordinal : int)
     ~(line_start : int) ~(line_end : int) : int =
   if is_western_word_space paragraph ordinal && (ordinal = line_start || ordinal + 1 = line_end)
   then 0
+  else if tate_chu_yoko_range paragraph ordinal <> None then
+    Num.i32_add
+      (cluster_body_advance paragraph ordinal)
+      (boundary_space_after paragraph style ordinal)
   else if ordinal + 1 = line_end then
     Num.i32_add
       (cluster_body_advance paragraph ordinal)
@@ -505,6 +599,14 @@ let append_table_reduction_sites (paragraph : Paragraph.t) (style : Style.t) (or
     let after = class_of_cluster paragraph style (ordinal + 1) in
     let before_size = size_of paragraph before_cluster in
     let after_size = size_of paragraph after_cluster in
+    (* Table 1 as the matrix states it, not as §3.2.5 overrides it. Tables 3 through
+       5 state their own cl-30 cells -- a quarter em against a middle dot, an eighth
+       against the Western classes -- and the ladder reads them at face value even
+       where §3.2.5 put no space at that boundary for them to take back. The
+       observable consequence is a run that ends up a quarter em inside the character
+       before it on a line that had to give space back; it is the reference
+       implementation's answer and it is written down nowhere. See README.md,
+       "Observable policies with no written source". *)
     let components =
       Spec.table_one_space_components ~before ~after ~before_size ~after_size
         ~before_solid:(is_solid paragraph before_cluster)
@@ -831,13 +933,21 @@ let append_word_space_expansion_site (paragraph : Paragraph.t) (style : Style.t)
     ~residual
 
 (** Every place this line may be opened up at, in line order. One boundary, one
-    site. *)
+    site.
+
+    A boundary inside a tate-chu-yoko run is not one of them: §E.2 note 12 gives the
+    [(cl-30, cl-30)] cell only to two characters of {i different} runs, and the
+    inside of a run is set solid (§3.2.5) and stays that way however short the line
+    is. That is checked here rather than in {!append_table_expansion_site}, because
+    §3.2.2's word space would otherwise open inside a run without Table 6 being
+    asked at all. *)
 let expansion_sites (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int)
     ~(line_end : int) : expansion_site list =
   let sites = ref [] in
   for ordinal = line_start to line_end - 2 do
     if
       (not (is_internal_jidori_boundary paragraph ordinal))
+      && (not (is_internal_tate_chu_yoko_boundary paragraph ordinal))
       && (not (is_collapsed_word_space paragraph ordinal ~line_start ~line_end))
       && not (is_collapsed_word_space paragraph (ordinal + 1) ~line_start ~line_end)
     then
@@ -1063,18 +1173,24 @@ let measure_line (paragraph : Paragraph.t) (style : Style.t) ~(start : int) ~(fi
 
 (** §3.2's orientation of one cluster.
 
-    Horizontal composition sets everything upright. Vertical composition sets a
-    tate-chu-yoko member horizontally inside the line, rotates a proportional
-    cluster, and leaves everything else upright. *)
+    Horizontal composition sets everything upright, and a cluster's own writing mode
+    is the paragraph's. Vertical composition has three answers. A tate-chu-yoko
+    member is set horizontally (§3.2.5), so it carries the {i other} writing mode and
+    the transform that says the line turned it. A proportional cluster is a Western
+    character being set as Western text and is rotated a quarter turn clockwise
+    (§3.2.6). Everything else -- which includes a Western character in a full-em or a
+    half-em frame, because §3.2.4 reads a fixed-width Western character as
+    quasi-Japanese -- stands upright.
+
+    The run is the same one {!class_of_cluster} asks about, so a cluster the
+    construct covers only part of is not a member here either: one rule decides
+    whether a cluster is inside a run, and the class, the orientation, the spacing
+    and the geometry all follow it. *)
 let local_orientation (paragraph : Paragraph.t) (ordinal : int) (frame : Model.frame) :
     Model.writing_mode * Layout.transform =
   if paragraph.Paragraph.writing_mode = Horizontal_tb then (Horizontal_tb, Layout.Identity)
-  else if
-    Construct.find paragraph.Paragraph.constructs (cluster_range paragraph ordinal) (function
-      | Construct.Tate_chu_yoko -> true
-      | _ -> false)
-    <> None
-  then (Horizontal_tb, Layout.Tate_chu_yoko)
+  else if tate_chu_yoko_range paragraph ordinal <> None then
+    (Horizontal_tb, Layout.Tate_chu_yoko)
   else if frame = Proportional then (Vertical_rl, Layout.Rotate_clockwise)
   else (Vertical_rl, Layout.Identity)
 
@@ -1218,7 +1334,15 @@ let c_3_relaxes_boundary (style : Style.t) ~(before : int) ~(after : int)
     separates an opening bracket from what follows, and nothing separates a closing
     bracket, a full stop or a comma from what precedes. They are checked before the
     level's own relaxations, which is why the newspaper convention still refuses to
-    strand a closing bracket. *)
+    strand a closing bracket.
+
+    §C.2 note 13's prohibition is not among the ones asked here. Table 2 states the
+    [(cl-30, cl-30)] coordinate blank and leaves the note to say which of the two
+    readings of blank is meant, and the note's answer -- that two characters of the
+    same tate-chu-yoko run have no opportunity between them -- is settled before the
+    search runs at all: {!Paragraph.check_indivisible_constructs} refuses the
+    request. A candidate that reached here inside a run would be one the paragraph
+    could not have been built with. *)
 let break_is_legal (paragraph : Paragraph.t) (style : Style.t) (offset : int) : bool =
   let text = paragraph.Paragraph.text in
   if offset = String.length text.source then true
@@ -1428,15 +1552,39 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
     let cluster = text.clusters.(ordinal) in
     let size = size_of paragraph cluster in
     let frame = frame_of paragraph cluster in
-    if size.block > !block_extent then block_extent := size.block;
+    (* A tate-chu-yoko run is placed across the line rather than along it. Every
+       member sits at the cursor, because the run occupies one position on the line
+       and `advances` charges the whole of it to the run's last member; what tells
+       the members apart is the block coordinate §3.2.5's centering gives each. The
+       advance reported is the member's own, which is what it contributes to the
+       horizontal string, and not the step the line took.
+
+       A member's two ems change places with it. Its block em is how tall it is in
+       the string it is set in, which runs along the vertical line, so it is not what
+       the line has to make room for across itself: that is the run's width, which
+       may be more than any one em on the line -- a five-digit run in a one-em
+       measure is wider than the line's own characters -- or less. *)
+    let block, advance =
+      match tate_chu_yoko_range paragraph ordinal with
+      | Some (first, last) ->
+        if ordinal = first then begin
+          let width = tate_chu_yoko_run_width paragraph ~first ~last in
+          if width > !block_extent then block_extent := width
+        end;
+        ( Num.i32_add block_origin (tate_chu_yoko_member_offset paragraph ordinal ~first ~last),
+          cluster.advance )
+      | None ->
+        if size.block > !block_extent then block_extent := size.block;
+        (block_origin, advances.(local))
+    in
     let writing_mode, transform = local_orientation paragraph ordinal frame in
     placed :=
       {
         Layout.origin = Layout.From_cluster ordinal;
         Layout.range = (cluster.first, cluster.last);
         Layout.inline = Num.clamp_i32 !cursor;
-        Layout.block = block_origin;
-        Layout.advance = advances.(local);
+        Layout.block;
+        Layout.advance;
         Layout.size = size;
         Layout.frame = frame;
         Layout.writing_mode = writing_mode;
