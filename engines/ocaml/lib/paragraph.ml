@@ -85,6 +85,56 @@ let check_boundary (text : Model.shaped_text) (what : string) (offset : int) : u
   if not (Utf8.is_boundary text.Model.source offset) then
     fail "%s is at byte %d, which is not a UTF-8 boundary of the source" what offset
 
+(** §3.3.1's association, as the shape a request has to have.
+
+    A ruby construct is a base and a reading {i paired up}: "mono-ruby is the method
+    of attaching ruby to each individual base character", "group-ruby is the method of
+    attaching ruby to a group of base characters". The runs are how the caller states
+    which reading belongs to which base characters, so they have to be a partition of
+    both -- every base character in exactly one run, every ruby character in exactly
+    one run, and both walked in source order. A run that covers nothing, one that
+    starts where the previous one has not ended, and a set that leaves either side
+    partly uncovered all describe an association that does not exist, and are refused
+    rather than composed into a plausible wrong answer.
+
+    Mono ruby is narrower still: §3.3.1 attaches it to {i each individual base
+    character}, so a run of it covers one shaped cluster and no other number. Group
+    ruby and jukugo ruby both take a run over as many as the caller likes -- that is
+    what makes them a group and a compound. *)
+let check_ruby_runs (text : Model.shaped_text) (ordinal : int) ~(first : int) ~(last : int)
+    (ruby_kind : Construct.ruby_kind) (annotation : Model.shaped_text)
+    (runs : Construct.ruby_run list) : unit =
+  if runs = [] then fail "construct %d is ruby and states no base-to-annotation run" ordinal;
+  let reading = String.length annotation.Model.source in
+  let base_cursor = ref first and mark_cursor = ref 0 in
+  List.iter
+    (fun (run : Construct.ruby_run) ->
+      let base_first, base_last = run.Construct.run_base in
+      let mark_first, mark_last = run.Construct.run_annotation in
+      if base_first <> !base_cursor || base_last <= base_first || base_last > last then
+        fail "construct %d's runs do not partition its base characters in source order" ordinal;
+      if mark_first <> !mark_cursor || mark_last <= mark_first || mark_last > reading then
+        fail "construct %d's runs do not partition its annotation in source order" ordinal;
+      check_boundary annotation (Printf.sprintf "construct %d's annotation run" ordinal)
+        mark_first;
+      check_boundary annotation (Printf.sprintf "construct %d's annotation run" ordinal) mark_last;
+      base_cursor := base_last;
+      mark_cursor := mark_last;
+      if ruby_kind = Construct.Mono then begin
+        let covered = ref 0 in
+        Array.iter
+          (fun (cluster : Model.cluster) ->
+            if cluster.Model.first >= base_first && cluster.Model.last <= base_last then
+              incr covered)
+          text.Model.clusters;
+        if !covered <> 1 then
+          fail "construct %d is mono ruby and one of its runs covers %d base clusters" ordinal
+            !covered
+      end)
+    runs;
+  if !base_cursor <> last || !mark_cursor <> reading then
+    fail "construct %d's runs leave part of its base or its annotation unread" ordinal
+
 let check_constructs (text : Model.shaped_text) (constructs : Construct.t array) : unit =
   let length = String.length text.Model.source in
   Array.iteri
@@ -100,9 +150,10 @@ let check_constructs (text : Model.shaped_text) (constructs : Construct.t array)
         if line_gap < 0 then fail "construct %d has a line gap of %d" ordinal line_gap
       | Construct.Jidori { cells } ->
         if cells < 1 then fail "construct %d fits into %d cells" ordinal cells
-      | Construct.Ruby { annotation; _ }
-      | Construct.Reference_mark { annotation }
-      | Construct.Script { annotation } ->
+      | Construct.Ruby { annotation; ruby_kind; runs } ->
+        Normalize.check annotation;
+        check_ruby_runs text ordinal ~first ~last ruby_kind annotation runs
+      | Construct.Reference_mark { annotation } | Construct.Script { annotation } ->
         Normalize.check annotation
       | Construct.Emphasis_dots _ | Construct.Tate_chu_yoko | Construct.Warichu
       | Construct.Formula ->
@@ -138,28 +189,38 @@ let check_constructs (text : Model.shaped_text) (constructs : Construct.t array)
     changes nothing else at all: the structure is indivisible because of what it is
     and not because of the direction the line happens to run in.
 
-    The other eight structures are not checked here, and the built-in suite states
+    Ruby is refused too, and at a narrower coordinate: the run rather than the
+    construct. §3.3.5 and §3.3.6 say the same thing in the same words about mono ruby
+    and about group ruby -- "base characters and attached ruby characters are handled
+    as one object, and internal line-breaks are prohibited" -- and §C.2 note 8 says it
+    of jukugo ruby's own runs while permitting the break {i between} two of them.
+    A caller who states a break inside one run is describing half a base character
+    group, which is not something a line can end with; a caller who states one at a
+    run boundary is describing exactly what §3.3.7 and §C.2 note 8 allow, and gets it.
+
+    The other six structures are not checked here, and the built-in suite states
     breaks inside four of them. A warichu splits into sublines (§3.7.2), a furawake
     into columns, and a display formula breaks at its operators (§3.7.4), so a break
-    inside one of those is exactly what the caller means by it. Ruby splits at its
-    declared run boundaries and nowhere else, which is a narrower rule than either
-    of these two and belongs to the milestone that sets ruby. *)
+    inside one of those is exactly what the caller means by it. *)
 let check_indivisible_constructs (breaks : break_opportunity list)
     (constructs : Construct.t array) : unit =
+  let refuse ordinal (first, last) =
+    List.iter
+      (fun opportunity ->
+        if first < opportunity.offset && opportunity.offset < last then
+          fail
+            "a break is at byte %d, inside construct %d, which covers bytes %d..%d and is \
+             indivisible"
+            opportunity.offset ordinal first last)
+      breaks
+  in
   Array.iteri
     (fun ordinal (construct : Construct.t) ->
       match construct.Construct.kind with
-      | Construct.Tate_chu_yoko ->
-        let first, last = construct.Construct.range in
-        List.iter
-          (fun opportunity ->
-            if first < opportunity.offset && opportunity.offset < last then
-              fail
-                "a break is at byte %d, inside construct %d, which covers bytes %d..%d and is \
-                 indivisible"
-                opportunity.offset ordinal first last)
-          breaks
-      | Construct.Ruby _ | Construct.Warichu | Construct.Formula | Construct.Emphasis_dots _
+      | Construct.Tate_chu_yoko -> refuse ordinal construct.Construct.range
+      | Construct.Ruby { runs; _ } ->
+        List.iter (fun (run : Construct.ruby_run) -> refuse ordinal run.Construct.run_base) runs
+      | Construct.Warichu | Construct.Formula | Construct.Emphasis_dots _
       | Construct.Furawake _ | Construct.Jidori _ | Construct.Reference_mark _
       | Construct.Script _ ->
         ())

@@ -173,6 +173,98 @@ let lines_of (layout : Layout.t) : string =
 let vertical ?mode ?style ?alignment ?runs ?breaks ~extent pieces : string =
   lines_of (compose_pieces ?mode ?style ?alignment ?runs ?breaks ~extent pieces)
 
+(* ----------------------------------------------------------------------------- *)
+(* Ruby (§3.3, §F) *)
+(* ----------------------------------------------------------------------------- *)
+
+(** Compose a line of [pieces] with one ruby construct over the base pieces from
+    [base_first], one entry of [runs] per run of the reading: how many base pieces
+    that run covers and how many ruby characters it carries. *)
+let compose_ruby ?(mode = Model.Horizontal_tb) ?(style = Style.default ()) ?(indent = 0)
+    ?(reading_em = 500) ?(breaks : int list = []) ~(kind : Construct.ruby_kind)
+    ~(base_first : int) ~(runs : (int * int) list) ~(extent : int) (pieces : piece list) :
+    Layout.t =
+  let source = String.concat "" (List.map (fun piece -> piece.at) pieces) in
+  let bounds = Array.make (List.length pieces + 1) 0 in
+  let clusters, _ =
+    List.fold_left
+      (fun (clusters, start) piece ->
+        let index = List.length clusters in
+        let stop = start + String.length piece.at in
+        bounds.(index) <- start;
+        bounds.(index + 1) <- stop;
+        ( cluster ?size:piece.own_size ?frame:piece.own_frame ?role:piece.own_role start stop
+            piece.advance
+          :: clusters,
+          stop ))
+      ([], 0) pieces
+  in
+  let letters =
+    [|
+      "\xe3\x81\xab"; "\xe3\x81\xbb"; "\xe3\x82\x93"; "\xe3\x81\x94"; "\xe3\x81\x8b";
+      "\xe3\x81\xaa"; "\xe3\x81\x98"; "\xe3\x81\xbe";
+    |]
+  in
+  let annotations = List.fold_left (fun sum (_, count) -> sum + count) 0 runs in
+  let reading =
+    String.concat "" (List.init annotations (fun index -> letters.(index mod Array.length letters)))
+  in
+  let annotation =
+    text
+      ~size:{ Model.inline = reading_em; Model.block = reading_em }
+      reading
+      (List.init annotations (fun index -> cluster (index * 3) ((index + 1) * 3) reading_em))
+  in
+  let base, mark, entries =
+    List.fold_left
+      (fun (base, mark, out) (width, count) ->
+        ( base + width,
+          mark + count,
+          {
+            Construct.run_base = (bounds.(base), bounds.(base + width));
+            Construct.run_annotation = (mark * 3, (mark + count) * 3);
+          }
+          :: out ))
+      (base_first, 0, []) runs
+  in
+  ignore mark;
+  let construct =
+    {
+      Construct.range = (bounds.(base_first), bounds.(base));
+      Construct.kind = Construct.Ruby { ruby_kind = kind; annotation; runs = List.rev entries };
+    }
+  in
+  let paragraph =
+    Paragraph.build ~text:(text source (List.rev clusters)) ~line_extent:extent
+      ~breaks:
+        (List.map
+           (fun index -> { Paragraph.offset = bounds.(index); Paragraph.kind = Paragraph.Allowed })
+           breaks)
+      ~constructs:[ construct ] ~first_line_indent:indent ~writing_mode:mode ()
+  in
+  Pipeline.compose paragraph style
+
+(** One attachment as [inline:block:advance]. *)
+let show_attachment (attachment : Layout.attachment) : string =
+  Printf.sprintf "%d:%d:%d" attachment.Layout.attachment_inline
+    attachment.Layout.attachment_block attachment.Layout.attachment_advance
+
+(** The reading of the first line, and where the line's own clusters went. *)
+let ruby_of (layout : Layout.t) : string =
+  match layout.Layout.lines with
+  | [] -> "no line"
+  | line :: _ ->
+    Printf.sprintf "(%d/%d) [%s] [%s]" line.Layout.inline_extent line.Layout.block_extent
+      (String.concat " "
+         (List.map
+            (fun (placement : Layout.placement) ->
+              Printf.sprintf "%d+%d" placement.Layout.inline placement.Layout.advance)
+            line.Layout.clusters))
+      (String.concat " " (List.map show_attachment line.Layout.attachments))
+
+let ruby ?mode ?style ?indent ?reading_em ~kind ~base_first ~runs ~extent pieces : string =
+  ruby_of (compose_ruby ?mode ?style ?indent ?reading_em ~kind ~base_first ~runs ~extent pieces)
+
 let compose_json (envelope : string) : string =
   match Jlreq_proto.Protocol.request_of_line envelope with
   | Some request -> Jlreq_proto.Json.to_string (Jlreq_proto.Protocol.answer request)
@@ -535,6 +627,96 @@ let run () =
          [ p kanji; p ~role:Model.Grouped_numeral " "; p kanji ]);
   Check.equal_string "and a proportional hyphen is a Western character" ~expected:"(3000/1000) 0:0:1250:vertical-rl/identity 1250:0:750:vertical-rl/rotate-clockwise 2000:0:1000:vertical-rl/identity"
     ~actual:(vertical ~extent:6000 [ p kanji; digit hyphen; p kanji ]);
+
+  (* Ruby. Six of these are the placement policies with no written source: which
+     characters a reading may be set over, what §3.3.6 does with a run over a single
+     base character, which half of an odd centering the reading takes, and the total
+     §F.3 states as a formula that refers to its own result. Each is written down in
+     README.md, "Observable policies with no written source". *)
+  let iteration_mark = "\xe3\x83\xbd" (* U+30FD KATAKANA ITERATION MARK, cl-09, Katakana *) in
+  let prolonged = "\xe3\x83\xbc" (* U+30FC PROLONGED SOUND MARK, cl-10, Common *) in
+  let base = "\xe6\x97\xa5" (* U+65E5, cl-19 *) in
+  let hiragana = "\xe3\x81\x82" (* U+3042 HIRAGANA LETTER A, cl-15 *) in
+  let flush = Style.build [ ("ruby.group_distribution", "flush") ] in
+  let phonetic = Style.build [ ("ruby.jukugo_layout", "phonetic") ] in
+  let mono_over neighbor =
+    ruby ~kind:Construct.Mono ~base_first:1 ~runs:[ (1, 3) ] ~extent:16000
+      [ p neighbor; p base; p kanji ]
+  in
+  (* §3.3.8 rule 2 names two scripts and two classes spelled in them, and the scripts
+     are what this engine reads. A katakana iteration mark is cl-09, which the rule
+     does not name, and Katakana, which it does; a prolonged sound mark is cl-10,
+     which the rule names, and Common. *)
+  Check.equal_string "a reading is set over a kana neighbor"
+    ~expected:"(3250/1500) [0+1000 1000+1250 2250+1000] [750:-500:500 1250:-500:500 1750:-500:500]"
+    ~actual:(mono_over iteration_mark);
+  Check.equal_string "and not over one that is written in neither kana"
+    ~expected:"(3500/1500) [0+1250 1250+1250 2500+1000] [1000:-500:500 1500:-500:500 2000:-500:500]"
+    ~actual:(mono_over prolonged);
+
+  (* §3.3.6's two methods space the base characters of a run apart; a run over one
+     base character has none to space, so §3.3.5's own geometry is what is left --
+     and the distribution answer stops mattering. *)
+  Check.equal_string "a group run over one base character is centered on it"
+    ~expected:"(3000/1500) [0+1000 1000+1000 2000+1000] [750:-500:500 1250:-500:500 1750:-500:500]"
+    ~actual:
+      (ruby ~kind:Construct.Group ~base_first:1 ~runs:[ (1, 3) ] ~extent:16000
+         [ p hiragana; p base; p hiragana ]);
+  Check.equal_string "whatever the document answers for group ruby"
+    ~expected:"(3000/1500) [0+1000 1000+1000 2000+1000] [750:-500:500 1250:-500:500 1750:-500:500]"
+    ~actual:
+      (ruby ~style:flush ~kind:Construct.Group ~base_first:1 ~runs:[ (1, 3) ] ~extent:16000
+         [ p hiragana; p base; p hiragana ]);
+  (* Two base characters and §3.3.6 is back: the shares are 1 : 2 : 1 and they are
+     spacing on the line rather than an overhang the neighbor absorbs. *)
+  Check.equal_string "a group run over two opens them apart instead"
+    ~expected:"(5000/1500) [0+1250 1250+1500 2750+1250 4000+1000] [1000:-500:500 1500:-500:500 2000:-500:500 2500:-500:500 3000:-500:500 3500:-500:500]"
+    ~actual:
+      (ruby ~kind:Construct.Group ~base_first:1 ~runs:[ (2, 6) ] ~extent:16000
+         [ p hiragana; p base; p base; p hiragana ]);
+
+  (* §3.3.5 centers a reading on its base character, and a center is one point: half
+     of an odd difference leans the same way whatever [adjustment.remainder] answers,
+     while the space the overflow forces at the two boundaries is a share and does
+     take the remainder. Here the reading is 1665 over a 1000 em base: the leading
+     gap is 333 and the reading's own offset is 332. *)
+  Check.equal_string "an odd centering and an odd pair of shares part company"
+    ~expected:"(3665/1333) [0+1333 1333+1332 2665+1000] [1001:-333:333 1334:-333:333 1667:-333:333 2000:-333:333 2333:-333:333]"
+    ~actual:
+      (ruby ~reading_em:333 ~kind:Construct.Mono ~base_first:1 ~runs:[ (1, 5) ] ~extent:16000
+         [ p kanji; p base; p kanji ]);
+
+  (* §F.3's own total: the reading of the third base character has nowhere to go but
+     a ruby character's em into the second, whose own reading leaves that much room
+     only once the first two have been pushed apart -- by the total being computed.
+     350 is the least total the compound fits at. *)
+  Check.equal_string "§F.3's total is the least one the compound fits at"
+    ~expected:"(5350/1400) [0+1075 1075+1075 2150+1100 3250+1100 4350+1000] [1075:-400:400 1475:-400:400 1875:-400:400 2275:-400:400 2750:-400:400 3150:-400:400 3550:-400:400 3950:-400:400]"
+    ~actual:
+      (ruby ~style:phonetic ~reading_em:400 ~kind:Construct.Jukugo ~base_first:1
+         ~runs:[ (1, 3); (1, 1); (1, 4) ] ~extent:16000
+         [ p kanji; p base; p base; p base; p kanji ]);
+
+  (* §3.3.5 and §3.3.6: "base characters and attached ruby characters are handled as
+     one object, and internal line-breaks are prohibited". Half a base character group
+     is not something a line can end with, so the request is refused rather than
+     answered with the opportunity quietly dropped -- and §C.2 note 8's own permission
+     between two runs of one compound is answered. *)
+  Check.raises "a break inside one base character group" (fun () ->
+      compose_ruby ~kind:Construct.Group ~base_first:1 ~runs:[ (2, 3) ] ~extent:1000
+        ~breaks:[ 2 ] [ p hiragana; p base; p base; p hiragana ]);
+  Check.returns "and one between two runs of a jukugo compound" (fun () ->
+      compose_ruby ~kind:Construct.Jukugo ~base_first:1 ~runs:[ (1, 2); (1, 2) ] ~extent:1000
+        ~breaks:[ 2 ] [ p hiragana; p base; p base; p hiragana ]);
+
+  (* §3.3.1's association is what the runs state, so they have to be a partition of
+     both sides -- and mono ruby attaches to "each individual base character". *)
+  Check.raises "a mono-ruby run over two base characters" (fun () ->
+      compose_ruby ~kind:Construct.Mono ~base_first:1 ~runs:[ (2, 3) ] ~extent:16000
+        [ p hiragana; p base; p base; p hiragana ]);
+  Check.returns "and a jukugo run over two of them" (fun () ->
+      compose_ruby ~kind:Construct.Jukugo ~base_first:1 ~runs:[ (2, 3); (1, 2) ] ~extent:16000
+        [ p hiragana; p base; p base; p base; p hiragana ]);
 
   (* A request the protocol does not carry is an error, not a default. *)
   Check.raises "an unknown request field" (fun () ->

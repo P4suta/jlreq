@@ -539,6 +539,32 @@ let table_one_is_blank ~(before : int) ~(after : int) : bool =
   | Tables.Spacing (_ :: _) -> false
   | _ -> true
 
+(** What §B.1's [hang] annotation lets a ruby annotation extend over.
+
+    Table 1 states the permission §3.3.8 describes in prose, once per coordinate and
+    in the same cell as the space: [ruby hang] is the whole of the neighbor, a term
+    marked [hang] is the space that term states and nothing more, and every other
+    cell withholds it. Sixty coordinates carry one, all of them beside cl-22 or
+    cl-23, which is what makes the matrix rather than the prose the place to read
+    the permission out of. *)
+type ruby_hang =
+  | No_hang
+  | Hang_character  (** [ruby hang]: over the neighbor itself. *)
+  | Hang_space of Tables.side
+      (** [1/2 be hang]: over the space that term states, and the side names whose em
+          the space was measured from -- which is what tells the space §3.3.8 lets a
+          reading over ("the half em spacing which is added after closing brackets
+          … set before the target ruby object") from the ruby object's own. *)
+
+let table_one_ruby_hang ~(before : int) ~(after : int) : ruby_hang =
+  match Tables.cell Tables.table1 before after with
+  | Tables.Ruby_hang -> Hang_character
+  | Tables.Spacing terms -> (
+    match List.filter (fun (term : Tables.term) -> term.Tables.term_hang) terms with
+    | term :: _ -> Hang_space term.Tables.term_side
+    | [] -> No_hang)
+  | _ -> No_hang
+
 type break_cell = {
   break_prohibited : bool;  (** [×]: the adjacency itself cannot occur. *)
   break_levels : int;  (** The §C.3 levels a break is refused at, as a bit set. *)
