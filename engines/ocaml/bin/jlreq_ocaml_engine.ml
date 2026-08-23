@@ -11,12 +11,12 @@
     Exit codes are the protocol's:
 
     - [0] every request was answered;
-    - [2] the specification tables did not come out right, a line was not JSON, or
-      an envelope named a protocol or a specification this engine does not speak.
+    - [2] the specification tables did not come out right, a line was not JSON, an
+      envelope named a protocol or a specification this engine does not speak, or
+      a request was one no paragraph can be built from.
 
     A wrong {i answer} is not an error here. It is reported by the runner as a
-    DIFF and exits the {i runner} 1. At milestone M0 every non-empty case is a
-    DIFF, because {!Protocol.empty_response} is all this engine knows how to say. *)
+    DIFF and exits the {i runner} 1. *)
 
 let program = "jlreq-ocaml-engine"
 
@@ -33,11 +33,7 @@ let serve () =
       (match Jlreq_proto.Protocol.request_of_line line with
       | None -> ()
       | Some request ->
-        let envelope =
-          Jlreq_proto.Protocol.envelope_of_response ~id:request.Jlreq_proto.Protocol.id
-            ~response:Jlreq_proto.Protocol.empty_response
-        in
-        print_string (Jlreq_proto.Json.to_string envelope);
+        print_string (Jlreq_proto.Json.to_string (Jlreq_proto.Protocol.answer request));
         print_char '\n');
       loop ()
   in
@@ -49,13 +45,23 @@ let () =
      engine did not decide to write. *)
   set_binary_mode_in stdin true;
   set_binary_mode_out stdout true;
-  (try Jlreq.Tables.self_check () with
+  (try
+     Jlreq.Tables.self_check ();
+     Jlreq.Style.self_check ()
+   with
   | Jlreq.Tables.Invalid message -> die ("specification tables: " ^ message)
+  | Jlreq.Style.Invalid message -> die ("specification tables: " ^ message)
+  | Jlreq.Spec.Invalid message -> die ("specification tables: " ^ message)
   | Jlreq.Tsv.Invalid message -> die ("specification tables: " ^ message));
   (try serve () with
   | Jlreq_proto.Json.Invalid message -> die message
   | Jlreq_proto.Protocol.Invalid message -> die message
   | Jlreq.Utf8.Malformed message -> die message
+  | Jlreq.Normalize.Invalid message -> die message
+  | Jlreq.Paragraph.Invalid message -> die message
+  | Jlreq.Style.Invalid message -> die message
+  | Jlreq.Spec.Invalid message -> die message
   | Jlreq.Tables.Invalid message -> die message
-  | Jlreq.Tsv.Invalid message -> die message);
+  | Jlreq.Tsv.Invalid message -> die message
+  | exception_ -> die (Printexc.to_string exception_));
   flush stdout

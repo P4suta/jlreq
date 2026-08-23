@@ -38,6 +38,20 @@ ocaml_engine := dune_build_dir / "default/engines/ocaml/bin/jlreq_ocaml_engine.e
 # Nothing reads it but the run that just wrote it.
 milestone_dir := "target" / "ocaml-milestone"
 
+# The development probes (engines/ocaml/probe/). They are not the engine and no gate
+# builds them: `diffcase` explains one case's difference field by field, and `census`
+# generates the synthetic pair suites a milestone is debugged against.
+diffcase_probe := dune_build_dir / "default/engines/ocaml/probe/diffcase.exe"
+census_probe := dune_build_dir / "default/engines/ocaml/probe/census.exe"
+
+# The Rust engine both probes compare against. `cargo build -p jlreq-conformance --bins`
+# is what puts it here, and the recipes below run that first.
+sample_engine := "target" / "debug/jlreq-sample-engine"
+
+# Where a census run leaves its requests, both engines' answers, and the diff. Ignored
+# with the rest of `target/`, and nothing but the next run of the same census reads it.
+census_dir := "target" / "census"
+
 # List the available development commands.
 default:
     @just --list
@@ -269,6 +283,54 @@ ocaml-gate:
 # the required conform-ocaml job in CI is what actually enforces it.
 conform-engines:
     {{ if os() == "windows" { "if (Get-Command dune -ErrorAction SilentlyContinue) { just ocaml-gate } else { Write-Output 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)' }" } else { "if command -v dune > /dev/null 2>&1; then just ocaml-gate; else echo 'SKIPPED conform-ocaml: no OCaml toolchain (CI enforces it)'; fi" } }}
+
+# Explain one conformance case's difference field by field, which `DIFF <case-id>` does
+# not. The comparison is structural, so a key order is never reported and a missing key
+# always is; the reference side is the suite's own `expected`, or `--rust` for the Rust
+# sample engine's live answer on the same request.
+#
+#   just diffcase quick-start/two-lines
+#   just diffcase quick-start/two-lines --rust
+#   lines[1].clusters[0].inline: expected 0, got 250
+#
+# POSIX shell only, like every recipe in this block.
+#
+# Explain one case's difference by JSON path; exits 1 when the answers differ.
+diffcase case *arguments: ocaml-build
+    cargo build --quiet -p jlreq-conformance --bins
+    {{diffcase_probe}} {{case}} --engine {{ocaml_engine}} --reference {{sample_engine}} --suite crates/jlreq-conformance/suite.ndjson {{arguments}}
+
+# Generate one synthetic census, run it through both engines, and report how many answers
+# disagree. `kind` is `spacing` or `break` today, and the reduction and expansion censuses
+# join the registry in `engines/ocaml/probe/census.ml` at M2 and M3.
+#
+#   just census spacing
+#   census spacing: 2116 request(s), 2116 differing response(s) -- target/census/spacing.diff
+#
+# The two answer streams are canonicalized before `diff` sees them, because the engines
+# write the same object with different key orders -- the Rust side's serde_json sorts the
+# keys, the OCaml side writes `lines` before `diagnostics` -- and a raw textual diff would
+# report every line as different. `diff` compares the Rust answer against the OCaml one,
+# so a `<` line is what was expected and a `>` line is what this engine said.
+#
+# Generate one synthetic class-pair census and diff both engines' answers to it.
+census kind: ocaml-build
+    cargo build --quiet -p jlreq-conformance --bins
+    mkdir -p {{census_dir}}
+    {{census_probe}} generate {{kind}} > {{census_dir}}/{{kind}}.requests.ndjson
+    {{ocaml_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.ocaml.raw
+    {{sample_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.rust.raw
+    {{census_probe}} normalize < {{census_dir}}/{{kind}}.ocaml.raw > {{census_dir}}/{{kind}}.ocaml.ndjson
+    {{census_probe}} normalize < {{census_dir}}/{{kind}}.rust.raw > {{census_dir}}/{{kind}}.rust.ndjson
+    diff {{census_dir}}/{{kind}}.rust.ndjson {{census_dir}}/{{kind}}.ocaml.ndjson > {{census_dir}}/{{kind}}.diff || true
+    echo "census {{kind}}: $(wc -l < {{census_dir}}/{{kind}}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{census_dir}}/{{kind}}.diff || true) differing response(s) -- {{census_dir}}/{{kind}}.diff"
+
+# The choice is made out of Appendix A alone: fewest classes listing the key first, then a
+# single scalar over a sequence, then an empty Remarks cell, then document order.
+#
+# Print the representative code point a census addresses each character class by, as TSV.
+census-classes: ocaml-build
+    {{census_probe}} classes
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
