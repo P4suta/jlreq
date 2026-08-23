@@ -1050,8 +1050,36 @@
      (define kinds (break-kinds para items))
      (define alignment (or (paragraph-alignment para) 'justify))
      (define permitted (permitted-breaks para style items kinds))
-     (define breaks (choose-breaks para style items permitted kinds alignment))
-     (lay-out para style items breaks alignment)]))
+     ;; §3.5.4: the widow minimum is a preference and not a constraint. The
+     ;; paragraph is arranged under it first, and where no arrangement satisfies it
+     ;; -- a minimum the caller set past the text, or a paragraph with nowhere to
+     ;; take the clusters from -- the arrangement it would have had stands, and the
+     ;; answer says so.
+     ;; §3.5.4: a last line shorter than the caller's minimum is bought off by
+     ;; SHORTENING THE LINE BEFORE IT, which is a paragraph of the same lines
+     ;; arranged differently. So the paragraph is arranged first without the
+     ;; minimum, and the minimum is then allowed to rearrange it -- but only into a
+     ;; paragraph of the same number of lines, because taking a line away is not
+     ;; shortening the one before the last. Where it cannot, the arrangement stands
+     ;; and the answer says the last line is short.
+     (define wanted (paragraph-widow-minimum para))
+     (define natural (choose-breaks para style items permitted kinds alignment #f))
+     (define bought
+       (and wanted
+            (not (widow-satisfied? natural wanted))
+            (let ([found (choose-breaks para style items permitted kinds alignment wanted)])
+              (and (widow-satisfied? found wanted)
+                   (= (length found) (length natural))
+                   found))))
+     (define kept (or bought natural))
+     (lay-out para style items kept alignment
+              (and wanted (not (widow-satisfied? kept wanted))))]))
+
+;; Whether the last line of an arrangement holds the minimum the caller asked for.
+(define (widow-satisfied? breaks wanted)
+  (and (pair? breaks)
+       (let ([final (last breaks)])
+         (>= (add1 (- (cdr final) (car final))) wanted))))
 
 ;; ----------------------------------------------------------------------------
 ;; Ruby
@@ -1271,7 +1299,7 @@
 ;; `tail` answers, for a line starting at item `first`, what the rest of the
 ;; paragraph costs and where its lines end. A strict `<` is what makes the earliest
 ;; candidate win a tie, because the search walks the line's own end forward.
-(define (choose-breaks para style items permitted kinds alignment)
+(define (choose-breaks para style items permitted kinds alignment wanted)
   (define count (vector-length items))
   (define memo (make-hash))
   (define (tail first)
@@ -1294,7 +1322,7 @@
                  (define rest (if ends-here? (cons 0 '()) (tail stop)))
                  (define here
                    (chk+ (line-cost para style items first last ends-here? alignment
-                                    (eq? kind 'discretionary))
+                                    (eq? kind 'discretionary) wanted)
                          (car rest)))
                  (if (< here best)
                      (values (cons here (cons (cons first last) (cdr rest))) here)
@@ -1306,7 +1334,7 @@
   (cdr (tail 0)))
 
 ;; What one line costs.
-(define (line-cost para style items first last last-line? alignment discretionary?)
+(define (line-cost para style items first last last-line? alignment discretionary? wanted)
   (define found
     (measure-line para style items first last (= first 0) last-line? alignment))
   (define measure (paragraph-line-extent para))
@@ -1324,9 +1352,7 @@
   (chk+ (chk+ (chk+ base (if discretionary? discretionary-charge 0))
               (chk+ (second-priority para items last last-line?)
                     (warichu-imbalance items last last-line?)))
-        (if (and last-line?
-                 (paragraph-widow-minimum para)
-                 (< (add1 (- last first)) (paragraph-widow-minimum para)))
+        (if (and last-line? wanted (< (add1 (- last first)) wanted))
             widow-charge
             0)))
 
@@ -1386,7 +1412,7 @@
 ;; Geometry
 ;; ----------------------------------------------------------------------------
 
-(define (lay-out para style items breaks alignment)
+(define (lay-out para style items breaks alignment short?)
   (define measure (paragraph-line-extent para))
   (define writing-mode (paragraph-writing-mode para))
   (define count (length breaks))
@@ -1448,13 +1474,20 @@
              (add1 index)
              (if block-forward? (+ block block-extent) (- block block-extent))
              (cons one lines)
-             (if (positive? (shape-overrun found))
-                 (cons (list "layout.overfull" "warning"
-                             (item-start (vector-ref items first))
-                             (item-end (vector-ref items last))
-                             "3.8.1")
-                       notes)
-                 notes))])))
+             (append
+              (if (and short? last-line?)
+                  (list (list "layout.widow" "warning"
+                              (item-start (vector-ref items first))
+                              (item-end (vector-ref items last))
+                              "3.1.9"))
+                  '())
+              (if (positive? (shape-overrun found))
+                  (cons (list "layout.overfull" "warning"
+                              (item-start (vector-ref items first))
+                              (item-end (vector-ref items last))
+                              "3.8.1")
+                        notes)
+                  notes)))])))
 
 ;; Where every cluster of one line stands, and the advance the line was composed
 ;; from.
