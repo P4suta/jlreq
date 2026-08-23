@@ -165,7 +165,24 @@
           'inline_extent (line-inline-extent one)
           'block_extent (line-block-extent one)
           'clusters (for/list ([each (in-list (line-clusters one))]) (placement->json each))
-          'attachments '()))
+          'attachments (for/list ([each (in-list (line-attachments one))]) (attachment->json each))))
+
+;; An annotation carries either its own shaped text -- a ruby reading, a
+;; superscript -- or one symbol repeated over a base character, and `symbol` is
+;; which. The range is a range of the ANNOTATION's own source in the first case, so
+;; nothing here reads it against the paragraph.
+(define (attachment->json one)
+  (hasheq 'construct (attached-construct one)
+          'range (list (attached-start one) (attached-end one))
+          'inline (attached-inline one)
+          'block (attached-block one)
+          'advance (attached-advance one)
+          'size (hasheq 'inline (extent-inline (attached-size one))
+                        'block (extent-block (attached-size one)))
+          'writing_mode (writing-mode->json (attached-writing-mode one))
+          'transform (transform->json (attached-transform one))
+          'symbol (let ([found (attached-symbol one)])
+                    (if found (string found) (json-null)))))
 
 (define (placement->json one)
   (hasheq 'origin (hasheq 'cluster (placed-index one))

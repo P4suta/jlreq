@@ -49,7 +49,18 @@
 ;;
 ;; `class` is §3.9.2's answer for this occurrence; `advance` is what the caller
 ;; shaped it to, before any space Table 1 adds beside it.
-(struct item (index start end advance size frame role class transform kind members) #:transparent)
+;;
+;; The last four are what a construct does to the item. `complex` names the base
+;; character group it belongs to, which is what §B.2 notes 9 through 11 and §E.2
+;; notes 5 through 7 mean by "the same complex": no space stands between two items
+;; of one, and none opens there. `run` is the narrower unit §C.2 notes 6 through 8
+;; refuse a line break inside. `separation` is the space §3.3 forced in BEFORE this
+;; item because a reading had nowhere else to go, `tail` the same at the paragraph's
+;; own end -- the one boundary that is not before any item -- and `attachments` is
+;; the reading itself, positioned from this item's own start.
+(struct item (index start end advance size frame role class transform kind members
+              complex run separation tail attachments)
+  #:transparent)
 
 ;; One cluster of a grouped item.
 ;;
@@ -62,8 +73,10 @@
 
 ;; One term of a boundary: an amount in the caller's unit and whose em it came
 ;; from. `hang?` is §B.1's annotation that a ruby reading may extend over it, which
-;; M6 reads and M1 only carries.
-(struct contribution (amount owner hang?) #:transparent)
+;; M6 reads and M1 only carries. `units` is the same amount in the 1/720 em the six
+;; matrices are transcribed in, kept because Appendix D states its floors in that
+;; unit and against this term rather than against the boundary's total.
+(struct contribution (amount owner hang? units) #:transparent)
 
 ;; The em a term is measured against.
 (define (item-em one)
@@ -102,7 +115,8 @@
        (define em (if (eq? owner 'before) before-em after-em))
        (unless em
          (fail-input "Table 1 states a `~a` term at a line edge" owner))
-       (contribution (scale (tables:term-amount one) em) owner (tables:term-hang? one)))]
+       (contribution (scale (tables:term-amount one) em) owner (tables:term-hang? one)
+                     (tables:term-amount one)))]
     [else '()]))
 
 ;; ----------------------------------------------------------------------------
@@ -182,7 +196,7 @@
     [(not (null? (cell-contributions (item-class before) (item-class after)
                                      (item-em before) (item-em after))))
      '()]
-    [else (list (contribution (scale tables:unit-per-em (item-em before)) 'before #f))]))
+    [else (list (contribution (scale tables:unit-per-em (item-em before)) 'before #f tables:unit-per-em))]))
 
 ;; §3.1.6's third Note: a dividing punctuation mark (cl-04) used in the middle of a
 ;; sentence takes either no spacing or a quarter em on both sides.
@@ -199,9 +213,9 @@
     [(not (null? (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))))
      '()]
     [(and (= (item-class after) 4) (eq? (item-role after) 'sentence-medial))
-     (list (contribution (scale 180 (item-em after)) 'after #f))]
+     (list (contribution (scale 180 (item-em after)) 'after #f 180))]
     [(and (= (item-class before) 4) (eq? (item-role before) 'sentence-medial))
-     (list (contribution (scale 180 (item-em before)) 'before #f))]
+     (list (contribution (scale 180 (item-em before)) 'before #f 180))]
     [else '()]))
 
 ;; The space between the line head and the line's first occurrence.
@@ -212,20 +226,25 @@
 ;; em in from the head of every line; pattern 3 pulls the first line of a paragraph
 ;; back by the same half em instead, and leaves a wrapped line flush. Both are
 ;; measured against the bracket's own em.
-(define (head-contributions first-item style first-line?)
+(define (head-contributions first-item style first-line? writing-mode)
   (define pattern (answer style "spacing.line_head_opening_bracket"))
   (define stated
-    (cell-contributions line-edge (item-class first-item) #f (item-em first-item)))
+    (if (withdraws-own-space? first-item writing-mode)
+        (without (cell-contributions line-edge (item-class first-item) #f (item-em first-item)) 'after)
+        (cell-contributions line-edge (item-class first-item) #f (item-em first-item))))
   (cond
     [(not (= (item-class first-item) 1)) stated]
-    [(string=? pattern "pattern-2") (list (contribution (scale 360 (item-em first-item)) 'after #f))]
+    [(string=? pattern "pattern-2") (list (contribution (scale 360 (item-em first-item)) 'after #f 360))]
     [(and (string=? pattern "pattern-3") first-line?)
-     (list (contribution (- (scale 360 (item-em first-item))) 'after #f))]
+     (list (contribution (- (scale 360 (item-em first-item))) 'after #f (- 360)))]
     [else stated]))
 
 ;; The space between the line's last occurrence and the line end.
-(define (end-contributions last-item style)
-  (define stated (cell-contributions (item-class last-item) line-edge (item-em last-item) #f))
+(define (end-contributions last-item style writing-mode)
+  (define stated
+    (if (withdraws-own-space? last-item writing-mode)
+        (without (cell-contributions (item-class last-item) line-edge (item-em last-item) #f) 'before)
+        (cell-contributions (item-class last-item) line-edge (item-em last-item) #f)))
   (cond
     ;; §3.1.9 and §B.2 notes 2 and 6: the half em a closing bracket, a full stop or
     ;; a comma takes at the line end is what `spacing.line_end_punctuation` and

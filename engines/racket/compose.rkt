@@ -48,17 +48,25 @@
          "classes.rkt"
          "spacing.rkt"
          "kinsoku.rkt"
-         "adjust.rkt")
+         "adjust.rkt"
+         "ruby.rkt")
 
 (provide compose
          (struct-out placed)
+         (struct-out attached)
          (struct-out line))
 
 ;; One cluster, placed.
 (struct placed (index start end inline block advance size frame writing-mode transform) #:transparent)
 
+;; One annotation, placed. `symbol` is the repeated mark an emphasis-dots construct
+;; sets and #f for a reading, which carries its own text instead.
+(struct attached (construct start end inline block advance size writing-mode transform symbol)
+  #:transparent)
+
 ;; One line of the answer.
-(struct line (start end inline-origin block-origin inline-extent block-extent clusters) #:transparent)
+(struct line (start end inline-origin block-origin inline-extent block-extent clusters attachments)
+  #:transparent)
 
 ;; ----------------------------------------------------------------------------
 ;; The cost constants
@@ -129,7 +137,12 @@
           (classify-cluster para one style)
           transform
           'cluster
-          (list (piece-of para one index transform (paragraph-writing-mode para)))))
+          (list (piece-of para one index transform (paragraph-writing-mode para)))
+          #f
+          #f
+          0
+          0
+          '()))
   ;; §B.2 notes 14 through 16 and §C.2 notes 1 through 3: a class §C.3's own level
   ;; has let start a line is a different class from then on, in every table and not
   ;; only in Table 2.
@@ -165,7 +178,8 @@
         30
         'tate-chu-yoko
         'tate-chu-yoko
-        members))
+        members
+        #f #f 0 0 '()))
 
 ;; The things that stand on the line: the caller's clusters, with each construct's
 ;; own clusters gathered into the one item that construct is.
@@ -234,7 +248,10 @@
 
 ;; A line as the ladders see it: the advance of every item, the amount at every
 ;; boundary and at the two edges, and what may be given back or taken up where.
-(struct shape (advances gaps extent overrun hung) #:transparent)
+;; `fixed` is the space §3.3 forced in at each of the same positions. It is not a
+;; Table 1 amount and neither ladder touches it: a reading that had nowhere to go is
+;; not an adjustment site, it is the reason the line is the width it is.
+(struct shape (advances gaps fixed extent overrun hung) #:transparent)
 
 ;; §3.2.2 and §B.2 note 13: a Western word space at the line head or the line end
 ;; occupies no visible space, and gets its width back the moment the same text sits
@@ -257,23 +274,43 @@
   (define count (add1 (- last first)))
   (define writing-mode (paragraph-writing-mode para))
   (define indent (if first-line? (paragraph-first-line-indent para) 0))
+  ;; Two geometries, and the difference between them is §B.2 note 13 alone. `raw`
+  ;; is what the caller shaped and what Table 1 states; the other is that with a
+  ;; word space the line edge collapsed -- its own advance and the boundary beside
+  ;; it both gone. The line is composed from the second and the ladders measure
+  ;; their room in the first, which is what lets a collapsed space still give back
+  ;; the width it would have had.
+  (define raw-advances
+    (for/vector ([offset (in-range count)]) (item-advance (vector-ref items (+ first offset)))))
   (define advances
     (for/vector ([offset (in-range count)])
       (define one (vector-ref items (+ first offset)))
       (if (collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0 (item-advance one))))
-  (define gap-terms
+  (define raw-gap-terms
     (for/vector ([index (in-range (add1 count))])
       (cond
-        [(= index 0) (head-contributions (vector-ref items first) style first-line?)]
-        [(= index count) (end-contributions (vector-ref items last) style)]
+        [(= index 0) (head-contributions (vector-ref items first) style first-line? writing-mode)]
+        [(= index count) (end-contributions (vector-ref items last) style writing-mode)]
         [else
          (boundary-contributions (vector-ref items (+ first index -1))
                                  (vector-ref items (+ first index))
                                  writing-mode
                                  style)])))
+  (define gap-terms
+    (for/vector ([index (in-range (add1 count))])
+      (if (and (> index 0) (< index count) (after-head-space? items first count index))
+          '()
+          (vector-ref raw-gap-terms index))))
   (define gaps (vector-map total-of gap-terms))
+  (define fixed
+    (for/vector ([index (in-range (add1 count))])
+      (cond
+        [(< index count) (item-separation (vector-ref items (+ first index)))]
+        [else (item-tail (vector-ref items last))])))
+  (define forced (for/fold ([sum 0]) ([one (in-vector fixed)]) (chk+ sum one)))
   (define natural
     (+ indent
+       forced
        (for/fold ([sum 0]) ([one (in-vector advances)]) (chk+ sum one))
        (for/fold ([sum 0]) ([one (in-vector gaps)]) (chk+ sum one))))
   (define measure (paragraph-line-extent para))
@@ -281,15 +318,16 @@
   (cond
     [(negative? room)
      (define-values (kept-advances kept-gaps left)
-       (reduce para style items first last advances gaps (- room)))
-     (define reduced (+ indent (sum-of kept-advances) (sum-of kept-gaps)))
+       (reduce para style items first last advances gaps raw-advances raw-gap-terms (- room)))
+     (define reduced (+ indent forced (sum-of kept-advances) (sum-of kept-gaps)))
      (define hung (hang-of para style items last (- reduced measure)))
-     (shape kept-advances kept-gaps (- reduced hung) (max 0 (- reduced hung measure)) hung)]
+     (shape kept-advances kept-gaps fixed (- reduced hung) (max 0 (- reduced hung measure)) hung)]
     [(and (positive? room) (eq? alignment 'justify) (not last-line?))
      (define-values (open-advances open-gaps)
        (expand para style items first last advances gaps room))
-     (shape open-advances open-gaps (+ indent (sum-of open-advances) (sum-of open-gaps)) 0 0)]
-    [else (shape advances gaps natural 0 0)]))
+     (shape open-advances open-gaps fixed
+            (+ indent forced (sum-of open-advances) (sum-of open-gaps)) 0 0)]
+    [else (shape advances gaps fixed natural 0 0)]))
 
 (define (sum-of values)
   (for/fold ([sum 0]) ([one (in-vector values)]) (chk+ sum one)))
@@ -314,38 +352,57 @@
 ;; §3.8.3, the reduction ladder
 ;; ----------------------------------------------------------------------------
 
-;; One place a line may give space back.
-(struct opening (where index floor stage two-valued?) #:transparent)
+;; One place a line may give space back. `em` is the character size the share is
+;; measured against: §3.8.3 reduces "equally in proportion to the character size",
+;; so a line of two sizes gives back more at the larger one.
+(struct opening (where index floor stage two-valued? em) #:transparent)
 
-(define (reduction-sites para style items first last advances gaps)
+(define (reduction-sites para style items first last advances gaps raw-advances raw-gap-terms)
   (define count (vector-length advances))
   (define table (reduction-table-of style))
   (append
    ;; §3.8.3 (a) and §D's own first stage: the Western word spaces, all at once.
+   ;; §D.2 note 4 takes the line end out: a space with no word after it is not a
+   ;; space between words, and there is no visible width there to reduce.
    (for/list ([offset (in-range count)]
               #:when (and (word-space? (vector-ref items (+ first offset)))
-                          (> (vector-ref advances offset) 0)))
-     (opening 'advance offset (word-space-floor (item-em (vector-ref items (+ first offset)))) 1 #f))
+                          (< offset (sub1 count))
+                          (> (vector-ref raw-advances offset) 0)))
+     (define room
+       (- (vector-ref raw-advances offset)
+          (word-space-floor (item-em (vector-ref items (+ first offset))))))
+     (opening 'advance offset (- (vector-ref advances offset) (max 0 room)) 1 #f
+              (item-em (vector-ref items (+ first offset)))))
    ;; Tables 3 through 5, which are "the second and subsequent stages". The line
    ;; head is not among them: all three tables prohibit reduction there.
    (for/list ([index (in-range 1 (add1 count))]
-              #:when (and (> (vector-ref gaps index) 0)
-                          (or (= index count) (not (collapsed-here? items first count index)))))
-     (define amount (vector-ref gaps index))
+              #:when (and (> (total-of (vector-ref raw-gap-terms index)) 0)
+                          (or (= index count)
+                              (not (same-complex? (vector-ref items (+ first index -1))
+                                                  (vector-ref items (+ first index)))))))
+     (define terms (vector-ref raw-gap-terms index))
      (define found
        (if (= index count)
-           (reduction-of table (item-class (vector-ref items last)) line-edge amount)
+           (reduction-of table (item-class (vector-ref items last)) line-edge terms)
            (reduction-of table
                          (item-class (vector-ref items (+ first index -1)))
                          (item-class (vector-ref items (+ first index)))
-                         amount)))
-     (opening 'gap index (reduction-floor found) (reduction-stage found) (reduction-two-valued? found)))))
+                         terms)))
+     (define room (- (total-of terms) (reduction-floor found)))
+     (opening 'gap
+              index
+              (- (vector-ref gaps index) (max 0 room))
+              (reduction-stage found)
+              (reduction-two-valued? found)
+              (item-em (vector-ref items (+ first index -1)))))))
 
 ;; Give back `wanted`, in stage order, and report what is left.
-(define (reduce para style items first last advances gaps wanted)
+(define (reduce para style items first last advances gaps raw-advances raw-gap-terms wanted)
   (define kept-advances (vector-copy advances))
   (define kept-gaps (vector-copy gaps))
-  (define sites (filter opening-stage (reduction-sites para style items first last advances gaps)))
+  (define sites
+    (filter opening-stage
+            (reduction-sites para style items first last advances gaps raw-advances raw-gap-terms)))
   (define trailing? (answer-is? style "adjustment.remainder" "trailing"))
   (define left
     (for/fold ([left wanted]) ([stage (in-range 1 (add1 tables:max-stage))])
@@ -386,13 +443,9 @@
       [(<= left 0) 0]
       [(null? open) left]
       [else
-       (define count (length open))
-       (define share (div-trunc left count))
-       (define extra (- left (* share count)))
-       (define ordered (if trailing? (reverse open) open))
+       (define shares (share-out left (map opening-em open) trailing?))
        (define taken
-         (for/fold ([taken 0]) ([one (in-list ordered)] [rank (in-naturals)])
-           (define want (+ share (if (< rank extra) 1 0)))
+         (for/fold ([taken 0]) ([one (in-list open)] [want (in-list shares)])
            (define room (- (site-current advances gaps one) (opening-floor one)))
            (define now (min want room))
            (site-set! advances gaps one (- (site-current advances gaps one) now))
@@ -400,34 +453,64 @@
        (define remaining
          (filter (lambda (one) (> (- (site-current advances gaps one) (opening-floor one)) 0)) open))
        (cond
-         [(zero? taken) (- left 0)]
+         [(zero? taken) left]
          [else (spread (- left taken) remaining)])])))
+
+;; `total` split over sites of the stated character sizes.
+;;
+;; §3.8.3 and §3.8.4 both say the share is taken or given "equally, with proportional
+;; character size", so a boundary between two ems of one size takes twice what a
+;; boundary between two of half that size does. The division is exact integer
+;; arithmetic and rarely comes out even; `adjustment.remainder` is the question of
+;; which end of the line the units that are left over go to, and `leading` -- the
+;; answer every profile gives -- puts them at the first sites.
+(define (share-out total ems trailing?)
+  (define scale (for/fold ([sum 0]) ([em (in-list ems)]) (chk+ sum em)))
+  (define base
+    (if (positive? scale)
+        (for/list ([em (in-list ems)]) (div-trunc (chk* total em) scale))
+        (for/list ([em (in-list ems)]) 0)))
+  (define spare (- total (for/fold ([sum 0]) ([one (in-list base)]) (chk+ sum one))))
+  (define ranks (if trailing? (reverse (build-list (length ems) values)) (build-list (length ems) values)))
+  (define bonus (make-vector (length ems) 0))
+  (for ([rank (in-list ranks)] [step (in-naturals)] #:when (< step spare))
+    (vector-set! bonus rank 1))
+  (for/list ([one (in-list base)] [index (in-naturals)])
+    (chk+ one (vector-ref bonus index))))
 
 ;; ----------------------------------------------------------------------------
 ;; §3.8.4, the expansion ladder
 ;; ----------------------------------------------------------------------------
 
 ;; One place a line may take space up. `ceiling` is #f where step (d) is the only
-;; thing that reaches it, which is unbounded.
-(struct widening (where index ceiling stage) #:transparent)
+;; thing that reaches it, which is unbounded. `em` is the character size §3.8.4's own
+;; "equally with proportional character size" measures the share against.
+(struct widening (where index ceiling stage em) #:transparent)
 
 (define (expansion-sites para style items first last advances gaps)
   (define count (vector-length advances))
   (append
+   ;; §B.2 note 13: a space the line edge collapsed has no visible width, and §3.8.4
+   ;; (a) opens the space between two words rather than the edge of a line.
    (for/list ([offset (in-range count)]
               #:when (and (word-space? (vector-ref items (+ first offset)))
-                          (> (vector-ref advances offset) 0)))
-     (widening 'advance offset (word-space-ceiling (item-em (vector-ref items (+ first offset)))) 1))
+                          (> offset 0)
+                          (< offset (sub1 count))))
+     (widening 'advance offset (word-space-ceiling (item-em (vector-ref items (+ first offset)))) 1
+               (item-em (vector-ref items (+ first offset)))))
    (append*
     (for/list ([index (in-range 1 count)])
       (define before (vector-ref items (+ first index -1)))
       (define after (vector-ref items (+ first index)))
-      (define found (expansion-of (item-class before) (item-class after) (item-em after)))
+      (define found (expansion-of (item-class before) (item-class after) (item-em before)))
       (cond
         ;; §B.2 note 13: a word space the line edge collapsed is not on the line,
         ;; and a boundary beside something that is not there is not a place to put
         ;; space.
         [(collapsed-here? items first count index) '()]
+        ;; §B.2 notes 9 through 11 and §E.2 notes 5 through 7: the opportunity is
+        ;; between two characters of DIFFERENT complexes. Inside one there is none.
+        [(same-complex? before after) '()]
         ;; §E.2 note 10: no expansion between a quantity symbol or a European
         ;; numeral and the postfixed abbreviation (cl-13) it holds on to.
         [(and (= (item-class before) 27)
@@ -436,11 +519,18 @@
          '()]
         [else
          (append (if (expansion-stage found)
-                     (list (widening 'gap index (expansion-ceiling found) (expansion-stage found)))
+                     (list (widening 'gap index (expansion-ceiling found) (expansion-stage found)
+                                     (item-em before)))
                      '())
                  (if (expansion-residual? found)
-                     (list (widening 'gap index #f 4))
+                     (list (widening 'gap index #f 4 (item-em before)))
                      '()))])))))
+
+;; Whether two items are two characters of one base character group. §3.3 sets such
+;; a group as one thing: no space stands between two of its characters and none
+;; opens there, whatever the matrices state at the coordinate.
+(define (same-complex? before after)
+  (and (item-complex before) (equal? (item-complex before) (item-complex after))))
 
 ;; Whether the boundary before offset `index` touches a word space the line edge
 ;; collapsed. §3.2.2's space is restored the moment the same text sits elsewhere on
@@ -450,6 +540,20 @@
     (and (or (= offset 0) (= offset (sub1 count)))
          (word-space? (vector-ref items (+ first offset)))))
   (or (collapsed? (sub1 index)) (collapsed? index)))
+
+;; Whether the boundary before offset `index` is the one *after* a word space the
+;; line head collapsed.
+;;
+;; §B.2 note 13 takes the space itself out of the line, and at the line head it
+;; takes the boundary beside it too: what the first character of the line then has
+;; before it is the head of the line and not a space of any width. At the line end
+;; the boundary is left alone -- the character before the space still has whatever
+;; Table 1 states after it, which is how a closing bracket keeps its half em when a
+;; word space follows it onto the line end.
+(define (after-head-space? items first count index)
+  (and (> count 1)
+       (= index 1)
+       (word-space? (vector-ref items first))))
 
 ;; Take up `room`, in stage order.
 (define (expand para style items first last advances gaps room)
@@ -481,13 +585,9 @@
       [(<= left 0) 0]
       [(null? open) left]
       [else
-       (define count (length open))
-       (define share (div-trunc left count))
-       (define extra (- left (* share count)))
-       (define ordered (if trailing? (reverse open) open))
+       (define shares (share-out left (map widening-em open) trailing?))
        (define given
-         (for/fold ([given 0]) ([one (in-list ordered)] [rank (in-naturals)])
-           (define want (+ share (if (< rank extra) 1 0)))
+         (for/fold ([given 0]) ([one (in-list open)] [want (in-list shares)])
            (define ceiling (widening-ceiling one))
            (define now
              (if ceiling (max 0 (min want (- ceiling (open-current advances gaps one)))) want))
@@ -508,7 +608,7 @@
 
 (define (compose para)
   (define style (resolve-style (paragraph-style para)))
-  (define items (items-of para style))
+  (define items (with-ruby para style (items-of para style)))
   (define count (vector-length items))
   (cond
     [(zero? count) (values '() '())]
@@ -518,6 +618,121 @@
      (define permitted (permitted-breaks para style items kinds))
      (define breaks (choose-breaks para style items permitted kinds alignment))
      (lay-out para style items breaks alignment)]))
+
+;; ----------------------------------------------------------------------------
+;; Ruby
+;; ----------------------------------------------------------------------------
+
+;; The items again, with what §3.3 does to them: the class of a base character, the
+;; complex and the run it belongs to, the space a reading forced in before it, and
+;; the reading itself.
+(define (with-ruby para style items)
+  (define constructs (ruby-constructs para))
+  (cond
+    [(null? constructs) items]
+    [else
+     (define count (vector-length items))
+     ;; Which construct, and which of its runs, each item's own cluster belongs to.
+     (define marks (make-hasheqv))
+     (for ([one (in-list constructs)])
+       (for ([piece (in-list (ruby-runs one))] [rank (in-naturals)])
+         (for ([index (in-range count)])
+           (define found (vector-ref items index))
+           (when (and (>= (item-start found) (run-base-start piece))
+                      (< (item-start found) (run-base-end piece)))
+             (hash-set! marks index (list one rank))))))
+     (define reclassified
+       (for/vector ([one (in-vector items)] [index (in-naturals)])
+         (define found (hash-ref marks index #f))
+         (cond
+           [(not found) one]
+           [else
+            (define construct (first found))
+            (struct-copy item one
+                         [class (ruby-class-of construct)]
+                         ;; §B.2 notes 10 and 11 and §E.2 notes 6 and 7 are stated
+                         ;; about one complex. A simple-ruby complex is one run; a
+                         ;; jukugo compound is the whole construct, which is what
+                         ;; keeps its own internal boundary from opening while a
+                         ;; mono run's does.
+                         [complex (if (eq? (ruby-kind construct) 'jukugo)
+                                      (list 'ruby (ruby-index construct))
+                                      (list 'ruby (ruby-index construct) (second found)))]
+                         [run (list 'ruby (ruby-index construct) (second found))])])))
+     (define separations (make-hasheqv))
+     (define attachments (make-hasheqv))
+     (for ([one (in-list constructs)])
+       (define bases
+         (for/vector ([index (in-range count)]
+                      #:when (let ([found (vector-ref reclassified index)])
+                               (and (>= (item-start found) (ruby-start one))
+                                    (< (item-start found) (ruby-end one)))))
+           (list index
+                 (item-start (vector-ref reclassified index))
+                 (item-advance (vector-ref reclassified index)))))
+       (when (positive? (vector-length bases))
+         (define first-index (car (vector-ref bases 0)))
+         (define last-index (car (vector-ref bases (sub1 (vector-length bases)))))
+         (define em (extent-inline (ruby-em one)))
+         (define found
+           (plan-ruby one bases
+                      (hang-before para style reclassified first-index em)
+                      (hang-after para style reclassified last-index em)
+                      style))
+         (for ([(index amount) (in-hash (plan-separations found))])
+           (hash-update! separations index (lambda (standing) (max standing amount)) 0))
+         (for ([piece (in-list (plan-attachments found))])
+           (hash-update! attachments (attachment-anchor piece)
+                         (lambda (standing) (cons piece standing)) '()))))
+     (for/vector ([one (in-vector reclassified)] [index (in-naturals)])
+       (struct-copy item one
+                    [separation (hash-ref separations index 0)]
+                    [tail (if (= index (sub1 count)) (hash-ref separations count 0) 0)]
+                    [attachments (reverse (hash-ref attachments index '()))]))]))
+
+;; §3.3.8: how far a reading may reach back before the first base character of its
+;; construct, and forward past the last.
+;;
+;; Two things are available: the space the neighbor's own em put at the boundary,
+;; where Table 1 annotates it `hang`, and the neighbor character itself, where
+;; §3.3.8's own rules allow it. Before the first item of the paragraph there is no
+;; neighbor and the reading reaches into the paragraph's own indent instead, which
+;; is what `ruby.overhang_indent` answers for (§B.2 note 8).
+(define (hang-before para style items index em)
+  (cond
+    [(zero? index)
+     (if (answer-is? style "ruby.overhang_indent" "prohibited")
+         0
+         (max 0 (paragraph-first-line-indent para)))]
+    [else
+     (define neighbor (vector-ref items (sub1 index)))
+     (chk+ (hang-space (boundary-contributions neighbor (vector-ref items index)
+                                               (paragraph-writing-mode para) style)
+                       'before)
+           (character-hang (item-class neighbor) (item-script para neighbor) style em))]))
+
+(define (hang-after para style items index em)
+  (cond
+    [(>= (add1 index) (vector-length items)) 0]
+    [else
+     (define neighbor (vector-ref items (add1 index)))
+     (chk+ (hang-space (boundary-contributions (vector-ref items index) neighbor
+                                               (paragraph-writing-mode para) style)
+                       'after)
+           (character-hang (item-class neighbor) (item-script para neighbor) style em))]))
+
+;; The part of a boundary's own space that Table 1 annotates `hang` and that the
+;; NEIGHBOR's em paid for. A `hang` term measured from the ruby object's own em is
+;; not a space the reading may go over: it is the object's own.
+(define (hang-space terms owner)
+  (for/fold ([sum 0]) ([one (in-list terms)]
+                       #:when (and (contribution-hang? one) (eq? (contribution-owner one) owner)))
+    (chk+ sum (contribution-amount one))))
+
+;; The script §3.3.8 rule 2 reads, for an item that is one code point.
+(define (item-script para one)
+  (define text (source-slice (paragraph-source para) (item-start one) (item-end one)))
+  (and (= (string-length text) 1) (script-of (char->integer (string-ref text 0)))))
 
 ;; Which boundaries a line may end at.
 ;;
@@ -625,15 +840,21 @@
            [(end) (- measure extent)]
            [(center) (div-trunc (- measure extent) 2)]
            [else 0]))
+       ;; What the line has to make room for across itself: every item's own block
+       ;; size, and every annotation standing beside one.
        (define block-extent
          (for/fold ([most 0]) ([offset (in-range (add1 (- last first)))])
-           (max most (block-room (vector-ref items (+ first offset))))))
+           (define one (vector-ref items (+ first offset)))
+           (max most
+                (chk+ (block-room one)
+                      (for/fold ([beside 0]) ([found (in-list (item-attachments one))])
+                        (max beside (extent-block (attachment-size found))))))))
        ;; The block origin is where the line starts, in both modes: horizontal
        ;; composition stacks lines downward from zero and vertical-rl stacks them
        ;; leftward from zero, so the coordinate is the running total either way and
        ;; only its sign differs.
        (define block-origin block)
-       (define placements
+       (define-values (placements marks)
          (place para style items first last found origin block-origin))
        (define one
          (line (item-start (vector-ref items first))
@@ -642,7 +863,8 @@
                block-origin
                extent
                block-extent
-               placements))
+               placements
+               marks))
        (walk (cdr rest)
              (add1 index)
              (if block-forward? (+ block block-extent) (- block block-extent))
@@ -661,6 +883,7 @@
   (define writing-mode (paragraph-writing-mode para))
   (define advances (shape-advances found))
   (define gaps (shape-gaps found))
+  (define fixed (shape-fixed found))
   (define count (vector-length advances))
   (define indent (if (= first 0) (paragraph-first-line-indent para) 0))
   ;; The designed geometry: the advance a placement reports is the character's own
@@ -670,16 +893,48 @@
       (define one (vector-ref items (+ first offset)))
       (define own
         (if (collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0 (item-advance one)))
-      (chk+ own (designed-gap para style items first last offset count))))
-  (let walk ([offset 0] [cursor (+ origin indent (vector-ref gaps 0))] [out '()])
+      (chk+ (chk+ own (designed-gap para style items first last offset count))
+            (vector-ref fixed (add1 offset)))))
+  (let walk ([offset 0]
+             [cursor (+ origin indent (vector-ref gaps 0) (vector-ref fixed 0))]
+             [out '()]
+             [marks '()])
     (cond
-      [(>= offset count) (reverse (apply append out))]
+      [(>= offset count) (values (reverse (apply append out)) (reverse (apply append marks)))]
       [else
        (define one (vector-ref items (+ first offset)))
        (walk (add1 offset)
-             (chk+ (chk+ cursor (vector-ref advances offset)) (vector-ref gaps (add1 offset)))
+             (chk+ (chk+ (chk+ cursor (vector-ref advances offset))
+                         (vector-ref gaps (add1 offset)))
+                   (vector-ref fixed (add1 offset)))
              (cons (reverse (pieces-of one cursor block-origin (vector-ref designed offset) writing-mode))
-                   out))])))
+                   out)
+             (cons (reverse (marks-of para one cursor block-origin writing-mode)) marks))])))
+
+;; The readings attached to one item, placed from that item's own position.
+;;
+;; §3.3.4: the reading is set above the base characters in horizontal composition
+;; and to their right in vertical composition. Both are "beside the base along the
+;; block axis", and the coordinate a placement reports is the box's own leading edge
+;; in the direction the lines progress -- which puts the reading one of its own
+;; block sizes before the base in horizontal composition and one after it in
+;; vertical.
+(define (marks-of para one cursor block-origin writing-mode)
+  (define vertical? (eq? writing-mode 'vertical-rl))
+  (for/list ([found (in-list (item-attachments one))])
+    (define size (attachment-size found))
+    (attached (attachment-construct found)
+              (attachment-start found)
+              (attachment-end found)
+              (chk+ cursor (attachment-offset found))
+              (if vertical?
+                  (chk+ block-origin (extent-block size))
+                  (chk- block-origin (extent-block size)))
+              (attachment-advance found)
+              size
+              writing-mode
+              'identity
+              #f)))
 
 ;; How much of the block axis one item needs.
 ;;
@@ -742,7 +997,8 @@
 (define (designed-gap para style items first last offset count)
   (define writing-mode (paragraph-writing-mode para))
   (cond
-    [(= offset (sub1 count)) (total-of (end-contributions (vector-ref items last) style))]
+    [(= offset (sub1 count)) (total-of (end-contributions (vector-ref items last) style writing-mode))]
+    [(after-head-space? items first count (add1 offset)) 0]
     [else
      (total-of (boundary-contributions (vector-ref items (+ first offset))
                                        (vector-ref items (+ first offset 1))

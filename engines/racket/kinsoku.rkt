@@ -187,7 +187,11 @@
         (and (not (answer-is? style "kinsoku.iteration_mark_at_line_head" "prohibited"))
              (either-key ideographic-iteration-mark))))
   (case level
-    [(1) #t]
+    ;; The newspaper level: every prohibition but the two §C.3 states are common to
+    ;; all of them. §C.2 note 12's own is the exception the section's "of the same
+    ;; kind" qualification reaches -- two Western characters are one word, and a
+    ;; character repeated is not a word this level holds together.
+    [(1) (or (not (= before-class 27)) (not (= after-class 27)) (eqv? before-key after-key))]
     [(2)
      (or (either-class 3)
          (either-key katakana-middle-dot percent-sign)

@@ -40,7 +40,7 @@
 ;; boundary, so `word-space-floor` and `word-space-ceiling` state it here and
 ;; `compose.rkt` applies it to the cluster.
 
-(require (prefix-in tables: "tables.rkt") "style.rkt" "arith.rkt")
+(require (prefix-in tables: "tables.rkt") "spacing.rkt" "style.rkt" "arith.rkt")
 
 (provide reduction-of
          expansion-of
@@ -84,14 +84,38 @@
 ;; A cell that states a rigid amount, a blank, or a prohibition offers nothing: the
 ;; floor is the amount itself. The stage is #f where there is no opportunity, which
 ;; is how `compose.rkt` tells a site it may reduce from one it may not.
-(define (reduction-of table before after amount)
+(define (reduction-of table before after terms)
   (define found (tables:cell-at table before after))
   (cond
     [(tables:movable? found)
-     (reduction (proportion amount (tables:movable-limit found) (tables:movable-amount found))
+     (reduction (floor-of terms (- (tables:movable-amount found) (tables:movable-limit found)))
                 (tables:movable-stage found)
                 (tables:movable-two-valued? found))]
-    [else (reduction amount #f #f)]))
+    [else (reduction (total-of terms) #f #f)]))
+
+;; What is left of `terms` once `capacity` 1/720 em of them has been given back.
+;;
+;; Appendix D states its floors against the *term* a reduction qualifies and not
+;; against the boundary's total, and the two are different numbers wherever Table 1
+;; states two terms: §D.2 note 2 reduces the middle dot's own quarter em and leaves
+;; the full stop's half em standing, and Table 5's own cell at the same coordinate
+;; states `1/2-1/4` against a boundary that adds up to three quarters. So the
+;; capacity is taken from the trailing term first and from the leading one only when
+;; that is not enough -- which is the order the notes take it in -- and each term is
+;; scaled against its own owner's em on the way down.
+(define (floor-of terms capacity)
+  (let walk ([rest (reverse terms)] [left capacity] [sum 0])
+    (cond
+      [(null? rest) sum]
+      [else
+       (define one (car rest))
+       (define units (contribution-units one))
+       (define taken (if (positive? units) (min left units) 0))
+       (define kept
+         (if (positive? units)
+             (div-trunc (chk* (contribution-amount one) (- units taken)) units)
+             (contribution-amount one)))
+       (walk (cdr rest) (- left taken) (chk+ sum kept))])))
 
 ;; What Appendix E permits at (`before`, `after`), against `em`.
 ;;
