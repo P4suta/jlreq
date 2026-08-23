@@ -946,6 +946,16 @@
     [(answer-is? style "adjustment.japanese_latin_expansion_ceiling" "third-em") (third-em em)]
     [else (expansion-ceiling found)]))
 
+;; Whether the item is the bracket that closes an inline cutting note. §3.4 makes
+;; that bracket the last character of the STRUCTURE rather than of the line.
+(define (closes-structure? one)
+  (let ([found (item-structure one)])
+    (and found
+         (eq? (car found) 'warichu)
+         (= (length found) 4)
+         (not (caddr found))
+         (cadddr found))))
+
 ;; Whether two items are two characters of one base character group. §3.3 sets such
 ;; a group as one thing: no space stands between two of its characters and none
 ;; opens there, whatever the matrices state at the coordinate.
@@ -1050,6 +1060,20 @@
 ;; The items again, with what §3.3 does to them: the class of a base character, the
 ;; complex and the run it belongs to, the space a reading forced in before it, and
 ;; the reading itself.
+;; §3.4.2 and §3.9.2: the brackets that close an inline cutting note are cl-28 and
+;; cl-29, which are their own classes precisely because they stand where the line
+;; does and are set against it differently from ordinary brackets. The caller names
+;; them with the `warichu-bracket` role, and the role is what settles it: §A.28 and
+;; §A.29 enumerate the parentheses, and a note bracketed with anything else is still
+;; a note bracketed.
+(define (warichu-bracket-class one items index)
+  (define found (item-structure one))
+  (and found
+       (eq? (car found) 'warichu)
+       (= (length found) 4)
+       (not (caddr found))
+       (if (cadddr found) 29 28)))
+
 (define (with-ruby para style items)
   (define constructs (ruby-constructs para))
   (define ornaments (ornament-constructs para))
@@ -1110,6 +1134,10 @@
                          [class (if (eq? (ornament-kind found) 'reference-mark) 20 21)]
                          [complex name]
                          [run name])])))
+     (define bracketed
+       (for/vector ([one (in-vector ornamented)] [index (in-naturals)])
+         (define found (warichu-bracket-class one ornamented index))
+         (if found (struct-copy item one [class found]) one)))
      (define separations (make-hasheqv))
      (define attachments (make-hasheqv))
      ;; §3.7.3: a jidori spreads its own run across a declared number of full-em
@@ -1118,10 +1146,10 @@
            #:when (eq? (construct-kind one) 'jidori))
        (define bases
          (for/list ([index (in-range count)]
-                    #:when (let ([found (vector-ref ornamented index)])
+                    #:when (let ([found (vector-ref bracketed index)])
                              (and (>= (item-start found) (construct-start one))
                                   (< (item-start found) (construct-end one)))))
-           (cons index (item-advance (vector-ref ornamented index)))))
+           (cons index (item-advance (vector-ref bracketed index)))))
        (for ([pair (in-list (jidori-separations (cdr (assq 'cells (construct-payload one)))
                                                 (extent-inline (paragraph-size para))
                                                 bases
@@ -1130,10 +1158,10 @@
      (for ([one (in-list ornaments)])
        (define bases
          (for/vector ([index (in-range count)]
-                      #:when (let ([found (vector-ref ornamented index)])
+                      #:when (let ([found (vector-ref bracketed index)])
                                (and (>= (item-start found) (ornament-start one))
                                     (< (item-start found) (ornament-end one)))))
-           (define found (vector-ref ornamented index))
+           (define found (vector-ref bracketed index))
            (list index (item-start found) (item-advance found) (item-size found))))
        (when (positive? (vector-length bases))
          (for ([piece (in-list (plan-ornament one bases))])
@@ -1142,27 +1170,27 @@
      (for ([one (in-list constructs)])
        (define bases
          (for/vector ([index (in-range count)]
-                      #:when (let ([found (vector-ref ornamented index)])
+                      #:when (let ([found (vector-ref bracketed index)])
                                (and (>= (item-start found) (ruby-start one))
                                     (< (item-start found) (ruby-end one)))))
            (list index
-                 (item-start (vector-ref ornamented index))
-                 (item-advance (vector-ref ornamented index)))))
+                 (item-start (vector-ref bracketed index))
+                 (item-advance (vector-ref bracketed index)))))
        (when (positive? (vector-length bases))
          (define first-index (car (vector-ref bases 0)))
          (define last-index (car (vector-ref bases (sub1 (vector-length bases)))))
          (define em (extent-inline (ruby-em one)))
          (define found
            (plan-ruby one bases
-                      (hang-before para style ornamented first-index em)
-                      (hang-after para style ornamented last-index em)
+                      (hang-before para style bracketed first-index em)
+                      (hang-after para style bracketed last-index em)
                       style))
          (for ([(index amount) (in-hash (plan-separations found))])
            (hash-update! separations index (lambda (standing) (max standing amount)) 0))
          (for ([piece (in-list (plan-attachments found))])
            (hash-update! attachments (attachment-anchor piece)
                          (lambda (standing) (cons piece standing)) '()))))
-     (for/vector ([one (in-vector ornamented)] [index (in-naturals)])
+     (for/vector ([one (in-vector bracketed)] [index (in-naturals)])
        (struct-copy item one
                     [separation (hash-ref separations index 0)]
                     [tail (if (= index (sub1 count)) (hash-ref separations count 0) 0)]
@@ -1457,7 +1485,14 @@
              [(tab-sign? para one) (vector-ref advances offset)]
              [(collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0]
              [else (item-advance one)]))
-         (chk+ (chk+ own (designed-gap para style items first last offset count))
+         ;; §3.4: the bracket that closes an inline cutting note is the last
+         ;; character of the STRUCTURE rather than of the line, so what stands after
+         ;; it stands after the whole block and is no part of the bracket's own
+         ;; advance -- which is what makes the quarter em a middle dot takes after a
+         ;; note visible on the line and absent from the bracket.
+         (chk+ (chk+ own (if (closes-structure? one)
+                             0
+                             (designed-gap para style items first last offset count)))
                (vector-ref fixed (add1 offset)))])))
   (let walk ([offset 0]
              [cursor (+ origin indent (vector-ref gaps 0) (vector-ref fixed 0))]

@@ -163,7 +163,15 @@
 ;; Whether the item is the last character of a §3.4 structure.
 (define (ends-structure? one)
   (let ([found (item-structure one)])
-    (and found (eq? (car found) 'warichu) (= (length found) 4) (list-ref found 3))))
+    (and found
+         (eq? (car found) 'warichu)
+         (= (length found) 4)
+         ;; The BRACKET is the structure's own last character. A bare note ends with
+         ;; a character of its own text, which is the last character of a SUBLINE --
+         ;; inside the block, where the block has already stopped reading Table 1 --
+         ;; and the space after the block is still the following character's own.
+         (not (caddr found))
+         (cadddr found))))
 
 ;; Drop the terms `owner` contributes.
 (define (without terms owner)
