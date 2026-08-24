@@ -84,10 +84,17 @@ a warichu is not held to that tie-break. That is a job with a scope, and the sco
 keys Appendix A lists.
 
 **The census is what makes the difference observable.** No built-in case brackets a warichu
-with anything but a listed key. The `constructs` census sets the same note in listed and
-unlisted brackets against every class the matrices carry on both sides, which is where the
-two readings visibly part: `(cl-28, cl-19)` and `(cl-01, cl-19)` are different cells of
-Table 1 and of Table 6 alike.
+with anything but a listed key: all three set the note in `0028` and `0029`, which §A.28 and
+§A.29 enumerate, so both readings answer them alike. The `constructs` census wraps its note
+in `3008` 〈 and `3009` 〉 instead — the least ambiguous keys Appendix A lists for cl-01 and
+cl-02, and keys §A.28 and §A.29 do *not* enumerate — with the role declared on both, and
+sets that note against every class the matrices carry on either side of it.
+
+That is where the two readings part. Table 1 states a half em after an ideographic character
+(cl-19) before an opening bracket (cl-01) and *nothing* before a warichu opening bracket
+(cl-28); Table 6 makes the first `residual` and gives the second a `0-1/4 stage 3` cell. A
+promotion reading and a narrowing reading therefore compose the same paragraph two visibly
+different ways, on a line that is set solid and on one that has room to spare alike.
 
 ## What would change it
 
