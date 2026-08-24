@@ -12,7 +12,8 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - Standing: `Unstated`
 - JLReq: §3.3.5, §3.3.6, §3.3.8, §F.2, §F.3
 - Observed by: `just census ruby` (37,030 requests), in the variants that set a reading at
-  two fifths of the base character's em
+  two fifths of the base character's em; the two-step distribution was reached again by the
+  third engine's convergence on the same census
 
 ## The silence
 
@@ -52,6 +53,23 @@ The second and third terms are geometric facts about a compound whose base chara
 right-hand side in the order it is written, because two of its three terms are not known
 until the left-hand side is.
 
+**§F.3's two distribution steps do not say what half of an odd assignment is.** Once the
+total exists, the section spends it in two sentences:
+
+> Distribute the amount of space across those base characters accompanied by more than two
+> ruby characters in accordance with the number of ruby characters (or the length of ruby
+> characters when set solid).
+
+> For each base character, expand the preceding and succeeding inter-character spacing
+> equally by half of the assigned space.
+
+An assignment to base characters, then a halving onto each one's two boundaries. In
+1/720-em integer units ([ADR 0005](../adr/0005-integer-layout-units.md)) neither division
+comes out exact in general, and the section names no remainder rule for either. It also
+does not say whether the two steps have to be taken in that order at all: dividing the
+total over the boundaries directly is the same arithmetic wherever every assignment is
+even, and a different one wherever any is odd.
+
 ## The reading
 
 **A run over one base character whose reading is longer is set by §3.3.5 and not by
@@ -76,6 +94,20 @@ center and the other is two adjustment sites, and they round differently on purp
 which every ruby character has somewhere to go — a ruby character's em into the base
 character beside it, and §3.3.8's own allowance outside the compound — which the engine
 finds by bisection rather than by evaluating the formula forwards.
+
+**The total is assigned to the base characters first and halved onto their boundaries
+second, and each step rounds under `adjustment.remainder`.** The steps are taken in the
+order §F.3 states them and are not collapsed into one division over the boundaries. Step
+one weights each qualifying base character by the length its ruby run has when set solid,
+and hands the units that do not divide to the leading or the trailing characters by the
+remainder answer's own order; step two halves each assignment and gives the odd unit to
+that base character's leading or trailing boundary by the same answer. Where an assignment
+is odd, the result differs from a direct division over the boundaries at exactly that
+character.
+
+§F.3's own two special cases stand above both steps: a compound at the line head whose
+first base character is aligned with its reading takes that character's whole assignment
+*after* it, and one at the line end takes it *before*, rather than half on each side.
 
 ## Why
 
@@ -116,6 +148,22 @@ a forward reading of the formula are the same number, which is why half the suit
 cases cannot tell them apart, and why the `ruby` census sets some of its readings at two
 fifths of the base character's em instead of at §3.3.3's half.
 
+**Two steps are two steps, and the section wrote them in an order.** §F.3 could have said
+that the total is divided over the boundaries the compound opens, and instead it names an
+intermediate quantity — "the assigned space", per base character — and then spends it. That
+intermediate is what the section's own line-head and line-end cases are stated about: they
+say what happens to *the assigned space* of one base character when the compound meets an
+edge, which is a sentence that has no subject unless the assignment exists as a step of its
+own. Collapsing the two divisions would make those cases unstatable and would move a unit
+away from the character §F.3 assigned it to, at every compound where an assignment is odd.
+
+Both steps take `adjustment.remainder` for the same reason §3.3.5's overflow does: they are
+adjustment sites, opened on a line, of exactly the kind that answer already orders. Using it
+twice is not two roundings of one quantity — the first orders base characters against each
+other, the second orders one character's two boundaries — and a site that ignored the answer
+at the second step would report a compound whose two halves fell in an order nothing in the
+policy space explains.
+
 ## What would change it
 
 A revision of §3.3.6 that states what its methods do for a run of one settles the first
@@ -130,3 +178,9 @@ order for the three terms — settles the fourth. Until then, any engine that re
 formula forwards will agree with this one at every ruby em that tiles the base characters and
 disagree at every one that does not, which is a difference a conformance case at a
 two-fifths em would make visible in a single line.
+
+For the fifth, a remainder rule in §F.3 — for the assignment, for the halving, or for both
+— settles it, and a sentence saying whether the two steps may be composed settles the rest
+of it. The difference is one 1/720-em unit at one boundary — invisible in every built-in
+case, and visible in the `ruby` census at the same ruby ems that make the fourth reading
+observable: the ones that do not tile the base characters.

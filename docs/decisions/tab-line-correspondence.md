@@ -13,7 +13,8 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - Standing: `Unstated`
 - JLReq: §3.6.1, §3.6.2, §3.6.3, §3.1 (silence), ADR-0018
 - Observed by: `just census tabs` (24,334 requests), and by probing the reference engine
-  with stops the eighty-nine built-in cases never state
+  with stops the eighty-nine built-in cases never state; the reading about which constructs
+  hold a coordinate a stop can name by the third engine's convergence on the same census
 
 ## The silence
 
@@ -40,7 +41,10 @@ Five more questions sit around the same sentence and none of them is answered an
 - Whether §3.6.3's cut answers to Table 2, or to §3.1's rules about where a line may end at
   all.
 - What a sign does when it stands inside a construct — an object the line holds at one
-  position, whatever it holds inside.
+  position, whatever it holds inside — and, before that, whether a coordinate inside one is
+  a position a stop can name at all. §3.6 states a stop as a position in the line, and a
+  construct that sets its text somewhere a line does not has no position in the line to
+  offer except its own.
 - Which stop a sign takes when the request lists its stops out of positional order. §3.6.3
   says "in order" and does not say whose order.
 - Whether a stop may sit at the measure, or past it, and whether that is checked at all when
@@ -72,6 +76,20 @@ group runs its stops out and takes one em where it stands. A construct that begi
 exactly *at* the sign leaves the cut available, because the sign is then beside the construct
 rather than in it.
 
+**Whether such a sign takes a stop at all depends on how the construct sets its text.** A
+jidori sets its characters along the line, one position each, so a coordinate inside one is
+a position a stop can name, and a sign standing there takes the next stop ahead of it like
+any other character of the line. A tate-chu-yoko run is the other shape: it runs *across*
+the line and holds one position however many characters it holds, so a coordinate strictly
+inside one is not a position a stop could name, and a sign there takes the advance it was
+shaped with. §3.6.3's cut is unavailable inside either, because neither is a place a line
+boundary can fall.
+
+The same argument reaches two further coordinates — a warichu's and a furawake's sublines,
+which run beside the line, and a sign that is the *first* character of a tate-chu-yoko run
+— and those are exactly the two the reference engines do not agree at. No reading is
+published for them here; they are named at the end.
+
 **Stops are taken in the order they stand along the line, not the order the request lists
 them.** A request may list them descending; each sign takes the nearest stop ahead of the
 cursor either way.
@@ -102,6 +120,26 @@ cut as §3.6's own is what leaves both sections satisfiable. The same argument d
 construct case from the other end: §3.6.3's cut is a *line boundary*, not a break opportunity
 that a rule about characters could permit or forbid, so the only thing that can withhold it
 is there being no boundary at that point — and inside one object on the line, there is not.
+
+**A stop is a position in the line, so a construct with no positions in the line has no
+coordinate a stop can name.** §3.6.3 corresponds the *signs of a line* with the *stops of
+that line*, and both halves of that sentence are about the line's own inline axis. A
+tate-chu-yoko run runs across that axis and occupies one position however many characters it
+holds, so measuring a stop to a coordinate inside one would measure to a point the line does
+not have — and would make the width the line is *measured* at and the width it is *set* at
+two different numbers. A jidori is the opposite case and is why the rule has to be stated
+about the geometry rather than about a list of constructs: it is a construct in every other
+respect, but its characters stand one after another along the line at positions of their
+own, and every one of them is a coordinate a stop can name. Reading the rule off the
+construct list rather than off the geometry would give a jidori a sign that ignores its
+stops for no reason a reader could see.
+
+The argument does not stop where this file's readings do. A warichu's and a furawake's
+sublines run beside the line and have the same geometry a tate-chu-yoko run has, and a sign
+that is the first character of a run is either in the run or beside it and cannot be both.
+Those two coordinates are excluded here because the reference engines answer them
+differently and this project settles a disagreement by returning to JLReq and to `spec/` —
+not because the argument is weaker there.
 
 **One em is the only width §3.6 leaves available.** The line-head sign is the one case the
 fourth sentence cannot reach, so the sign has to take *some* width, and §3.6 names none.
@@ -139,7 +177,9 @@ that cannot be moved, settles the first two readings. A statement anywhere that 
 is or is not subject to §3.1 settles the third, and is the one a browser or a LaTeX
 comparison is most likely to produce evidence about. An `order` note in §3.6.3, a sentence in
 §3.6.1 about the ends of a line, and a restatement of §3.6.1's count against something other
-than a line settle the rest.
+than a line settle the rest. A sentence saying whether a stop may name a coordinate inside a
+construct — and, if so, which constructs have such coordinates — settles the one about
+geometry, and would be the same sentence that settles the two disagreements below.
 
 Two coordinates in this same subject are **not** readings this project publishes but places
 the two reference engines answer differently, and they are recorded as issues rather than
@@ -148,4 +188,8 @@ disagreement by copying: a tab sign that is the first character of a tate-chu-yo
 tab sign inside a warichu or a furawake. The `tabs` census deliberately covers neither shape
 — a census is a gate, and a gate that is red is not one — and covers a sign beside a construct
 and inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run instead.
-`engines/ocaml/test/test_pipeline.ml` pins the OCaml engine's answer for both.
+`engines/ocaml/test/test_pipeline.ml` pins the OCaml engine's answer for both. The third
+engine takes the same answer at both coordinates, and for the reason above rather than
+because the OCaml engine took it — which changes nothing about their standing: a
+disagreement is settled by returning to JLReq and to `spec/`, never by a majority among
+implementations.

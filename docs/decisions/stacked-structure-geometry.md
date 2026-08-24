@@ -10,8 +10,10 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same rounds in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
-- JLReq: §3.4.2, §3.7.2, §B.2#13, §C.3
-- Observed by: `just census constructs` (15,870 requests), the warichu and furawake variants
+- JLReq: §3.4.2, §3.4.3, §3.7.2, §B.2#13, §C.3
+- Observed by: `just census constructs` (15,870 requests), the warichu and furawake
+  variants; the last two readings below by the third engine's convergence on the same
+  census
 
 ## The silence
 
@@ -38,7 +40,22 @@ stated. It also does not say how two positions that balance equally are settled.
 bracket that closes a warichu is the last character of the *structure*. Whether the space
 Table 1 states after it belongs to that bracket's own reported advance, or stands after the
 whole block, is a question about which object Table 1's columns are asked of, and Appendix B
-is written as though a line had no structures in it.
+is written as though a line had no structures in it. The same question is open at the
+structure's *first* character, and Appendix B answers it no better there: the space Table 1
+states before an opening warichu bracket is stated in one em or the other, and the section
+does not say which of the bracket and the block it stands beside.
+
+**§3.4.3 states the straddling case with two figures and no rule.** When a note will not
+fit on one base-text line, §3.4.3 says only that it
+
+> will wrap onto the following line, and will be set as shown in Figure 148 or Figure 149
+
+with the Japanese adding that both the order of the strings and 割注の行長 — the length of
+each of the note's own lines — are as those figures show. A figure fixes one example. It
+does not say how much of the note goes on the first base-text line when several divisions
+are possible, and above all it does not say how that choice ranks against everything else
+composition is deciding at the same boundary: a break that balances the note's two halves
+may leave the base-text line short, or push it past the measure.
 
 ## The reading
 
@@ -60,6 +77,22 @@ part of the bracket's reported advance — visible at `(cl-29, cl-05)`, the quar
 dot takes after a warichu. The same holds at the end of every subline: the character that ends
 one takes nothing after it, and Table 1's line-end column is asked of the line and of nothing
 else.
+
+**A stacked structure's own *first* character carries no space either.** The reading above
+holds unchanged at the opening bracket: an amount Table 1 states in the bracket's own em
+stands before the whole block and is no part of the bracket's reported advance, while an
+amount stated in the *neighbor's* em is the neighbor's and stands where the neighbor puts
+it. A structure has two edges and they are the same edge twice.
+
+**§3.4.3's balance is a demerit in the paragraph's own objective, ranked below an overrun
+and above a short line.** A break inside a warichu carries a cost proportional to how
+unevenly it divides the note — one 1,000,000-unit demerit per cluster of imbalance, in the
+same currency as every other term composition minimizes. A line that overruns the measure
+starts at 10,000,000 before its own square is counted, so no balance ever buys an overrun;
+a line that is merely short costs the square of its shortfall in 1/720-em units, so a
+cluster of imbalance outweighs it over the range a line's shortfall reaches in practice.
+The balance is a consideration and not a constraint, and it is the last of the three to
+be consulted.
 
 ## Why
 
@@ -92,6 +125,34 @@ would find the structure ending in a place the line does not agree with. §B.2 n
 four edges and two of them are the warichu's own, which is the specification acknowledging
 that a warichu has edges of its own — and an edge of its own is not the line end.
 
+The opening bracket follows from that same sentence and not from a second argument. If the
+closing bracket's advance excludes the trailing space because the space belongs to the
+block, the opening bracket's advance excludes the leading space for the identical reason;
+giving the two edges different rules would make a structure's reported width depend on which
+end of it a caller measured from. What does the work at both edges is whose em the amount was
+taken from — the same distinction [ruby-overhang-permission](ruby-overhang-permission.md)
+draws for a Table 1 `hang` term — and it is drawn once for the structure rather than twice
+for its brackets.
+
+**A figure is an example, and an example cannot outrank the measure.** §3.4.3 shows what a
+straddling note looks like when it comes out well. Reading its balance as a *requirement*
+would put a rule about a note's own two lines above the rule that a line of base text fits
+the measure, and JLReq nowhere lets an inserted note make its host line overrun. Reading it
+as *nothing* leaves the section's own sentence — which fixes the order of the strings *and*
+the length of each of the note's lines — with nothing to fix, and §3.4.2's "as near as
+possible the same" would then govern a note that fits one line and abandon one that does
+not. A demerit is what sits between the two:
+it is the form a preference takes in a paragraph-wide objective
+([adjustment-preference](adjustment-preference.md)), it composes with the terms already
+there, and it decides exactly the cases where the alternatives are otherwise equally good —
+which is what a figure without a rule is asking for.
+
+Ranking it above a short line rather than below follows from what the two are about. A short
+line is a cost the paragraph pays once and a reader barely registers; an unevenly divided
+note is visible as a shape, and the note's own shape is the only thing §3.4.3 states an
+opinion about at all. Ranking it below the overrun floor needs no argument past the measure
+being a bound.
+
 ## What would change it
 
 A revision of §3.4.2 that names Table 2 explicitly, or that says "a position where the text
@@ -102,4 +163,14 @@ unsatisfiable requirement does, settles the second. For the third, an Appendix B
 distinguishes the end of a *line* from the end of a *structure* — or a note in §3.4.2 saying
 whose advance the trailing space is part of — would move the reading into the transcription,
 where it belongs, because it is a fact about how the matrix is addressed rather than about
-what a warichu is.
+what a warichu is. That same legend settles the fourth reading in the same stroke: the two
+edges are one question and a note about either of them answers both.
+
+For the fifth, a sentence in §3.4.3 that states what its figures show as a rule — how much
+of a note goes on the first base-text line, and what yields to what when a division that
+balances the note costs the line something — settles it. Any weighting is publishable, and
+the one above is this project's; an implementation that ranked the balance above the
+measure, or ignored it, would differ from this one on a paragraph whose note cannot fit one
+line. `3.4.3/warichu-straddles-balanced-main-lines` fixes that shape at one measure; the
+`constructs` census is what asks it at the measures where the balance and the line's own
+quality pull in opposite directions.

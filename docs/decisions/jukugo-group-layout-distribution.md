@@ -9,7 +9,10 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - Applies to: `jlreq_inline::place` (`place_jukugo_compound`'s own call into
   `place_group_run`, `Question::JUKUGO_RUBY_LAYOUT`).
 - Standing: `Unstated`
-- JLReq: §3.3.7
+- JLReq: §3.3.6, §3.3.7
+- Observed by: argument first, and then `just census ruby` (37,030 requests) — the third
+  engine reached the same answer from §3.3.7's own words before comparing, which is what the
+  closing section below records
 
 ## The silence
 
@@ -126,3 +129,17 @@ own silence on that axis already implies it. `crates/jlreq-inline/src/place.rs`'
 test `jukugo_paragraph_two_group_answer_forces_jis_regardless_of_group_ruby_distribution`
 continues to measure it directly too, over both of `Question::GROUP_RUBY_DISTRIBUTION`'s own
 answers, on the identical fixture.
+
+A third reference engine has since read §3.3.7 from the specification alone and arrived at
+the same forcing before comparing its answers with anything, which is the strongest evidence
+this reading is going to get short of a revision. Its route to it is worth recording,
+because it is shorter than the argument above and reaches the same place: §3.3.7¶2 names its
+first method *by author* — "the layout as specified in JIS X 4051" — and §3.3.6 attaches
+that attribution to exactly one of its own two methods. An attribution is not a parameter.
+`flush` is therefore another reading of §3.3.6 and never another reading of §3.3.7, so
+`ruby.group_distribution` has nothing to select inside a jukugo compound, and a policy that
+answers `flush` changes no coordinate of one. `just census ruby` holds all three engines to
+that at 37,030 requests: its `jukugo-group` and `jukugo-group-flush` variants set the same
+compound — one base character carrying three ruby characters and one carrying two, which is
+a genuine surplus — with and without `ruby.group_distribution: flush`, so the agreement is
+measured at every coordinate rather than assumed.

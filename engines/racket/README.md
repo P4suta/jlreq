@@ -340,11 +340,27 @@ each other's layout code, and one answer.
 ### What the censuses settled
 
 Things the censuses settled that JLReq does not state, and that this engine answers
-the way the Rust one does because returning to the section did not settle them.
-`docs/decisions/` has since published its own reading of several —
-[`tate-chu-yoko-spacing-sources`](../../docs/decisions/tate-chu-yoko-spacing-sources.md)
-covers the third of them — and where it does, the reading below is the same one,
-which is what a census at zero differences means.
+the way the other two do because returning to the section did not settle them.
+
+Nine of them are now published in `docs/decisions/`, bundled by subject rather than
+one file per rule, each naming the census that observed it and the sentence whose
+silence permits it. Two are subjects nothing there covered and have files of their
+own; the other seven were written into files that already held their subject. The
+table is what this section resolves to for those nine:
+
+| Reading | What the convergence settled |
+| --- | --- |
+| [ruby-overhang-permission](../../docs/decisions/ruby-overhang-permission.md) | Which side each of §3.3.8's allowances is available on, whose characters "the full-width size of the ruby characters" is measured in, and what a middle dot allows where nothing was reduced |
+| [jukugo-group-layout-distribution](../../docs/decisions/jukugo-group-layout-distribution.md) | That §3.3.7's first method is JIS X 4051's by name, so `ruby.group_distribution` selects nothing inside a jukugo compound |
+| [ruby-distribution-and-rounding](../../docs/decisions/ruby-distribution-and-rounding.md) | That §F.3's total is assigned to the base characters first and halved onto their two boundaries second, rather than divided over the boundaries directly |
+| [warichu-bracket-listing](../../docs/decisions/warichu-bracket-listing.md) | That the `warichu-bracket` role narrows a key §A.28 and §A.29 list and promotes nothing |
+| [stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md) | That a stacked structure's own *first* character carries no space either, and where §3.4.3's balance ranks against the line the note stands on |
+| [jidori-room-and-solid-boundaries](../../docs/decisions/jidori-room-and-solid-boundaries.md) | What §3.7.3 measures its room in, which of its boundaries are set solid, and where a run with no boundary left stands |
+| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | Which constructs hold a coordinate a stop can name — a jidori does, a tate-chu-yoko run does not; the warichu and furawake coordinates stay excluded as issues #12 and #13 |
+| [tate-chu-yoko-spacing-sources](../../docs/decisions/tate-chu-yoko-spacing-sources.md) | That Appendices D and E read the cell after a tab sign as transcribed, exactly as they read the cl-30 cells §3.2.5 withdrew |
+
+The rest are still recorded here, because no file under `docs/` states them yet. A
+policy found from here on is recorded here first and promoted the same way.
 
 **From §3.8 and Appendices B, C, D and E:**
 
@@ -356,11 +372,12 @@ which is what a census at zero differences means.
   one the line *head* collapsed offers it the whole width it would have had.** §D.2
   note 4 says there is no reduction opportunity at either edge "since there is
   supposed to be no visible space"; only the line end reads that way here.
-- **Appendices D and E measure their room in the Table 1 cell as transcribed, even
-  where a section withdrew the space.** §3.2.5 takes six of Table 1's cl-30 cells out
-  of the spacing and the ladders go on reading them, so a run on a line that had to
-  give space back ends up a quarter em inside the character before it. The same holds
-  for a collapsed word space.
+- **A word space the line collapsed still offers Appendices D and E a Table 1 cell.**
+  [`tate-chu-yoko-spacing-sources`](../../docs/decisions/tate-chu-yoko-spacing-sources.md)
+  publishes that reading for the six cl-30 cells §3.2.5 withdrew and for the cell after
+  a tab sign; a collapsed word space is a third coordinate of the same shape, and it
+  stays here because what it turns on is §B.2 note 13's own collapse rather than how a
+  ladder addresses a matrix.
 - **§3.2.5's half em before an opening bracket belongs to the run and stays when the
   line ends between the two.** Every other amount is withdrawn at a wrap, and Table
   1's `line-end` column answers instead.
@@ -373,59 +390,12 @@ which is what a census at zero differences means.
   names and nothing else, except that §C.2 note 12's pair of Western characters is
   relaxed only where the two are the same character.**
 
-**From §3.3 and Appendix F, which the `ruby` census reads at 37,030 coordinates:**
+**From Appendix F, which the `ruby` census reads at 37,030 coordinates:**
 
-- **§3.3.8's allowances are stated per side and measured in the run's own
-  characters.** "The full-width size of the ruby characters" is the largest character
-  of the run doing the overhanging, not the size the construct declared for its
-  annotation and not the size of a character somewhere else in the compound; and the
-  three allowances the section states for one side are available on that side alone,
-  so a reading goes over an opening bracket that stands *before* its object and over
-  the half em that stands between it and one that stands *after*.
-- **A middle dot's allowance is the sum the section states for a reduced dot, at
-  every coordinate.** §3.3.8 states one ruby character "in principle" and the spacing
-  plus half a ruby character where the dot's spacing was reduced; the sum is the
-  smaller of the two wherever nothing was reduced, so taking it always is taking the
-  section's own answer everywhere it states one.
-- **§3.3.7's first method is JIS X 4051's ratio and `ruby.group_distribution`
-  selects nothing there.** The section names that method by author rather than by
-  §3.3.6's own choice, so the flush method is another reading of §3.3.6 and not
-  another reading of §3.3.7.
-- **§F.3's total is the least the compound fits at, and it is distributed in the
-  section's own two steps.** The formula refers to its own result, so what is
-  evaluated is the fixed point (`docs/decisions/ruby-distribution-and-rounding.md`);
-  and the total is assigned to the base characters *first* and halved onto their two
-  boundaries *second*, which is a different answer from dividing it over the
-  boundaries directly wherever a base character's assignment is odd.
 - **§F.2's "first choice should be the succeeding base character" is an arrangement
   rule and not a preference.** Each run reaches forward by as much of its own excess
   as the character ahead of it allows and backward for the rest, and moves back only
   where a run after it would otherwise have nowhere to stand.
-
-**From §3.4, §3.6 and §3.7.3, which the `constructs` and `tabs` censuses read at
-40,204 coordinates:**
-
-- **A warichu bracket takes cl-28 or cl-29 only where Appendix A lists the key
-  there.** §A.28 and §A.29 enumerate six parentheses; the `warichu-bracket` role
-  disambiguates a key those sections list from the same key in §A.01 or §A.02, and a
-  note bracketed with anything else is a note bracketed with an ordinary bracket.
-- **A stacked structure's own *first* character carries no space either.** The
-  reading `docs/decisions/stacked-structure-geometry.md` publishes for the closing
-  bracket holds at the opening one: an amount Table 1 states in the bracket's own em
-  stands beside the whole block and is no part of the bracket's, while an amount
-  stated in the neighbor's em is still the neighbor's and still stands.
-- **§3.7.3's room is measured in the Table 1 cells as transcribed, and its solid
-  boundaries take none of it.** A boundary a line may not end at is set solid, and a
-  run with no boundary left is one block that stands at the head of its cells.
-- **A tab sign inside a jidori takes a stop; one inside a tate-chu-yoko run, a
-  warichu or a furawake does not.** Those three are one position on the line however
-  many characters they hold, so a coordinate inside one is not a position a stop could
-  name (`engines/ocaml/README.md`, "Where the two engines disagree"); a jidori sets its
-  characters along the line, one position each. §3.6.3's *cut* is unavailable inside
-  any of them, because the construct is indivisible.
-- **Appendices D and E read the cell after a tab sign as transcribed, exactly as they
-  read §3.2.5's cl-30 cells.** §3.6 makes that amount the sign's, and the ladders go on
-  measuring their room in it.
 
 The startup census in `tables.rkt` is checked against the real files and holds
 today:
