@@ -161,7 +161,7 @@ measuring a coordinate it cannot name.
 | `tate-chu-yoko` | 4,761 | 529 pairs standing before and after a run of one, two or three members, two runs side by side, and the same line reduced, justified, justified with a neighbor at half the em, and broken: §3.2.5's geometry and every cl-30 coordinate of Tables 1 through 6 |
 | `ruby` | 37,030 | 529 pairs on either side of a ruby construct, in seventy variants: mono, group and jukugo; both alignments, both distributions, both jukugo layouts and all four overhang answers; a reading shorter than its base and longer; readings of unequal advance, of a second size and at an em that tiles nothing; the paragraph indent; vertical composition; a justified line, a reduced one and a broken one — §3.3.5 through §3.3.8, §B.2 notes 1, 7, 8, 10 and 11, §C.2 notes 7 and 8, §E.2 notes 6 and 7, and §F |
 | `constructs` | 15,870 | 529 pairs beside the other five structures, in thirty variants: emphasis dots of two sizes, a superscript shorter than its complex and longer, a reference mark, a warichu with brackets and without and one that straddles two lines, a furawake of two columns and of three, and a jidori of two characters in four cells and of three in five — vertical, justified and reduced throughout. The cl-20, cl-21, cl-28 and cl-29 rows and columns of all six matrices, §3.3.9, §3.4.2, §3.7.2, §3.7.3, §B.2 notes 9 and 13, §C.2 note 6 and §E.2 note 5 |
-| `tabs` | 24,334 | 529 pairs across a tab sign, in forty-six variants: §3.6.2's four kinds of stop; stops the line reaches and stops it has gone past; one sign and two; stops listed ascending, descending and in surplus; the sign at the line head, at the line end and with nothing after it; a measure too tight for the stop and one wide enough for two lines; the caller's breaks stated and unstated; every alignment and none; both writing modes; the paragraph indent; and the sign beside a construct and inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run — §3.6.1 through §3.6.3, and §3.8.1 on the line a cut leaves short |
+| `tabs` | 25,392 | 529 pairs across a tab sign, in forty-eight variants: §3.6.2's four kinds of stop; stops the line reaches and stops it has gone past; one sign and two; stops listed ascending, descending and in surplus; the sign at the line head, at the line end and with nothing after it; a measure too tight for the stop and one wide enough for two lines; the caller's breaks stated and unstated; every alignment and none; both writing modes; the paragraph indent; and the sign beside a construct, inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run, and standing at the first character of a run — §3.6.1 through §3.6.3, and §3.8.1 on the line a cut leaves short |
 | `widow` | 13,225 | 529 pairs on a paragraph whose last line is one cluster short of the minimum, in twenty-five variants: minima the paragraph can meet and cannot; the pair on the line that gives a cluster up and on the line that gains one; break sets that leave the search one choice and none; both remainder and both preference settings; the indent; vertical composition; and every alignment and none — §3.5.3, §3.5.4 and §3.8.1 |
 
 The registry that names them is `kinds` in `census.ml`, and nothing else in the
@@ -268,7 +268,7 @@ it:
 | [ruby-distribution-and-rounding](../../docs/decisions/ruby-distribution-and-rounding.md) | What §3.3.6 does for a run of one, what its outer units are, which way an odd unit falls, and what §F.3's self-referring total evaluates to |
 | [ornamented-complex-geometry](../../docs/decisions/ornamented-complex-geometry.md) | What an emphasis mark is centered on, how many complexes an emphasis run is, and where §3.7.1's annotation sits |
 | [stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md) | Which positions a warichu may divide at, whether its balance sentence is a bound, and whose advance a structure's trailing space is part of |
-| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, and what §3.6.1's count is counted over |
+| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, what §3.6.1's count is counted over, and which structures hold a coordinate a stop can name |
 | [unstated-alignment](../../docs/decisions/unstated-alignment.md) | What a request that states no `alignment` asks for |
 | [inexpressible-advance-remarks](../../docs/decisions/inexpressible-advance-remarks.md) | Whether an Appendix A Remarks cell naming only an advance the protocol cannot express excludes its listing |
 | [jidori-inserted-space-locale-split](../../docs/decisions/jidori-inserted-space-locale-split.md) | How many sides of an inserted space §3.7.3 opens, where its two renderings state opposite rules |
@@ -285,61 +285,50 @@ The comments in `lib/` and the cases in `test/` still name this section, which i
 the heading stays: the table above is what they now resolve to. A policy found from
 here on is recorded here first and promoted the same way.
 
-### Where the two engines disagree
+### Where the two engines disagreed: §3.6.3 inside a stacked structure
 
-Two coordinates are not policies this engine adopted but places the two engines
-answer differently, and the rule above is what to do about them: return to JLReq,
-record the disagreement, and do not settle it by copying. Both are the same
-question — what a tab sign is doing when it stands inside a structure that does not
-set its text along the line. Both are filed against this repository, with the
-protocol-v1 request that reproduces each one and both engines' answers:
+Two coordinates were places the two engines answered differently, and the rule above
+is what was done about them: return to JLReq, record the disagreement, do not settle
+it by copying. Both were the same question — what a tab sign is doing when it stands
+inside a structure that does not set its text along the line. Both were filed against
+this repository with the protocol-v1 request that reproduces them and both engines'
+answers, and **both are now settled**:
 
-- [#12](https://github.com/P4suta/kumihan/issues/12) — a tab sign that is the first
+- [#12](https://github.com/P4suta/jlreq/issues/12) — a tab sign that is the first
   character of a tate-chu-yoko run.
-- [#13](https://github.com/P4suta/kumihan/issues/13) — a tab sign inside a warichu or
+- [#13](https://github.com/P4suta/jlreq/issues/13) — a tab sign inside a warichu or
   a furawake.
 
-A reading reaches `docs/decisions/` once one of them is settled; until then
-[tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) publishes
-what the two engines *do* agree on about §3.6.3 and names these two as excluded.
+The reading is published in
+[tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md), argued
+from §3.6.3 and from the geometry §3.2.5, §3.4.2 and §3.7.2 give those structures
+rather than from what any engine answered, and the Rust engine was brought to it in
+[#20](https://github.com/P4suta/jlreq/pull/20). It is the reading this engine already
+had: §3.6.3 corresponds the signs of a line with the stops of that line; a warichu's
+and a furawake's sublines run beside the line and a tate-chu-yoko run runs across it,
+so each is one position on the line however many characters it holds and a coordinate
+inside one is not a position a stop could name. A sign there takes no stop and sets
+the advance it was shaped with, the stop of the *next* sign is measured from the
+line's own walk where the whole structure is one step, and §3.6.3's cut is never
+chosen at such a sign — its first character included, which is the whole of #12. It is
+the only reading under which the width a line is measured at and the width it is set
+at are the same number.
 
-§3.6.3 corresponds the signs of a line with the stops of that line. A warichu's and
-a furawake's sublines run beside the line and a tate-chu-yoko run runs across it;
-each is one position on the line however many characters it holds, so a coordinate
-inside one is not a position a stop could name. This engine therefore has a sign
-there take no stop and set the advance it was shaped with, and measures the stop of
-the *next* sign from the line's own walk, where the whole structure is one step. It
-is the only reading under which the width a line is measured at and the width it is
-set at are the same number. Where the sign stands strictly inside a tate-chu-yoko
-run the two engines agree on exactly that, and the `tabs` census holds them to it.
+What the Rust engine did before #20 is what those two issues record: it ended the line
+before a sign that opened a run and then set that same sign as a member of the run on
+the next line, and inside a warichu it stepped a tab cursor once per character while
+reporting the block at its own width, so the second sign's advance was measured from a
+cursor that was not where the sign stood. Both were self-inconsistencies rather than
+readings, which is what an independent implementation is for.
 
-**A sign that is the first character of a tate-chu-yoko run.** This engine reads a
-run's first character as being in the run like every other, so the sign takes no
-stop and §3.6.3's cut is never chosen there. The reference engine ends the line
-before it — which only §3.6.3's fourth case does, and only to a sign of the line —
-and then, on the next line, sets it as a member of the run taking no stop. Its two
-answers to "is this a sign of the line" are not the same answer.
-
-**A sign inside a warichu or a furawake.** Given `A⇥B⇥C` — all proportional, half an
-em each, the first two characters and the sign between them inside a warichu, an
-allowed break inside it, a four-em measure and stops at 1200 and 3000 — the
-reference engine reports the block at its own width of 1000 and then sets the second
-sign at 1000 with an advance of 1800, which is the distance to the stop at 3000
-measured from a cursor of 1200. Neither 1000 nor 1200 is the other's answer to where
-the second sign stands. Reading the same paragraph with stops at 2000 and 2500 it
-gives the second sign the advance it was shaped with and no stop at all. This engine
-answers the first paragraph with an advance of 200 — the distance from 1000 to the
-stop at 1200 — and the second with 1000.
-
-The same divergence is visible with one sign and no second: a line the reference
-measures wider than it sets is a line it reduces when it did not need to, so `〉⇥〉`
-inside a warichu in a three-em measure comes back 500 units narrower from the
-reference than the geometry the reference itself reports.
-
-Because a census is a gate and a gate that is red is not one, the `tabs` census
-covers a sign beside a construct and inside an emphasis run, a superscript, a
-jidori and a tate-chu-yoko run, and deliberately covers neither of these two shapes.
-`test/test_pipeline.ml` pins this engine's answer instead, and names this section.
+The `tabs` census now covers the first shape — a sign that opens a tate-chu-yoko run,
+at a stop the line has gone past and at one it has not — and all three engines answer
+it alike at every class pair. It covers the second shape for none of them: the Racket
+engine gives a sign inside a warichu one em of the paragraph's own size instead of the
+advance it was shaped with, and ends the line before a sign that opens one
+([#19](https://github.com/P4suta/jlreq/issues/19)). A census is a gate and a gate that
+is red is not one, so that shape stays out until the third engine reaches the published
+reading; `test/test_pipeline.ml` pins this engine's answer to it in the meantime.
 
 ## Milestones
 
@@ -462,7 +451,7 @@ just census vertical       → 5290 request(s), 0 differing response(s)
 just census tate-chu-yoko  → 4761 request(s), 0 differing response(s)
 just census ruby           → 37030 request(s), 0 differing response(s)
 just census constructs     → 15870 request(s), 0 differing response(s)
-just census tabs           → 24334 request(s), 0 differing response(s)
+just census tabs           → 25392 request(s), 0 differing response(s)
 just census widow          → 13225 request(s), 0 differing response(s)
 ```
 
@@ -482,7 +471,7 @@ is what reaches the cl-20, cl-21, cl-28 and cl-29 rows and columns — the last 
 coordinates of the six matrices that no Appendix A key can name. Then a fifth and
 sixth time across a tab sign and on a paragraph whose last line is a widow, where
 what varies is not a cell of a matrix but which line the pair ends up on and how far
-the line it is on then has to be opened. 111,090 requests in all, and no answer
+the line it is on then has to be opened. 112,148 requests in all, and no answer
 differs by one unit.
 
 The two vertical censuses found three things the eighty-nine cases do not reach:
@@ -498,8 +487,8 @@ out, and one about what a request that states no alignment at all is asking for;
 they were first seen, because two of the six are refusals and a census only ever
 sends requests both engines accept. Those twenty-two, with the two §3.8.4's ladder
 contributed, the one Appendix A did and the one §C.2 note 13 did, are the
-twenty-six of "Observable policies with no written source" above; the one coordinate
-where the two engines do not agree is in "Where the two engines disagree" below it.
+twenty-six of "Observable policies with no written source" above; the two coordinates
+where the engines once did not agree are in "Where the two engines disagreed" below it.
 
 The startup census in `lib/tables.ml` is checked against the real files and holds
 today:

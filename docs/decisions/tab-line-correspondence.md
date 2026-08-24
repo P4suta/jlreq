@@ -12,9 +12,14 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.6.1, §3.6.2, §3.6.3, §3.1 (silence), ADR-0018
-- Observed by: `just census tabs` (24,334 requests), and by probing the reference engine
+- Observed by: `just census tabs` (25,392 requests), and by probing the reference engine
   with stops the eighty-nine built-in cases never state; the reading about which constructs
-  hold a coordinate a stop can name by the third engine's convergence on the same census
+  hold a coordinate a stop can name by the third engine's convergence on the same census.
+  The two coordinates this file once excluded — a sign that opens a tate-chu-yoko run
+  ([#12](https://github.com/P4suta/jlreq/issues/12)) and a sign inside a warichu or a
+  furawake ([#13](https://github.com/P4suta/jlreq/issues/13)) — are settled below and
+  implemented by the Rust and the OCaml engines; the census covers the first of them and,
+  for the reason under "What would change it", not yet the second
 
 ## The silence
 
@@ -72,23 +77,31 @@ number §3.6 never mentions.
 
 **A sign standing inside a construct keeps its line too, for the same reason.** A sign inside
 an emphasis run, a superscript, a reference mark, a jidori, a formula or a base character
-group runs its stops out and takes one em where it stands. A construct that begins or ends
-exactly *at* the sign leaves the cut available, because the sign is then beside the construct
-rather than in it.
+group runs its stops out and takes one em where it stands. A construct that *ends* exactly
+at the sign leaves the cut available, because the sign is then beside the construct rather
+than in it.
 
 **Whether such a sign takes a stop at all depends on how the construct sets its text.** A
 jidori sets its characters along the line, one position each, so a coordinate inside one is
 a position a stop can name, and a sign standing there takes the next stop ahead of it like
 any other character of the line. A tate-chu-yoko run is the other shape: it runs *across*
-the line and holds one position however many characters it holds, so a coordinate strictly
-inside one is not a position a stop could name, and a sign there takes the advance it was
-shaped with. §3.6.3's cut is unavailable inside either, because neither is a place a line
-boundary can fall.
+the line and holds one position however many characters it holds, so a coordinate inside one
+is not a position a stop could name, and a sign there takes the advance it was shaped with.
+§3.6.3's cut is unavailable inside either, because neither is a place a line boundary can
+fall.
 
-The same argument reaches two further coordinates — a warichu's and a furawake's sublines,
-which run beside the line, and a sign that is the *first* character of a tate-chu-yoko run
-— and those are exactly the two the reference engines do not agree at. No reading is
-published for them here; they are named at the end.
+**A warichu's and a furawake's sublines are the same shape as a tate-chu-yoko run, and are
+read the same way.** They run *beside* the line rather than across it, and either way the
+structure holds one position on the line however many characters it holds. A sign inside one
+takes no stop and sets the advance it was shaped with, and the stop of the *next* sign is
+measured from the line's own walk, where the whole structure is one step.
+
+**A structure that stacks its text off the line holds a sign that stands at its first
+character.** A run's or a subline's first character is set in the structure like every other
+one, so the sign there is in the structure and not beside it: it takes no stop, and §3.6.3's
+cut is never chosen at it. This is the one place where a construct that *begins* at the sign
+differs from one that ends at it — a construct whose text is set along the line, an emphasis
+run or a jidori, leaves the sign a sign of the line at both of its ends.
 
 **Stops are taken in the order they stand along the line, not the order the request lists
 them.** A request may list them descending; each sign takes the nearest stop ahead of the
@@ -134,12 +147,24 @@ own, and every one of them is a coordinate a stop can name. Reading the rule off
 construct list rather than off the geometry would give a jidori a sign that ignores its
 stops for no reason a reader could see.
 
-The argument does not stop where this file's readings do. A warichu's and a furawake's
-sublines run beside the line and have the same geometry a tate-chu-yoko run has, and a sign
-that is the first character of a run is either in the run or beside it and cannot be both.
-Those two coordinates are excluded here because the reference engines answer them
-differently and this project settles a disagreement by returning to JLReq and to `spec/` —
-not because the argument is weaker there.
+**The same argument reaches the sublines and the first character, and the width the line is
+measured at is what settles both.** A warichu's and a furawake's sublines run beside the line
+and have the geometry a tate-chu-yoko run has, so nothing distinguishes them from it here. A
+sign that is the first character of such a structure is either in it or beside it and cannot
+be both, and the two answers are not symmetric: reading it as being *in* the structure gives
+one composition, while reading it as a sign of the line requires the engine to end the line
+before it and then set it inside the structure on the next line — two answers to "is this a
+sign of the line" in one composition. What decides between them is the same fact the
+paragraph above turns on: a stop measured to a coordinate the line does not have makes the
+width a line is *measured* at and the width it is *set* at two different numbers, and a line
+measured wider than it is set is a line reduced when it did not need to be. Reading the sign
+as a member of the structure is the only one of the two under which those are one number.
+
+Both coordinates were filed as [#12](https://github.com/P4suta/jlreq/issues/12) and
+[#13](https://github.com/P4suta/jlreq/issues/13) rather than settled by copying an engine's
+answer, and both are settled here from §3.6.3 and from the geometry §3.2.5, §3.4.2 and
+§3.7.2 give those structures. The reference engines agreeing with the result is not the
+argument for it.
 
 **One em is the only width §3.6 leaves available.** The line-head sign is the one case the
 fourth sentence cannot reach, so the sign has to take *some* width, and §3.6 names none.
@@ -179,17 +204,21 @@ comparison is most likely to produce evidence about. An `order` note in §3.6.3,
 §3.6.1 about the ends of a line, and a restatement of §3.6.1's count against something other
 than a line settle the rest. A sentence saying whether a stop may name a coordinate inside a
 construct — and, if so, which constructs have such coordinates — settles the one about
-geometry, and would be the same sentence that settles the two disagreements below.
+geometry, and would be the same sentence that settles the two coordinates the paragraph below
+names. A sentence saying that a structure's first character is a character of the line would
+settle the last reading against it.
 
-Two coordinates in this same subject are **not** readings this project publishes but places
-the two reference engines answer differently, and they are recorded as issues rather than
-here, because the rule is to return to JLReq and to `spec/` rather than to settle a
-disagreement by copying: a tab sign that is the first character of a tate-chu-yoko run, and a
-tab sign inside a warichu or a furawake. The `tabs` census deliberately covers neither shape
-— a census is a gate, and a gate that is red is not one — and covers a sign beside a construct
-and inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run instead.
-`engines/ocaml/test/test_pipeline.ml` pins the OCaml engine's answer for both. The third
-engine takes the same answer at both coordinates, and for the reason above rather than
-because the OCaml engine took it — which changes nothing about their standing: a
-disagreement is settled by returning to JLReq and to `spec/`, never by a majority among
-implementations.
+**What the census covers, and what it does not.** The `tabs` census covers a sign beside a
+construct and inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run, and
+now also a sign that *opens* a tate-chu-yoko run, at both a stop the line has gone past and
+one it has not: all three reference engines answer those alike at every class pair (25,392
+requests, no difference). A sign inside a warichu or a furawake is deliberately **not**
+covered, and that is a statement about an engine rather than about this reading: the Rust and
+the OCaml engines answer that shape alike at every pair, and the Racket engine gives such a
+sign one em of the paragraph's own size instead of the advance it was shaped with, which
+moves the block's own geometry, and ends the line before a sign that opens one
+([#19](https://github.com/P4suta/jlreq/issues/19)). A census is a gate and a gate that is red
+is not one, so the shape stays out until the third engine reaches the reading published here.
+`engines/ocaml/test/test_pipeline.ml` and
+[`crates/jlreq/tests/public_api.rs`](../../crates/jlreq/tests/public_api.rs) pin both shapes
+in the meantime.
