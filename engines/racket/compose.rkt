@@ -672,10 +672,13 @@
 ;;
 ;; The walk is left to right because a sign's own advance depends on where the sign
 ;; stands, which depends on every advance before it -- an earlier sign's included.
+;; It walks every offset and stops only at the signs of the LINE: a sign set inside a
+;; structure that stacks its text off the line is passed over with the advance it was
+;; shaped with, which is the step the block already charges to the line.
 (define (tab-walk para items first last count shaped gaps fixed indent)
   (define signs
     (for/list ([offset (in-range count)]
-               #:when (tab-sign? para (vector-ref items (+ first offset))))
+               #:when (line-sign? para (vector-ref items (+ first offset))))
       offset))
   (cond
     [(null? signs) (values shaped #f)]
@@ -689,16 +692,6 @@
            (define ahead
              (for/first ([one (in-list stops)] #:when (> (tab-stop-position one) cursor)) one))
            (cond
-             ;; §3.6.3: a sign standing inside a structure that does not set its
-             ;; text along the line keeps its line and takes one em where it stands.
-             ;; A warichu's and a furawake's sublines run beside the line and a
-             ;; tate-chu-yoko run runs across it: each is ONE position on the line
-             ;; however many characters it holds, so a coordinate inside one is not
-             ;; a position a stop could name. A jidori, a run of emphasis dots and a
-             ;; superscript are not that -- their characters stand along the line,
-             ;; one position each -- so a stop reaches a sign inside one of those.
-             [(inside-block? para (vector-ref items (+ first offset)))
-              (vector-set! out offset (extent-inline (paragraph-size para)))]
              [ahead
               (define target
                 (tab-target ahead (string-after para items first count offset out gaps fixed)))
@@ -728,22 +721,44 @@
     (and (> (item-start one) (construct-start each))
          (< (item-end one) (construct-end each)))))
 
-;; The same, for the three constructs that are one position on the line however many
-;; characters they hold: a tate-chu-yoko run runs across the line and a warichu's and
-;; a furawake's sublines run beside it.
-(define (inside-block? para one)
+;; Whether the item is set inside a structure that stacks its text off the line: a
+;; tate-chu-yoko run, which runs across the line, or a warichu's and a furawake's
+;; sublines, which run beside it. Each is ONE position on the line however many
+;; characters it holds.
+;;
+;; The test is containment and not the strict interior `inside-construct?` asks for.
+;; A structure's FIRST character is set in the structure exactly as the rest are, so
+;; it is in it and not beside it; a construct that ends where the item begins is
+;; behind the item and does not contain it at all.
+(define (in-stacked-structure? para one)
   (for/or ([each (in-list (paragraph-constructs para))])
     (and (memq (construct-kind each) '(tate-chu-yoko warichu furawake))
-         (> (item-start one) (construct-start each))
-         (< (item-end one) (construct-end each)))))
+         (>= (item-start one) (construct-start each))
+         (<= (item-end one) (construct-end each)))))
 
-;; The string one sign puts at its stop: what stands between it and the next sign,
-;; or the line end, as `(width . text)` pairs.
+;; Whether the item is a tab sign §3.6.3 has anything to say about.
+;;
+;; §3.6.3 corresponds the signs of a LINE with the stops of that line, and both
+;; halves of that sentence are about the line's own inline axis. A sign set inside a
+;; structure that stacks its text off the line stands at no coordinate that axis has,
+;; so it is not a sign of the line: it takes no stop, it sets the advance it was
+;; shaped with, and §3.6.3's cut is never chosen at it -- there is no line boundary
+;; inside one position on the line. A jidori, a run of emphasis dots and a
+;; superscript are not that shape: their characters stand along the line, one
+;; position each, so a stop reaches a sign inside one of those like any other
+;; character (docs/decisions/tab-line-correspondence.md).
+(define (line-sign? para one)
+  (and (tab-sign? para one) (not (in-stacked-structure? para one))))
+
+;; The string one sign puts at its stop: what stands between it and the next sign of
+;; the line, or the line end, as `(width . text)` pairs. A sign the line does not
+;; correspond with a stop ends nothing: it is set inside a structure, so the string
+;; runs through it as it runs through the structure's other characters.
 (define (string-after para items first count offset advances gaps fixed)
   (let walk ([at (add1 offset)] [out '()])
     (cond
       [(>= at count) (reverse out)]
-      [(tab-sign? para (vector-ref items (+ first at))) (reverse out)]
+      [(line-sign? para (vector-ref items (+ first at))) (reverse out)]
       [else
        (define one (vector-ref items (+ first at)))
        ;; What the character takes up on the line, which is its own advance and the
@@ -1262,8 +1277,8 @@
            (define right (vector-ref ornamented after))
            (boundary (stated-cell left right)
                      after
-                     (or (tab-sign? para right) (breakable? para style left right))
-                     (tab-sign? para left))))
+                     (or (line-sign? para right) (breakable? para style left right))
+                     (line-sign? para left))))
        (for ([pair (in-list (jidori-separations (cdr (assq 'cells (construct-payload one)))
                                                 (extent-inline (paragraph-size para))
                                                 bases
@@ -1378,8 +1393,11 @@
                        ;; is §3.6's and not §3.1's -- it is a line boundary rather
                        ;; than a break opportunity, so it needs neither the caller's
                        ;; own `breaks` nor Table 2's permission, and it falls at
-                       ;; boundaries Table 2 would never let a line end at.
-                       (tab-sign? para (vector-ref items index))
+                       ;; boundaries Table 2 would never let a line end at. A sign
+                       ;; that is not a sign of this line offers no such boundary:
+                       ;; it never runs any stops out, and there is no line boundary
+                       ;; inside the one position its structure holds.
+                       (line-sign? para (vector-ref items index))
                        (and kind
                             (or (eq? kind 'mandatory)
                                 (breakable? para style
