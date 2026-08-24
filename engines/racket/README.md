@@ -334,8 +334,8 @@ and every one of them the same answer.**
 
 The same 111,090 requests were also diffed against the **OCaml** engine, which reads
 the Japanese transcription and is itself at zero against Rust: three implementations,
-three readings of §3.9.2 and Appendix B written from the specification by three
-people who could not see each other's layout code, and one answer.
+three readings of §3.9.2 and Appendix B taken from the specification rather than from
+each other's layout code, and one answer.
 
 ### What the censuses settled
 
