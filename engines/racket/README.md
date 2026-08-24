@@ -169,16 +169,15 @@ The Rust engine reads `spec/captured/table*.en.tsv`. The OCaml engine reads
 `table*.ja.tsv`. **This engine reads the English ones**, and its own tests build the
 Japanese ones and compare all 4,932 cells and their note citations against them.
 
-`docs/design/conformance.md` describes the two-engine case, where the second engine
-is by definition the one that reads the other locale. With three engines the locales
-cannot all differ, and what has to stay true is the property that sentence is
-protecting: **both hand transcriptions of those six PDF pages are read by something,
-and the agreement between them is checked rather than assumed.** OCaml answering all
-eighty-nine cases from the Japanese side is what keeps the first half true; the
-cell-for-cell comparison in `tests/test-tables.rkt` — the mirror image of the one
-`engines/ocaml/test/test_tables.ml` makes — is what keeps the second, and turns a
-transcription divergence into a named coordinate in a test failure instead of an
-unexplained `DIFF` nine milestones from now.
+`docs/design/conformance.md` states the property this is held to: **both hand
+transcriptions of those six PDF pages are read by something, and the agreement
+between them is checked rather than assumed.** With three engines the locales cannot
+all differ, and it is the property and not the count that the rule is about. OCaml
+answering all eighty-nine cases from the Japanese side is what keeps the first half
+true; the cell-for-cell comparison in `tests/test-tables.rkt` — the mirror image of
+the one `engines/ocaml/test/test_tables.ml` makes — is what keeps the second, and
+turns a transcription divergence into a named coordinate in a test failure instead of
+an unexplained `DIFF` nine milestones from now.
 
 The two locales' files are keyed in different row orders, so that comparison is by
 coordinate and never by row.
@@ -226,7 +225,9 @@ Two coordinates are already known to be places the Rust engine is not self-consi
 — both about a tab sign standing inside a structure that does not set its text along
 the line — and `engines/ocaml/README.md`'s "Where the two engines disagree" records
 the reading the OCaml engine took. This engine takes the same reading, because it is
-the one the specification supports and not because the OCaml engine took it.
+the one the specification supports and not because the OCaml engine took it. The
+`tabs` census covers neither shape, by construction, and covers every other place a
+sign can stand.
 
 ## Milestones
 
@@ -304,16 +305,19 @@ just racket-gate          → exit 0    (CURRENT = 9, so the same run as conform
 just test-engine-racket   → 10185 tests passed
 ```
 
-Five of the ten censuses agree with the Rust engine at every request, and the sixth
-at all but ten:
+All ten censuses agree with the Rust engine at every request:
 
 ```text
-just census-racket spacing        → 2116 request(s), 0 differing response(s)
-just census-racket break          → 2116 request(s), 0 differing response(s)
-just census-racket reduction      → 3174 request(s), 0 differing response(s)
-just census-racket expansion      → 3174 request(s), 0 differing response(s)
-just census-racket vertical       → 5290 request(s), 10 differing response(s)
-just census-racket tate-chu-yoko  → 4761 request(s), 0 differing response(s)
+just census-racket spacing        →  2116 request(s), 0 differing response(s)
+just census-racket break          →  2116 request(s), 0 differing response(s)
+just census-racket reduction      →  3174 request(s), 0 differing response(s)
+just census-racket expansion      →  3174 request(s), 0 differing response(s)
+just census-racket vertical       →  5290 request(s), 0 differing response(s)
+just census-racket tate-chu-yoko  →  4761 request(s), 0 differing response(s)
+just census-racket ruby           → 37030 request(s), 0 differing response(s)
+just census-racket constructs     → 15870 request(s), 0 differing response(s)
+just census-racket tabs           → 24334 request(s), 0 differing response(s)
+just census-racket widow          → 13225 request(s), 0 differing response(s)
 ```
 
 That is 529 class pairs read back out of Table 1 in four line positions, out of
@@ -321,31 +325,28 @@ Table 2 at all four §C.3 levels, out of Tables 3 through 5 on a line that has t
 give the spacing back, and out of Table 6 on a justified line with room left over —
 from the English transcription of those six PDF pages against the Japanese one the
 OCaml engine reads, agreeing bit for bit. Then the same pairs again in vertical
-composition, and again with a tate-chu-yoko run standing between them, which is the
-only way to reach the cl-30 row and column of all six matrices at all. 20,621 of the
-20,631 requests agree bit for bit.
+composition; again with a tate-chu-yoko run standing between them, which is the only
+way to reach the cl-30 row and column of all six matrices at all; again beside a ruby
+construct in all three kinds, an ornamented complex, an inline cutting note, a
+furawake and a jidori; again across a tab sign at stops the line reaches and stops it
+has passed; and again on a paragraph whose last line is a widow. **111,090 requests,
+and every one of them the same answer.**
 
-The ten that do not agree are one coordinate family, and none of them is reachable
-from the eighty-nine cases:
+The same 111,090 requests were also diffed against the **OCaml** engine, which reads
+the Japanese transcription and is itself at zero against Rust: three implementations,
+three readings of §3.9.2 and Appendix B written from the specification by three
+people who could not see each other's layout code, and one answer.
 
-```text
-census/vertical/cl-24+{cl-05,cl-12,cl-24,cl-26,cl-28}/rotated-break
-census/vertical/cl-26+{cl-05,cl-12,cl-24,cl-26,cl-28}/rotated-break
-```
+### What the censuses settled
 
-A rotated run of cl-24 or cl-26 that has to break loses the quarter or half em the
-Rust engine pulls it back by, so the line it is on measures wider and the break
-lands one cluster early. It is §3.2.5's amount surviving a wrap — the same reading
-this engine already takes for an opening bracket, and not yet taken here for a
-rotated Western run. `ruby`, `constructs`, `tabs` and `widow` are not clean either;
-those four and this one are the next round's work.
-
-Six things the censuses settled that JLReq does not state, and that this engine
-answers the way the Rust one does because returning to §3.8 and Appendix D did not
-settle them. `docs/decisions/` has since published its own reading of several —
+Things the censuses settled that JLReq does not state, and that this engine answers
+the way the Rust one does because returning to the section did not settle them.
+`docs/decisions/` has since published its own reading of several —
 [`tate-chu-yoko-spacing-sources`](../../docs/decisions/tate-chu-yoko-spacing-sources.md)
 covers the third of them — and where it does, the reading below is the same one,
-which is what a census at zero differences means:
+which is what a census at zero differences means.
+
+**From §3.8 and Appendices B, C, D and E:**
 
 - **§B.2 note 13's collapse reaches the boundary after a line-head word space and
   not the one before a line-end word space.** A closing bracket that ends up before a
@@ -371,6 +372,60 @@ which is what a census at zero differences means:
 - **§C.3's `very-loose` level is the two prohibitions its own opening paragraph
   names and nothing else, except that §C.2 note 12's pair of Western characters is
   relaxed only where the two are the same character.**
+
+**From §3.3 and Appendix F, which the `ruby` census reads at 37,030 coordinates:**
+
+- **§3.3.8's allowances are stated per side and measured in the run's own
+  characters.** "The full-width size of the ruby characters" is the largest character
+  of the run doing the overhanging, not the size the construct declared for its
+  annotation and not the size of a character somewhere else in the compound; and the
+  three allowances the section states for one side are available on that side alone,
+  so a reading goes over an opening bracket that stands *before* its object and over
+  the half em that stands between it and one that stands *after*.
+- **A middle dot's allowance is the sum the section states for a reduced dot, at
+  every coordinate.** §3.3.8 states one ruby character "in principle" and the spacing
+  plus half a ruby character where the dot's spacing was reduced; the sum is the
+  smaller of the two wherever nothing was reduced, so taking it always is taking the
+  section's own answer everywhere it states one.
+- **§3.3.7's first method is JIS X 4051's ratio and `ruby.group_distribution`
+  selects nothing there.** The section names that method by author rather than by
+  §3.3.6's own choice, so the flush method is another reading of §3.3.6 and not
+  another reading of §3.3.7.
+- **§F.3's total is the least the compound fits at, and it is distributed in the
+  section's own two steps.** The formula refers to its own result, so what is
+  evaluated is the fixed point (`docs/decisions/ruby-distribution-and-rounding.md`);
+  and the total is assigned to the base characters *first* and halved onto their two
+  boundaries *second*, which is a different answer from dividing it over the
+  boundaries directly wherever a base character's assignment is odd.
+- **§F.2's "first choice should be the succeeding base character" is an arrangement
+  rule and not a preference.** Each run reaches forward by as much of its own excess
+  as the character ahead of it allows and backward for the rest, and moves back only
+  where a run after it would otherwise have nowhere to stand.
+
+**From §3.4, §3.6 and §3.7.3, which the `constructs` and `tabs` censuses read at
+40,204 coordinates:**
+
+- **A warichu bracket takes cl-28 or cl-29 only where Appendix A lists the key
+  there.** §A.28 and §A.29 enumerate six parentheses; the `warichu-bracket` role
+  disambiguates a key those sections list from the same key in §A.01 or §A.02, and a
+  note bracketed with anything else is a note bracketed with an ordinary bracket.
+- **A stacked structure's own *first* character carries no space either.** The
+  reading `docs/decisions/stacked-structure-geometry.md` publishes for the closing
+  bracket holds at the opening one: an amount Table 1 states in the bracket's own em
+  stands beside the whole block and is no part of the bracket's, while an amount
+  stated in the neighbor's em is still the neighbor's and still stands.
+- **§3.7.3's room is measured in the Table 1 cells as transcribed, and its solid
+  boundaries take none of it.** A boundary a line may not end at is set solid, and a
+  run with no boundary left is one block that stands at the head of its cells.
+- **A tab sign inside a jidori takes a stop; one inside a tate-chu-yoko run, a
+  warichu or a furawake does not.** Those three are one position on the line however
+  many characters they hold, so a coordinate inside one is not a position a stop could
+  name (`engines/ocaml/README.md`, "Where the two engines disagree"); a jidori sets its
+  characters along the line, one position each. §3.6.3's *cut* is unavailable inside
+  any of them, because the construct is indivisible.
+- **Appendices D and E read the cell after a tab sign as transcribed, exactly as they
+  read §3.2.5's cl-30 cells.** §3.6 makes that amount the sign's, and the ladders go on
+  measuring their room in it.
 
 The startup census in `tables.rkt` is checked against the real files and holds
 today:
