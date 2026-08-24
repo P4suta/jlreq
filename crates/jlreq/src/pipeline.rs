@@ -3129,6 +3129,27 @@ fn line_head_indent(
     }
 }
 
+/// Whether the cluster at `ordinal` is a tab sign **of the line** in §3.6.3's sense.
+///
+/// §3.6.3 corresponds the signs of a line with the stops of that line, and both halves
+/// of that sentence are about the line's own inline axis. A tate-chu-yoko run runs
+/// across that axis and a warichu's and a furawake's sublines run beside it, so each of
+/// those structures holds one position on the line however many characters it holds,
+/// and a coordinate inside one is not a position a stop can name. A sign standing there
+/// is therefore not a sign of the line: it takes no stop, sets the advance it was shaped
+/// with, and never chooses §3.6.3's cut — including where it is the structure's first
+/// character, which is set in the structure like every other one
+/// (`docs/decisions/tab-line-correspondence.md`).
+fn is_line_tab_sign(paragraph: &Paragraph, ordinal: usize) -> bool {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return false;
+    };
+    &paragraph.text.source()[cluster.range()] == "\t"
+        && tate_chu_yoko_cluster_range(paragraph, ordinal).is_none()
+        && warichu_cluster_range(paragraph, ordinal).is_none()
+        && furawake_cluster_range(paragraph, ordinal).is_none()
+}
+
 fn measure_line(
     paragraph: &Paragraph,
     style: &Style,
@@ -3152,12 +3173,10 @@ fn measure_line(
         line_number,
     )));
     let mut tab_index = 0;
-    for (local, cluster) in paragraph.text.clusters()[start_cluster..end_cluster]
-        .iter()
-        .enumerate()
-    {
-        if &paragraph.text.source()[cluster.range()] == "\t" {
-            let after_tab = start_cluster.saturating_add(local).saturating_add(1);
+    for local in 0..end_cluster.saturating_sub(start_cluster) {
+        let ordinal = start_cluster.saturating_add(local);
+        if is_line_tab_sign(paragraph, ordinal) {
+            let after_tab = ordinal.saturating_add(1);
             let segment_width = segment_width(
                 paragraph,
                 style,
@@ -3194,7 +3213,6 @@ fn measure_line(
                 return i64::MAX;
             }
         } else {
-            let ordinal = start_cluster.saturating_add(local);
             cursor = cursor.saturating_add(i64::from(effective_cluster_advance_on_line(
                 paragraph,
                 style,
@@ -3215,18 +3233,11 @@ fn segment_width(
     end: usize,
     line: LineContext,
 ) -> i64 {
-    paragraph.text.clusters()[start..end]
-        .iter()
-        .enumerate()
-        .take_while(|(_, cluster)| &paragraph.text.source()[cluster.range()] != "\t")
-        .fold(0_i64, |sum, (local, _)| {
+    (start..end)
+        .take_while(|ordinal| !is_line_tab_sign(paragraph, *ordinal))
+        .fold(0_i64, |sum, ordinal| {
             sum.saturating_add(i64::from(effective_cluster_advance_on_line(
-                paragraph,
-                style,
-                start.saturating_add(local),
-                line.start,
-                line.end,
-                line.index,
+                paragraph, style, ordinal, line.start, line.end, line.index,
             )))
         })
 }
@@ -3246,21 +3257,15 @@ fn tab_target(
         TabAlignment::Center => position.saturating_sub(segment_width / 2),
         TabAlignment::End => position.saturating_sub(segment_width),
         TabAlignment::Character(character) => {
-            let before = paragraph.text.clusters()[start..end]
-                .iter()
-                .enumerate()
-                .take_while(|cluster| {
-                    !paragraph.text.source()[cluster.1.range()].contains(character)
-                        && &paragraph.text.source()[cluster.1.range()] != "\t"
+            let before = (start..end)
+                .take_while(|ordinal| {
+                    let cluster = paragraph.text.clusters()[*ordinal].range();
+                    !paragraph.text.source()[cluster].contains(character)
+                        && !is_line_tab_sign(paragraph, *ordinal)
                 })
-                .fold(0_i64, |sum, (local, _)| {
+                .fold(0_i64, |sum, ordinal| {
                     sum.saturating_add(i64::from(effective_cluster_advance_on_line(
-                        paragraph,
-                        style,
-                        start.saturating_add(local),
-                        line.start,
-                        line.end,
-                        line.index,
+                        paragraph, style, ordinal, line.start, line.end, line.index,
                     )))
                 });
             position.saturating_sub(before)
@@ -3281,13 +3286,17 @@ fn apply_tabs(
     for local in 0..advances.len() {
         let ordinal = start.saturating_add(local);
         let after_tab = local.saturating_add(1);
-        let cluster = &paragraph.text.clusters()[ordinal];
-        if &paragraph.text.source()[cluster.range()] == "\t" {
+        if is_line_tab_sign(paragraph, ordinal) {
             let width = advances[after_tab..]
                 .iter()
-                .zip(&paragraph.text.clusters()[ordinal.saturating_add(1)..end])
-                .take_while(|(_, following)| &paragraph.text.source()[following.range()] != "\t")
-                .fold(0_i64, |sum, (advance, _)| {
+                .enumerate()
+                .take_while(|(following, _)| {
+                    !is_line_tab_sign(
+                        paragraph,
+                        ordinal.saturating_add(1).saturating_add(*following),
+                    )
+                })
+                .fold(0_i64, |sum, (_, advance)| {
                     sum.saturating_add(i64::from(*advance))
                 });
             if let Some(stop) = paragraph
@@ -3375,7 +3384,11 @@ fn break_is_legal(paragraph: &Paragraph, style: &Style, offset: usize) -> bool {
     if after_ordinal >= paragraph.text.clusters().len() {
         return true;
     }
-    if &paragraph.text.source()[paragraph.text.clusters()[after_ordinal].range()] == "\t" {
+    // §3.6.3's cut answers to no character class, but it is available only where the
+    // sign is a sign of the line: inside a structure that stacks its text off the line
+    // there is no line boundary to cut at, and the boundary before such a structure is
+    // an ordinary one Table 2 decides.
+    if is_line_tab_sign(paragraph, after_ordinal) {
         return true;
     }
 
