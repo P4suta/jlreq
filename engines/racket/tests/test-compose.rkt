@@ -388,6 +388,76 @@
                     (5 2500 1000)))))
 
   ;; ------------------------------------------------------------------
+  ;; §3.4.2: the block a note makes, and what stands inside it
+  ;; ------------------------------------------------------------------
+
+  ;; docs/decisions/stacked-structure-geometry.md: a note's rows run BESIDE the line
+  ;; rather than being lines of their own, and the block they make is ONE position on
+  ;; the line. So a note whose members are set at the paragraph's own em rather than
+  ;; at the half em §3.4.2's own sizing comes to makes a block two ems deep and
+  ;; leaves the line as deep as the paragraph set it.
+  ;;
+  ;; `(abcd)` in an eight-em measure, every character at the paragraph's own 1000,
+  ;; the warichu over the whole of it, and an opportunity at each of the note's own
+  ;; boundaries. The note divides where it balances -- `ab` over `cd`, 2000 apiece --
+  ;; so the block is 2000 wide and the line is 1000 + 2000 + 1000 = 4000. The two
+  ;; rows are 1000 deep each and the block they make is centered on the paragraph's
+  ;; own em: 500 - 1000 puts the first row at -500 and the second at 500. The line's
+  ;; own block extent is the paragraph's 1000 and not the 2000 the rows sum to.
+  (define full-size-note
+    (request "(abcd)"
+             (list (cluster* 0 1 1000 #:role "warichu-bracket")
+                   (cluster* 1 2 1000)
+                   (cluster* 2 3 1000)
+                   (cluster* 3 4 1000)
+                   (cluster* 4 5 1000)
+                   (cluster* 5 6 1000 #:role "warichu-bracket"))
+             8000
+             #:breaks (list (break* 2 "allowed") (break* 3 "allowed") (break* 4 "allowed"))
+             #:constructs (list (hasheq 'kind "warichu" 'range '(0 6)))))
+  (check-equal? (blocks-of full-size-note) '((0 1000 (0 -500 -500 500 500 0))))
+  (check-equal? (layout-of full-size-note)
+                '(((0 6) 0 4000
+                   ((0 0 1000) (1 1000 1000) (2 2000 1000) (3 1000 1000) (4 2000 1000)
+                    (5 3000 1000)))))
+
+  ;; The same reading on the inline axis: a boundary INSIDE the block is Table 1's
+  ;; ordinary answer, and the advance a member reports is the step that reaches the
+  ;; member beside it. `※〉〈あ※` in a six-em measure, the note's three characters at
+  ;; the half em §3.4.2 comes to and no opportunity stated, so the balance divides it
+  ;; after two: `〉〈` is the first row and `あ` the second. Table 1 states 1/2 be
+  ;; between `cl-02` and `cl-01`, half of the closing bracket's own em, which is 250
+  ;; of the note's half em -- so `〉` reports 500 + 250 = 750 and `〈` stands 750 past
+  ;; it at 1750. `〈` ends its row and reports its body alone. The first row is 1250
+  ;; wide and the block with it, which puts the `※` after the note at 2250 and makes
+  ;; the line 3250.
+  (define (note-with-a-gap extent)
+    (request "※〉〈あ※"
+             (list (cluster* 0 3 1000)
+                   (cluster* 3 6 500 #:size 500)
+                   (cluster* 6 9 500 #:size 500)
+                   (cluster* 9 12 500 #:size 500)
+                   (cluster* 12 15 1000))
+             extent
+             #:alignment "start"
+             #:constructs (list (hasheq 'kind "warichu" 'range '(3 12)))))
+  (check-equal? (layout-of (note-with-a-gap 6000))
+                '(((0 15) 0 3250
+                   ((0 0 1000) (1 1000 750) (2 1750 500) (3 1000 500) (4 2250 1000)))))
+
+  ;; And §3.8.3's ladder at that same boundary. A line gives space back at the
+  ;; boundaries it was composed from, and one inside the block is not among them: the
+  ;; note is one position on the line, and the 250 units between `〉` and `〈` are
+  ;; inside that position. The same paragraph in a three-em measure is 250 units too
+  ;; wide and has nowhere else to find them -- every other boundary of it is solid --
+  ;; so the line overruns with its geometry unchanged rather than squeezing the note's
+  ;; own interior, which is a width the block already reported to the line.
+  (check-equal? (layout-of (note-with-a-gap 3000))
+                '(((0 15) 0 3250
+                   ((0 0 1000) (1 1000 750) (2 1750 500) (3 1000 500) (4 2250 1000)))))
+  (check-equal? (notes-of (note-with-a-gap 3000)) '(("layout.overfull" 0 15)))
+
+  ;; ------------------------------------------------------------------
   ;; Appendix C: what may be broken
   ;; ------------------------------------------------------------------
 
