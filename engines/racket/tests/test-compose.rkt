@@ -31,7 +31,8 @@
                  #:alignment [alignment #f]
                  #:writing-mode [writing-mode #f]
                  #:indent [indent #f]
-                 #:constructs [constructs '()])
+                 #:constructs [constructs '()]
+                 #:tab-stops [tab-stops '()])
   (define base
     (hasheq 'source source
             'size (hasheq 'inline 1000 'block 1000)
@@ -42,11 +43,15 @@
   (let* ([a (if (null? breaks) base (hash-set base 'breaks breaks))]
          [b (if (null? constructs) a (hash-set a 'constructs constructs))]
          [c (if alignment (hash-set b 'alignment alignment) b)]
-         [d (if writing-mode (hash-set c 'writing_mode writing-mode) c)])
-    (if indent (hash-set d 'first_line_indent indent) d)))
+         [d (if writing-mode (hash-set c 'writing_mode writing-mode) c)]
+         [e (if (null? tab-stops) d (hash-set d 'tab_stops tab-stops))])
+    (if indent (hash-set e 'first_line_indent indent) e)))
 
 (define (break* offset kind)
   (hasheq 'offset offset 'kind kind))
+
+(define (stop* position #:alignment [alignment "start"])
+  (hasheq 'position position 'alignment alignment))
 
 ;; A layout as `(list (list range inline-origin inline-extent (list (index inline advance) ...)) ...)`.
 (define (layout-of body)
@@ -304,6 +309,83 @@
                                     #:writing-mode "vertical-rl"
                                     #:constructs (list (hasheq 'kind "tate-chu-yoko" 'range '(3 5)))))
                 '((0 1000 (0 -366 -66 0))))
+
+  ;; ------------------------------------------------------------------
+  ;; §3.6.3: a tab sign set inside a structure that stacks its text off the line
+  ;; ------------------------------------------------------------------
+
+  ;; docs/decisions/tab-line-correspondence.md: §3.6.3 corresponds the signs of a
+  ;; LINE with the stops of that line, and §3.4.2's note runs BESIDE the line rather
+  ;; than along it -- the block is one position on the line however many characters
+  ;; it holds, so a coordinate inside it is not a position a stop could name. A sign
+  ;; there is therefore not a sign of the line: it takes no stop, it sets the advance
+  ;; it was shaped with, and §3.6.3's cut is never chosen at it.
+  ;;
+  ;; `Aあ⇥うB` in an eight-em measure, the note's three characters at half an em as
+  ;; §3.4.2's own size comes to, the warichu over them, the caller's one opportunity
+  ;; before `う`, and one stop at 2500. §3.4.2 divides the note where the caller said
+  ;; it may, so `あ⇥` is its first subline -- 500, and the 500 the sign was shaped
+  ;; with -- and `う` is its second at 500. The block is as wide as the wider of the
+  ;; two, so the line steps 1000 once: `A` from 0, the whole block from 1000, `B`
+  ;; from 2000, and the line is 3000 wide. The stop is never reached, because this
+  ;; line holds no sign of its own.
+  (check-equal? (layout-of (request "Aあ\tうB"
+                                    (list (cluster* 0 1 1000)
+                                          (cluster* 1 4 500 #:size 500)
+                                          (cluster* 4 5 500 #:size 500)
+                                          (cluster* 5 8 500 #:size 500)
+                                          (cluster* 8 9 1000))
+                                    8000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 5 "allowed"))
+                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
+                                    #:tab-stops (list (stop* 2500))))
+                '(((0 9) 0 3000
+                   ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 1000)))))
+
+  ;; The same paragraph with the sign moved to the front of the note, where it opens
+  ;; the structure rather than standing strictly inside it, and a stop at 250 the
+  ;; line has already gone past. A note's first character is set in the note exactly
+  ;; as the rest are, so the sign is IN the structure and not beside it: §3.6.3's cut
+  ;; is not available at it and the line does not end there. `⇥あ` is the first
+  ;; subline at 1000 and `う` the second at 500, which is the same block and the same
+  ;; single line as above.
+  (check-equal? (layout-of (request "A\tあうB"
+                                    (list (cluster* 0 1 1000)
+                                          (cluster* 1 2 500 #:size 500)
+                                          (cluster* 2 5 500 #:size 500)
+                                          (cluster* 5 8 500 #:size 500)
+                                          (cluster* 8 9 1000))
+                                    8000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 5 "allowed"))
+                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
+                                    #:tab-stops (list (stop* 250))))
+                '(((0 9) 0 3000
+                   ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 1000)))))
+
+  ;; And the other half of the reading: the stop the NEXT sign takes is measured from
+  ;; the line's own walk, where the whole structure is one step. `Aあ⇥う⇥B` is the
+  ;; first paragraph with a second sign after the note, this one a sign of the line,
+  ;; and two stops at 2500 and 3000. The line's walk reaches the second sign at
+  ;; 2000 -- 1000 for `A` and 1000 for the whole block -- so the nearest stop ahead of
+  ;; it is 2500 and the sign takes the 500 that reaches it. A sign inside the note
+  ;; that had taken the first stop would have left 3000 here instead.
+  (check-equal? (layout-of (request "Aあ\tう\tB"
+                                    (list (cluster* 0 1 1000)
+                                          (cluster* 1 4 500 #:size 500)
+                                          (cluster* 4 5 500 #:size 500)
+                                          (cluster* 5 8 500 #:size 500)
+                                          (cluster* 8 9 1000)
+                                          (cluster* 9 10 1000))
+                                    8000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 5 "allowed"))
+                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
+                                    #:tab-stops (list (stop* 2500) (stop* 3000))))
+                '(((0 10) 0 3500
+                   ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 500)
+                    (5 2500 1000)))))
 
   ;; ------------------------------------------------------------------
   ;; Appendix C: what may be broken

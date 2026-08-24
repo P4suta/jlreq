@@ -7,6 +7,51 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- The Racket reference engine now reads §3.6.3's tab round the way
+  `docs/decisions/tab-line-correspondence.md` publishes it, which closes
+  [#19](https://github.com/P4suta/jlreq/issues/19) and lifts the census exclusion the entry
+  below records. `engines/racket/compose.rkt` gave a tab sign standing inside a warichu or a
+  furawake one em of the paragraph's own size instead of the advance it was shaped with —
+  which moves the block's own geometry and the whole line with it — and reached that branch
+  only for a sign *strictly* inside the structure, so a sign that opened one still fell
+  through to §3.6.3's cut and ended the line before a sign that is not a sign of the line.
+  A new `line-sign?` decides the question once, off the geometry rather than off a list of
+  constructs: a sign a stacking structure contains, its first character included, takes no
+  stop, keeps the advance it was shaped with, ends no string a stop aligns, and offers the
+  line no boundary. A sign inside a jidori or an emphasis run is unaffected — those set
+  their characters along the line, one position each. No public API and no other engine
+  changed. `engines/ocaml/probe/census.ml` covers the shape again at nine further variants
+  — a sign inside a warichu and inside a furawake, a sign that opens either, and a sign of
+  the line standing after such a structure, whose stop has to be measured from a walk in
+  which the whole block is one step — so the `tabs` census is 30,153 requests and all ten
+  censuses are at zero differences across the three engines over 116,909.
+- §3.6.3's tab round now gives one answer to "is this a sign of the line" instead of two.
+  A tab sign standing inside a structure that stacks its text off the line — a
+  tate-chu-yoko run, which runs across it, or a warichu's and a furawake's sublines, which
+  run beside it — is not a sign of the line: it takes no stop, sets the advance it was
+  shaped with, and never chooses §3.6.3's cut, the structure's *first* character included.
+  Two coordinates where `crates/jlreq/src/pipeline.rs` contradicted itself are closed by
+  this, both found by the independent OCaml and Racket engines and filed as
+  [#12](https://github.com/P4suta/jlreq/issues/12) and
+  [#13](https://github.com/P4suta/jlreq/issues/13). A sign that *opened* a tate-chu-yoko run
+  ended the line — which only §3.6.3's fourth case does, and only to a sign of the line —
+  and was then set as a member of the run on the next line; `validate_breaks` in
+  `crates/jlreq/src/paragraph.rs` no longer offers §3.6.3's cut there. Inside a warichu or a
+  furawake, `apply_tabs` stepped a tab cursor once per character of the block while the line
+  set the block at one position, so the *next* sign's advance was measured from a cursor
+  that was not where the sign stood; the tab cursor and the placement cursor are now one
+  walk, in which a structure is one step, and a line the engine measures wider than it sets
+  — and therefore reduces when it need not — is no longer possible at these shapes. The
+  reading is published in `docs/decisions/tab-line-correspondence.md`, argued from §3.6.3
+  and from the geometry §3.2.5, §3.4.2 and §3.7.2 give those structures rather than from
+  what any engine answered. No public API changed. All ten censuses stay at zero differences
+  across the three engines over 112,148 requests, the `tabs` census now covering a sign that
+  opens a tate-chu-yoko run at 1,058 further requests; a sign inside a warichu stays out of
+  it because the Racket engine has not reached the published reading
+  ([#19](https://github.com/P4suta/jlreq/issues/19)).
+
 ### Changed
 
 - Renamed the project from `kumihan` to `jlreq`, while the workspace is still unreleased at

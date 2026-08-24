@@ -1615,6 +1615,14 @@ let warichu_bracket (klass : int) : piece =
 let warichu_open () : piece = warichu_bracket 1
 let warichu_close () : piece = warichu_bracket 2
 
+(** One occurrence set at the size §3.4.2 gives a note, whatever else it is.
+
+    A census that varies the pair {i inside} a warichu or a furawake cannot pick its
+    characters from a fixed list the way {!note} does -- the pair is the subject -- so
+    the size is applied to the pair's own representatives instead. *)
+let halved (one : piece) : piece =
+  { one with piece_size = Some (em / 2, em / 2); piece_advance = Some (em / 2) }
+
 (** The note a warichu census sets: half-em characters, which is what §3.4.2's own
     "around six point size" comes to against a ten point kihon-hanmen. *)
 let note (count : int) : piece list =
@@ -1665,6 +1673,13 @@ let emphasis ?(mark = "\xe2\x80\xa2") (first : int) (last : int) : span =
 let ornament (kind : string) (first : int) (last : int) (annotation : piece list) : span =
   { span_default with span_kind = kind; span_first = first; span_last = last;
     span_annotation = Some annotation }
+
+(** A warichu with no brackets around it: §3.4.2's note is the run's own text, and
+    the two cl-28 and cl-29 occurrences are characters of the main line the caller
+    gives a role to. A census that varies the pair inside the structure wants the
+    structure and not the brackets. *)
+let warichu (first : int) (last : int) : span =
+  { span_default with span_kind = "warichu"; span_first = first; span_last = last }
 
 let furawake (first : int) (last : int) ~(columns : int) ~(gap : int) : span =
   { span_default with span_kind = "furawake"; span_first = first; span_last = last;
@@ -1938,6 +1953,26 @@ let tab_variants : tab_variant list =
   let tab_then_pair before after = [ tab; plain before; plain after ] in
   let two_tabs before after = [ plain before; tab; plain after; tab; plain filler ] in
   let trailing_tab before after = [ plain before; plain after; tab ] in
+  (* A structure that stacks its text off the line, with the sign set inside it and the
+     pair standing at the structure's two edges. The note's own characters are §3.4.2's
+     half-em ones rather than the pair's: the pair is what the census varies, and a pair
+     set inside the block would be measuring the block's interior boundaries instead of
+     the sign. The sign is halved with them -- a character of a note is set at the
+     note's size, whatever else it is. *)
+  let note_head = List.nth (note 2) 0 in
+  let note_tail = List.nth (note 2) 1 in
+  let sign_in_note before after =
+    [ plain before; note_head; halved tab; note_tail; plain after ]
+  in
+  let note_opens_with_sign before after =
+    [ plain before; halved tab; note_head; note_tail; plain after ]
+  in
+  (* A sign inside the structure and then one that IS a sign of the line: what the
+     second one reaches has to be measured from a walk in which the whole block is one
+     step, and the first one must not have taken a stop away from it. *)
+  let sign_in_note_then_sign before after =
+    [ plain before; note_head; halved tab; note_tail; plain after; tab; plain filler ]
+  in
   [
     (* Found stops, one per §3.6.2 alignment. The stop is past where the text before
        the sign ends, so the sign moves the rest of the line forward. *)
@@ -2143,6 +2178,60 @@ let tab_variants : tab_variant list =
     { tab_default with tb_name = "construct-ends-at-the-sign"; tb_pieces = split;
       tb_spans = [ tate_chu_yoko 0 1 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
       tb_extent = 3 * em; tb_writing_mode = "vertical-rl" };
+    (* A run that BEGINS exactly at the sign. A run's first character is set in the
+       run like every other one, so the sign is in the run rather than beside it: it
+       takes no stop and §3.6.3's cut is never chosen there, which is the coordinate
+       issue #12 settled and docs/decisions/tab-line-correspondence.md now publishes.
+       Both a stop the line has gone past and one it has not, because a sign that is
+       not a sign of the line takes neither. *)
+    { tab_default with tb_name = "tate-chu-yoko-begins-at-the-sign"; tb_pieces = split;
+      tb_spans = [ tate_chu_yoko 1 3 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 3 * em; tb_writing_mode = "vertical-rl" };
+    { tab_default with tb_name = "tate-chu-yoko-begins-at-the-sign-found"; tb_pieces = split;
+      tb_spans = [ tate_chu_yoko 1 3 ]; tb_stops = (fun _ _ -> [ stop (3 * em) ]);
+      tb_extent = 6 * em; tb_writing_mode = "vertical-rl" };
+    (* The sibling coordinate, settled by the same reading and issue #19's own subject:
+       a warichu's and a furawake's sublines run BESIDE the line where a tate-chu-yoko
+       run runs across it, and either way the structure is one position on the line
+       however many characters it holds. So the sign inside one takes no stop and sets
+       the advance it was shaped with -- which is a width the block's own geometry then
+       carries, and not one em of the paragraph's size -- and the cut is unavailable at
+       it, the structure's first character included. The two shapes differ from the
+       tate-chu-yoko ones in what they can observe: a run is one item of the line, so a
+       sign in one is never a sign the line's own walk sees at all, while a warichu's
+       and a furawake's members stay items of the line and both halves of the reading
+       show there. *)
+    { tab_default with tb_name = "inside-warichu"; tb_pieces = sign_in_note;
+      tb_spans = [ warichu 1 4 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 6 * em };
+    { tab_default with tb_name = "inside-warichu-found"; tb_pieces = sign_in_note;
+      tb_spans = [ warichu 1 4 ]; tb_stops = (fun _ _ -> [ stop (3 * em) ]);
+      tb_extent = 6 * em };
+    { tab_default with tb_name = "warichu-begins-at-the-sign"; tb_pieces = note_opens_with_sign;
+      tb_spans = [ warichu 1 4 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 6 * em };
+    { tab_default with tb_name = "warichu-begins-at-the-sign-found";
+      tb_pieces = note_opens_with_sign; tb_spans = [ warichu 1 4 ];
+      tb_stops = (fun _ _ -> [ stop (3 * em) ]); tb_extent = 6 * em };
+    { tab_default with tb_name = "warichu-then-a-sign-of-the-line";
+      tb_pieces = sign_in_note_then_sign; tb_spans = [ warichu 1 4 ];
+      tb_stops = (fun _ _ -> [ stop (2 * em); stop (5 * em) ]); tb_extent = 7 * em };
+    (* §3.7.2 divides a furawake at the caller's own boundaries rather than at one it
+       finds, so a two-column structure states the one break that makes its columns. *)
+    { tab_default with tb_name = "inside-furawake"; tb_pieces = sign_in_note;
+      tb_spans = [ furawake 1 4 ~columns:2 ~gap:0 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 6 * em; tb_breaks = Boundaries_before [ 3 ] };
+    { tab_default with tb_name = "inside-furawake-found"; tb_pieces = sign_in_note;
+      tb_spans = [ furawake 1 4 ~columns:2 ~gap:0 ]; tb_stops = (fun _ _ -> [ stop (3 * em) ]);
+      tb_extent = 6 * em; tb_breaks = Boundaries_before [ 3 ] };
+    { tab_default with tb_name = "furawake-begins-at-the-sign";
+      tb_pieces = note_opens_with_sign; tb_spans = [ furawake 1 4 ~columns:2 ~gap:0 ];
+      tb_stops = (fun _ _ -> [ stop (em / 2) ]); tb_extent = 6 * em;
+      tb_breaks = Boundaries_before [ 3 ] };
+    { tab_default with tb_name = "furawake-then-a-sign-of-the-line";
+      tb_pieces = sign_in_note_then_sign; tb_spans = [ furawake 1 4 ~columns:2 ~gap:0 ];
+      tb_stops = (fun _ _ -> [ stop (2 * em); stop (5 * em) ]); tb_extent = 7 * em;
+      tb_breaks = Boundaries_before [ 3 ] };
   ]
 
 let tabs_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =

@@ -35,7 +35,7 @@ reaches it, where any does — so that a reader can reproduce the observation ra
 the claim.
 
 A *third* engine ([engines/racket/](../../engines/racket/README.md)) has since been brought
-to zero differences against both of the others on all ten censuses, 111,090 requests, and
+to zero differences against both of the others on all ten censuses, 116,909 requests, and
 that convergence turned up nine more policies of the same kind. Two of them are subjects
 nothing here covered and have files of their own in the table below; the other seven belong
 to subjects already published and were written into those files, one of them into a reading
@@ -76,7 +76,7 @@ Promoted from the second and third engines' observations:
 | [ornamented-complex-geometry](ornamented-complex-geometry.md) | What an emphasis mark is centered on, how many complexes an emphasis run is, and where §3.7.1's annotation sits | `just census constructs` |
 | [stacked-structure-geometry](stacked-structure-geometry.md) | Which positions a warichu may divide at, whether its balance sentence is a bound, whose advance a structure's trailing and leading space is part of, and where §3.4.3's balance ranks against the line it stands on | `just census constructs` |
 | [warichu-bracket-listing](warichu-bracket-listing.md) | Whether the `warichu-bracket` role narrows a key §A.28 and §A.29 list or reaches cl-28 and cl-29 with any bracket | `just census constructs` |
-| [tab-line-correspondence](tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, what §3.6.1's count is counted over, and which of a jidori and a tate-chu-yoko run holds a coordinate a stop can name | `just census tabs` |
+| [tab-line-correspondence](tab-line-correspondence.md) | What a tab sign with no stop left does, whether §3.6.3's cut answers to §3.1, what §3.6.1's count is counted over, which of a jidori and a tate-chu-yoko run holds a coordinate a stop can name, and whether a structure that stacks its text off the line holds a sign standing at its first character | `just census tabs` |
 | [jidori-room-and-solid-boundaries](jidori-room-and-solid-boundaries.md) | What §3.7.3 measures its room in, which boundaries it sets solid, and where a run with no boundary left stands | `just census tabs`, `constructs` |
 | [unstated-alignment](unstated-alignment.md) | What a request that states no `alignment` asks for | `just census tabs`, `widow`; case `3.5.4/widow-keeps-two-clusters-on-last-line` |
 | [inexpressible-advance-remarks](inexpressible-advance-remarks.md) | Whether an Appendix A Remarks cell naming only an unexpressible advance excludes its listing or qualifies nothing | `just census vertical` |
