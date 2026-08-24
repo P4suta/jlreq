@@ -356,7 +356,7 @@ table is what this section resolves to for those nine:
 | [warichu-bracket-listing](../../docs/decisions/warichu-bracket-listing.md) | That the `warichu-bracket` role narrows a key §A.28 and §A.29 list and promotes nothing |
 | [stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md) | That a stacked structure's own *first* character carries no space either, and where §3.4.3's balance ranks against the line the note stands on |
 | [jidori-room-and-solid-boundaries](../../docs/decisions/jidori-room-and-solid-boundaries.md) | What §3.7.3 measures its room in, which of its boundaries are set solid, and where a run with no boundary left stands |
-| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | Which constructs hold a coordinate a stop can name — a jidori does, a tate-chu-yoko run, a warichu and a furawake do not |
+| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | Which constructs hold a coordinate a stop can name — a jidori does, a tate-chu-yoko run does not; the warichu and furawake coordinates stay excluded as issues #12 and #13 |
 | [tate-chu-yoko-spacing-sources](../../docs/decisions/tate-chu-yoko-spacing-sources.md) | That Appendices D and E read the cell after a tab sign as transcribed, exactly as they read the cl-30 cells §3.2.5 withdrew |
 
 The rest are still recorded here, because no file under `docs/` states them yet. A

@@ -78,15 +78,17 @@ rather than in it.
 
 **Whether such a sign takes a stop at all depends on how the construct sets its text.** A
 jidori sets its characters along the line, one position each, so a coordinate inside one is
-a position a stop can name and a sign standing there takes the next stop ahead of it like
-any other. A tate-chu-yoko run, a warichu and a furawake are each one position on the line
-however many characters they hold — a run across it, two sublines beside it — so no
-coordinate inside them is a position a stop could name, and a sign there takes the advance
-it was shaped with. §3.6.3's cut is unavailable inside all four, because none of them is a
-place a line boundary can fall.
+a position a stop can name, and a sign standing there takes the next stop ahead of it like
+any other character of the line. A tate-chu-yoko run is the other shape: it runs *across*
+the line and holds one position however many characters it holds, so a coordinate strictly
+inside one is not a position a stop could name, and a sign there takes the advance it was
+shaped with. §3.6.3's cut is unavailable inside either, because neither is a place a line
+boundary can fall.
 
-Two coordinates of that last group are places the reference engines do not agree and are
-excluded from what this file publishes; they are named at the end.
+The same argument reaches two further coordinates — a warichu's and a furawake's sublines,
+which run beside the line, and a sign that is the *first* character of a tate-chu-yoko run
+— and those are exactly the two the reference engines do not agree at. No reading is
+published for them here; they are named at the end.
 
 **Stops are taken in the order they stand along the line, not the order the request lists
 them.** A request may list them descending; each sign takes the nearest stop ahead of the
@@ -122,15 +124,22 @@ is there being no boundary at that point — and inside one object on the line, 
 **A stop is a position in the line, so a construct with no positions in the line has no
 coordinate a stop can name.** §3.6.3 corresponds the *signs of a line* with the *stops of
 that line*, and both halves of that sentence are about the line's own inline axis. A
-tate-chu-yoko run runs across that axis and a warichu's and a furawake's sublines run beside
-it; each occupies one position however many characters it holds, so measuring a stop to a
-coordinate inside one would measure to a point the line does not have — and would make the
-width the line is *measured* at and the width it is *set* at two different numbers. A jidori
-is the opposite case and is why the rule has to be stated about the geometry rather than
-about constructs: it is a construct in every other respect, but its characters stand one
-after another along the line at positions of their own, and every one of them is a
-coordinate a stop can name. Reading the rule off the construct list rather than off the
-geometry would give a jidori a sign that ignores its stops for no reason a reader could see.
+tate-chu-yoko run runs across that axis and occupies one position however many characters it
+holds, so measuring a stop to a coordinate inside one would measure to a point the line does
+not have — and would make the width the line is *measured* at and the width it is *set* at
+two different numbers. A jidori is the opposite case and is why the rule has to be stated
+about the geometry rather than about a list of constructs: it is a construct in every other
+respect, but its characters stand one after another along the line at positions of their
+own, and every one of them is a coordinate a stop can name. Reading the rule off the
+construct list rather than off the geometry would give a jidori a sign that ignores its
+stops for no reason a reader could see.
+
+The argument does not stop where this file's readings do. A warichu's and a furawake's
+sublines run beside the line and have the same geometry a tate-chu-yoko run has, and a sign
+that is the first character of a run is either in the run or beside it and cannot be both.
+Those two coordinates are excluded here because the reference engines answer them
+differently and this project settles a disagreement by returning to JLReq and to `spec/` —
+not because the argument is weaker there.
 
 **One em is the only width §3.6 leaves available.** The line-head sign is the one case the
 fourth sentence cannot reach, so the sign has to take *some* width, and §3.6 names none.
