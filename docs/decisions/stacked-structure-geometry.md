@@ -11,10 +11,12 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.4.2, §3.4.3, §3.7.2, §B.2#13, §C.3
-- Observed by: `just census constructs` (18,515 requests), the warichu and furawake
+- Observed by: `just census constructs` (20,102 requests), the warichu and furawake
   variants; the last two readings below by the third engine's convergence on the same
-  census, and the two block-axis and in-block readings by its `warichu-full-size` and
-  `warichu-pair-inside` variants
+  census, and the block-axis and in-block readings by its `warichu-full-size`,
+  `warichu-pair-inside`, `warichu-pair-inside-reduced` and `furawake-pair-inside`
+  variants ([#26](https://github.com/P4suta/jlreq/issues/26),
+  [#27](https://github.com/P4suta/jlreq/issues/27))
 
 ## The silence
 
@@ -100,6 +102,26 @@ because nothing of that subline stands after it. Neither ladder reaches such a b
 §3.8.3 and §3.8.4 adjust the spacing of the line, and space inside a block was never the
 line's to give back or to open.
 
+**The *seam* where two sublines meet is one of those boundaries, and neither ladder reaches
+it either.** The character that ends the first subline and the character that begins the
+second are adjacent in the text, so Table 1 states an amount between them like anywhere
+else — and that amount stands nowhere at all: the one before it reports its body alone and
+the one after it begins its own row at the row's own origin. A ladder offered that boundary
+divides the line's arrears over a place with nothing to give and recovers only the share it
+charged elsewhere, so a line that needed 250 units back gives back 125 and reports itself
+overfull. The seam is the block's, by the same sentence the block's interior is: what makes
+a boundary the line's is that the line was composed from it, and the line was composed from
+neither.
+
+**A structure's two edges are two different characters, and Table 1 is asked of each at its
+own end.** That a structure's own space belongs to the structure says whose the amount is;
+it does not say which character the amount is looked up under. The amount before the block
+is Table 1's answer at the block's *first* character and the amount after it is Table 1's
+answer at its *last*. A note that opens with a closing bracket and ends with an ideograph is
+a closing bracket to what precedes it and an ideograph to what follows it, and an
+implementation that gathers a structure's clusters into one object of the line has to carry
+both classes, because one class cannot answer at both ends.
+
 **§3.4.3's balance is a demerit in the paragraph's own objective, ranked below an overrun
 and above a short line.** A break inside a warichu carries a cost proportional to how
 unevenly it divides the note — one 1,000,000-unit demerit per cluster of imbalance, in the
@@ -172,6 +194,34 @@ the defect [#24](https://github.com/P4suta/jlreq/issues/24) records. The ladders
 other half of it: a boundary the line was not composed from is not a boundary the line can
 adjust, which is why the two of them read the *line's* geometry and stop at the block.
 
+**The seam is that same sentence at the one place two engines read it differently.** It is
+the only boundary of a block that is neither strictly interior to a subline nor at the
+block's edge, so an implementation can reach it by asking Table 1 about two adjacent
+characters without ever asking which object they are adjacent *on* — which is exactly what
+[#26](https://github.com/P4suta/jlreq/issues/26) records two of the three reference engines
+doing differently. The reading above settles it against the ladder for the reason the
+interior boundaries were settled: the test is not whether Table 1 states an amount but
+whether the line put one there, and at the seam no engine puts one anywhere. A ladder whose
+sites are boundaries Table 1 names rather than boundaries the line was composed from will
+divide arrears over sites that cannot pay them, and the line it hands back is over its own
+measure by exactly the share those sites were charged. That is not a second reading of
+§3.8.3; it is an answer that contradicts its own diagnostic, and the census variant
+`warichu-pair-inside-reduced` is what holds it.
+
+**One object on the line, two characters at its ends.** The reason the two edges are the
+same edge twice is that a structure's reported width has to be the width the line was
+measured at — an argument about *ownership*, which is silent about the lookup. Table 1 is a
+matrix over two occurrences, and the two occurrences at the boundary after a block are the
+block's last character and whatever follows it; nothing in §3.4.2 or §3.7.2 suggests the
+first character stands in for the last. A warichu never had to state this, because its
+members remain occurrences of the line and each is asked at its own position; a furawake
+composed as one object does, and an engine that gave that object one class answered the
+boundary after it with the class from the other end
+([#27](https://github.com/P4suta/jlreq/issues/27)). The two mistakes that follow — an in-row
+amount left out of the block and the block's far boundary read at its near class — cancel
+in the line's own width at any coordinate where the two amounts happen to be equal, which
+is why the shape had to be swept over every class pair before it could be seen at all.
+
 **A figure is an example, and an example cannot outrank the measure.** §3.4.3 shows what a
 straddling note looks like when it comes out well. Reading its balance as a *requirement*
 would put a rule about a note's own two lines above the rule that a line of base text fits
@@ -210,6 +260,18 @@ readings above in the same stroke: both are questions about which object a rule 
 to, and both were reached by measurement before anything was written down here
 ([#23](https://github.com/P4suta/jlreq/issues/23),
 [#24](https://github.com/P4suta/jlreq/issues/24)).
+
+The same legend settles the seam and the two edges' classes, and would settle them in
+either direction. A sentence in §3.8.3 saying what a boundary of a *line* is — or an
+Appendix D note saying whether a reduction stage may be offered a coordinate no amount
+stands at — decides whether the ladder reaches the place two sublines meet; today the only
+argument against it is that the line was not composed from it, which is this project's own
+and not the specification's. A note in §3.4.2 or §3.7.2 saying which of a structure's own
+characters the amount beside the structure is looked up under decides the other; an
+implementation that read both edges at the first character would answer a warichu one way
+and a furawake another unless it also stopped composing the furawake as one object, which
+is how the disagreement was found ([#26](https://github.com/P4suta/jlreq/issues/26),
+[#27](https://github.com/P4suta/jlreq/issues/27)).
 
 For the fifth, a sentence in §3.4.3 that states what its figures show as a rule — how much
 of a note goes on the first base-text line, and what yields to what when a division that

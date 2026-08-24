@@ -35,7 +35,7 @@ reaches it, where any does — so that a reader can reproduce the observation ra
 the claim.
 
 A *third* engine ([engines/racket/](../../engines/racket/README.md)) has since been brought
-to zero differences against both of the others on all ten censuses, 120,612 requests, and
+to zero differences against both of the others on all ten censuses, 122,199 requests, and
 that convergence turned up nine more policies of the same kind. Two of them are subjects
 nothing here covered and have files of their own in the table below; the other seven belong
 to subjects already published and were written into those files, one of them into a reading
