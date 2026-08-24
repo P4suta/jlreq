@@ -2124,6 +2124,97 @@ fn exhausted_tab_positions_continue_on_the_next_line() {
     assert_eq!(layout.lines()[1].clusters()[1].inline(), 1_000);
 }
 
+/// A tab sign that opens a tate-chu-yoko run is a member of the run, not a sign of the
+/// line: it takes no stop, and §3.6.3's cut is never chosen there
+/// (`docs/decisions/tab-line-correspondence.md`).
+///
+/// `A⇥B` in a three-em measure, the run over `⇥B`, one stop at 500 the line has already
+/// gone past. `A` takes its em from the line head, the run stands at 1000 and takes one
+/// em of the line because that is the block size its members are set at, and the two
+/// members are set across the line from -1000 — half the 2000 units they take across it.
+/// The whole content is two ems wide in a three-em measure, so nothing is cut.
+#[test]
+fn a_tab_sign_that_opens_a_tate_chu_yoko_run_is_set_in_the_run() {
+    let text = shaped("A\tB", Frame::FullEm, 1_000).expect("valid tate-chu-yoko tab fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .constructs([Construct::tate_chu_yoko(1..3)])
+        .tab_stops([TabStop::new(500, TabAlignment::Start).expect("valid tab stop")])
+        .alignment(Alignment::Start)
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid tate-chu-yoko tab paragraph");
+    let layout = jlreq::compose(&paragraph, &Style::default());
+
+    assert_eq!(layout.lines().len(), 1);
+    let line = &layout.lines()[0];
+    assert_eq!(line.inline_extent(), 2_000);
+    assert_eq!(line.block_extent(), 2_000);
+    let geometry: Vec<_> = line
+        .clusters()
+        .iter()
+        .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+        .collect();
+    assert_eq!(
+        geometry,
+        [(0, 0, 1_000), (1_000, -1_000, 1_000), (1_000, 0, 1_000)]
+    );
+    assert_eq!(
+        layout.lines()[0].clusters()[1].transform(),
+        CoordinateTransform::TateChuYoko
+    );
+}
+
+/// A tab sign inside a warichu takes no stop either, and the stop of the *next* sign is
+/// measured from the line's own walk, where the whole block is one step
+/// (`docs/decisions/tab-line-correspondence.md`).
+///
+/// `A⇥B⇥C`, all proportional at half an em, the first three characters inside a warichu
+/// that divides before `B`, a four-em measure. The block sets `A⇥` on its first subline
+/// and `B` on its second, so it is 1000 wide and the line steps by 1000 once. The inner
+/// sign keeps the advance it was shaped with; the outer sign is the line's first sign
+/// and takes the first stop ahead of 1000.
+#[test]
+fn a_tab_sign_inside_a_warichu_takes_no_stop_and_steps_no_cursor() {
+    for (stops, expected) in [
+        ([1_200, 3_000], [200, 1_200, 1_700]),
+        ([2_000, 2_500], [1_000, 2_000, 2_500]),
+    ] {
+        let text = shaped("A\tB\tC", Frame::Proportional, 500).expect("valid warichu tab fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .breaks([Break::allowed(2)])
+            .constructs([Construct::warichu(0..3)])
+            .tab_stops(stops.map(|position| {
+                TabStop::new(position, TabAlignment::Start).expect("valid tab stop")
+            }))
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid warichu tab paragraph");
+        let layout = jlreq::compose(&paragraph, &Style::default());
+
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        let geometry: Vec<_> = line
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect();
+        assert_eq!(
+            geometry,
+            [
+                (0, -500, 500),
+                (500, -500, 500),
+                (0, 500, 500),
+                (1_000, 0, expected[0]),
+                (expected[1], 0, 500),
+            ]
+        );
+        // The width the line is measured at and the width it is set at are the same
+        // number, so a line that fits is not reduced.
+        assert_eq!(line.inline_extent(), expected[2]);
+        assert_eq!(line.block_extent(), 1_000);
+    }
+}
+
 #[test]
 fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
     let text = shaped("日本", Frame::FullEm, 1_000).expect("valid segmenter fixture");

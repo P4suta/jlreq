@@ -2143,6 +2143,25 @@ let tab_variants : tab_variant list =
     { tab_default with tb_name = "construct-ends-at-the-sign"; tb_pieces = split;
       tb_spans = [ tate_chu_yoko 0 1 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
       tb_extent = 3 * em; tb_writing_mode = "vertical-rl" };
+    (* A run that BEGINS exactly at the sign. A run's first character is set in the
+       run like every other one, so the sign is in the run rather than beside it: it
+       takes no stop and §3.6.3's cut is never chosen there, which is the coordinate
+       issue #12 settled and docs/decisions/tab-line-correspondence.md now publishes.
+       Both a stop the line has gone past and one it has not, because a sign that is
+       not a sign of the line takes neither. *)
+    { tab_default with tb_name = "tate-chu-yoko-begins-at-the-sign"; tb_pieces = split;
+      tb_spans = [ tate_chu_yoko 1 3 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 3 * em; tb_writing_mode = "vertical-rl" };
+    { tab_default with tb_name = "tate-chu-yoko-begins-at-the-sign-found"; tb_pieces = split;
+      tb_spans = [ tate_chu_yoko 1 3 ]; tb_stops = (fun _ _ -> [ stop (3 * em) ]);
+      tb_extent = 6 * em; tb_writing_mode = "vertical-rl" };
+    (* The sibling coordinate -- a sign inside a warichu or a furawake -- is settled by
+       the same reading and is NOT covered here. The Rust and OCaml engines answer it
+       alike at every pair; the Racket engine gives the sign one em of the paragraph's
+       own size instead of the advance it was shaped with, which moves the block's own
+       geometry, and it ends the line before a sign that opens one. A census is a gate
+       and a gate that is red is not one, so the shape stays out until the third engine
+       reaches the published reading (#19). *)
   ]
 
 let tabs_census (emit : string -> Jlreq_proto.Json.t -> unit) : unit =

@@ -327,7 +327,12 @@ impl ParagraphBuilder {
         }
 
         validate_constructs(&self.text, &self.constructs)?;
-        validate_breaks(&self.text, &self.constructs, &mut self.breaks)?;
+        validate_breaks(
+            &self.text,
+            &self.constructs,
+            self.writing_mode,
+            &mut self.breaks,
+        )?;
         validate_construct_breaks(&self.text, &self.constructs, &self.breaks)?;
         validate_tabs(
             &self.text,
@@ -446,9 +451,25 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
     Ok(())
 }
 
+/// Whether `construct` sets its text somewhere other than along the line, so that the
+/// line holds it at one position however many characters it holds.
+///
+/// A tate-chu-yoko run runs across the line and a warichu's and a furawake's sublines
+/// run beside it; a tate-chu-yoko construct in horizontal composition sets its text
+/// along the line like any other text, which is what the rest of this engine reads it
+/// as (`docs/decisions/tab-line-correspondence.md`).
+fn stacks_text_off_the_line(construct: &Construct, writing_mode: WritingMode) -> bool {
+    match construct.kind() {
+        ConstructKind::TateChuYoko(_) => writing_mode == WritingMode::VerticalRl,
+        ConstructKind::Warichu(_) | ConstructKind::Furawake { .. } => true,
+        _ => false,
+    }
+}
+
 fn validate_breaks(
     text: &ShapedText,
     constructs: &[Construct],
+    writing_mode: WritingMode,
     breaks: &mut Vec<Break>,
 ) -> Result<(), InputError> {
     let end = text.source().len();
@@ -481,7 +502,15 @@ fn validate_breaks(
         let offset = cluster.range().start;
         let inside_construct = constructs.iter().any(|construct| {
             let range = construct.range();
-            range.start < offset && offset < range.end
+            if range.start < offset && offset < range.end {
+                return true;
+            }
+            // A structure that stacks its text off the line sets its first character in
+            // the structure like every other one, so a sign there stands in it rather
+            // than beside it and §3.6.3's cut is not available. A structure that *ends*
+            // at the sign leaves the sign beside it and the cut available
+            // (`docs/decisions/tab-line-correspondence.md`).
+            range.start == offset && stacks_text_off_the_line(construct, writing_mode)
         });
         if offset != 0
             && !inside_construct

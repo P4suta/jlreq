@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/racket/structure.rkt`](../../engines/racket/structure.rkt)
 - Standing: `Unstated`
 - JLReq: §3.7.3, §B.1, §C.3, §3.8.3
-- Observed by: `just census tabs` (24,334 requests) and `just census constructs` (15,870
+- Observed by: `just census tabs` (25,392 requests) and `just census constructs` (15,870
   requests), the jidori variants; no built-in case reaches a jidori with no open boundary
 
 ## The silence
