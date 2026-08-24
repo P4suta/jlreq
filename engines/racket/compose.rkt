@@ -116,9 +116,17 @@
 (define operator-break-charge 100000000000)
 
 ;; §3.4.3: a warichu cut between two main lines is cut as near its own middle as
-;; the caller's own break opportunities allow, and this is what makes the balance
-;; of the two halves outrank the balance of the two lines.
-(define warichu-balance-weight 10000000000)
+;; the caller's own break opportunities allow.
+;;
+;; It outranks a line that is merely SHORT and not one that overruns the measure,
+;; which is what puts it between the two and not above both. Ten thousand a unit
+;; buys the balanced cut against a shortfall of up to a hundred units at each of two
+;; lines -- the eighty-nine cases reach that comparison at half an em -- and loses to
+;; an overrun of more than a hundred units, which is the `warichu-straddled` census
+;; asking the same question of a line that will not hold the note at all. A note set
+;; balanced across a line that has spilled past the measure is not a better answer
+;; than one set unbalanced inside it.
+(define warichu-balance-weight 10000)
 
 ;; ----------------------------------------------------------------------------
 ;; Items
@@ -197,13 +205,15 @@
                   (>= (cluster-start one) (construct-start each))
                   (< (cluster-start one) (construct-end each))
                   ;; `text?` is whether this cluster is set on the note's own rows;
-                  ;; a bracket stands on the main line instead. `last?` is whether it
-                  ;; is the structure's own last character, which carries no space of
-                  ;; its own: what Table 1 states after it stands after the whole
-                  ;; block and is not the character's (§3.4).
+                  ;; a bracket stands on the main line instead. `last?` and `first?`
+                  ;; are whether it is the structure's own last or first character,
+                  ;; neither of which carries space of its own: what Table 1 states
+                  ;; beside it stands beside the whole block and is not the
+                  ;; character's (§3.4).
                   (list 'warichu at
                         (not (eq? (cluster-role one) 'warichu-bracket))
-                        (>= (cluster-end one) (construct-end each)))))
+                        (>= (cluster-end one) (construct-end each))
+                        (<= (cluster-start one) (construct-start each)))))
            => values]
           [else #f])))
 
@@ -419,7 +429,7 @@
   (let ([found (item-structure one)])
     (and found
          (eq? (car found) 'warichu)
-         (= (length found) 4)
+         (= (length found) 5)
          (caddr found)
          (list 'warichu (cadr found)))))
 
@@ -435,8 +445,19 @@
   (define heights (make-hasheqv))
   (for ([run (in-list (warichu-runs items first last))])
     (define indices (for/list ([index (in-range (car run) (add1 (cdr run)))]) index))
+    ;; §3.4.2 divides the note "at a position where line breaking is permitted", and
+    ;; the positions this paragraph permits are the ones the caller stated
+    ;; (docs/decisions/stacked-structure-geometry.md). Where it stated none inside
+    ;; this run, every boundary is one and the balance sentence is the whole rule.
+    (define offered
+      (for/list ([index (in-list indices)] [rank (in-naturals)]
+                 #:when (and (> rank 0)
+                             (for/or ([one (in-list (paragraph-breaks para))])
+                               (= (brk-offset one) (item-start (vector-ref items index))))))
+        rank))
     (define split (balanced-split (for/list ([index (in-list indices)])
-                                    (item-advance (vector-ref items index)))))
+                                    (item-advance (vector-ref items index)))
+                                  offered))
     (define rows
       (if (<= (length indices) 1)
           (list indices)
@@ -653,12 +674,15 @@
            (define ahead
              (for/first ([one (in-list stops)] #:when (> (tab-stop-position one) cursor)) one))
            (cond
-             ;; §3.6.3: a sign standing inside a construct keeps its line and takes
-             ;; one em where it stands. Every construct is at least one object on
-             ;; the line, so a coordinate inside one is not a position a stop could
-             ;; name; a construct that begins or ends exactly at the sign leaves the
-             ;; sign beside it rather than in it.
-             [(inside-construct? para (vector-ref items (+ first offset)))
+             ;; §3.6.3: a sign standing inside a structure that does not set its
+             ;; text along the line keeps its line and takes one em where it stands.
+             ;; A warichu's and a furawake's sublines run beside the line and a
+             ;; tate-chu-yoko run runs across it: each is ONE position on the line
+             ;; however many characters it holds, so a coordinate inside one is not
+             ;; a position a stop could name. A jidori, a run of emphasis dots and a
+             ;; superscript are not that -- their characters stand along the line,
+             ;; one position each -- so a stop reaches a sign inside one of those.
+             [(inside-block? para (vector-ref items (+ first offset)))
               (vector-set! out offset (extent-inline (paragraph-size para)))]
              [ahead
               (define target
@@ -668,10 +692,15 @@
               ;; sign, because the amount after a sign is the sign.
               (define beside (vector-ref fixed (add1 offset)))
               (vector-set! out offset (max 0 (chk- (chk- target cursor) beside)))]
-             ;; §3.6.3's fourth case has nothing to say to a sign at the line head:
-             ;; there is no earlier boundary to send the string back to. It keeps its
-             ;; line and takes one em of the paragraph's own size.
-             [(zero? offset) (vector-set! out offset (extent-inline (paragraph-size para)))]
+             ;; §3.6.3's fourth case sends the sign and what follows it to the next
+             ;; line, and there are two places it has nothing to say to. A sign at
+             ;; the line head has no earlier boundary to be sent back from, and a
+             ;; sign inside a construct the caller declared cannot end the line
+             ;; there -- the construct is indivisible and the boundary is not one
+             ;; (docs/decisions/construct-break-refusal.md). Both keep their line
+             ;; and take one em of the paragraph's own size.
+             [(or (zero? offset) (inside-construct? para (vector-ref items (+ first offset))))
+              (vector-set! out offset (extent-inline (paragraph-size para)))]
              [else (set! cut #t)]))
          (walk (add1 offset)
                (chk+ (chk+ (chk+ cursor (vector-ref out offset)) (vector-ref gaps (add1 offset)))
@@ -682,6 +711,15 @@
 (define (inside-construct? para one)
   (for/or ([each (in-list (paragraph-constructs para))])
     (and (> (item-start one) (construct-start each))
+         (< (item-end one) (construct-end each)))))
+
+;; The same, for the three constructs that are one position on the line however many
+;; characters they hold: a tate-chu-yoko run runs across the line and a warichu's and
+;; a furawake's sublines run beside it.
+(define (inside-block? para one)
+  (for/or ([each (in-list (paragraph-constructs para))])
+    (and (memq (construct-kind each) '(tate-chu-yoko warichu furawake))
+         (> (item-start one) (construct-start each))
          (< (item-end one) (construct-end each)))))
 
 ;; The string one sign puts at its stop: what stands between it and the next sign,
@@ -988,7 +1026,7 @@
   (let ([found (item-structure one)])
     (and found
          (eq? (car found) 'warichu)
-         (= (length found) 4)
+         (= (length found) 5)
          (not (caddr found))
          (cadddr found))))
 
@@ -1124,20 +1162,6 @@
 ;; The items again, with what §3.3 does to them: the class of a base character, the
 ;; complex and the run it belongs to, the space a reading forced in before it, and
 ;; the reading itself.
-;; §3.4.2 and §3.9.2: the brackets that close an inline cutting note are cl-28 and
-;; cl-29, which are their own classes precisely because they stand where the line
-;; does and are set against it differently from ordinary brackets. The caller names
-;; them with the `warichu-bracket` role, and the role is what settles it: §A.28 and
-;; §A.29 enumerate the parentheses, and a note bracketed with anything else is still
-;; a note bracketed.
-(define (warichu-bracket-class one items index)
-  (define found (item-structure one))
-  (and found
-       (eq? (car found) 'warichu)
-       (= (length found) 4)
-       (not (caddr found))
-       (if (cadddr found) 29 28)))
-
 (define (with-ruby para style items)
   (define constructs (ruby-constructs para))
   (define ornaments (ornament-constructs para))
@@ -1198,10 +1222,6 @@
                          [class (if (eq? (ornament-kind found) 'reference-mark) 20 21)]
                          [complex name]
                          [run name])])))
-     (define bracketed
-       (for/vector ([one (in-vector ornamented)] [index (in-naturals)])
-         (define found (warichu-bracket-class one ornamented index))
-         (if found (struct-copy item one [class found]) one)))
      (define separations (make-hasheqv))
      (define tails (make-hasheqv))
      (define attachments (make-hasheqv))
@@ -1209,15 +1229,30 @@
      ;; cells, and what the run does not fill is space between its characters.
      (for ([one (in-list (paragraph-constructs para))]
            #:when (eq? (construct-kind one) 'jidori))
-       (define bases
+       (define members
          (for/list ([index (in-range count)]
-                    #:when (let ([found (vector-ref bracketed index)])
+                    #:when (let ([found (vector-ref ornamented index)])
                              (and (>= (item-start found) (construct-start one))
                                   (< (item-start found) (construct-end one)))))
-           (cons index (item-advance (vector-ref bracketed index)))))
+           index))
+       (define bases
+         (for/list ([index (in-list members)])
+           (cons index (item-advance (vector-ref ornamented index)))))
+       ;; §3.6.3's cut is a line boundary and not a break opportunity, so a boundary
+       ;; a sign stands after is one the line may end at whatever Table 2 says --
+       ;; the same reading `permitted-breaks` takes of it.
+       (define boundaries
+         (for/list ([before (in-list members)] [after (in-list (cdr members))])
+           (define left (vector-ref ornamented before))
+           (define right (vector-ref ornamented after))
+           (boundary (stated-cell left right)
+                     after
+                     (or (tab-sign? para right) (breakable? para style left right))
+                     (tab-sign? para left))))
        (for ([pair (in-list (jidori-separations (cdr (assq 'cells (construct-payload one)))
                                                 (extent-inline (paragraph-size para))
                                                 bases
+                                                boundaries
                                                 style))])
          (if (>= (car pair) count)
              (hash-update! tails (sub1 count) (lambda (standing) (max standing (cdr pair))) 0)
@@ -1225,10 +1260,10 @@
      (for ([one (in-list ornaments)])
        (define bases
          (for/vector ([index (in-range count)]
-                      #:when (let ([found (vector-ref bracketed index)])
+                      #:when (let ([found (vector-ref ornamented index)])
                                (and (>= (item-start found) (ornament-start one))
                                     (< (item-start found) (ornament-end one)))))
-           (define found (vector-ref bracketed index))
+           (define found (vector-ref ornamented index))
            (list index (item-start found) (item-advance found) (item-size found))))
        (when (positive? (vector-length bases))
          (for ([piece (in-list (plan-ornament one bases))])
@@ -1237,20 +1272,20 @@
      (for ([one (in-list constructs)])
        (define bases
          (for/vector ([index (in-range count)]
-                      #:when (let ([found (vector-ref bracketed index)])
+                      #:when (let ([found (vector-ref ornamented index)])
                                (and (>= (item-start found) (ruby-start one))
                                     (< (item-start found) (ruby-end one)))))
            (list index
-                 (item-start (vector-ref bracketed index))
-                 (item-advance (vector-ref bracketed index)))))
+                 (item-start (vector-ref ornamented index))
+                 (item-advance (vector-ref ornamented index)))))
        (when (positive? (vector-length bases))
          (define first-index (car (vector-ref bases 0)))
          (define last-index (car (vector-ref bases (sub1 (vector-length bases)))))
          (define em (extent-inline (ruby-em one)))
          (define found
            (plan-ruby one bases
-                      (hang-before para style bracketed first-index em)
-                      (hang-after para style bracketed last-index em)
+                      (hang-before para style ornamented first-index em)
+                      (hang-after para style ornamented last-index em)
                       style))
          (for ([(index amount) (in-hash (plan-separations found))])
            (hash-update! separations index (lambda (standing) (max standing amount)) 0))
@@ -1259,7 +1294,7 @@
          (for ([piece (in-list (plan-attachments found))])
            (hash-update! attachments (attachment-anchor piece)
                          (lambda (standing) (cons piece standing)) '()))))
-     (for/vector ([one (in-vector bracketed)] [index (in-naturals)])
+     (for/vector ([one (in-vector ornamented)] [index (in-naturals)])
        (struct-copy item one
                     [separation (hash-ref separations index 0)]
                     [tail (hash-ref tails index 0)]
