@@ -181,6 +181,6 @@ two-fifths em would make visible in a single line.
 
 For the fifth, a remainder rule in §F.3 — for the assignment, for the halving, or for both
 — settles it, and a sentence saying whether the two steps may be composed settles the rest
-of it. The difference is one 1/720-em unit at one boundary, which is invisible in every
-built-in case and visible in the `ruby` census, where a compound is set at ruby ems that
-make an assignment odd on purpose.
+of it. The difference is one 1/720-em unit at one boundary — invisible in every built-in
+case, and visible in the `ruby` census at the same ruby ems that make the fourth reading
+observable: the ones that do not tile the base characters.

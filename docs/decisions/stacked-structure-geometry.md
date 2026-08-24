@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - JLReq: §3.4.2, §3.4.3, §3.7.2, §B.2#13, §C.3
 - Observed by: `just census constructs` (15,870 requests), the warichu and furawake
   variants; the last two readings below by the third engine's convergence on the same
-  census, at a measure the note cannot fit in one line
+  census
 
 ## The silence
 
@@ -138,8 +138,10 @@ for its brackets.
 straddling note looks like when it comes out well. Reading its balance as a *requirement*
 would put a rule about a note's own two lines above the rule that a line of base text fits
 the measure, and JLReq nowhere lets an inserted note make its host line overrun. Reading it
-as *nothing* leaves the section's own two figures unexplained, since both divide the note
-evenly rather than filling the first line greedily. A demerit is what sits between the two:
+as *nothing* leaves the section's own sentence — which fixes the order of the strings *and*
+the length of each of the note's lines — with nothing to fix, and §3.4.2's "as near as
+possible the same" would then govern a note that fits one line and abandon one that does
+not. A demerit is what sits between the two:
 it is the form a preference takes in a paragraph-wide objective
 ([adjustment-preference](adjustment-preference.md)), it composes with the terms already
 there, and it decides exactly the cases where the alternatives are otherwise equally good —

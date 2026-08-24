@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Adjudicated` for the first silence — §3.2.5's own prose and the table its own
   sentence points at do not state the same rule, which is the `contradictory` permission
-  `xtask/src/policy.rs` maps onto that standing — and `Unstated` for the second, which no
-  sentence of either reaches at all.
+  `xtask/src/policy.rs` maps onto that standing — and `Unstated` for the other two, which no
+  sentence reaches at all.
 - JLReq: §3.2.5, §3.6, §B.1, §B.2, §3.8.3, §3.8.4
 - Observed by: `just census tate-chu-yoko` (4,761 requests) for the cl-30 coordinates, and
   `just census tabs` (24,334 requests) for the cell after a tab sign
@@ -112,9 +112,9 @@ the ceiling is read against the line.
 other absorbs it into a distance of its own — and if the ladders had to know which, they
 would need a coordinate for *why* an amount is where it is. Tables 3 through 6 carry two
 classes and nothing else. Reading a cell at a tab boundary is therefore not a second
-decision beside the cl-30 one; it is the same decision reached again at the only other place
-in JLReq where a section spends a Table 1 amount, and reaching it twice by the same argument
-is what makes it a reading of the matrices rather than a rule about tate-chu-yoko.
+decision beside the cl-30 one; it is the same decision reached again wherever another
+section spends a Table 1 amount, and reaching it twice by one argument is what makes it a
+reading of the matrices rather than a rule about tate-chu-yoko.
 
 ## What would change it
 

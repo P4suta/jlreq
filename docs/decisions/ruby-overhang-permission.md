@@ -60,8 +60,12 @@ and, two rules later,
 The first grants the *space* beside a mark standing on one side; the second grants the
 *mark* standing on the other. Neither is stated in the mirrored configuration, and the
 section does not say whether the unnamed half of each pair is denied or merely unmentioned.
-Table 1 states its `hang` cells on both sides of every one of these coordinates, so the
-matrix reads as though the permissions were symmetric while the prose is sided.
+Table 1 marks both sides of every one of these coordinates `hang` — `(cl-01, cl-22)` as
+well as `(cl-22, cl-01)` — and §B.1's token says only that a reading may go over the amount,
+never which of the mark and the space beside it the amount stands for. The matrix carries
+the sidedness in its *amounts*, `ruby` against `1/2`, and not in its annotation, so a
+reader who takes the annotation for the rule gets a symmetric permission out of an
+asymmetric prose.
 
 **"The full-width size of the ruby characters" does not say which ruby characters.** Every
 allowance is measured in that quantity, and a ruby construct offers three candidates for
