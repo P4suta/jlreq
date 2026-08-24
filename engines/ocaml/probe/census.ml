@@ -1635,6 +1635,17 @@ let note (count : int) : piece list =
         piece_advance = Some (em / 2);
       })
 
+(** The same note set at the paragraph's own em instead.
+
+    §3.4.2's own sizing is what {!note} halves for, and nothing in the protocol makes
+    it the only note a caller can state. A note set at the paragraph's own size is the
+    one shape where a block's two axes come apart: the rows sum to twice the depth of
+    the line that holds them, and the line stays the depth the paragraph set it,
+    because a block runs beside the line rather than being lines of its own
+    (docs/decisions/stacked-structure-geometry.md). *)
+let full_size_note (count : int) : piece list =
+  List.map (fun one -> { one with piece_size = None; piece_advance = None }) (note count)
+
 type construct_variant = {
   cs_name : string;
   cs_shape : string -> string -> piece list * span list;
@@ -1708,6 +1719,24 @@ let construct_variants : construct_variant list =
   let bare body =
     around body [ { span_default with span_kind = "warichu"; span_first = 1;
                     span_last = 1 + List.length body } ]
+  in
+  (* The pair set INSIDE the note rather than at the structure's two edges, which is
+     where every variant above stands it. A pair inside the block is asking the other
+     question §3.4.2 answers: a note's text is ordinary text of the note, so the
+     boundary between two of its characters carries Table 1's ordinary amount, and the
+     advance the character before it reports is the step that reaches the one beside
+     it (docs/decisions/stacked-structure-geometry.md). [head] note characters stand
+     before the pair and [tail] after it, which is what decides which row the pair
+     lands on and whether it heads that row; [trailing] adds one more ordinary
+     character past the structure, so that a justified variant's line under test is
+     not the paragraph's last. *)
+  let pair_in_note ?(trailing = false) ~head ~tail before after =
+    let letters = note (head + tail) in
+    let ahead = List.filteri (fun index _ -> index < head) letters in
+    let behind = List.filteri (fun index _ -> index >= head) letters in
+    let body = ahead @ [ halved (plain before); halved (plain after) ] @ behind in
+    ( (plain filler :: (body @ [ plain filler ])) @ (if trailing then [ plain filler ] else []),
+      [ warichu 1 (1 + List.length body) ] )
   in
   let columned body columns gap =
     around body [ furawake 1 (1 + List.length body) ~columns ~gap ]
@@ -1831,6 +1860,47 @@ let construct_variants : construct_variant list =
       cs_shape = bracketed (note 6);
       cs_extent = 3 * em;
       cs_breaks = Boundaries_before [ 3; 4; 5; 6 ];
+    };
+    (* A note set at the paragraph's own em rather than at §3.4.2's half one. The
+       rows then come to twice the depth of the line that holds them, and the line
+       is as deep as the paragraph set it: a block is one position on the line and
+       not two lines of it. The two writing modes count the same stack from opposite
+       ends, so both are asked. *)
+    { construct_default with cs_name = "warichu-full-size";
+      cs_shape = bracketed (full_size_note 4) };
+    {
+      construct_default with
+      cs_name = "warichu-full-size-vertical";
+      cs_shape = bracketed (full_size_note 4);
+      cs_writing_mode = "vertical-rl";
+    };
+    (* The pair inside the block instead of beside it: Table 1 between two characters
+       of one row, and the advance the one before the boundary reports. The pair heads
+       its row in the first and stands inside one in the second, where the note is five
+       characters and the balance divides it three and two. *)
+    {
+      construct_default with
+      cs_name = "warichu-pair-inside";
+      cs_shape = (fun before after -> pair_in_note ~head:0 ~tail:1 before after);
+    };
+    {
+      construct_default with
+      cs_name = "warichu-pair-inside-row";
+      cs_shape = (fun before after -> pair_in_note ~head:1 ~tail:2 before after);
+    };
+    (* §3.8.4's ladder at that same boundary: what stands inside a block is no part
+       of what the line was composed from, so a justified line cannot open it there.
+       §3.8.3's ladder is the same reading and is deliberately not asked here -- a
+       line that has to give space back beside a note whose rows meet at a Table 1
+       amount is a coordinate the Rust and OCaml engines do not yet agree on, and a
+       census asks the settled question. *)
+    {
+      construct_default with
+      cs_name = "warichu-pair-inside-justified";
+      cs_shape = (fun before after -> pair_in_note ~trailing:true ~head:0 ~tail:1 before after);
+      cs_extent = 5 * em;
+      cs_breaks = Mandatory_after 5;
+      cs_alignment = "justify";
     };
     (* §3.7.2. The block is centered across the line and its own height is the line's,
        which a gap and an odd column count make visible at once. *)
@@ -1974,6 +2044,16 @@ let tab_variants : tab_variant list =
      step, and the first one must not have taken a stop away from it. *)
   let sign_in_note_then_sign before after =
     [ plain before; note_head; halved tab; note_tail; plain after; tab; plain filler ]
+  in
+  (* The same structure with its note set at the paragraph's own em instead of at
+     §3.4.2's half one, where the sign is full-size for the same reason it is halved
+     above: a character of a note is set at the note's size, whatever else it is. What
+     that reaches is the sign standing in a block deeper than the line that holds it,
+     which is the one place where a block's own depth and the line's come apart. *)
+  let full_head = List.nth (full_size_note 2) 0 in
+  let full_tail = List.nth (full_size_note 2) 1 in
+  let sign_in_full_note before after =
+    [ plain before; full_head; tab; full_tail; plain after ]
   in
   [
     (* Found stops, one per §3.6.2 alignment. The stop is past where the text before
@@ -2218,6 +2298,12 @@ let tab_variants : tab_variant list =
     { tab_default with tb_name = "warichu-then-a-sign-of-the-line";
       tb_pieces = sign_in_note_then_sign; tb_spans = [ warichu 1 4 ];
       tb_stops = (fun _ _ -> [ stop (2 * em); stop (5 * em) ]); tb_extent = 7 * em };
+    { tab_default with tb_name = "inside-full-size-warichu"; tb_pieces = sign_in_full_note;
+      tb_spans = [ warichu 1 4 ]; tb_stops = (fun _ _ -> [ stop (em / 2) ]);
+      tb_extent = 6 * em };
+    { tab_default with tb_name = "inside-full-size-warichu-found";
+      tb_pieces = sign_in_full_note; tb_spans = [ warichu 1 4 ];
+      tb_stops = (fun _ _ -> [ stop (3 * em) ]); tb_extent = 6 * em };
     (* §3.7.2 divides a furawake at the caller's own boundaries rather than at one it
        finds, so a two-column structure states the one break that makes its columns. *)
     { tab_default with tb_name = "inside-furawake"; tb_pieces = sign_in_note;

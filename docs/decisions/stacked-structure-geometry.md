@@ -11,9 +11,10 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.4.2, §3.4.3, §3.7.2, §B.2#13, §C.3
-- Observed by: `just census constructs` (15,870 requests), the warichu and furawake
+- Observed by: `just census constructs` (18,515 requests), the warichu and furawake
   variants; the last two readings below by the third engine's convergence on the same
-  census
+  census, and the two block-axis and in-block readings by its `warichu-full-size` and
+  `warichu-pair-inside` variants
 
 ## The silence
 
@@ -84,6 +85,21 @@ stands before the whole block and is no part of the bracket's reported advance, 
 amount stated in the *neighbor's* em is the neighbor's and stands where the neighbor puts
 it. A structure has two edges and they are the same edge twice.
 
+**The block a structure makes is not a depth the line reports.** A warichu's sublines run
+*beside* the line, so however deep they come to, the line's own block extent is the one the
+paragraph set — a note whose members are set at the paragraph's own em rather than at the
+half em §3.4.2's own sizing comes to makes a block two ems deep and leaves the line one em
+deep. The sublines' own extents are the block's business and the line reports its own.
+
+**A character *inside* the block is spaced like any other, and its advance is the step that
+reaches the next one.** §3.4.2's note is ordinary text of the note, so the boundary between
+two characters of one subline carries Table 1's ordinary amount, and the advance the
+character before it reports is its own body plus that amount — exactly what it would report
+standing beside the line. The character that *ends* a subline reports its body alone,
+because nothing of that subline stands after it. Neither ladder reaches such a boundary:
+§3.8.3 and §3.8.4 adjust the spacing of the line, and space inside a block was never the
+line's to give back or to open.
+
 **§3.4.3's balance is a demerit in the paragraph's own objective, ranked below an overrun
 and above a short line.** A break inside a warichu carries a cost proportional to how
 unevenly it divides the note — one 1,000,000-unit demerit per cluster of imbalance, in the
@@ -134,6 +150,28 @@ taken from — the same distinction [ruby-overhang-permission](ruby-overhang-per
 draws for a Table 1 `hang` term — and it is drawn once for the structure rather than twice
 for its brackets.
 
+**The block axis is the same sentence read across the line instead of along it.** "One
+position" is a statement about how much of the line a structure is, and a line has two
+extents. If the sublines' own heights summed into the line's, a caller could make a line
+taller by writing a longer note into it — and §3.4.2's own subject is a note set *inside* a
+line rather than one that pushes the lines apart. The sublines are not lines of their own,
+so what they cover is not a height the line has to make room for, exactly as their combined
+width is not a width the line advances by. It is the same argument that keeps the closing
+bracket's trailing space off the bracket, applied to the axis the section never spells out
+separately.
+
+**Inside the block, there is no structure to be at the edge of.** The two readings above
+withdraw a space because the character stands where the *line* stops and the block begins;
+between two characters of one subline there is no such edge, and the note is text being set.
+Table 1 is what sets text, so it answers there like anywhere else, and an engine that
+withheld it would be composing the note by a rule the specification states for nothing. The
+advance follows from the same place the line's own advances do: the number an implementation
+reports as a character's advance is the number that reaches the character after it, and an
+answer whose advances did not add up to its own positions would be two geometries at once —
+the defect [#24](https://github.com/P4suta/jlreq/issues/24) records. The ladders are the
+other half of it: a boundary the line was not composed from is not a boundary the line can
+adjust, which is why the two of them read the *line's* geometry and stop at the block.
+
 **A figure is an example, and an example cannot outrank the measure.** §3.4.3 shows what a
 straddling note looks like when it comes out well. Reading its balance as a *requirement*
 would put a rule about a note's own two lines above the rule that a line of base text fits
@@ -165,6 +203,13 @@ whose advance the trailing space is part of — would move the reading into the 
 where it belongs, because it is a fact about how the matrix is addressed rather than about
 what a warichu is. That same legend settles the fourth reading in the same stroke: the two
 edges are one question and a note about either of them answers both.
+
+A sentence in §3.4.2 stating how deep a line carrying a note is, or an Appendix B legend
+that says whether the matrix is asked between two characters of one subline, settles the two
+readings above in the same stroke: both are questions about which object a rule is addressed
+to, and both were reached by measurement before anything was written down here
+([#23](https://github.com/P4suta/jlreq/issues/23),
+[#24](https://github.com/P4suta/jlreq/issues/24)).
 
 For the fifth, a sentence in §3.4.3 that states what its figures show as a rule — how much
 of a note goes on the first base-text line, and what yields to what when a division that

@@ -9,6 +9,35 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Racket reference engine now answers the two coordinates inside a warichu block that
+  the other two engines already agreed on, which closes
+  [#23](https://github.com/P4suta/jlreq/issues/23) and
+  [#24](https://github.com/P4suta/jlreq/issues/24). `engines/racket/compose.rkt` reported a
+  line's `block_extent` as the sum of the note's own subline heights where that was larger
+  than the paragraph's own block size, so a note set at the paragraph's em rather than at
+  §3.4.2's half one made the line twice as deep as the paragraph set it; and it reported a
+  member's advance as its bare body, so a member standing before a Table 1 amount inside
+  its own subline — `cl-02` then `cl-01`, half of the note's own em — reported 500 where the
+  same engine placed the next member 750 units on. Both are one reading:
+  `docs/decisions/stacked-structure-geometry.md` now states what a block does on the block
+  axis (its sublines run *beside* the line, so their depth is not a depth the line reports)
+  and what Table 1 does inside one (a note's text is ordinary text, so the boundary between
+  two characters of one subline carries the ordinary amount, and a member's advance is the
+  step that reaches the member after it). The same reading closes §3.8.3's half of it: a
+  boundary the line was not composed from is not one the line may take space back from, so
+  the reduction ladder no longer reaches inside a block — the expansion ladder already did
+  not. No public API and no other engine changed. `engines/ocaml/probe/census.ml` reaches
+  both shapes at every class pair now: five further `constructs` variants
+  (`warichu-full-size` and its vertical mirror, `warichu-pair-inside`,
+  `warichu-pair-inside-row` and `warichu-pair-inside-justified`) and two further `tabs`
+  variants (a sign inside a note set at the paragraph's own em, at a stop the line reaches
+  and at one it has passed) — so the `constructs` census is 18,515 requests, `tabs` is
+  31,211, and all ten censuses are at zero differences across the three engines over
+  120,612. A sixth `constructs` variant is deliberately absent: a line that has to *give
+  space back* beside a note whose two sublines meet at a Table 1 amount is a coordinate the
+  Rust and OCaml engines do not yet agree on themselves — the Rust engine divides the
+  line's arrears over that in-block boundary and lays nothing down there, the OCaml engine
+  does not offer it at all — and a census asks the settled question.
 - The Racket reference engine now reads §3.6.3's tab round the way
   `docs/decisions/tab-line-correspondence.md` publishes it, which closes
   [#19](https://github.com/P4suta/jlreq/issues/19) and lifts the census exclusion the entry

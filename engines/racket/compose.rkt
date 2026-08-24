@@ -402,6 +402,11 @@
 ;; ----------------------------------------------------------------------------
 
 ;; Where one warichu's own characters stand inside the block they make.
+;;
+;; `advance` is the advance that character reports: its own body and the space
+;; Table 1 states after it inside its own row, which is the step that reaches the
+;; character beside it. The one that ends a row reports its body alone, because
+;; nothing of that row stands after it (docs/decisions/stacked-structure-geometry.md).
 (struct spot (run last inline block advance) #:transparent)
 
 ;; The runs of warichu text on one line, as `(first . last)` pairs of item indices.
@@ -433,16 +438,25 @@
          (caddr found)
          (list 'warichu (cadr found)))))
 
+;; Whether two items stand on the rows of the SAME note, which is what makes the
+;; boundary between them the block's own business rather than the line's: the note
+;; is one position on the line and the space between two of its characters is
+;; inside that position (docs/decisions/stacked-structure-geometry.md). The line is
+;; not composed from such a boundary and neither ladder reaches one -- space inside
+;; a block is not space the line put there to give back or to open.
+(define (same-block? before after)
+  (and (warichu-of before) (equal? (warichu-of before) (warichu-of after)) #t))
+
 ;; The layout of every warichu run on one line.
 ;;
-;; Answers a hash from item index to its own place inside the block, and two more
-;; from the run's first item to how much of the line the block takes and how much
-;; of the block axis it needs.
+;; Answers a hash from item index to its own place inside the block, and one more
+;; from the run's first item to how much of the line the block takes. How deep the
+;; block is is nobody's answer but the block's: the rows run BESIDE the line, so
+;; the line is not measured across them (docs/decisions/stacked-structure-geometry.md).
 (define (warichu-layout para style items first last)
   (define vertical? (eq? (paragraph-writing-mode para) 'vertical-rl))
   (define spots (make-hasheqv))
   (define widths (make-hasheqv))
-  (define heights (make-hasheqv))
   (for ([run (in-list (warichu-runs items first last))])
     (define indices (for/list ([index (in-range (car run) (add1 (cdr run)))]) index))
     ;; §3.4.2 divides the note "at a position where line breaking is permitted", and
@@ -468,20 +482,29 @@
       (if (and (word-space? (vector-ref items index)) (or (= rank 0) (= rank (sub1 size))))
           0
           (item-advance (vector-ref items index))))
+    ;; §3.4.2: a note's own text is ordinary text of the note, set and spaced the
+    ;; way any run of text is -- so the boundary between two characters of one row
+    ;; carries Table 1's ordinary answer, exactly as it would beside the line. A
+    ;; row's last character has nothing of the row after it, and a boundary beside
+    ;; a collapsed word space is §B.2 note 13's, which took the space out of the
+    ;; row along with its own advance.
+    (define (gap-after row rank size)
+      (define index (list-ref row rank))
+      (cond
+        [(>= (add1 rank) size) 0]
+        [(or (zero? (own index rank size))
+             (zero? (own (list-ref row (add1 rank)) (add1 rank) size)))
+         0]
+        [else
+         (total-of (boundary-contributions (vector-ref items index)
+                                           (vector-ref items (list-ref row (add1 rank)))
+                                           (paragraph-writing-mode para)
+                                           style))]))
     (define row-widths
       (for/list ([row (in-list rows)])
         (define size (length row))
-        (for/fold ([sum 0]) ([index (in-list row)] [rank (in-naturals)])
-          (chk+ (chk+ sum (own index rank size))
-                (if (< (add1 rank) size)
-                    (if (or (zero? (own index rank size))
-                            (zero? (own (list-ref row (add1 rank)) (add1 rank) size)))
-                        0
-                        (total-of (boundary-contributions (vector-ref items index)
-                                                          (vector-ref items (list-ref row (add1 rank)))
-                                                          (paragraph-writing-mode para)
-                                                          style)))
-                    0)))))
+        (for/fold ([sum 0]) ([rank (in-range size)])
+          (chk+ (chk+ sum (own (list-ref row rank) rank size)) (gap-after row rank size)))))
     (define row-heights
       (for/list ([row (in-list rows)])
         (for/fold ([most 0]) ([index (in-list row)])
@@ -493,25 +516,15 @@
       (let walk ([rest row] [rank 0] [at 0])
         (unless (null? rest)
           (define index (car rest))
-          (define advance (own index rank size))
+          ;; The advance a character of the note reports is the step that reaches
+          ;; the next one, which is its own body and the space inside the row after
+          ;; it: an answer whose advances did not add up to its own positions would
+          ;; be two geometries at once.
+          (define advance (chk+ (own index rank size) (gap-after row rank size)))
           (hash-set! spots index (spot (car run) (cdr run) at block advance))
-          (walk (cdr rest)
-                (add1 rank)
-                (chk+ (chk+ at advance)
-                      (if (< (add1 rank) size)
-                          (if (or (zero? advance)
-                                  (zero? (own (list-ref row (add1 rank)) (add1 rank) size)))
-                              0
-                              (total-of (boundary-contributions
-                                         (vector-ref items index)
-                                         (vector-ref items (list-ref row (add1 rank)))
-                                         (paragraph-writing-mode para)
-                                         style)))
-                          0))))))
-    (hash-set! widths (car run) (for/fold ([most 0]) ([one (in-list row-widths)]) (max most one)))
-    (hash-set! heights (car run)
-               (for/fold ([sum 0]) ([one (in-list row-heights)]) (chk+ sum one))))
-  (values spots widths heights))
+          (walk (cdr rest) (add1 rank) (chk+ at advance)))))
+    (hash-set! widths (car run) (for/fold ([most 0]) ([one (in-list row-widths)]) (max most one))))
+  (values spots widths))
 
 ;; ----------------------------------------------------------------------------
 ;; One line, measured
@@ -557,7 +570,7 @@
   ;; it both gone. The line is composed from the second and the ladders measure
   ;; their room in the first, which is what lets a collapsed space still give back
   ;; the width it would have had.
-  (define-values (spots stack-widths stack-heights) (warichu-layout para style items first last))
+  (define-values (spots stack-widths) (warichu-layout para style items first last))
   ;; §3.4: a run of warichu text is ONE position on the line however many characters
   ;; it holds. Its first item carries the block's whole width along the line and the
   ;; rest carry nothing, which is also what keeps the boundaries inside it out of
@@ -575,6 +588,10 @@
       (or (stacked offset)
           (if (collapses-at-edge? one (or (= offset 0) (= offset (sub1 count)))) 0 (item-advance one)))))
   (define next (and (< (add1 last) (vector-length items)) (vector-ref items (add1 last))))
+  ;; Whether the boundary before the item at `index` stands inside one note's own
+  ;; rows. Both geometries below ask it, because such a boundary is on neither.
+  (define (inside-one-block? index)
+    (same-block? (vector-ref items (+ first index -1)) (vector-ref items (+ first index))))
   (define gap-terms
     (for/vector ([index (in-range (add1 count))])
       (cond
@@ -585,10 +602,7 @@
         ;; the note is one position on the main line and the space between two of
         ;; its characters is inside that position rather than beside it. The
         ;; boundary where the block BEGINS is on the line, and Table 1 states it.
-        [(let ([before (hash-ref spots (+ first index -1) #f)]
-               [after (hash-ref spots (+ first index) #f)])
-           (and before after (= (spot-run before) (spot-run after))))
-         '()]
+        [(inside-one-block? index) '()]
         [else
          (boundary-contributions (vector-ref items (+ first index -1))
                                  (vector-ref items (+ first index))
@@ -604,6 +618,11 @@
     (for/vector ([index (in-range (add1 count))])
       (cond
         [(or (= index 0) (= index count)) (vector-ref gap-terms index)]
+        ;; A boundary inside a block is the one exception the ladders do not read at
+        ;; face value: there is no withdrawal here to see past, the space simply
+        ;; never stood on this line. A ladder that took it back would be spending a
+        ;; block's own interior on the line's arrears.
+        [(inside-one-block? index) '()]
         [else
          (boundary-contributions (vector-ref items (+ first index -1))
                                  (vector-ref items (+ first index))
@@ -1068,7 +1087,7 @@
       ;; The boundaries inside an inline cutting note are inside the block and not
       ;; on the line, so neither ladder reaches them: the note is one position on
       ;; the line and the line adjusts around it.
-      (and (warichu-of before) (equal? (warichu-of before) (warichu-of after)))))
+      (same-block? before after)))
 
 ;; Whether the boundary before offset `index` touches a word space the line edge
 ;; collapsed. §3.2.2's space is restored the moment the same text sits elsewhere on
@@ -1549,7 +1568,7 @@
            [else 0]))
        ;; What the line has to make room for across itself: every item's own block
        ;; size, and every annotation standing beside one.
-       (define-values (spots stack-widths stack-heights)
+       (define-values (spots stack-widths)
          (warichu-layout para style items first last))
        (define block-extent
          (for/fold ([most 0]) ([offset (in-range (add1 (- last first)))])
@@ -1557,10 +1576,16 @@
            (define found (hash-ref spots (+ first offset) #f))
            (max most
                 (cond
+                  ;; §3.4.2: the note's rows run BESIDE the line rather than being
+                  ;; lines of their own, and the block they make is one position on
+                  ;; this line -- so however deep the rows come to, the line is as
+                  ;; deep as the paragraph set it and no deeper
+                  ;; (docs/decisions/stacked-structure-geometry.md). A block that
+                  ;; raised the line's own extent would be a structure participating
+                  ;; in the line as more than the one thing it is.
                   [found
                    (if (= (+ first offset) (spot-run found))
-                       (max (extent-block (paragraph-size para))
-                            (hash-ref stack-heights (spot-run found)))
+                       (extent-block (paragraph-size para))
                        0)]
                   [else
                    (chk+ (block-room one)
@@ -1612,14 +1637,15 @@
   (define indent (if (= first 0) (paragraph-first-line-indent para) 0))
   ;; The designed geometry: the advance a placement reports is the character's own
   ;; plus the space Table 1 states after it, before either ladder ran.
-  (define-values (spots stack-widths stack-heights) (warichu-layout para style items first last))
+  (define-values (spots stack-widths) (warichu-layout para style items first last))
   (define designed
     (for/vector ([offset (in-range count)])
       (define one (vector-ref items (+ first offset)))
       (define found (hash-ref spots (+ first offset) #f))
       (cond
-        ;; A character of an inline cutting note reports its own advance, which is
-        ;; what it was set at inside the block; the block's own width is the line's.
+        ;; A character of an inline cutting note reports what it takes up inside the
+        ;; block: its own advance and the space Table 1 states after it in its own
+        ;; row. The block's own width is the line's.
         [found (spot-advance found)]
         [else
          ;; §3.6: a tab sign's advance is what the line gave it and not what it was

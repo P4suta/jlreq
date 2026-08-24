@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/racket/classes.rkt`](../../engines/racket/classes.rkt)
 - Standing: `Unstated`
 - JLReq: §3.9.2, §3.4.2, §A.01, §A.02, §A.28, §A.29
-- Observed by: `just census constructs` (15,870 requests), the warichu variants
+- Observed by: `just census constructs` (18,515 requests), the warichu variants
 
 ## The silence
 

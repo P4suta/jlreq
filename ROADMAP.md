@@ -44,7 +44,7 @@ conformance protocol, gated on a milestone sequence of its own
 advanced toward the built-in suite one disjoint milestone per pull request and now claims
 milestone 9, the last one: all eighty-nine cases answer bit for bit, so `just ocaml-gate`
 and `just conform-ocaml` are the same run and the required CI job holds the engine to the
-whole suite. Ten synthetic censuses agree with the Rust engine across 116,909 further
+whole suite. Ten synthetic censuses agree with the Rust engine across 120,612 further
 requests, and the twenty-six observable policies the exercise turned up — rules two engines
 must share to pass the same case, stated in no sentence of JLReq and no file under `docs/` —
 are listed in `engines/ocaml/README.md` and are candidates for `docs/decisions/`.
