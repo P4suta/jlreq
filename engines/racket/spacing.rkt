@@ -43,6 +43,7 @@
          end-contributions
          total-of
          prohibited?
+         stated-cell
          item-em)
 
 ;; One occurrence on the line: the cluster it came from, and everything the layout
@@ -160,18 +161,23 @@
            (or (and (= value 5) (eq? role 'decimal-point))
                (and (= value 7) (eq? role 'digit-group-separator))))))
 
-;; Whether the item is the last character of a §3.4 structure.
-(define (ends-structure? one)
+;; Whether the item is the last character of a §3.4 structure, and whether it is the
+;; first.
+;;
+;; The BRACKET is the structure's own edge. A bare note ends with a character of its
+;; own text, which is the last character of a SUBLINE -- inside the block, where the
+;; block has already stopped reading Table 1 -- and the space beside the block is
+;; still the neighbor's own.
+(define (structure-edge? one last?)
   (let ([found (item-structure one)])
     (and found
          (eq? (car found) 'warichu)
-         (= (length found) 4)
-         ;; The BRACKET is the structure's own last character. A bare note ends with
-         ;; a character of its own text, which is the last character of a SUBLINE --
-         ;; inside the block, where the block has already stopped reading Table 1 --
-         ;; and the space after the block is still the following character's own.
-         (not (caddr found))
-         (cadddr found))))
+         (= (length found) 5)
+         (not (list-ref found 2))
+         (list-ref found (if last? 3 4)))))
+
+(define (ends-structure? one) (structure-edge? one #t))
+(define (starts-structure? one) (structure-edge? one #f))
 
 ;; Drop the terms `owner` contributes.
 (define (without terms owner)
@@ -182,23 +188,50 @@
 ;; ----------------------------------------------------------------------------
 
 ;; The space between two occurrences of one line.
+;; §3.6: a tab sign is the space between two characters and not a character.
+(define (tab? one)
+  (eq? (item-kind one) 'tab))
+
+;; The cell Table 1 states between two occurrences, with no section's own withdrawal
+;; and no rule about what one of them is. §3.7.3's own room is measured in this: a
+;; jidori is a statement about how many CELLS the run occupies, so what it has to
+;; put in them is the width the transcription gives the run and not the width some
+;; other section has since taken out of it.
+(define (stated-cell before after)
+  (total-of (cell-contributions (item-class before) (item-class after)
+                                (item-em before) (item-em after))))
+
 (define (boundary-contributions before after writing-mode style [literal? #f])
   (define stated
-    (if literal?
-        (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))
-        (or (formula-terms before after) (table-one-terms before after))))
+    (cond
+      ;; What the transcription states, before any section has withdrawn it. The tab
+      ;; clause below is one of the withdrawals and is under this one for the same
+      ;; reason §3.2.5's cl-30 cells are: Appendices D and E measure their room in
+      ;; the cell as transcribed, so a line that has to give space back gives back
+      ;; the quarter em beside a middle dot even where the sign in front of it had
+      ;; taken that quarter em up.
+      [literal?
+       (cell-contributions (item-class before) (item-class after) (item-em before) (item-em after))]
+      ;; The space after a tab sign is the sign: §3.6.2 puts the string at the stop
+      ;; and the sign is what takes up the distance, so there is nothing left at
+      ;; that boundary for Table 1 to state. The boundary BEFORE a sign is an
+      ;; ordinary one -- what stands there is the space the character before the
+      ;; sign takes, and the sign begins after it.
+      [(tab? before) '()]
+      [else (or (formula-terms before after) (table-one-terms before after))]))
   (define withdrawn
     (let* ([step-one (if (withdraws-own-space? before writing-mode) (without stated 'before) stated)]
            [step-two (if (withdraws-own-space? after writing-mode) (without step-one 'after) step-one)]
-           ;; §3.4: a stacked structure's own last character carries no space, and
-           ;; the structure does. The bracket that closes an inline cutting note is
-           ;; the last character of the STRUCTURE rather than of the line, so the
-           ;; space Table 1 states after it stands after the whole block and is no
-           ;; part of the bracket's own. What the character AFTER the structure owns
-           ;; is still its own and still stands, which is the quarter em a middle dot
-           ;; takes after a note.
-           [step-three (if (ends-structure? before) (without step-two 'before) step-two)])
-      step-three))
+           ;; §3.4: a stacked structure's own edge characters carry no space, and
+           ;; the structure does. The brackets that open and close an inline cutting
+           ;; note are characters of the STRUCTURE rather than of the line, so an
+           ;; amount Table 1 states in one of THEIR ems stands beside the whole block
+           ;; and is no part of the bracket's own. What the character outside the
+           ;; structure owns is still its own and still stands, which is the quarter
+           ;; em a middle dot takes after a note.
+           [step-three (if (ends-structure? before) (without step-two 'before) step-two)]
+           [step-four (if (starts-structure? after) (without step-three 'after) step-three)])
+      step-four))
   (append withdrawn
           (sentence-terminator-terms before after)
           (sentence-medial-terms before after style)))

@@ -48,6 +48,7 @@
          display-formula?
          formula-space
          math-class?
+         (struct-out boundary)
          jidori-separations
          rows-of
          row-block-offsets
@@ -104,33 +105,57 @@
 ;; §3.7.3
 ;; ----------------------------------------------------------------------------
 
+;; One internal boundary of a jidori run: the amount Table 1 already states there,
+;; the item that stands after it, whether a line may end there, and whether what is
+;; given there is the tab sign's rather than the boundary's.
+;;
+;; §3.6 makes the space after a sign the sign: a share given at that boundary is a
+;; share given to the sign, whose advance §3.6.2 has already decided, so the site is
+;; counted -- the room is divided over it like any other -- and what falls to it is
+;; not laid down.
+(struct boundary (stated after open? absorbed?) #:transparent)
+
 ;; The space a jidori forces in, as a list of `(item-index . amount)`.
 ;;
-;; `bases` is the construct's own items in line order. The cells are full-em cells
-;; of the paragraph's own size, and what the run does not fill is shared over its
-;; internal boundaries -- the space is between the characters and not around them,
-;; because §3.7.3 spreads the run across the cells rather than placing it in one.
-(define (jidori-separations cells em bases style)
+;; `bases` is the construct's own items in line order and `boundaries` is what
+;; stands between them. The cells are full-em cells of the paragraph's own size, and
+;; what the run does not fill is shared over its internal boundaries -- the space is
+;; between the characters and not around them, because §3.7.3 spreads the run across
+;; the cells rather than placing it in one.
+(define (jidori-separations cells em bases boundaries style)
   (define want (chk* cells em))
-  (define have (for/fold ([sum 0]) ([one (in-list bases)]) (chk+ sum (cdr one))))
+  ;; What the run already occupies is its characters AND the space Table 1 states
+  ;; between them: the cells are a width and the run is set into them as it stands,
+  ;; so a boundary that already carries a half em has half an em less to be given.
+  (define have
+    (chk+ (for/fold ([sum 0]) ([one (in-list bases)]) (chk+ sum (cdr one)))
+          (for/fold ([sum 0]) ([one (in-list boundaries)]) (chk+ sum (boundary-stated one)))))
   (define room (max 0 (chk- want have)))
-  (define sites (sub1 (length bases)))
+  ;; §3.7.3: "The following, however, should be set solid: positions where line
+  ;; breaks are prohibited ... These sequences should be treated as a single block."
+  ;; A boundary a line may not end at takes none of the room, and a run with no such
+  ;; boundary left is one block, which the section's own last sentence then aligns to
+  ;; the head of the cells.
+  (define open (for/list ([one (in-list boundaries)] #:when (boundary-open? one)) one))
+  (define sites (length open))
   (cond
     [(zero? room) '()]
     ;; A run of one character has no internal boundary to share the cells out over,
-    ;; and the cells are still what the run occupies: §3.7.3 gives the run a width
-    ;; and the run is one character wide, so the rest of the width stands after it.
+    ;; and a run whose every boundary is solid has none left. The cells are still what
+    ;; the run occupies: §3.7.3 gives the run a width, the run is as wide as it is,
+    ;; and the rest of the width stands after it.
     [(<= sites 0) (list (cons (add1 (car (last bases))) room))]
     [else
      (define share (div-trunc room sites))
      (define left (rem-trunc room sites))
      (define trailing? (answer-is? style "adjustment.remainder" "trailing"))
-     (for/list ([one (in-list (cdr bases))] [rank (in-naturals)])
+     (for/list ([one (in-list open)] [rank (in-naturals)]
+                #:when (not (boundary-absorbed? one)))
        (define extra
          (if trailing?
              (if (>= rank (- sites left)) 1 0)
              (if (< rank left) 1 0)))
-       (cons (car one) (chk+ share extra)))]))
+       (cons (boundary-after one) (chk+ share extra)))]))
 
 ;; ----------------------------------------------------------------------------
 ;; The shared geometry of a stacked structure
@@ -176,15 +201,26 @@
 ;; The answer is how many of them go on the first row. Where two positions balance
 ;; equally the earlier one is taken, and the preference for a first row at least as
 ;; long as the second is what settles an odd count.
-(define (balanced-split widths)
+;;
+;; `offered` is the positions §3.4.2's "a position where line breaking is permitted"
+;; leaves open -- the caller's own break opportunities inside the note, where it
+;; stated any (docs/decisions/stacked-structure-geometry.md) -- or `#f` where every
+;; boundary is a candidate. A note the caller offered nothing inside divides
+;; wherever it balances best; one it offered a single position inside divides there
+;; whether or not that is the balanced place, because the balance sentence chooses
+;; among the permitted positions rather than instead of them.
+(define (balanced-split widths [offered #f])
   (define total (for/fold ([sum 0]) ([one (in-list widths)]) (chk+ sum one)))
   (define count (length widths))
+  (define (candidate? index) (or (not offered) (null? offered) (and (memv index offered) #t)))
   (cond
     [(<= count 1) count]
     [else
-     (let walk ([index 1] [ahead (car widths)] [best 1] [score #f])
+     (let walk ([index 1] [ahead (car widths)] [best #f] [score #f])
        (cond
-         [(>= index count) best]
+         [(>= index count) (or best 1)]
+         [(not (candidate? index))
+          (walk (add1 index) (chk+ ahead (list-ref widths index)) best score)]
          [else
           (define behind (chk- total ahead))
           ;; A first row shorter than the second is a worse answer than one longer

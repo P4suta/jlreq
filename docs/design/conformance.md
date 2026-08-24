@@ -177,11 +177,17 @@ reasoning locally, so the contract is amended in exactly one place.
 - `crates/jlreq/src/generated/`, and the xtask code generators that write it.
 
 A reference engine builds its tables from `spec/derived/*.tsv` and `spec/captured/*.tsv`
-directly; it does not read the Rust-generated modules those files also produce. Where two
-engines transcribe the same hand-keyed matrix, they read it from opposite locales — the Rust
-sample engine reads `table*.en.tsv`, an OCaml or Racket engine reads `table*.ja.tsv` — so
-agreement is evidence about the transcription and not an artifact of copying the same
-keystrokes twice ([ADR 0009](../adr/0009-generated-data-and-attested-transcription.md)).
+directly; it does not read the Rust-generated modules those files also produce. The property
+that has to hold of the hand-keyed matrices is that **both transcriptions of those six PDF
+pages are read by something, and the agreement between them is checked rather than assumed**
+— so that agreement is evidence about the transcription and not an artifact of copying the
+same keystrokes twice ([ADR
+0009](../adr/0009-generated-data-and-attested-transcription.md)). The Rust sample engine
+reads `table*.en.tsv` and the OCaml engine reads `table*.ja.tsv`, which is the first half;
+the Racket engine reads `table*.en.tsv` and its own unit tests build the Japanese ones and
+compare them cell for cell, which is the second. With more than two engines the locales
+cannot all differ, and it is the property and not the count that the rule is about; each
+engine's README records which side it reads and how it holds the other.
 
 Where two engines disagree, the disagreement is settled by returning to JLReq and to `spec/`,
 and the resolution is recorded in `docs/decisions/`. It is never settled by reading the other

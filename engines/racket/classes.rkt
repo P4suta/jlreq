@@ -201,6 +201,13 @@
     [(null? stated) (unlisted-class frame style)]
     [else
      (define forced (role-class role))
+     ;; §3.4.2 and §3.9.2: the brackets that close an inline cutting note are cl-28
+     ;; and cl-29, which are their own classes precisely because they stand where the
+     ;; line does and are set against it differently from ordinary brackets. §A.28 and
+     ;; §A.29 enumerate them, and the caller's `warichu-bracket` role is what
+     ;; disambiguates a key those sections list from the same key in §A.01 or §A.02 --
+     ;; so a note bracketed with a character neither section lists is a note bracketed
+     ;; with an ordinary bracket and not a fourth member of those classes.
      (define warichu
        (and (eq? role 'warichu-bracket)
             (cond
