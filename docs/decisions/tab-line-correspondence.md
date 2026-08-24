@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/racket/compose.rkt`](../../engines/racket/compose.rkt)
 - Standing: `Unstated`
 - JLReq: §3.6.1, §3.6.2, §3.6.3, §3.1 (silence), ADR-0018
-- Observed by: `just census tabs` (30,153 requests), and by probing the reference engine
+- Observed by: `just census tabs` (31,211 requests), and by probing the reference engine
   with stops the eighty-nine built-in cases never state; the reading about which constructs
   hold a coordinate a stop can name by the third engine's convergence on the same census.
   The two coordinates this file once excluded — a sign that opens a tate-chu-yoko run
@@ -215,7 +215,7 @@ tate-chu-yoko run; a sign inside a warichu and inside a furawake; a sign that op
 those; and a sign of the line standing *after* such a structure, whose own stop has to be
 measured from a walk in which the whole block is one step. Every one of them at both a stop
 the line has gone past and one it has not, and all three reference engines answer all of them
-alike at every class pair (30,153 requests, no difference). The last four shapes went in when
+alike at every class pair (31,211 requests, no difference). The last four shapes went in when
 the Racket engine reached the reading published here
 ([#19](https://github.com/P4suta/jlreq/issues/19)); until then they were deliberately left
 out, because a census is a gate and a gate that is red is not one.

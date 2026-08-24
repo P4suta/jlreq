@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.3.9, §3.7.1, §B.2#9, §C.2#6, §E.2#5
-- Observed by: `just census constructs` (15,870 requests), the emphasis and script variants
+- Observed by: `just census constructs` (18,515 requests), the emphasis and script variants
 
 ## The silence
 

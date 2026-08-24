@@ -237,6 +237,19 @@ characters stand along the line at positions of their own. Reaching that reading
 closed [#19](https://github.com/P4suta/jlreq/issues/19), and the `tabs` census now
 holds all three engines to every one of those shapes.
 
+Two more coordinates were this engine's own, both about the *inside* of a warichu block
+and both filed off measurements rather than argument:
+[#23](https://github.com/P4suta/jlreq/issues/23), where a note set at the paragraph's own
+em made the line report the block's depth instead of its own, and
+[#24](https://github.com/P4suta/jlreq/issues/24), where a member standing before a Table 1
+amount inside its own subline reported a bare advance that did not reach the member the
+same engine placed next. Both are settled by
+[stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md), which now
+says what a block does on the block axis and what Table 1 does inside one, and the
+`constructs` census reaches both shapes at every class pair — `warichu-full-size` and
+`warichu-pair-inside`. With them the three engines are at zero differences everywhere any
+census asks.
+
 ## Milestones
 
 `milestones/M1.ids` through `M9.ids` partition the eighty-nine built-in cases into
@@ -310,7 +323,7 @@ has run. `inline_extent` is the second of the two.
 just racket-milestone 9   → exit 0    (89 cases)
 just conform-racket       → exit 0    (0 DIFF, 0 protocol errors)
 just racket-gate          → exit 0    (CURRENT = 9, so the same run as conform-racket)
-just test-engine-racket   → 10185 tests passed
+just test-engine-racket   → 10193 tests passed
 ```
 
 All ten censuses agree with the Rust engine at every request:
@@ -323,8 +336,8 @@ just census-racket expansion      →  3174 request(s), 0 differing response(s)
 just census-racket vertical       →  5290 request(s), 0 differing response(s)
 just census-racket tate-chu-yoko  →  4761 request(s), 0 differing response(s)
 just census-racket ruby           → 37030 request(s), 0 differing response(s)
-just census-racket constructs     → 15870 request(s), 0 differing response(s)
-just census-racket tabs           → 30153 request(s), 0 differing response(s)
+just census-racket constructs     → 18515 request(s), 0 differing response(s)
+just census-racket tabs           → 31211 request(s), 0 differing response(s)
 just census-racket widow          → 13225 request(s), 0 differing response(s)
 ```
 
@@ -337,10 +350,10 @@ composition; again with a tate-chu-yoko run standing between them, which is the 
 way to reach the cl-30 row and column of all six matrices at all; again beside a ruby
 construct in all three kinds, an ornamented complex, an inline cutting note, a
 furawake and a jidori; again across a tab sign at stops the line reaches and stops it
-has passed; and again on a paragraph whose last line is a widow. **116,909 requests,
+has passed; and again on a paragraph whose last line is a widow. **120,612 requests,
 and every one of them the same answer.**
 
-The same 116,909 requests were also diffed against the **OCaml** engine, which reads
+The same 120,612 requests were also diffed against the **OCaml** engine, which reads
 the Japanese transcription and is itself at zero against Rust: three implementations,
 three readings of §3.9.2 and Appendix B taken from the specification rather than from
 each other's layout code, and one answer.
