@@ -227,14 +227,15 @@ are now settled from JLReq in
 [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md), with the
 Rust engine brought to that reading in [#20](https://github.com/P4suta/jlreq/pull/20).
 This engine reaches the same answer where the structure is a tate-chu-yoko run, which
-it makes one item of the line, and the `tabs` census now holds all three engines to a
-sign that *opens* such a run. It does **not** reach it inside a warichu or a furawake,
-whose members stay items of the line here: a sign there is given one em of the
-paragraph's own size rather than the advance it was shaped with, and a sign that opens
-one still ends the line ([#19](https://github.com/P4suta/jlreq/issues/19)). That is a
-defect against a published reading rather than a fourth reading, and the `tabs` census
-leaves the shape out until it is closed — a census is a gate and a gate that is red is
-not one.
+it makes one item of the line, and where it is a warichu or a furawake, whose members
+stay items of the line here — `compose.rkt`'s `line-sign?` is where the difference is
+drawn, and it draws it off the geometry rather than off a list of constructs. A sign a
+structure contains, its first character included, takes no stop, sets the advance it
+was shaped with, and never offers §3.6.3's cut; a sign inside a jidori or an emphasis
+run is a sign of the line at both of the construct's ends, because a jidori's
+characters stand along the line at positions of their own. Reaching that reading here
+closed [#19](https://github.com/P4suta/jlreq/issues/19), and the `tabs` census now
+holds all three engines to every one of those shapes.
 
 ## Milestones
 
@@ -323,7 +324,7 @@ just census-racket vertical       →  5290 request(s), 0 differing response(s)
 just census-racket tate-chu-yoko  →  4761 request(s), 0 differing response(s)
 just census-racket ruby           → 37030 request(s), 0 differing response(s)
 just census-racket constructs     → 15870 request(s), 0 differing response(s)
-just census-racket tabs           → 25392 request(s), 0 differing response(s)
+just census-racket tabs           → 30153 request(s), 0 differing response(s)
 just census-racket widow          → 13225 request(s), 0 differing response(s)
 ```
 
@@ -336,10 +337,10 @@ composition; again with a tate-chu-yoko run standing between them, which is the 
 way to reach the cl-30 row and column of all six matrices at all; again beside a ruby
 construct in all three kinds, an ornamented complex, an inline cutting note, a
 furawake and a jidori; again across a tab sign at stops the line reaches and stops it
-has passed; and again on a paragraph whose last line is a widow. **112,148 requests,
+has passed; and again on a paragraph whose last line is a widow. **116,909 requests,
 and every one of them the same answer.**
 
-The same 112,148 requests were also diffed against the **OCaml** engine, which reads
+The same 116,909 requests were also diffed against the **OCaml** engine, which reads
 the Japanese transcription and is itself at zero against Rust: three implementations,
 three readings of §3.9.2 and Appendix B taken from the specification rather than from
 each other's layout code, and one answer.
@@ -363,7 +364,7 @@ table is what this section resolves to for those nine:
 | [warichu-bracket-listing](../../docs/decisions/warichu-bracket-listing.md) | That the `warichu-bracket` role narrows a key §A.28 and §A.29 list and promotes nothing |
 | [stacked-structure-geometry](../../docs/decisions/stacked-structure-geometry.md) | That a stacked structure's own *first* character carries no space either, and where §3.4.3's balance ranks against the line the note stands on |
 | [jidori-room-and-solid-boundaries](../../docs/decisions/jidori-room-and-solid-boundaries.md) | What §3.7.3 measures its room in, which of its boundaries are set solid, and where a run with no boundary left stands |
-| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | Which constructs hold a coordinate a stop can name — a jidori does, a tate-chu-yoko run does not, its first character included (#12); a warichu's and a furawake's sublines do not either (#13), which this engine does not yet implement (#19) |
+| [tab-line-correspondence](../../docs/decisions/tab-line-correspondence.md) | Which constructs hold a coordinate a stop can name — a jidori does, a tate-chu-yoko run does not, its first character included (#12), and a warichu's and a furawake's sublines do not either (#13), which this engine reached in #19 |
 | [tate-chu-yoko-spacing-sources](../../docs/decisions/tate-chu-yoko-spacing-sources.md) | That Appendices D and E read the cell after a tab sign as transcribed, exactly as they read the cl-30 cells §3.2.5 withdrew |
 
 The rest are still recorded here, because no file under `docs/` states them yet. A

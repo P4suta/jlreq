@@ -161,7 +161,7 @@ measuring a coordinate it cannot name.
 | `tate-chu-yoko` | 4,761 | 529 pairs standing before and after a run of one, two or three members, two runs side by side, and the same line reduced, justified, justified with a neighbor at half the em, and broken: §3.2.5's geometry and every cl-30 coordinate of Tables 1 through 6 |
 | `ruby` | 37,030 | 529 pairs on either side of a ruby construct, in seventy variants: mono, group and jukugo; both alignments, both distributions, both jukugo layouts and all four overhang answers; a reading shorter than its base and longer; readings of unequal advance, of a second size and at an em that tiles nothing; the paragraph indent; vertical composition; a justified line, a reduced one and a broken one — §3.3.5 through §3.3.8, §B.2 notes 1, 7, 8, 10 and 11, §C.2 notes 7 and 8, §E.2 notes 6 and 7, and §F |
 | `constructs` | 15,870 | 529 pairs beside the other five structures, in thirty variants: emphasis dots of two sizes, a superscript shorter than its complex and longer, a reference mark, a warichu with brackets and without and one that straddles two lines, a furawake of two columns and of three, and a jidori of two characters in four cells and of three in five — vertical, justified and reduced throughout. The cl-20, cl-21, cl-28 and cl-29 rows and columns of all six matrices, §3.3.9, §3.4.2, §3.7.2, §3.7.3, §B.2 notes 9 and 13, §C.2 note 6 and §E.2 note 5 |
-| `tabs` | 25,392 | 529 pairs across a tab sign, in forty-eight variants: §3.6.2's four kinds of stop; stops the line reaches and stops it has gone past; one sign and two; stops listed ascending, descending and in surplus; the sign at the line head, at the line end and with nothing after it; a measure too tight for the stop and one wide enough for two lines; the caller's breaks stated and unstated; every alignment and none; both writing modes; the paragraph indent; and the sign beside a construct, inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run, and standing at the first character of a run — §3.6.1 through §3.6.3, and §3.8.1 on the line a cut leaves short |
+| `tabs` | 30,153 | 529 pairs across a tab sign, in fifty-seven variants: §3.6.2's four kinds of stop; stops the line reaches and stops it has gone past; one sign and two; stops listed ascending, descending and in surplus; the sign at the line head, at the line end and with nothing after it; a measure too tight for the stop and one wide enough for two lines; the caller's breaks stated and unstated; every alignment and none; both writing modes; the paragraph indent; the sign beside a construct, inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run, and standing at the first character of a run; and the same two coordinates in the two structures that stack their text off the line — a sign inside a warichu and inside a furawake, a sign that opens either, and a sign of the line standing after one — §3.6.1 through §3.6.3, §3.4.2 and §3.7.2 on what such a structure is on the line, and §3.8.1 on the line a cut leaves short |
 | `widow` | 13,225 | 529 pairs on a paragraph whose last line is one cluster short of the minimum, in twenty-five variants: minima the paragraph can meet and cannot; the pair on the line that gives a cluster up and on the line that gains one; break sets that leave the search one choice and none; both remainder and both preference settings; the indent; vertical composition; and every alignment and none — §3.5.3, §3.5.4 and §3.8.1 |
 
 The registry that names them is `kinds` in `census.ml`, and nothing else in the
@@ -321,14 +321,13 @@ reporting the block at its own width, so the second sign's advance was measured 
 cursor that was not where the sign stood. Both were self-inconsistencies rather than
 readings, which is what an independent implementation is for.
 
-The `tabs` census now covers the first shape — a sign that opens a tate-chu-yoko run,
-at a stop the line has gone past and at one it has not — and all three engines answer
-it alike at every class pair. It still covers the second shape for no engine at all: the
-Racket engine gives a sign inside a warichu one em of the paragraph's own size instead of
-the advance it was shaped with, and ends the line before a sign that opens one
-([#19](https://github.com/P4suta/jlreq/issues/19)). A census is a gate and a gate that
-is red is not one, so that shape stays out until the third engine reaches the published
-reading; `test/test_pipeline.ml` pins this engine's answer to it in the meantime.
+The `tabs` census now covers both shapes at every class pair, and all three engines
+answer them alike. The second of them went in once the Racket engine reached the
+published reading ([#19](https://github.com/P4suta/jlreq/issues/19)): a sign inside a
+warichu or a furawake, a sign that opens one, and a sign of the line standing after
+such a structure — whose stop has to be measured from a walk in which the whole block
+is one step. `test/test_pipeline.ml` pins this engine's own answer to a sign inside a
+warichu and to the stop the next sign then reaches.
 
 ## Milestones
 
@@ -451,7 +450,7 @@ just census vertical       → 5290 request(s), 0 differing response(s)
 just census tate-chu-yoko  → 4761 request(s), 0 differing response(s)
 just census ruby           → 37030 request(s), 0 differing response(s)
 just census constructs     → 15870 request(s), 0 differing response(s)
-just census tabs           → 25392 request(s), 0 differing response(s)
+just census tabs           → 30153 request(s), 0 differing response(s)
 just census widow          → 13225 request(s), 0 differing response(s)
 ```
 
@@ -471,7 +470,7 @@ is what reaches the cl-20, cl-21, cl-28 and cl-29 rows and columns — the last 
 coordinates of the six matrices that no Appendix A key can name. Then a fifth and
 sixth time across a tab sign and on a paragraph whose last line is a widow, where
 what varies is not a cell of a matrix but which line the pair ends up on and how far
-the line it is on then has to be opened. 112,148 requests in all, and no answer
+the line it is on then has to be opened. 116,909 requests in all, and no answer
 differs by one unit.
 
 The two vertical censuses found three things the eighty-nine cases do not reach:
