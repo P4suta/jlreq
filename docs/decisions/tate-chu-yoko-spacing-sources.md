@@ -13,8 +13,9 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   sentence points at do not state the same rule, which is the `contradictory` permission
   `xtask/src/policy.rs` maps onto that standing — and `Unstated` for the second, which no
   sentence of either reaches at all.
-- JLReq: §3.2.5, §B.1, §B.2, §3.8.3, §3.8.4
-- Observed by: `just census tate-chu-yoko` (4,761 requests)
+- JLReq: §3.2.5, §3.6, §B.1, §B.2, §3.8.3, §3.8.4
+- Observed by: `just census tate-chu-yoko` (4,761 requests) for the cl-30 coordinates, and
+  `just census tabs` (24,334 requests) for the cell after a tab sign
 
 ## The silence
 
@@ -43,6 +44,14 @@ stage 4` at `(cl-30, cl-05)` and Table 6 states `1/4-1/2 stage 2` at `(cl-30, cl
 Whether a ladder may take back or add to a space that was never set is a question about the
 relation between §3.2.5 and Appendix E, and neither states it.
 
+The same question is asked wherever a *different* section spends an amount Table 1 states,
+and §3.6 is the other place it happens. A tab sign takes the distance from where it stands
+to its stop, and the Table 1 amount after the character before it is inside that distance:
+§3.6 has made the amount the sign's. Whether the reduction and expansion ladders still see
+a cell there — measuring their room in an amount another section has already spent — is the
+cl-30 question again with a different section on the other side of it, and §3.6 says as
+little about Appendices D and E as §3.2.5 does.
+
 ## The reading
 
 **§3.2.5's prose is the whole of the spacing beside a run, and the sentence pointing at
@@ -58,6 +67,18 @@ up a quarter em *inside* the character before it.
 The expansion **ceiling**, by contrast, is measured against the space §3.2.5 actually set
 and not against Table 1's. The `tate-chu-yoko` census pins that distinction at 156 of its
 requests.
+
+**A ladder reads the cell after a tab sign as transcribed too.** §3.6 spends the amount —
+it is inside the distance the sign takes to its stop — and Appendices D and E go on
+measuring their room in it, exactly as they go on reading the six cl-30 cells §3.2.5
+withdrew. The reading is one reading at both coordinates: a matrix cell is read at the
+coordinate it is addressed by, whatever section has spent the amount it names.
+
+A third coordinate has the same shape and is not published here, because the question it
+raises is about §B.2 note 13 rather than about a ladder: a Western word space the line
+collapsed, whose Table 1 cells the ladders also go on reading. It is recorded in
+[engines/racket/README.md](../../engines/racket/README.md) until the collapse itself is
+settled.
 
 ## Why
 
@@ -86,6 +107,15 @@ Table 1 states but §3.2.5 did not place would cap a quantity that is not there.
 the two halves of this reading are not inconsistent: the cells are read from the matrix, and
 the ceiling is read against the line.
 
+**A second section spending the amount changes nothing about the cell, which is the point.**
+§3.6 and §3.2.5 do different things to the same kind of quantity — one withdraws it, the
+other absorbs it into a distance of its own — and if the ladders had to know which, they
+would need a coordinate for *why* an amount is where it is. Tables 3 through 6 carry two
+classes and nothing else. Reading a cell at a tab boundary is therefore not a second
+decision beside the cl-30 one; it is the same decision reached again at the only other place
+in JLReq where a section spends a Table 1 amount, and reaching it twice by the same argument
+is what makes it a reading of the matrices rather than a rule about tate-chu-yoko.
+
 ## What would change it
 
 A revision of §3.2.5 that says either "and no other spacing is added" or "the amounts in §B
@@ -98,4 +128,7 @@ this reading, because both outputs would then be attested and neither would be a
 
 A revision of §3.8.3 or §3.8.4 that scopes a ladder to the boundaries the sections of §3
 actually set would settle the second, and would take a `neighbor` or a `provenance`
-coordinate that Tables 3 through 6 do not have today.
+coordinate that Tables 3 through 6 do not have today. The same revision settles the tab
+coordinate, and would have to name §3.6 as well as §3.2.5 to do it — which is the clearest
+statement of why the two are one reading: a change that answered only one of them would
+leave the matrices addressed two ways.
