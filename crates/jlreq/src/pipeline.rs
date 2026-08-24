@@ -583,6 +583,29 @@ fn is_internal_jidori_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
     })
 }
 
+/// Whether the boundary after `ordinal` falls inside a warichu or a furawake.
+///
+/// Both structures set their text on sublines that run *beside* the line, so a boundary
+/// with the clusters on either side of it inside the same structure is no part of what the
+/// line was composed from: the space there is the block's own, the seam where two sublines
+/// meet carries nothing on the line at all, and §3.8.3's ladder adjusts the spacing of the
+/// line (`docs/decisions/stacked-structure-geometry.md`). A boundary with one cluster
+/// inside the structure and the next outside it is the line's — that is where the block
+/// ends and the line resumes — and this is false there.
+fn is_internal_stacked_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
+    let Some(cluster) = paragraph.text.clusters().get(ordinal) else {
+        return false;
+    };
+    let boundary = cluster.range().end;
+    paragraph.constructs.iter().any(|construct| {
+        matches!(
+            construct.kind(),
+            ConstructKind::Warichu(range) | ConstructKind::Furawake { range, .. }
+                if range.start < boundary && boundary < range.end
+        )
+    })
+}
+
 fn formula_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     let cluster = paragraph.text.clusters().get(ordinal)?.range();
     let range = paragraph.constructs.iter().find_map(|construct| {
@@ -949,7 +972,9 @@ fn reduction_sites(
 ) -> Vec<ReductionSite> {
     let mut sites = Vec::new();
     for ordinal in line_start..line_end.saturating_sub(1) {
-        if is_internal_jidori_boundary(paragraph, ordinal) {
+        if is_internal_jidori_boundary(paragraph, ordinal)
+            || is_internal_stacked_boundary(paragraph, ordinal)
+        {
             continue;
         }
         if is_western_word_space(paragraph, ordinal) {

@@ -895,6 +895,100 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
     );
 }
 
+/// §3.8.3's ladder stops where the line stops: at the block a warichu makes.
+///
+/// `※〈〉あ※`, a three-member half-em note between two full-em characters. §3.4.2's
+/// balance divides the note two and one, so `〈〉` share the first subline and `あ` has
+/// the second, and Table 1 states exactly two nonzero amounts on the line — both 250
+/// units, half of the note's own half em. One of them, `cl-19`→`cl-01`, stands before the
+/// block and is on the line. The other, `cl-02`→`cl-15`, falls on the *seam* where the
+/// note's two sublines meet: the character that ends a subline reports its body alone, so
+/// nothing of that amount was ever placed.
+///
+/// The line's natural width is 3,250. At a 3,000 measure §3.8.3 has 250 units to give
+/// back and exactly one boundary to give them back at. Offering it the seam as well — the
+/// two are the same `1/2-0 stage 5` cell of Table 3 — halves what the line recovers and
+/// leaves it overfull by the other half, which is the defect issue #26 records and
+/// `docs/decisions/stacked-structure-geometry.md` settles.
+#[test]
+fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
+    fn note() -> ShapedText {
+        let clusters =
+            "※〈〉あ※"
+                .char_indices()
+                .enumerate()
+                .map(|(ordinal, (start, character))| {
+                    let inside = (1..=3).contains(&ordinal);
+                    let advance = if inside { 500 } else { 1_000 };
+                    let cluster =
+                        Cluster::new(start..start.saturating_add(character.len_utf8()), advance);
+                    if inside {
+                        cluster.with_size(Size::square(500).expect("positive note size"))
+                    } else {
+                        cluster
+                    }
+                });
+        ShapedText::new(
+            "※〈〉あ※",
+            Size::square(1_000).expect("positive main-text size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid seam fixture")
+    }
+
+    fn compose_at(measure: i32) -> jlreq::Layout {
+        let paragraph = Paragraph::builder(note(), measure)
+            .constructs([Construct::warichu(3..12)])
+            .build()
+            .expect("valid seam paragraph");
+        jlreq::compose(&paragraph, &Style::default())
+    }
+
+    let natural = compose_at(16_000);
+    assert_eq!(natural.lines()[0].inline_extent(), 3_250);
+    assert_eq!(
+        natural.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        vec![0, 1_250, 1_750, 1_250, 2_250],
+        "the seam's own amount stands nowhere on the line even where nothing adjusts"
+    );
+
+    let reduced = compose_at(3_000);
+    assert_eq!(reduced.lines().len(), 1);
+    let line = &reduced.lines()[0];
+    assert_eq!(
+        line.inline_extent(),
+        3_000,
+        "the whole 250 units come off the one boundary the line was composed from"
+    );
+    assert_eq!(line.block_extent(), 1_000);
+    assert_eq!(
+        line.clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 0, 1_250),
+            (1_000, 0, 500),
+            (1_500, 0, 500),
+            (1_000, 500, 500),
+            (2_000, 0, 1_000)
+        ]
+    );
+    assert!(
+        reduced.diagnostics().is_empty(),
+        "a line that gave back everything it needed is not overfull"
+    );
+
+    let halfway = compose_at(3_125);
+    assert_eq!(halfway.lines()[0].inline_extent(), 3_125);
+    assert!(halfway.diagnostics().is_empty());
+}
+
 #[test]
 fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
     for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
