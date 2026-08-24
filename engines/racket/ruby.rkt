@@ -191,30 +191,60 @@
 ;; §3.3.8: what a reading may hang over
 ;; ----------------------------------------------------------------------------
 
-;; The classes whose Table 1 cell says a reading may extend over the character
-;; itself and that are not kana. The kana are answered by script instead: §3.3.8
-;; rule 2 names "hiragana (cl-15), katakana (cl-16), prolonged sound mark (cl-10) or
-;; small kana (cl-11)", which is two scripts and two classes spelled in them, and
-;; the two readings part at exactly the marks they disagree about -- U+30FC is cl-10
-;; and Script=Common, and the katakana iteration marks are cl-09 and Script=Katakana.
-(define (structural-hang? class)
-  (and (memv class '(1 8 14)) #t))
+;; "The full-width size of the ruby characters", which every one of §3.3.8's
+;; allowances and §F.1's own overhang are stated in.
+;;
+;; Two things a reading of one size cannot say, and one whose characters differ can.
+;; The size is the largest of the run's own characters and not the size the construct
+;; declared for its annotation -- the declared size is a default for a cluster that
+;; states none rather than an answer of its own -- and it belongs to the RUN whose
+;; reading is doing the overhanging, because that is the subject of every sentence
+;; that states an allowance: "a run of ruby text for a given base character is
+;; allowed to overhang" is a fact about that run's characters and not about a
+;; character somewhere else in the compound.
+(define (run-unit piece)
+  (for/fold ([widest 0]) ([found (in-list (run-annotations piece))])
+    (max widest (extent-inline (annotation-size found)))))
 
-;; Whether a reading may extend over `neighbor` itself, and how far.
+;; How far a reading may reach over the neighbor on one side of its construct.
+;;
+;; §3.3.8 states seven allowances and they are not one rule with exceptions: three
+;; name a character the reading may go over, one names a space it may go over, one
+;; names a mixture of the two, and the Notes' variations reach only the first. `side`
+;; is which side of the construct the neighbor stands on, because three of the seven
+;; are stated for one side and not the other. `space` is how much of the amount
+;; Table 1 states at the boundary the NEIGHBOR's own em paid for; `unit` is the
+;; full-width size of the ruby characters.
 ;;
 ;; `neighbor-script` is what `spec/derived/scripts.tsv` names the character, as a
-;; string, or #f where the item is not one code point.
-;;
-;; Every permission is "up to the size of the ruby character", which is the reading's
-;; own em and not the neighbor's.
-(define (character-hang neighbor-class neighbor-script style em)
+;; string, or #f where the item is not one code point. §3.3.8's second allowance
+;; names "hiragana (cl-15), katakana (cl-16), prolonged sound mark (cl-10) or small
+;; kana (cl-11)", which is two scripts and two classes spelled in them, and the two
+;; readings part at exactly the marks they disagree about -- U+30FC is cl-10 and
+;; Script=Common, and the katakana iteration marks are cl-09 and Script=Katakana
+;; (docs/decisions/ruby-overhang-permission.md).
+(define (character-hang neighbor-class neighbor-script side style unit space)
   (define chosen (answer style "ruby.overhang_kana"))
   (cond
-    [(string=? chosen "any") em]
-    [(structural-hang? neighbor-class) em]
+    ;; A middle dot (cl-05), whose allowance is the one §3.3.8 states as a sum: the
+    ;; spacing on the far side of the dot plus half a ruby character. The section
+    ;; states it for a dot whose spacing "is reduced ... as a result of the line
+    ;; adjustment" and states one ruby character otherwise; the sum is the smaller of
+    ;; the two wherever the spacing stands unreduced, so taking it always is taking
+    ;; the section's own answer at every coordinate it states one for.
+    [(= neighbor-class 5) (min unit (chk+ space (div-trunc unit 2)))]
+    ;; An inseparable character (cl-08), and §B.2 note 8's ideographic space (cl-14).
+    [(memv neighbor-class '(8 14)) unit]
+    ;; §3.3.8's two bracket allowances, each stated for one side only. An opening
+    ;; bracket BEFORE the object and a closing bracket, full stop or comma AFTER it
+    ;; are characters the reading may go over; on the other side, what the section
+    ;; offers is the half em that stands between them and the object, and no more.
+    [(= neighbor-class 1) (if (eq? side 'before) unit (min unit space))]
+    [(memv neighbor-class '(2 6 7)) (if (eq? side 'after) unit (min unit space))]
+    [(string=? chosen "any") unit]
     [(string=? chosen "none") 0]
-    [(equal? neighbor-script "Hiragana") em]
-    [(and (equal? neighbor-script "Katakana") (not (string=? chosen "jis"))) em]
+    [(equal? neighbor-script "Hiragana") unit]
+    [(and (equal? neighbor-script "Katakana") (not (string=? chosen "jis"))) unit]
     [else 0]))
 
 ;; ----------------------------------------------------------------------------
@@ -223,10 +253,12 @@
 
 ;; `bases` is a vector of `(index start advance)` triples, one per base item of the
 ;; construct, in line order -- the item's own place in the paragraph, the byte offset
-;; its text starts at, and the advance it was shaped with. `lead` and `trail` are how
-;; far the reading may hang before the first base character and after the last.
+;; its text starts at, and the advance it was shaped with. `lead` and `trail` answer
+;; how far the reading may hang before the first base character and after the last;
+;; each takes the full-width size of the ruby characters that would do the hanging,
+;; because §3.3.8 states every one of its allowances in that size and the run at one
+;; end of a compound need not be set at the size of the run at the other.
 (define (plan-ruby one bases lead trail style)
-  (define em (extent-inline (ruby-em one)))
   (define compound?
     (and (eq? (ruby-kind one) 'jukugo)
          (for/or ([piece (in-list (ruby-runs one))]) (>= (length (run-annotations piece)) 3))))
@@ -235,11 +267,16 @@
     ;; to stay with its base: the one JIS X 4051 specifies, which is §3.3.6's own
     ;; group method applied to the whole compound, and the one decided by the
     ;; phonetic structure, which is Appendix F's. `ruby.jukugo_layout` chooses.
+    ;; §3.3.7 names its first method by author -- "the method specified in JIS X
+    ;; 4051" -- and not by §3.3.6's own choice, so `ruby.group_distribution` selects
+    ;; nothing here: the ratio is the one that section states, and the flush method
+    ;; is the other reading of §3.3.6 rather than another reading of §3.3.7.
     [(and compound? (answer-is? style "ruby.jukugo_layout" "group"))
-     (plan-distributed one bases (whole-reading one) style)]
+     (plan-distributed one bases (whole-reading one) style #f)]
     [compound? (plan-compound one bases lead trail style)]
     [(and (eq? (ruby-kind one) 'group) (> (vector-length bases) 1))
-     (plan-distributed one bases (run-annotations (car (ruby-runs one))) style)]
+     (plan-distributed one bases (run-annotations (car (ruby-runs one))) style
+                       (answer-is? style "ruby.group_distribution" "flush"))]
     [else (plan-per-run one bases lead trail style)]))
 
 ;; Every reading cluster of the construct, in order.
@@ -302,8 +339,9 @@
       ;; A run's own excess may hang over what stands outside the construct; inside
       ;; it, the next base character is where the neighboring run's own reading is,
       ;; so the excess is forced rather than hung.
-      (define before (max 0 (chk- (first split) (if first? lead 0))))
-      (define after (max 0 (chk- (second split) (if last? trail 0))))
+      (define unit (run-unit piece))
+      (define before (max 0 (chk- (first split) (if first? (lead unit) 0))))
+      (define after (max 0 (chk- (second split) (if last? (trail unit) 0))))
       (when (positive? before)
         (hash-update! separations anchor (lambda (found) (max found before)) 0))
       (when (positive? after)
@@ -323,8 +361,7 @@
 ;; §3.3.6: a group run over two or more base characters
 ;; ----------------------------------------------------------------------------
 
-(define (plan-distributed one bases readings style)
-  (define flush? (answer-is? style "ruby.group_distribution" "flush"))
+(define (plan-distributed one bases readings style flush?)
   (define widths (for/list ([found (in-list readings)]) (annotation-advance found)))
   (define reading (total-of widths))
   (define base-widths (for/list ([found (in-vector bases)]) (base-advance found)))
@@ -371,30 +408,158 @@
 ;; §F: the whole compound at once
 ;; ----------------------------------------------------------------------------
 
+;; §F.2 and §F.3, in the order §F.2 states them: let each run reach over the base
+;; character beside it, then over what stands outside the compound, and only then
+;; open the compound up.
+;;
+;; §F.2's own order is what makes the arrangement asymmetric. "Let a run of ruby
+;; text for a given base character overhang either or both of the adjacent base
+;; characters up to a maximum of one em in the ruby character size. THE FIRST CHOICE
+;; SHOULD BE THE SUCCEEDING BASE CHARACTER" -- and, where no arrangement following
+;; that choice exists, "let them overhang the preceding base characters". So a run
+;; goes as far forward as its own excess needs and no further, unless a later run
+;; leaves it nowhere to be, in which case it moves back.
+;;
+;; That is two passes and not a search. `latest` walks the runs from the last
+;; backwards and is the furthest forward each run may stand once every run after it
+;; has somewhere to go; `natural` is where §F.2's first choice puts a run reading
+;; nothing else; and a run stands at the later of its natural place and the end of
+;; the run before it, brought back to `latest` where that is earlier.
+
+;; Where one run's base characters stand, relative to the first base character of the
+;; construct, once `gaps` has been forced in: the start of each run's base text and
+;; the end of it.
+(define (run-extents widths gaps)
+  (let walk ([rest widths] [open (cdr gaps)] [at 0] [out '()])
+    (cond
+      [(null? rest) (reverse out)]
+      [else
+       (define end (chk+ at (car rest)))
+       (walk (cdr rest) (cdr open) (chk+ end (car open)) (cons (cons at end) out))])))
+
+;; The two limits one run's reading stands between: how far back it may reach and how
+;; far forward, both relative to the first base character.
+;;
+;; Inside the compound the limit is the adjacent base CHARACTER less §F.1's one em in
+;; the ruby character size -- the space forced in between them is the compound's own
+;; and the reading may stand in all of it. Outside, it is whatever §3.3.8 allowed,
+;; measured from the neighbor's own edge.
+(define (run-limits extents units lead trail gaps)
+  (define count (length extents))
+  (for/list ([here (in-list extents)] [unit (in-list units)] [index (in-naturals)])
+    (define back
+      (if (zero? index)
+          (chk- (- (car gaps)) (lead unit))
+          (chk- (cdr (list-ref extents (sub1 index))) unit)))
+    (define forward
+      (if (= index (sub1 count))
+          (chk+ (chk+ (cdr here) (last gaps)) (trail unit))
+          (chk+ (car (list-ref extents (add1 index))) unit)))
+    (cons back forward)))
+
+;; Whether every run has somewhere to stand once `gaps` has been forced in: the
+;; earliest arrangement is the one that leaves the most room for the runs after it,
+;; so a compound that does not fit in that one does not fit at all.
+(define (compound-fits? readings limits)
+  (let walk ([rest readings] [here limits] [at #f])
+    (cond
+      [(null? rest) #t]
+      [else
+       (define bound (car here))
+       (define lower (if at (max (car bound) at) (car bound)))
+       (define end (chk+ lower (car rest)))
+       (and (<= end (cdr bound)) (walk (cdr rest) (cdr here) end))])))
+
+;; §F.3's own two steps, in its own order: the total is first "distributed across
+;; those base characters accompanied by more than two ruby characters in accordance
+;; with the number of ruby characters (or the length of ruby characters when set
+;; solid)", and only then does each base character "expand the preceding and
+;; succeeding inter-character spacing equally by half of the assigned space".
+;;
+;; Two divisions and not one. Summing the two halves that meet at a boundary and
+;; dividing the total over the sums instead is the same arithmetic wherever nothing
+;; is left over and a different answer wherever something is: a base character
+;; assigned an odd amount has one unit that halving cannot place, and it is placed by
+;; `adjustment.remainder` at that base character rather than at the whole compound.
+(define (compound-gaps total asking style)
+  (define assigned (shares total asking style))
+  (for/list ([index (in-range (add1 (length asking)))])
+    (chk+ (if (> index 0) (second (shares (list-ref assigned (sub1 index)) (list 1 1) style)) 0)
+          (if (< index (length asking)) (first (shares (list-ref assigned index) (list 1 1) style)) 0))))
+
+;; §F.3's total, as the least one the compound fits at
+;; (docs/decisions/ruby-distribution-and-rounding.md). The formula states the total
+;; as a function of a layout the total itself produces, so what is evaluated here is
+;; the fixed point rather than the sentence, and the fixed point is found by
+;; bisection over a predicate that only ever turns true.
+(define (least-total readings widths asking units lead trail style)
+  (define (fits? total)
+    (define gaps (compound-gaps total asking style))
+    (define extents (run-extents widths gaps))
+    (compound-fits? readings (run-limits extents units lead trail gaps)))
+  (define ceiling (chk+ (total-of readings) (total-of widths)))
+  (cond
+    [(fits? 0) 0]
+    [(not (fits? ceiling)) ceiling]
+    [else
+     (let bisect ([low 0] [high ceiling])
+       (cond
+         [(>= (add1 low) high) high]
+         [else
+          (define middle (div-trunc (chk+ low high) 2))
+          (if (fits? middle) (bisect low middle) (bisect middle high))]))]))
+
 (define (plan-compound one bases lead trail style)
   (define runs (ruby-runs one))
+  (define units (for/list ([piece (in-list runs)]) (run-unit piece)))
   (define readings (for/list ([piece (in-list runs)]) (reading-width piece)))
   (define widths
     (for/list ([piece (in-list runs)]) (total-of (map base-advance (run-bases piece bases)))))
-  (define reading (total-of readings))
-  (define width (total-of widths))
-  (define excess (max 0 (chk- reading width)))
-  ;; What the two ends absorb, and what is left for the compound to open up by.
-  (define used (min excess (chk+ lead trail)))
-  (define lead-used (min lead used))
-  (define total (chk- excess used))
-  ;; §F.4: only a run whose own reading is longer than its own base asks for space,
-  ;; and the share each boundary takes is proportional to the reading length of the
-  ;; runs it stands between.
+  ;; §F.3: "inter-character spacing can be expanded only for those base characters
+  ;; which are accompanied by more than two ruby characters", and the share is "in
+  ;; accordance with the number of ruby characters (or the length of ruby characters
+  ;; when set solid)". Two or fewer stay with their base by §F.1 and ask for nothing,
+  ;; whether or not they happen to be wider than it.
   (define asking
-    (for/list ([one-reading (in-list readings)] [one-width (in-list widths)])
-      (if (> one-reading one-width) one-reading 0)))
-  (define count (length runs))
-  (define weights
-    (for/list ([index (in-range (add1 count))])
-      (chk+ (if (> index 0) (list-ref asking (sub1 index)) 0)
-            (if (< index count) (list-ref asking index) 0))))
-  (define gaps (shares total weights style))
+    (for/list ([piece (in-list runs)] [one-reading (in-list readings)])
+      (if (> (length (run-annotations piece)) 2) one-reading 0)))
+  (define total (least-total readings widths asking units lead trail style))
+  (define gaps (compound-gaps total asking style))
+  (define extents (run-extents widths gaps))
+  (define limits (run-limits extents units lead trail gaps))
+  ;; The furthest forward each run may stand, walked from the last backwards: a run
+  ;; that stood any further forward would leave the run after it nowhere to go.
+  (define latest
+    (let walk ([rest (reverse (map list readings limits))] [ahead #f] [out '()])
+      (cond
+        [(null? rest) out]
+        [else
+         (define width (first (car rest)))
+         (define forward (cdr (second (car rest))))
+         (define here
+           (if ahead (min (chk- forward width) (chk- ahead width)) (chk- forward width)))
+         (walk (cdr rest) here (cons here out))])))
+  ;; §F.2's first choice: a run's excess goes over the succeeding character as far as
+  ;; that reaches, and over the preceding one for what is left.
+  (define natural
+    (for/list ([one-reading (in-list readings)] [one-width (in-list widths)]
+               [here (in-list extents)] [bound (in-list limits)])
+      (define over (max 0 (chk- one-reading one-width)))
+      (define ahead (max 0 (chk- (cdr bound) (cdr here))))
+      (chk- (car here) (max 0 (chk- over ahead)))))
+  ;; Each run at its natural place, moved on where the run before it has not ended
+  ;; and moved back where standing there would crowd the runs after it out.
+  (define places
+    (let walk ([rest (map list readings natural latest limits)] [after #f] [out '()])
+      (cond
+        [(null? rest) (reverse out)]
+        [else
+         (define width (first (car rest)))
+         (define want (second (car rest)))
+         (define furthest (third (car rest)))
+         (define back (car (fourth (car rest))))
+         (define at (min furthest (max want back (or after want))))
+         (walk (cdr rest) (chk+ at width) (cons at out))])))
   (define separations (make-hash))
   (define tails (make-hash))
   (for ([piece (in-list runs)] [amount (in-list gaps)])
@@ -406,16 +571,16 @@
     (hash-set! tails (base-index (vector-ref bases (sub1 (vector-length bases)))) final))
   (define anchor (base-index (vector-ref bases 0)))
   (plan separations tails
-        (let walk ([rest runs] [at (- (chk+ (car gaps) lead-used))] [out '()])
-          (cond
-            [(null? rest) (reverse out)]
-            [else
-             (define here (run-annotations (car rest)))
-             (define-values (next placed)
-               (for/fold ([at at] [placed '()]) ([found (in-list here)])
-                 (values (chk+ at (annotation-advance found))
-                         (cons (attachment (ruby-index one) anchor 0 0 at
-                                           (annotation-start found) (annotation-end found)
-                                           (annotation-advance found) (annotation-size found) #f)
-                               placed))))
-             (walk (cdr rest) next (append placed out))]))))
+        (append*
+         (for/list ([piece (in-list runs)] [at (in-list places)])
+           (let walk ([rest (run-annotations piece)] [at at] [out '()])
+             (cond
+               [(null? rest) (reverse out)]
+               [else
+                (define found (car rest))
+                (walk (cdr rest)
+                      (chk+ at (annotation-advance found))
+                      (cons (attachment (ruby-index one) anchor 0 0 at
+                                        (annotation-start found) (annotation-end found)
+                                        (annotation-advance found) (annotation-size found) #f)
+                            out))]))))))

@@ -1296,11 +1296,10 @@
        (when (positive? (vector-length bases))
          (define first-index (car (vector-ref bases 0)))
          (define last-index (car (vector-ref bases (sub1 (vector-length bases)))))
-         (define em (extent-inline (ruby-em one)))
          (define found
            (plan-ruby one bases
-                      (hang-before para style ornamented first-index em)
-                      (hang-after para style ornamented last-index em)
+                      (lambda (em) (hang-before para style ornamented first-index em))
+                      (lambda (em) (hang-after para style ornamented last-index em))
                       style))
          (for ([(index amount) (in-hash (plan-separations found))])
            (hash-update! separations index (lambda (standing) (max standing amount)) 0))
@@ -1318,11 +1317,15 @@
 ;; §3.3.8: how far a reading may reach back before the first base character of its
 ;; construct, and forward past the last.
 ;;
-;; Two things are available: the space the neighbor's own em put at the boundary,
+;; What is on offer at the boundary is the space the neighbor's own em put there,
 ;; where Table 1 annotates it `hang`, and the neighbor character itself, where
-;; §3.3.8's own rules allow it. Before the first item of the paragraph there is no
-;; neighbor and the reading reaches into the paragraph's own indent instead, which
-;; is what `ruby.overhang_indent` answers for (§B.2 note 8).
+;; §3.3.8's own allowances reach it. Which of the two a coordinate offers is the
+;; section's own answer and not a sum of both: `character-hang` is the whole of it,
+;; and the space is what it is given to measure the bracket allowances against.
+;;
+;; Before the first item of the paragraph there is no neighbor and the reading
+;; reaches into the paragraph's own indent instead, which is what
+;; `ruby.overhang_indent` answers for (§B.2 note 8).
 (define (hang-before para style items index em)
   (cond
     [(zero? index)
@@ -1331,20 +1334,20 @@
          (max 0 (paragraph-first-line-indent para)))]
     [else
      (define neighbor (vector-ref items (sub1 index)))
-     (chk+ (hang-space (boundary-contributions neighbor (vector-ref items index)
-                                               (paragraph-writing-mode para) style)
-                       'before)
-           (character-hang (item-class neighbor) (item-script para neighbor) style em))]))
+     (character-hang (item-class neighbor) (item-script para neighbor) 'before style em
+                     (hang-space (boundary-contributions neighbor (vector-ref items index)
+                                                         (paragraph-writing-mode para) style)
+                                 'before))]))
 
 (define (hang-after para style items index em)
   (cond
     [(>= (add1 index) (vector-length items)) 0]
     [else
      (define neighbor (vector-ref items (add1 index)))
-     (chk+ (hang-space (boundary-contributions (vector-ref items index) neighbor
-                                               (paragraph-writing-mode para) style)
-                       'after)
-           (character-hang (item-class neighbor) (item-script para neighbor) style em))]))
+     (character-hang (item-class neighbor) (item-script para neighbor) 'after style em
+                     (hang-space (boundary-contributions (vector-ref items index) neighbor
+                                                         (paragraph-writing-mode para) style)
+                                 'after))]))
 
 ;; The part of a boundary's own space that Table 1 annotates `hang` and that the
 ;; NEIGHBOR's em paid for. A `hang` term measured from the ruby object's own em is
