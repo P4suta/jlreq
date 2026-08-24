@@ -9,6 +9,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Racket reference engine now reads §3.6.3's tab round the way
+  `docs/decisions/tab-line-correspondence.md` publishes it, which closes
+  [#19](https://github.com/P4suta/jlreq/issues/19) and lifts the census exclusion the entry
+  below records. `engines/racket/compose.rkt` gave a tab sign standing inside a warichu or a
+  furawake one em of the paragraph's own size instead of the advance it was shaped with —
+  which moves the block's own geometry and the whole line with it — and reached that branch
+  only for a sign *strictly* inside the structure, so a sign that opened one still fell
+  through to §3.6.3's cut and ended the line before a sign that is not a sign of the line.
+  A new `line-sign?` decides the question once, off the geometry rather than off a list of
+  constructs: a sign a stacking structure contains, its first character included, takes no
+  stop, keeps the advance it was shaped with, ends no string a stop aligns, and offers the
+  line no boundary. A sign inside a jidori or an emphasis run is unaffected — those set
+  their characters along the line, one position each. No public API and no other engine
+  changed. `engines/ocaml/probe/census.ml` covers the shape again at nine further variants
+  — a sign inside a warichu and inside a furawake, a sign that opens either, and a sign of
+  the line standing after such a structure, whose stop has to be measured from a walk in
+  which the whole block is one step — so the `tabs` census is 30,153 requests and all ten
+  censuses are at zero differences across the three engines over 116,909.
 - §3.6.3's tab round now gives one answer to "is this a sign of the line" instead of two.
   A tab sign standing inside a structure that stacks its text off the line — a
   tate-chu-yoko run, which runs across it, or a warichu's and a furawake's sublines, which

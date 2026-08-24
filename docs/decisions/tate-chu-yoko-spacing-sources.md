@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
   sentence reaches at all.
 - JLReq: §3.2.5, §3.6, §B.1, §B.2, §3.8.3, §3.8.4
 - Observed by: `just census tate-chu-yoko` (4,761 requests) for the cl-30 coordinates, and
-  `just census tabs` (25,392 requests) for the cell after a tab sign
+  `just census tabs` (30,153 requests) for the cell after a tab sign
 
 ## The silence
 

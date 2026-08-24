@@ -150,7 +150,7 @@ is the one under which the sentence is about something.
 
 **Nothing before M6 could see this.** cl-09 and cl-10 are the same row and the same column in
 all six matrices, at every coordinate except those four ruby cells. An engine could carry
-either reading through 112,148 census requests and every one of the eighty-nine conformance
+either reading through 116,909 census requests and every one of the eighty-nine conformance
 cases without the difference surfacing anywhere but here. That is the reason to publish it
 rather than leave it in a comment: it is invisible until it is not, and the next independent
 engine has no way to derive it.

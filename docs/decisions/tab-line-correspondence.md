@@ -9,17 +9,18 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - Applies to: the tab round in
   [`pipeline`](../../crates/jlreq/src/pipeline.rs) and
   [`paragraph`](../../crates/jlreq/src/paragraph.rs), and the same round in
-  [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
+  [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml) and
+  [`engines/racket/compose.rkt`](../../engines/racket/compose.rkt)
 - Standing: `Unstated`
 - JLReq: §3.6.1, §3.6.2, §3.6.3, §3.1 (silence), ADR-0018
-- Observed by: `just census tabs` (25,392 requests), and by probing the reference engine
+- Observed by: `just census tabs` (30,153 requests), and by probing the reference engine
   with stops the eighty-nine built-in cases never state; the reading about which constructs
   hold a coordinate a stop can name by the third engine's convergence on the same census.
   The two coordinates this file once excluded — a sign that opens a tate-chu-yoko run
   ([#12](https://github.com/P4suta/jlreq/issues/12)) and a sign inside a warichu or a
   furawake ([#13](https://github.com/P4suta/jlreq/issues/13)) — are settled below and
-  implemented by the Rust and the OCaml engines; the census covers the first of them and,
-  for the reason under "What would change it", not yet the second
+  implemented by all three engines, the third of them from
+  [#19](https://github.com/P4suta/jlreq/issues/19); the census covers both
 
 ## The silence
 
@@ -208,17 +209,16 @@ geometry, and would be the same sentence that settles the two coordinates the pa
 names. A sentence saying that a structure's first character is a character of the line would
 settle the last reading against it.
 
-**What the census covers, and what it does not.** The `tabs` census covers a sign beside a
-construct and inside an emphasis run, a superscript, a jidori and a tate-chu-yoko run, and
-now also a sign that *opens* a tate-chu-yoko run, at both a stop the line has gone past and
-one it has not: all three reference engines answer those alike at every class pair (25,392
-requests, no difference). A sign inside a warichu or a furawake is deliberately **not**
-covered, and that is a statement about an engine rather than about this reading: the Rust and
-the OCaml engines answer that shape alike at every pair, and the Racket engine gives such a
-sign one em of the paragraph's own size instead of the advance it was shaped with, which
-moves the block's own geometry, and ends the line before a sign that opens one
-([#19](https://github.com/P4suta/jlreq/issues/19)). A census is a gate and a gate that is red
-is not one, so the shape stays out until the third engine reaches the reading published here.
-`engines/ocaml/test/test_pipeline.ml` and
-[`crates/jlreq/tests/public_api.rs`](../../crates/jlreq/tests/public_api.rs) pin both shapes
-in the meantime.
+**What the census covers.** The `tabs` census covers a sign beside a construct and inside an
+emphasis run, a superscript, a jidori and a tate-chu-yoko run; a sign that *opens* a
+tate-chu-yoko run; a sign inside a warichu and inside a furawake; a sign that opens either of
+those; and a sign of the line standing *after* such a structure, whose own stop has to be
+measured from a walk in which the whole block is one step. Every one of them at both a stop
+the line has gone past and one it has not, and all three reference engines answer all of them
+alike at every class pair (30,153 requests, no difference). The last four shapes went in when
+the Racket engine reached the reading published here
+([#19](https://github.com/P4suta/jlreq/issues/19)); until then they were deliberately left
+out, because a census is a gate and a gate that is red is not one.
+`engines/ocaml/test/test_pipeline.ml`,
+[`crates/jlreq/tests/public_api.rs`](../../crates/jlreq/tests/public_api.rs) and
+`engines/racket/tests/test-compose.rkt` pin the individual shapes as well.
