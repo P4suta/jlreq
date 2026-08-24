@@ -630,6 +630,21 @@
   ;; signs and of nothing else.
   (define-values (advances cut?)
     (tab-walk para items first last count shaped gaps fixed indent))
+  ;; §D's own first stage measures a Western word space by the width it would have
+  ;; had, which for a space the line HEAD collapsed is not the width the line was
+  ;; composed from. §B.2 note 13 takes the space out of the line rather than out of
+  ;; the paragraph -- the same text elsewhere on a line is a space again -- so what
+  ;; the first stage is offered there is the caller's own advance, exactly as it is
+  ;; at any interior position. The line END is the other reading and is left alone:
+  ;; §D.2 note 4's "no reduction opportunity" is a space with no word after it, and
+  ;; `reduction-sites` declines the last position outright.
+  (define raw-advances
+    (let ([out (vector-copy advances)])
+      (when (and (> count 1)
+                 (not (stacked 0))
+                 (word-space? (vector-ref items first)))
+        (vector-set! out 0 (item-advance (vector-ref items first))))
+      out))
   (define natural
     (+ indent
        forced
@@ -640,7 +655,7 @@
   (cond
     [(negative? room)
      (define-values (kept-advances kept-gaps left)
-       (reduce para style items first last advances gaps advances raw-gap-terms (- room)))
+       (reduce para style items first last advances gaps raw-advances raw-gap-terms (- room)))
      (define reduced (+ indent forced (sum-of kept-advances) (sum-of kept-gaps)))
      (define hung (hang-of para style items last (- reduced measure)))
      (shape kept-advances kept-gaps fixed (- reduced hung) (max 0 (- reduced hung measure))
