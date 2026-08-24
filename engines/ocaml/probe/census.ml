@@ -1617,9 +1617,10 @@ let warichu_close () : piece = warichu_bracket 2
 
 (** One occurrence set at the size §3.4.2 gives a note, whatever else it is.
 
-    A census that varies the pair {i inside} a warichu or a furawake cannot pick its
-    characters from a fixed list the way {!note} does -- the pair is the subject -- so
-    the size is applied to the pair's own representatives instead. *)
+    {!note} builds a note's text out of a fixed list of letters, and a tab sign is not
+    on it. A sign standing inside such a structure is a character of the note like any
+    other and is set at the note's own size, so it is halved here rather than listed
+    there. *)
 let halved (one : piece) : piece =
   { one with piece_size = Some (em / 2, em / 2); piece_advance = Some (em / 2) }
 
@@ -1676,8 +1677,9 @@ let ornament (kind : string) (first : int) (last : int) (annotation : piece list
 
 (** A warichu with no brackets around it: §3.4.2's note is the run's own text, and
     the two cl-28 and cl-29 occurrences are characters of the main line the caller
-    gives a role to. A census that varies the pair inside the structure wants the
-    structure and not the brackets. *)
+    gives a role to. A census that puts a tab sign inside the structure is asking about
+    the structure, and the `constructs` census already varies a pair against the
+    brackets. *)
 let warichu (first : int) (last : int) : span =
   { span_default with span_kind = "warichu"; span_first = first; span_last = last }
 
