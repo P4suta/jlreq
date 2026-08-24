@@ -46,6 +46,9 @@ extend-exclude = [
   # `just derive` anyway; the prose these files carry that *is* ours is written in
   # xtask/src/, which typos does read (docs/design/generation.md).
   "spec/derived/**",
+  # `just fuzz-check` (cargo-fuzz) writes untracked, random-byte corpus files
+  # here locally; they aren't real text and shouldn't be spell-checked.
+  "fuzz/corpus/**",
 ]
 
 [type.toml]
