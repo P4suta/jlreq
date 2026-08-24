@@ -143,11 +143,13 @@
     [(eq? (cluster-frame-of para one) 'proportional) 'rotate-clockwise]
     [else 'identity]))
 
-(define (piece-of para one index transform writing-mode [inline 0] [block 0])
+;; `advance` overrides the caller's own where a member of a block reports the step
+;; that reaches the member beside it rather than its bare body.
+(define (piece-of para one index transform writing-mode [inline 0] [block 0] [advance #f])
   (piece index
          (cluster-start one)
          (cluster-end one)
-         (cluster-advance one)
+         (or advance (cluster-advance one))
          (cluster-size-of para one)
          (cluster-frame-of para one)
          transform
@@ -215,7 +217,9 @@
                         (>= (cluster-end one) (construct-end each))
                         (<= (cluster-start one) (construct-start each)))))
            => values]
-          [else #f])))
+          [else #f])
+        ;; One character is its own far edge.
+        #f))
 
 (define (tab-character? para one)
   (define text (source-slice (paragraph-source para) (cluster-start one) (cluster-end one)))
@@ -269,7 +273,10 @@
         'tate-chu-yoko
         'tate-chu-yoko
         members
-        #f #f 0 0 '() #f))
+        ;; §3.2.5 makes the whole run cl-30, so a run is the same class at both of
+        ;; its edges however many characters it holds and carries no far edge of its
+        ;; own.
+        #f #f 0 0 '() #f #f))
 
 ;; The things that stand on the line: the caller's clusters, with each construct's
 ;; own clusters gathered into the one item that construct is.
@@ -293,7 +300,7 @@
               at))
           (define held (for/list ([at (in-list inside)]) (vector-ref clusters at)))
           (set! out (cons (if (eq? (construct-kind (cdr found)) 'furawake)
-                              (furawake-item para style (cdr found) held inside next)
+                              (furawake-item para style (cdr found) held inside next formulae)
                               (run-item para held inside next))
                           out))
           (walk (+ index (length inside)) (add1 next))]
@@ -315,21 +322,45 @@
 ;; break opportunities inside it: the whole structure is one position on the main
 ;; line however many rows it holds, so a break the caller stated inside one is the
 ;; column division and not a place the main line may end.
-(define (furawake-item para style one clusters indices index)
+(define (furawake-item para style one clusters indices index formulae)
   (define columns (cdr (assq 'columns (construct-payload one))))
   (define gap (cdr (assq 'line-gap (construct-payload one))))
   (define stated
     (for/list ([each (in-list (paragraph-breaks para))]
-               #:when (for/or ([piece (in-list clusters)] [rank (in-naturals)])
-                        (and (> rank 0) (= (brk-offset each) (cluster-start piece)))))
-      (for/first ([piece (in-list clusters)] [rank (in-naturals)]
-                  #:when (= (brk-offset each) (cluster-start piece)))
+               #:when (for/or ([held (in-list clusters)] [rank (in-naturals)])
+                        (and (> rank 0) (= (brk-offset each) (cluster-start held)))))
+      (for/first ([held (in-list clusters)] [rank (in-naturals)]
+                  #:when (= (brk-offset each) (cluster-start held)))
         rank)))
   (define rows (rows-of columns (length clusters) (sort (remove-duplicates stated) <)))
-  (define widths
+  ;; The block's own characters, as items of their own. §3.7.2's columns are
+  ;; ordinary text of the structure, so the boundary between two members of one row
+  ;; is a boundary between two characters like any other -- and Table 1 is asked of
+  ;; occurrences rather than of clusters.
+  (define held
+    (for/vector ([each (in-list clusters)] [at (in-list indices)])
+      (plain-item para style each at formulae)))
+  ;; What a member reports, and what the row it stands on is measured from: its own
+  ;; body plus the amount Table 1 states after it INSIDE its row. The member that
+  ;; ends a row reports its body alone, because nothing of that row stands after it
+  ;; -- what Table 1 states past the block's last character stands beside the whole
+  ;; block, on the main line (docs/decisions/stacked-structure-geometry.md).
+  (define (member-advance row rank)
+    (define at (list-ref row rank))
+    (define own (item-advance (vector-ref held at)))
+    (if (= (add1 rank) (length row))
+        own
+        (chk+ own
+              (total-of (boundary-contributions (vector-ref held at)
+                                                (vector-ref held (list-ref row (add1 rank)))
+                                                (paragraph-writing-mode para)
+                                                style)))))
+  (define steps
     (for/list ([row (in-list rows)])
-      (for/fold ([sum 0]) ([at (in-list row)])
-        (chk+ sum (cluster-advance (list-ref clusters at))))))
+      (for/list ([rank (in-range (length row))]) (member-advance row rank))))
+  (define widths
+    (for/list ([row (in-list steps)])
+      (for/fold ([sum 0]) ([each (in-list row)]) (chk+ sum each))))
   (define heights
     (for/list ([row (in-list rows)])
       (for/fold ([most 0]) ([at (in-list row)])
@@ -337,23 +368,21 @@
   (define vertical? (eq? (paragraph-writing-mode para) 'vertical-rl))
   (define blocks (row-block-offsets heights gap (extent-block (paragraph-size para)) vertical?))
   (define along (for/fold ([most 0]) ([one (in-list widths)]) (max most one)))
-  (define across
-    (chk+ (for/fold ([sum 0]) ([one (in-list heights)]) (chk+ sum one))
-          (chk* gap (max 0 (sub1 (length heights))))))
   (define members
     (append*
-     (for/list ([row (in-list rows)] [block (in-list blocks)])
-       (let walk ([rest row] [at 0] [out '()])
+     (for/list ([row (in-list rows)] [row-steps (in-list steps)] [block (in-list blocks)])
+       (let walk ([rest row] [ahead row-steps] [at 0] [out '()])
          (cond
            [(null? rest) (reverse out)]
            [else
-            (define piece (list-ref clusters (car rest)))
+            (define each (list-ref clusters (car rest)))
             (walk (cdr rest)
-                  (chk+ at (cluster-advance piece))
-                  (cons (piece-of para piece (list-ref indices (car rest))
-                                  (transform-of para piece)
+                  (cdr ahead)
+                  (chk+ at (car ahead))
+                  (cons (piece-of para each (list-ref indices (car rest))
+                                  (transform-of para each)
                                   (paragraph-writing-mode para)
-                                  at block)
+                                  at block (car ahead))
                         out))])))))
   (item index
         (cluster-start (car clusters))
@@ -366,11 +395,16 @@
         (cluster-size-of para (car clusters))
         (cluster-frame-of para (car clusters))
         #f
-        (classify-cluster para (car clusters) style)
+        (item-class (vector-ref held 0))
         'identity
         'furawake
         members
-        #f #f 0 0 '() #f))
+        #f #f 0 0 '() #f
+        ;; The block's far edge. A warichu's members stay items of the line and each
+        ;; is its own edge; a furawake is ONE item, so the character a boundary after
+        ;; the block is read against has to be carried here rather than found in the
+        ;; item vector.
+        (vector-ref held (sub1 (vector-length held)))))
 
 ;; ----------------------------------------------------------------------------
 ;; Break opportunities
@@ -596,7 +630,8 @@
     (for/vector ([index (in-range (add1 count))])
       (cond
         [(= index 0) (head-contributions (vector-ref items first) style first-line? writing-mode)]
-        [(= index count) (end-contributions (vector-ref items last) style writing-mode next)]
+        [(= index count)
+         (end-contributions (trailing-edge (vector-ref items last)) style writing-mode next)]
         [(after-head-space? items first count index) '()]
         ;; Inside one warichu block the boundaries are the block's own business:
         ;; the note is one position on the main line and the space between two of
@@ -604,7 +639,7 @@
         ;; boundary where the block BEGINS is on the line, and Table 1 states it.
         [(inside-one-block? index) '()]
         [else
-         (boundary-contributions (vector-ref items (+ first index -1))
+         (boundary-contributions (trailing-edge (vector-ref items (+ first index -1)))
                                  (vector-ref items (+ first index))
                                  writing-mode
                                  style)])))
@@ -624,7 +659,7 @@
         ;; block's own interior on the line's arrears.
         [(inside-one-block? index) '()]
         [else
-         (boundary-contributions (vector-ref items (+ first index -1))
+         (boundary-contributions (trailing-edge (vector-ref items (+ first index -1)))
                                  (vector-ref items (+ first index))
                                  writing-mode
                                  style
@@ -850,7 +885,9 @@
     (for/list ([index (in-range 1 (add1 count))])
       (define terms (vector-ref raw-gap-terms index))
       (define before-class
-        (if (= index count) (item-class (vector-ref items last)) (item-class (vector-ref items (+ first index -1)))))
+        (if (= index count)
+            (item-class (trailing-edge (vector-ref items last)))
+            (item-class (trailing-edge (vector-ref items (+ first index -1))))))
       (define after-class
         (if (= index count) line-edge (item-class (vector-ref items (+ first index)))))
       (gap-openings table items first index terms before-class after-class)))))
@@ -893,7 +930,7 @@
 (define (term-em items first index one)
   (if (eq? (contribution-owner one) 'after)
       (item-em (vector-ref items (+ first index)))
-      (item-em (vector-ref items (+ first index -1)))))
+      (item-em (trailing-edge (vector-ref items (+ first index -1))))))
 
 ;; Give back `wanted`, in stage order, and report what is left.
 (define (reduce para style items first last advances gaps raw-advances raw-gap-terms wanted)
@@ -1000,7 +1037,7 @@
                (item-em (vector-ref items (+ first offset)))))
    (append*
     (for/list ([index (in-range 1 count)])
-      (define before (vector-ref items (+ first index -1)))
+      (define before (trailing-edge (vector-ref items (+ first index -1))))
       (define after (vector-ref items (+ first index)))
       (define em (boundary-em (vector-ref raw-gap-terms index) before after))
       (define found (expansion-of (item-class before) (item-class after) em))
@@ -1811,11 +1848,11 @@
   (define writing-mode (paragraph-writing-mode para))
   (cond
     [(= offset (sub1 count))
-     (total-of (end-contributions (vector-ref items last) style writing-mode
+     (total-of (end-contributions (trailing-edge (vector-ref items last)) style writing-mode
                                   (and (< (add1 last) (vector-length items)) (vector-ref items (add1 last)))))]
     [(after-head-space? items first count (add1 offset)) 0]
     [else
-     (total-of (boundary-contributions (vector-ref items (+ first offset))
+     (total-of (boundary-contributions (trailing-edge (vector-ref items (+ first offset)))
                                        (vector-ref items (+ first offset 1))
                                        writing-mode
                                        style))]))

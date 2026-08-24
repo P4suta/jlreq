@@ -11,7 +11,7 @@
 
 [[file]]
 path = "ROADMAP.md"
-sha256 = "d804757056cc7509c09721c86427db5405febca50853971416a14c63035dc47d"
+sha256 = "a6b10efed08e330003e172ee7fd9fcf1a8b3b81e5df62c731833df3e685020b6"
 
 [[file]]
 path = "crates/jlreq-conformance/protocol.schema.json"

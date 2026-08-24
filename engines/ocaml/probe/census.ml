@@ -1741,6 +1741,21 @@ let construct_variants : construct_variant list =
   let columned body columns gap =
     around body [ furawake 1 (1 + List.length body) ~columns ~gap ]
   in
+  (* The pair set inside one COLUMN of a furawake rather than at the structure's two
+     edges, which is the §3.7.2 half of what [pair_in_note] asks of §3.4.2. A
+     furawake's columns are ordinary text of the structure the way a note's rows are,
+     so the boundary between two members of one column carries Table 1's ordinary
+     amount and the member before it reports the step that reaches the one beside it.
+     It reaches the structure's far edge in the same request: the pair shares the
+     first column and an ordinary character has the second, so the boundary the line
+     reads after the block is the one at the block's LAST character rather than at
+     its first (#27, docs/decisions/stacked-structure-geometry.md). §3.7.2 divides at
+     the caller's own boundary, so the variant states the break that makes the two
+     columns. *)
+  let pair_in_column before after =
+    ( [ plain filler; plain before; plain after; List.nth three_bases 2; plain filler ],
+      [ furawake 1 4 ~columns:2 ~gap:(em / 5) ] )
+  in
   let celled body cells = around body [ jidori 1 (1 + List.length body) ~cells ] in
   [
     (* §3.3.9. The mark is half its base character, so a base of a second size is the
@@ -1888,12 +1903,14 @@ let construct_variants : construct_variant list =
       cs_name = "warichu-pair-inside-row";
       cs_shape = (fun before after -> pair_in_note ~head:1 ~tail:2 before after);
     };
-    (* §3.8.4's ladder at that same boundary: what stands inside a block is no part
-       of what the line was composed from, so a justified line cannot open it there.
-       §3.8.3's ladder is the same reading and is deliberately not asked here -- a
-       line that has to give space back beside a note whose rows meet at a Table 1
-       amount is a coordinate the Rust and OCaml engines do not yet agree on, and a
-       census asks the settled question. *)
+    (* Both ladders at that same boundary: what stands inside a block is no part of
+       what the line was composed from, so neither a line with room to spare nor one
+       that has to give space back reaches it. The reduced shape is where the two
+       readings come apart in the line's own width. The seam where the note's two
+       rows meet carries a Table 1 amount that no engine puts anywhere -- the
+       character ending a row reports its body alone -- so an engine that offered the
+       seam to §3.8.3 would divide the line's arrears over a boundary with nothing to
+       give, and hand back half of what it needs (#26). *)
     {
       construct_default with
       cs_name = "warichu-pair-inside-justified";
@@ -1901,6 +1918,12 @@ let construct_variants : construct_variant list =
       cs_extent = 5 * em;
       cs_breaks = Mandatory_after 5;
       cs_alignment = "justify";
+    };
+    {
+      construct_default with
+      cs_name = "warichu-pair-inside-reduced";
+      cs_shape = (fun before after -> pair_in_note ~head:0 ~tail:1 before after);
+      cs_extent = 3 * em;
     };
     (* §3.7.2. The block is centered across the line and its own height is the line's,
        which a gap and an odd column count make visible at once. *)
@@ -1928,6 +1951,19 @@ let construct_variants : construct_variant list =
       cs_name = "furawake-solid";
       cs_shape = (fun before after -> columned three_bases 2 0 before after);
       cs_breaks = Boundaries_before [ 3 ];
+    };
+    {
+      construct_default with
+      cs_name = "furawake-pair-inside";
+      cs_shape = pair_in_column;
+      cs_breaks = Boundaries_before [ 3 ];
+    };
+    {
+      construct_default with
+      cs_name = "furawake-pair-inside-vertical";
+      cs_shape = pair_in_column;
+      cs_breaks = Boundaries_before [ 3 ];
+      cs_writing_mode = "vertical-rl";
     };
     (* §3.7.3. Two characters in four cells, three in five: the first divides its
        surplus over one boundary and the second over two, and a boundary the

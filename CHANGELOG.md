@@ -9,6 +9,45 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- §3.8.3's ladder no longer reaches the seam where a warichu's two sublines meet, which
+  closes [#26](https://github.com/P4suta/jlreq/issues/26) — the first coordinate at which
+  two reference engines disagreed with *each other* rather than one lagging the other two,
+  and the one the entry below left out of the census on purpose.
+  `crates/jlreq/src/pipeline.rs` offered `reduction_sites` every interior boundary of a
+  stacked structure, the seam included, so a line carrying `※〈〉あ※` at a three-em measure
+  divided its 250 units of arrears over the one boundary it was composed from and one
+  inside the block that carries nothing: it gave back 125, ended 125 units over its
+  measure, and reported `layout.overfull` about a line it could have made fit. The
+  expansion ladder already stopped at the block, and the reduction ladder now asks the same
+  question. `docs/decisions/stacked-structure-geometry.md` publishes the reading the OCaml
+  and Racket engines already had: the seam is the block's like every other boundary inside
+  it, because what makes a boundary the line's is that the line was composed from it and at
+  the seam no engine places anything — the character that ends a subline reports its body
+  alone. No public API changed, and no other engine did.
+- The Racket reference engine now lays a furawake's columns out from the advances the
+  structure was composed from and reads the boundary after the block against the block's
+  own last character, which closes
+  [#27](https://github.com/P4suta/jlreq/issues/27). `engines/racket/compose.rkt` made one
+  item of a furawake and measured each of its columns from bare cluster advances, so a
+  member standing before a Table 1 amount inside its column — `cl-02` then `cl-01`, half of
+  the member's own em — reported 1000 where the same engine placed the next member 1000
+  units on and charged the line 1500 for the step; and it gave that one item the class of
+  its *first* cluster, so the boundary after the block was answered at the wrong end of it
+  and the amount missing from the column reappeared beside the structure. The two mistakes
+  cancel in the line's own width wherever the two amounts are equal, which is why the shape
+  had to be swept over every class pair to be seen. A furawake's members are now items of
+  their own for the purpose Table 1 is asked at, and the `item` struct carries a `trailing`
+  edge — the occurrence a boundary *after* the item is read against — which is the item
+  itself for everything one character wide and the block's last character for a furawake.
+  A tate-chu-yoko run carries none: §3.2.5 makes it cl-30 at both of its edges. No public
+  API and no other engine changed.
+- Both readings above are reached at every class pair now.
+  `engines/ocaml/probe/census.ml` adds three `constructs` variants —
+  `warichu-pair-inside-reduced`, the sixth shape the entry below deliberately withheld, and
+  `furawake-pair-inside` with its vertical mirror — so the `constructs` census is 20,102
+  requests and all ten censuses are at zero differences across the three engines over
+  122,199. Against the previous engines the same census reports 15 differing responses for
+  the Rust one and 434 for the Racket one.
 - The Racket reference engine now answers the two coordinates inside a warichu block that
   the other two engines already agreed on, which closes
   [#23](https://github.com/P4suta/jlreq/issues/23) and

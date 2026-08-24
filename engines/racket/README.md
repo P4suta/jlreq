@@ -336,7 +336,7 @@ just census-racket expansion      →  3174 request(s), 0 differing response(s)
 just census-racket vertical       →  5290 request(s), 0 differing response(s)
 just census-racket tate-chu-yoko  →  4761 request(s), 0 differing response(s)
 just census-racket ruby           → 37030 request(s), 0 differing response(s)
-just census-racket constructs     → 18515 request(s), 0 differing response(s)
+just census-racket constructs     → 20102 request(s), 0 differing response(s)
 just census-racket tabs           → 31211 request(s), 0 differing response(s)
 just census-racket widow          → 13225 request(s), 0 differing response(s)
 ```
@@ -350,10 +350,10 @@ composition; again with a tate-chu-yoko run standing between them, which is the 
 way to reach the cl-30 row and column of all six matrices at all; again beside a ruby
 construct in all three kinds, an ornamented complex, an inline cutting note, a
 furawake and a jidori; again across a tab sign at stops the line reaches and stops it
-has passed; and again on a paragraph whose last line is a widow. **120,612 requests,
+has passed; and again on a paragraph whose last line is a widow. **122,199 requests,
 and every one of them the same answer.**
 
-The same 120,612 requests were also diffed against the **OCaml** engine, which reads
+The same 122,199 requests were also diffed against the **OCaml** engine, which reads
 the Japanese transcription and is itself at zero against Rust: three implementations,
 three readings of §3.9.2 and Appendix B taken from the specification rather than from
 each other's layout code, and one answer.

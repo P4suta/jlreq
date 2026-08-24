@@ -44,7 +44,8 @@
          total-of
          prohibited?
          stated-cell
-         item-em)
+         item-em
+         trailing-edge)
 
 ;; One occurrence on the line: the cluster it came from, and everything the layout
 ;; needs to know about it.
@@ -65,8 +66,18 @@
 ;; part of one: `(formula display?)` for §3.7.4, `(warichu index)` for the text of
 ;; an inline cutting note. It is #f for everything a line sets straight along
 ;; itself.
+;;
+;; `trailing` is the far half of the item's own class: the occurrence a boundary
+;; AFTER this item is read against, where that is not this item itself. One
+;; character is its own far edge and carries #f. A structure that gathers several
+;; clusters into one item is a DIFFERENT character at each of its two edges, and a
+;; structure has two edges: Table 1's answer before the block is asked at the block's
+;; first character and its answer after the block at the block's last
+;; (`docs/decisions/stacked-structure-geometry.md`). §3.7.2's furawake is the item
+;; that needs it. A tate-chu-yoko run does not: §3.2.5 makes it cl-30 at both of its
+;; edges however many characters it holds.
 (struct item (index start end advance size frame role class transform kind members
-              complex run separation tail attachments structure)
+              complex run separation tail attachments structure trailing)
   #:transparent)
 
 ;; One cluster of a grouped item.
@@ -102,6 +113,18 @@
 ;; The em a term is measured against.
 (define (item-em one)
   (extent-inline (item-size one)))
+
+;; The occurrence a boundary AFTER `one` is read against.
+;;
+;; Every reading of a boundary asks Table 1 about the character before it and the
+;; character after it. For an item that is one character those are the item itself
+;; on one side and its neighbor on the other; for a block that gathers several
+;; clusters into one item the character before the boundary after it is the LAST of
+;; them, not the first (`docs/decisions/stacked-structure-geometry.md`). The
+;; boundary BEFORE such an item is unchanged: the item's own class is the first
+;; character's already.
+(define (trailing-edge one)
+  (or (item-trailing one) one))
 
 ;; `amount` is in 1/720 em; bring it into the caller's unit against `em`.
 ;;

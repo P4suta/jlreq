@@ -458,6 +458,77 @@
   (check-equal? (notes-of (note-with-a-gap 3000)) '(("layout.overfull" 0 15)))
 
   ;; ------------------------------------------------------------------
+  ;; §3.7.2: the same two readings inside a furawake's own columns
+  ;; ------------------------------------------------------------------
+
+  ;; A furawake is the other structure docs/decisions/stacked-structure-geometry.md is
+  ;; addressed to, and both halves of the reading above hold in it. Its columns are
+  ;; ordinary text of the structure, so a boundary between two members of one column
+  ;; is Table 1's ordinary answer and the member before it reports the step that
+  ;; reaches the one beside it; and the structure has two edges, so what Table 1
+  ;; states after the block is asked at the block's LAST character rather than at its
+  ;; first.
+  ;;
+  ;; `※〉〈日※` in a sixteen-em measure, the furawake over `〉〈日` in two columns with
+  ;; a one-fifth-em line gap, and the caller's one opportunity before `日` -- which is
+  ;; where §3.7.2 divides the columns, so `〉〈` is the first and `日` the second.
+  ;; Table 1 states 1/2 be between `cl-02` and `cl-01`, half of the closing bracket's
+  ;; own full em, so `〉` reports 1000 + 500 = 1500 and `〈` stands 1500 past it at
+  ;; 2500. `〈` ends its column and reports its body alone. The first column is 2500
+  ;; wide and the block with it. The boundary after the block is `日`→`※`, which
+  ;; Table 1 leaves blank, so the `※` after the structure stands at 3500 and the line
+  ;; is 4500. Reading that boundary against `〉`, the block's first character, would
+  ;; put the same 500 units there instead and give the same 4500 by two mistakes.
+  (check-equal? (layout-of (request "※〉〈日※"
+                                    (list (cluster* 0 3 1000)
+                                          (cluster* 3 6 1000)
+                                          (cluster* 6 9 1000)
+                                          (cluster* 9 12 1000)
+                                          (cluster* 12 15 1000))
+                                    16000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 9 "allowed"))
+                                    #:constructs (list (hasheq 'kind "furawake" 'range '(3 12)
+                                                               'columns 2 'line_gap 200))))
+                '(((0 15) 0 4500
+                   ((0 0 1000) (1 1000 1500) (2 2500 1000) (3 1000 1000) (4 3500 1000)))))
+
+  ;; The pair that separates the two mistakes. `※・・日※` is the same shape with a
+  ;; middle dot on either side of the in-column boundary: Table 1 states 1/4 be + 1/4
+  ;; af between two `cl-05` occurrences, 500 units inside the column, against the 250
+  ;; a `cl-05` takes before the `※` that opens the line. The first column is 2500 and
+  ;; the line 1250 + 2500 + 1000 = 4750, where reading the block's far edge as its
+  ;; near one answers 4500.
+  (check-equal? (layout-of (request "※・・日※"
+                                    (list (cluster* 0 3 1000)
+                                          (cluster* 3 6 1000)
+                                          (cluster* 6 9 1000)
+                                          (cluster* 9 12 1000)
+                                          (cluster* 12 15 1000))
+                                    16000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 9 "allowed"))
+                                    #:constructs (list (hasheq 'kind "furawake" 'range '(3 12)
+                                                               'columns 2 'line_gap 200))))
+                '(((0 15) 0 4750
+                   ((0 0 1250) (1 1250 1500) (2 2750 1000) (3 1250 1000) (4 3750 1000)))))
+
+  ;; The block's own two extents are unchanged by either reading: two rows one em deep
+  ;; with a one-fifth-em gap between them is 2200, centered on the paragraph's own em.
+  (check-equal? (blocks-of (request "※〉〈日※"
+                                    (list (cluster* 0 3 1000)
+                                          (cluster* 3 6 1000)
+                                          (cluster* 6 9 1000)
+                                          (cluster* 9 12 1000)
+                                          (cluster* 12 15 1000))
+                                    16000
+                                    #:alignment "start"
+                                    #:breaks (list (break* 9 "allowed"))
+                                    #:constructs (list (hasheq 'kind "furawake" 'range '(3 12)
+                                                               'columns 2 'line_gap 200))))
+                '((0 2200 (0 -600 -600 600 0))))
+
+  ;; ------------------------------------------------------------------
   ;; Appendix C: what may be broken
   ;; ------------------------------------------------------------------
 
