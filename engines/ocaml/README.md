@@ -323,9 +323,9 @@ readings, which is what an independent implementation is for.
 
 The `tabs` census now covers the first shape — a sign that opens a tate-chu-yoko run,
 at a stop the line has gone past and at one it has not — and all three engines answer
-it alike at every class pair. It covers the second shape for none of them: the Racket
-engine gives a sign inside a warichu one em of the paragraph's own size instead of the
-advance it was shaped with, and ends the line before a sign that opens one
+it alike at every class pair. It still covers the second shape for no engine at all: the
+Racket engine gives a sign inside a warichu one em of the paragraph's own size instead of
+the advance it was shaped with, and ends the line before a sign that opens one
 ([#19](https://github.com/P4suta/jlreq/issues/19)). A census is a gate and a gate that
 is red is not one, so that shape stays out until the third engine reaches the published
 reading; `test/test_pipeline.ml` pins this engine's answer to it in the meantime.
