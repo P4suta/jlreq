@@ -1129,7 +1129,8 @@ let run () =
      once per character inside it: the outer sign below stands at 1000, the block's
      own width, so the first stop it can reach is the one at 1200 and not the one at
      3000 that the three characters' advances would have put it past. Written down
-     nowhere, and the reference engine does not agree; see README.md. *)
+     nowhere in JLReq; published in docs/decisions/tab-line-correspondence.md, which
+     all three engines now implement. *)
   Check.equal_string "a sign inside a warichu keeps the advance it was shaped with"
     ~expected:"(1000/1000) [0:-500+500 500:-500+500 0:500+500] []"
     ~actual:
