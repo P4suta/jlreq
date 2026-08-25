@@ -33,10 +33,15 @@ answer is not the answer CI gets, which makes it worthless in both directions.
 `mise exec -- just ci` is also the pre-push hook. If it passes locally it passes in CI; if
 it fails, fix the cause rather than narrowing the gate.
 
-`just fuzz-check` compiles the separate nightly public-API harness on Windows and runs a
-bounded libFuzzer plus sanitizer workload on Unix. The required Linux CI job always takes
-the latter path; continue an exploratory run with `cargo +nightly fuzz run public_api`
-from `fuzz/`.
+`just fuzz-check` compiles the three separate nightly harnesses on Windows and runs each for
+30 seconds with libFuzzer and sanitizers on Unix. They isolate input validation,
+composition/arithmetic, and protocol parsing. Curated inputs live under `fuzz/seeds/`;
+runtime corpora live under `target/fuzz-corpus/` and never dirty the source tree.
+
+Full mutation runs cover both handwritten products. Only generated table files and exact
+mutants proven equivalent in [docs/mutation-ledger.toml](docs/mutation-ledger.toml) may be
+excluded. `just mutation-ledger` binds every such entry to its source SHA-256 and rejects an
+undocumented or broad cargo-mutants exclusion.
 
 ## Rules that are not negotiable
 
@@ -109,13 +114,20 @@ English translation instead carries the kanji and the romanization — "hanging 
 
 Use `ADR-0013` inside source comments and a Markdown link such as `docs/adr/0013` in prose.
 
-The workspace is an unreleased `0.0.0` development snapshot. Both product manifests keep
-`publish = false`, release automation stays inert, and changelog entries stay under
-`Unreleased` until a maintainer makes a separate, explicit release decision.
+The workspace is prepared at `0.1.0` and both product manifests are publishable. Release
+automation remains externally inert: ordinary development must not publish a crate, create
+a tag or GitHub Release, configure Trusted Publishing, or change repository settings.
+`just release-check` performs the full non-publishing acceptance suite on a clean candidate.
+
+Run `just semver` for public API changes. At 0.1.0 it verifies the network-free release
+contract in `docs/public-api.toml`; after the initial publication it additionally compares
+each 0.1.x candidate with the latest published jlreq release in patch-compatibility mode.
+Changing `baseline_version` or `compatible_series` is a release-policy change, not a way to
+waive an individual finding.
 
 Tracked UTF-8 files use LF, including on Windows, and local links in tracked Markdown are
 part of the repository contract. Keep links relative so they work in a checkout and run
-`just repository`; the gate holds the unreleased state and rejects CR bytes, missing
+`just repository`; the gate holds the release-ready state and rejects CR bytes, missing
 targets, and links that escape the repository while leaving binary files, external URLs,
 and in-page anchors alone.
 Use canonical JLReq addresses from `spec/derived/rules.tsv` in protocol case metadata.

@@ -1,0 +1,143 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Release check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    name: complete non-publishing acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      RACKET_VERSION: "9.3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: clippy,llvm-tools-preview,rustfmt
+          targets: thumbv7em-none-eabi,wasm32-unknown-unknown
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # nightly
+        with:
+          toolchain: nightly
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: >-
+            just@1.50.0,nextest@0.9.140,cargo-hack@0.6.45,cargo-deny@0.20.2,
+            cargo-shear@1.13.3,cargo-msrv@0.19.3,cargo-fuzz@0.13.2,
+            cargo-llvm-cov@0.9.0,cargo-mutants@27.1.0,taplo-cli@0.10.0,
+            cargo-semver-checks@0.50.0,typos-cli@1.48.0,
+            actionlint@1.7.12,shellcheck@0.11.0,zizmor@1.28.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: 0.11.32
+      - uses: ocaml/setup-ocaml@f92e0606b7ae4873dd1238465ea4bf6f8e40d85c # v3.7.2
+        with:
+          ocaml-compiler: "5.5.0"
+          dune-cache: true
+      - uses: Bogdanp/setup-racket@2466913449df77df2bad149d1f2fc4e1ea4795dd # v1.15
+        with:
+          version: ${{ env.RACKET_VERSION }}
+          variant: CS
+          distribution: minimal
+      - name: install Racket build and test collections
+        run: raco pkg install --skip-installed --batch --auto --no-docs compiler-lib rackunit-lib
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: run every non-publishing release gate
+        run: opam exec -- just release-check
+
+  binaries:
+    name: binaries (${{ matrix.target }})
+    needs: acceptance
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    env:
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: cargo-cyclonedx@0.5.9
+      - name: install Linux cross linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install --yes gcc-aarch64-linux-gnu
+      - name: install musl linker
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+      - name: build and inspect archive
+        shell: bash
+        run: sh scripts/package-binaries.sh '${{ matrix.target }}'
+      - name: generate CycloneDX SBOM
+        shell: bash
+        run: |-
+          cargo cyclonedx --format json --spec-version 1.5 --license-strict --all-features \
+            --target '${{ matrix.target }}' \
+            --manifest-path crates/jlreq-conformance/Cargo.toml
+          sbom=$(find crates/jlreq-conformance -maxdepth 1 -name '*.cdx.json' -print -quit)
+          test -n "$sbom"
+          jq -e --arg target '${{ matrix.target }}' '
+            .bomFormat == "CycloneDX" and
+            .specVersion == "1.5" and
+            .metadata.component.name == "jlreq-conformance" and
+            .metadata.component.version == "0.1.0" and
+            .metadata.component.licenses == [{"expression":"MIT OR Apache-2.0"}] and
+            any(.metadata.properties[]?;
+              .name == "cdx:rustc:sbom:target:triple" and .value == $target)
+          ' "$sbom"
+          cp "$sbom" "target/dist/jlreq-0.1.0-${{ matrix.target }}.cdx.json"
+      - name: attest build provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |-
+            target/dist/*.tar.gz
+            target/dist/*.zip
+      - name: attest CycloneDX SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |-
+            target/dist/*.tar.gz
+            target/dist/*.zip
+          sbom-path: target/dist/jlreq-0.1.0-${{ matrix.target }}.cdx.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ matrix.target }}
+          path: |-
+            target/dist/*.tar.gz
+            target/dist/*.zip
+            target/dist/*.sha256
+            target/dist/*.cdx.json
+          if-no-files-found: error
+          retention-days: 30

@@ -338,8 +338,7 @@
                                     8000
                                     #:alignment "start"
                                     #:breaks (list (break* 5 "allowed"))
-                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
-                                    #:tab-stops (list (stop* 2500))))
+                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))))
                 '(((0 9) 0 3000
                    ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 1000)))))
 
@@ -359,8 +358,7 @@
                                     8000
                                     #:alignment "start"
                                     #:breaks (list (break* 5 "allowed"))
-                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
-                                    #:tab-stops (list (stop* 250))))
+                                    #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))))
                 '(((0 9) 0 3000
                    ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 1000)))))
 
@@ -382,10 +380,26 @@
                                     #:alignment "start"
                                     #:breaks (list (break* 5 "allowed"))
                                     #:constructs (list (hasheq 'kind "warichu" 'range '(1 8)))
-                                    #:tab-stops (list (stop* 2500) (stop* 3000))))
+                                    #:tab-stops (list (stop* 2500))))
                 '(((0 10) 0 3500
                    ((0 0 1000) (1 1000 500) (2 1500 500) (3 1000 500) (4 2000 500)
                     (5 2500 1000)))))
+
+  ;; Emphasis dots are one complex per base character, so unlike a jidori or a
+  ;; superscript they leave a boundary for §3.6.3's exhausted-stop cut.
+  (check-equal? (layout-of (request "〈\t〈"
+                                    (list (cluster* 0 3 1000)
+                                          (cluster* 3 4 1000)
+                                          (cluster* 4 7 1000))
+                                    3000
+                                    #:alignment "start"
+                                    #:constructs
+                                    (list (hasheq 'kind "emphasis-dots"
+                                                  'range '(0 7)
+                                                  'mark "•"))
+                                    #:tab-stops (list (stop* 500))))
+                '(((0 3) 0 1000 ((0 0 1000)))
+                  ((3 7) 0 1500 ((1 0 500) (2 500 1000)))))
 
   ;; ------------------------------------------------------------------
   ;; §3.4.2: the block a note makes, and what stands inside it

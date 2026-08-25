@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Inert release configuration for the unreleased 0.0.0 development workspace.
-# Publishing, tags, releases, and changelog mutation stay disabled until a maintainer makes
-# a separate, explicit release decision.
+# Inert release configuration for the prepared 0.1.0 workspace. Publishing, tags, releases,
+# and changelog mutation stay disabled until a maintainer makes a separate, explicit decision.
 
 [workspace]
 dependencies_update = false

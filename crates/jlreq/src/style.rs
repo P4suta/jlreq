@@ -722,3 +722,45 @@ impl core::fmt::Display for StyleError {
         formatter.write_str(self.message)
     }
 }
+
+impl core::error::Error for StyleError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::format;
+
+    #[test]
+    fn dated_profiles_override_every_documented_field() {
+        let book = Style::book_2020();
+        assert_eq!(book.reduction_table(), ReductionTable::Table5);
+        assert_eq!(
+            book.line_head_opening_bracket(),
+            LineHeadOpeningBracket::Pattern3
+        );
+        assert_eq!(book.hanging_punctuation(), HangingPunctuation::Hanging);
+
+        let jis = Style::jis_reading_2020();
+        assert_eq!(jis.reduction_table(), ReductionTable::Table4);
+        assert_eq!(jis.line_end_punctuation(), LineEndPunctuation::Solid);
+        assert_eq!(jis.line_end_full_stop_comma(), LineEndFullStopComma::Jis);
+        assert_eq!(jis.ruby_overhang_kana(), RubyOverhangKana::Jis);
+    }
+
+    #[test]
+    fn style_error_exposes_and_displays_its_message() {
+        let error = Style::builder()
+            .kinsoku_level(KinsokuLevel::VeryStrict)
+            .build()
+            .expect_err("very strict conflicts with the default breakable numeral policy");
+        assert_eq!(error.code(), "style.very-strict-grouped-numeral");
+        assert_eq!(
+            error.message(),
+            "very-strict kinsoku excludes a breakable grouped-numeral boundary"
+        );
+        assert_eq!(
+            format!("{error}"),
+            "very-strict kinsoku excludes a breakable grouped-numeral boundary"
+        );
+    }
+}

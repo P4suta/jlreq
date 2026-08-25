@@ -62,6 +62,26 @@ fn sample_engine_reports_builder_input_errors_with_exit_two() {
 }
 
 #[test]
+fn sample_engine_rejects_an_oversize_input_line() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_jlreq-sample-engine"))
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the sample engine starts");
+    let mut input = child.stdin.take().expect("engine stdin is piped");
+    let oversized = vec![b' '; 1024 * 1024 + 1];
+    let _ = input.write_all(&oversized);
+    drop(input);
+    let output = child.wait_with_output().expect("engine exits");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("input message exceeds the 1048576 byte line limit")
+    );
+}
+
+#[test]
 fn runner_returns_one_when_an_engine_differs() {
     let mut case: serde_json::Value = serde_json::from_str(
         include_str!("../suite.ndjson")
@@ -110,4 +130,66 @@ fn validator_returns_two_for_a_protocol_error() {
             .contains("protocol is required and must be a string"),
         "stderr reports the protocol error"
     );
+}
+
+#[test]
+fn cli_help_version_and_stdin_contract_are_executable() {
+    let help = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
+        .arg("--help")
+        .output()
+        .expect("help command starts");
+    assert_eq!(help.status.code(), Some(0));
+    let help = String::from_utf8_lossy(&help.stdout);
+    for option in [
+        "--verbose",
+        "--timeout-seconds",
+        "--max-message-bytes",
+        "--max-suite-bytes",
+        "--max-cases",
+    ] {
+        assert!(help.contains(option), "help documents {option}");
+    }
+
+    let version = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
+        .arg("--version")
+        .output()
+        .expect("version command starts");
+    assert_eq!(version.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&version.stdout).trim(),
+        "jlreq-conformance 0.1.0"
+    );
+
+    let mut request: serde_json::Value = serde_json::from_str(
+        include_str!("../suite.ndjson")
+            .lines()
+            .next()
+            .expect("built-in suite has a case"),
+    )
+    .expect("built-in case JSON");
+    let object = request.as_object_mut().expect("case object");
+    object.remove("rules");
+    object.remove("expected");
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_jlreq-conformance"))
+        .arg("validate")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("stdin validator starts");
+    child
+        .stdin
+        .take()
+        .expect("validator stdin")
+        .write_all(format!("{request}\n").as_bytes())
+        .expect("wire request is written");
+    let output = child.wait_with_output().expect("stdin validator exits");
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("validated 1 message(s)"));
 }

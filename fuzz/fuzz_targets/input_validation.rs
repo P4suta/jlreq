@@ -230,48 +230,16 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
 
-    let layout = jlreq::compose(&paragraph, &style(take(data, &mut cursor)));
-    for line in layout.lines() {
-        black_box((
-            line.range(),
-            line.inline_origin(),
-            line.block_origin(),
-            line.inline_extent(),
-            line.block_extent(),
-        ));
-        for placement in line.clusters() {
-            black_box((
-                placement.origin(),
-                placement.range(),
-                placement.inline(),
-                placement.block(),
-                placement.advance(),
-                placement.size(),
-                placement.frame(),
-                placement.writing_mode(),
-                placement.transform(),
-            ));
-        }
-        for attachment in line.attachments() {
-            black_box((
-                attachment.construct(),
-                attachment.range(),
-                attachment.inline(),
-                attachment.block(),
-                attachment.advance(),
-                attachment.size(),
-                attachment.writing_mode(),
-                attachment.transform(),
-                attachment.symbol(),
-            ));
-        }
-    }
-    for diagnostic in layout.diagnostics() {
-        black_box((
-            diagnostic.code(),
-            diagnostic.severity(),
-            diagnostic.range(),
-            diagnostic.jlreq(),
-        ));
-    }
+    black_box((
+        paragraph.text(),
+        paragraph.line_extent(),
+        paragraph.breaks(),
+        paragraph.constructs(),
+        paragraph.tab_stops(),
+        paragraph.first_line_indent(),
+        paragraph.alignment(),
+        paragraph.widow(),
+        paragraph.writing_mode(),
+        style(take(data, &mut cursor)),
+    ));
 });

@@ -20,7 +20,8 @@
 //! let paragraph = Paragraph::builder(text, 4_000)
 //!     .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
 //!     .build()?;
-//! let layout = jlreq::compose(&paragraph, &Style::book_2020());
+//! let layout = jlreq::compose(&paragraph, &Style::book_2020())
+//!     .expect("small paragraph is within the default resource limits");
 //!
 //! assert_eq!(layout.lines().len(), 2);
 //! # Ok::<(), jlreq::InputError>(())
@@ -33,6 +34,7 @@ extern crate alloc;
 mod construct;
 mod generated;
 mod layout;
+mod limits;
 mod model;
 mod normalize;
 mod paragraph;
@@ -45,6 +47,7 @@ pub use layout::{
     Attachment, ClusterPlacement, CoordinateTransform, Diagnostic, Layout, Line, PlacementOrigin,
     Severity,
 };
+pub use limits::{ComposeError, CompositionLimits, CompositionResource};
 pub use model::{Cluster, ClusterRole, Frame, InputError, ShapedText, Size, WritingMode};
 pub use paragraph::{Alignment, Break, Paragraph, ParagraphBuilder, TabAlignment, TabStop, Widow};
 pub use pipeline::Composer;
@@ -56,7 +59,6 @@ pub const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// Compose one validated paragraph with a fresh scratch allocator.
 ///
 /// Use Composer when composing repeatedly so its temporary buffers can be reused.
-#[must_use]
-pub fn compose(paragraph: &Paragraph, style: &Style) -> Layout {
+pub fn compose(paragraph: &Paragraph, style: &Style) -> Result<Layout, ComposeError> {
     Composer::new().compose(paragraph, style)
 }

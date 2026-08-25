@@ -619,3 +619,224 @@ fn one_char(value: Option<&Value>, name: &str) -> Result<char, String> {
         Ok(character)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn valid_request(source: &str, clusters: &Value) -> Value {
+        json!({
+            "source": source,
+            "size": {"inline": 1000, "block": 1000},
+            "frame": "full-em",
+            "clusters": clusters,
+            "line_extent": 2000
+        })
+    }
+
+    fn valid_placement() -> Value {
+        json!({
+            "origin": {"cluster": 0},
+            "range": [0, 1],
+            "inline": 0,
+            "block": 0,
+            "advance": 500,
+            "size": {"inline": 1000, "block": 1000},
+            "frame": "full-em",
+            "writing_mode": "horizontal-tb",
+            "transform": "identity"
+        })
+    }
+
+    fn valid_line() -> Value {
+        json!({
+            "range": [0, 1],
+            "inline_origin": 0,
+            "block_origin": 0,
+            "inline_extent": 500,
+            "block_extent": 1000,
+            "clusters": [valid_placement()],
+            "attachments": []
+        })
+    }
+
+    #[test]
+    fn scalar_helpers_return_the_validated_value() {
+        assert_eq!(frame(Some(&json!("half-em"))), Ok("half-em"));
+        assert_eq!(writing_mode(Some(&json!("vertical-rl"))), Ok("vertical-rl"));
+        assert_eq!(
+            transform(Some(&json!("rotate-clockwise"))),
+            Ok("rotate-clockwise")
+        );
+        assert_eq!(non_empty_string(Some(&json!("code")), "name"), Ok("code"));
+        assert_eq!(i32_value(Some(&json!(-17)), "number"), Ok(-17));
+        assert_eq!(non_negative_i32(Some(&json!(0)), "number"), Ok(0));
+        assert_eq!(non_negative_i32(Some(&json!(17)), "number"), Ok(17));
+        assert_eq!(positive_i32(Some(&json!(17)), "number"), Ok(17));
+        assert_eq!(positive_u16(Some(&json!(17)), "number"), Ok(17));
+        assert_eq!(offset(Some(&json!(17)), "offset"), Ok(17));
+        assert_eq!(one_char(Some(&json!("字")), "character"), Ok('字'));
+    }
+
+    #[test]
+    fn scalar_helpers_reject_each_boundary_class() {
+        assert!(frame(Some(&json!("other"))).is_err());
+        assert!(writing_mode(Some(&json!("sideways"))).is_err());
+        assert!(transform(Some(&json!("mirror"))).is_err());
+        assert!(non_empty_string(Some(&json!("")), "name").is_err());
+        assert!(i32_value(Some(&json!(2_147_483_648_i64)), "number").is_err());
+        assert!(non_negative_i32(Some(&json!(-1)), "number").is_err());
+        assert!(positive_i32(Some(&json!(0)), "number").is_err());
+        assert!(positive_i32(Some(&json!(-1)), "number").is_err());
+        assert!(positive_u16(Some(&json!(0)), "number").is_err());
+        assert!(positive_u16(Some(&json!(65_536)), "number").is_err());
+        assert!(one_char(Some(&json!("")), "character").is_err());
+        assert!(one_char(Some(&json!("ab")), "character").is_err());
+    }
+
+    #[test]
+    fn request_breaks_must_be_internal_utf8_boundaries() {
+        let ascii_clusters = json!([{"range": [0, 1], "advance": 500}]);
+        for offset in [0, 1] {
+            let mut request = valid_request("a", &ascii_clusters);
+            request["breaks"] = json!([{"offset": offset, "kind": "allowed"}]);
+            assert!(validate_request(&request).is_err(), "offset {offset}");
+        }
+
+        let mut request = valid_request("é", &json!([{"range": [0, 2], "advance": 500}]));
+        request["breaks"] = json!([{"offset": 1, "kind": "allowed"}]);
+        assert!(validate_request(&request).is_err());
+    }
+
+    #[test]
+    fn shaped_text_requires_exact_ordered_utf8_coverage() {
+        let mut request = valid_request(
+            "ab",
+            &json!([
+                {"range": [0, 1], "advance": 500},
+                {"range": [0, 2], "advance": 500}
+            ]),
+        );
+        assert!(validate_request(&request).is_err(), "non-contiguous start");
+
+        request["clusters"] = json!([{"range": [0, 3], "advance": 500}]);
+        assert!(validate_request(&request).is_err(), "end beyond source");
+
+        request = valid_request("é", &json!([{"range": [0, 1], "advance": 500}]));
+        assert!(validate_request(&request).is_err(), "end inside a scalar");
+
+        request = valid_request(
+            "é",
+            &json!([
+                {"range": [0, 1], "advance": 250},
+                {"range": [1, 2], "advance": 250}
+            ]),
+        );
+        assert!(
+            validate_request(&request).is_err(),
+            "two adjacent ranges cannot hide a shared non-boundary"
+        );
+
+        request = valid_request("ab", &json!([{"range": [0, 1], "advance": 500}]));
+        assert!(validate_request(&request).is_err(), "incomplete coverage");
+    }
+
+    #[test]
+    fn nested_request_validators_reject_invalid_values_directly() {
+        let annotation = json!({
+            "source": "a",
+            "size": {"inline": 1000, "block": 1000},
+            "frame": "full-em",
+            "clusters": [{"range": [0, 1], "advance": 500}],
+            "extra": true
+        });
+        assert!(validate_annotation(&annotation, "annotation").is_err());
+
+        assert!(validate_construct(&json!({"kind": "unknown", "range": [0, 1]}), "a").is_err());
+
+        let source = "éa";
+        let invalid_start = json!({"range": [1, 2]});
+        assert!(
+            validate_source_range(
+                invalid_start.as_object().expect("range object"),
+                source,
+                "range"
+            )
+            .is_err()
+        );
+        let invalid_end = json!({"range": [0, 1]});
+        assert!(
+            validate_source_range(
+                invalid_end.as_object().expect("range object"),
+                source,
+                "range"
+            )
+            .is_err()
+        );
+
+        assert!(validate_tab_stop(&json!({"position": 0, "alignment": "character"})).is_err());
+        assert!(validate_size(&json!({"inline": 0, "block": 1000})).is_err());
+    }
+
+    #[test]
+    fn response_validators_reject_invalid_values_directly() {
+        assert!(validate_line(&json!({"clusters": [], "attachments": []})).is_err());
+
+        let mut placement = valid_placement();
+        placement["origin"] = json!({"cluster": 0, "construct": 0});
+        assert!(validate_placement(&placement).is_err());
+        placement["origin"] = json!({"other": 0});
+        assert!(validate_placement(&placement).is_err());
+
+        let attachment = json!({
+            "construct": 0,
+            "range": [0, 1],
+            "inline": 0,
+            "block": 0,
+            "advance": 0,
+            "size": {"inline": 1000, "block": 1000},
+            "writing_mode": "horizontal-tb",
+            "transform": "identity",
+            "symbol": "・"
+        });
+        assert!(validate_attachment(&attachment).is_err());
+
+        let diagnostic = json!({
+            "code": "",
+            "severity": "warning",
+            "range": null,
+            "jlreq": "3.1"
+        });
+        assert!(validate_diagnostic(&diagnostic).is_err());
+    }
+
+    #[test]
+    fn diagnostic_accepts_both_nullable_and_concrete_ranges() {
+        let mut diagnostic = json!({
+            "code": "layout.test",
+            "severity": "info",
+            "range": null,
+            "jlreq": "3.1"
+        });
+        assert!(validate_diagnostic(&diagnostic).is_ok());
+        diagnostic["range"] = json!([0, 1]);
+        assert!(validate_diagnostic(&diagnostic).is_ok());
+        diagnostic["range"] = json!([0, 0]);
+        assert!(validate_diagnostic(&diagnostic).is_err());
+    }
+
+    #[test]
+    fn field_sets_and_complete_response_are_closed() {
+        let value = json!({"known": true, "unknown": false});
+        assert!(only_fields(value.as_object().expect("field object"), &["known"], "test").is_err());
+
+        assert!(
+            validate_response(&json!({
+                "lines": [valid_line()],
+                "diagnostics": []
+            }))
+            .is_ok()
+        );
+    }
+}

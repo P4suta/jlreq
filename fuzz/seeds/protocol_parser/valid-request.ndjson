@@ -1,0 +1,1 @@
+{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"seed","request":{"source":"日","size":{"inline":1000,"block":1000},"frame":"full-em","clusters":[{"range":[0,3],"advance":1000}],"line_extent":1000}}

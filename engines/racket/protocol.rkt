@@ -15,7 +15,7 @@
 ;;    "request":{...}}
 ;;
 ;; The response repeats `protocol`, `spec` and `id` and replaces `request` with
-;; `response`. The runner checks the ids in order, so a dropped or reordered answer
+;; `response`. The runner associates unique ids in any order, so a dropped, duplicate, or unknown answer
 ;; is a protocol error rather than a wrong answer, and every request gets exactly
 ;; one line back.
 ;;

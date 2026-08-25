@@ -16,6 +16,11 @@ Specifically in scope:
 - Unbounded memory growth or non-termination driven by input size or content
 - Integer overflow producing incorrect placement rather than a defined error
 
+Composition has deterministic caller-configurable bounds for clusters, break candidates,
+constructs, tab stops, and charged search transitions. The protocol runner separately
+bounds message and suite bytes, case count, retained stderr, and inactivity time; a refusal
+through one of these controls is expected behavior, not a partial result.
+
 Out of scope: a layout result you disagree with. Where JLReq permits alternatives, use an
 issue or a conformance case.
 
@@ -28,12 +33,12 @@ Expect an acknowledgement within seven days.
 
 ## Supported versions
 
-jlreq has no released or supported version yet. Security reports against the development
-branch are still welcome and fixes land on `main`; there is currently no backport policy.
+The prepared 0.1.x line receives security fixes. Before the first publication, reports
+against the prepared 0.1.0 tree and `main` follow the same policy.
 
 | Version | Supported |
 | --- | --- |
-| `0.0.0` development snapshot | Best effort |
-| Released versions | None exist |
+| `0.1.x` | Supported |
+| `< 0.1.0` development snapshots | Unsupported |
 
 [advisories]: https://github.com/P4suta/jlreq/security/advisories/new

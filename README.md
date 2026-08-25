@@ -12,12 +12,11 @@ The public surface is deliberately limited to:
 Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
 remain the caller's responsibility.
 
-This repository is an unreleased `0.0.0` development snapshot. It has not reached 0.1, and
-neither package is publishable. The implementation exercises the candidate end-to-end
-pipeline while its API and behavior remain free to change. The conformance inventory
-currently reports zero mechanically implementable deferrals; three editorial and three
-non-observable statements are classified with evidence rather than represented by empty
-cases.
+This tree is prepared as version 0.1.0: both crate archives, binaries, release metadata,
+and verification workflows can be produced without publishing. No crate upload, tag, or
+GitHub Release is performed by the preparation gates. Within 0.1.x, the public Rust surface
+recorded in `docs/public-api.toml`, protocol v1, stable error codes, and MSRV 1.85 are
+compatibility contracts.
 
 ## Quick start
 
@@ -32,23 +31,27 @@ let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters
 let paragraph = Paragraph::builder(text, 4_000)
     .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
     .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020());
-
-for line in layout.lines() {
-    for placement in line.clusters() {
-        draw(placement);
-    }
-}
+let layout = jlreq::compose(&paragraph, &Style::book_2020())
+    .expect("this small paragraph is within the default resource limits");
+assert_eq!(layout.lines().len(), 2);
 # Ok::<(), jlreq::InputError>(())
 ```
 
 All input ranges are UTF-8 byte ranges. `ShapedText` owns the source and clusters;
 `ParagraphBuilder` validates ranges, breaks, tabs, writing mode, widow control, and inline
-constructs once. Composition is then infallible: an overfull or otherwise degraded result
-still contains placements and a stable diagnostic.
+constructs once. Composition returns a complete exact `Layout` or a typed `ComposeError`.
+It never returns a partial layout, approximates a placement, or silently falls back to
+first-fit. Fit conditions that remain valid but cannot be improved, such as an overfull
+line, still produce a complete layout with a stable diagnostic.
 
 Use `Composer` instead of the root `compose` function when composing repeatedly; it reuses
-its search scratch space without lending it to the returned `Layout`.
+its search scratch space without lending it to the returned `Layout`, supports explicit
+`CompositionLimits`, and remains reusable after a resource error. See the executable
+[`minimal`](crates/jlreq/examples/minimal.rs),
+[`Composer`](crates/jlreq/examples/composer.rs), and
+[`vertical`](crates/jlreq/examples/vertical.rs) examples. The
+[`reference_integration`](crates/jlreq-conformance/tests/reference_integration.rs) test
+connects ICU4X byte break offsets and HarfRust glyph clusters at the intended caller seam.
 
 ## Scope
 
@@ -92,6 +95,12 @@ jlreq-conformance run ENGINE [SUITE.ndjson]
 2  input, protocol, or engine error
 ```
 
+All commands accept `--help`, `--version`, `--verbose`, `--timeout-seconds`,
+`--max-message-bytes`, `--max-suite-bytes`, and `--max-cases`. Defaults are 30 seconds
+without communication, 1 MiB per message, 256 MiB per suite, and 200,000 cases. Requests
+and responses stream concurrently; responses may arrive in any order and are matched by a
+unique `id`. Duplicate, unknown, missing, or extra responses are protocol errors.
+
 The package contains no library target. Its committed JSON Schema, built-in suite, and
 `jlreq-sample-engine` executable form an end-to-end protocol example. See
 [`docs/design/conformance.md`](docs/design/conformance.md).
@@ -131,9 +140,12 @@ just ci             # all practical CI checks, including no_std and WASM
 cargo run -p jlreq-conformance -- list
 ```
 
-The candidate 1.0 names are tracked in [`docs/api-1.0.toml`](docs/api-1.0.toml). This is a
-development control, not a released compatibility promise. The gate checks both missing and
-extra exports, as well as all 22 typed Style mappings.
+The 0.1.0 names and release-line contract are tracked in
+[`docs/public-api.toml`](docs/public-api.toml). The network-free API gate checks missing and
+extra exports plus all 22 typed Style mappings. Starting with the next 0.1.x candidate, the
+required semver job also compares the complete rustdoc API with the latest published jlreq
+release. Stable error and diagnostic codes are listed in
+[`docs/error-codes.md`](docs/error-codes.md).
 
 ## License
 

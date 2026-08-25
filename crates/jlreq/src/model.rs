@@ -55,6 +55,27 @@ impl core::fmt::Display for InputError {
     }
 }
 
+impl core::error::Error for InputError {}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+    use alloc::format;
+
+    #[test]
+    fn input_error_and_cluster_accessors_preserve_values() {
+        let error = InputError::new("input.uncovered-text", Some(3..7), "test message");
+        assert_eq!(error.code(), "input.uncovered-text");
+        assert_eq!(error.range(), Some(3..7));
+        assert_eq!(error.message(), "test message");
+        assert_eq!(format!("{error}"), "test message");
+
+        let cluster = Cluster::new(3..7, 19);
+        assert_eq!(cluster.range(), 3..7);
+        assert_eq!(cluster.advance(), 19);
+    }
+}
+
 /// A caller-unit font size along the inline and block axes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]

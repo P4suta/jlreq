@@ -84,7 +84,10 @@ fn icu4x_byte_offsets_feed_breaks_without_conversion() {
         .build()
         .expect("ICU4X offsets are accepted verbatim");
     assert_eq!(
-        jlreq::compose(&paragraph, &Style::default()).lines().len(),
+        jlreq::compose(&paragraph, &Style::default())
+            .expect("composition succeeds")
+            .lines()
+            .len(),
         3
     );
 }

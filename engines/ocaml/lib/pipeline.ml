@@ -393,23 +393,6 @@ let is_math_token_cluster (paragraph : Paragraph.t) (cluster : Model.cluster) : 
 let is_tab (paragraph : Paragraph.t) (cluster : Model.cluster) : bool =
   String.equal (piece_of paragraph cluster) "\t"
 
-(** Whether [offset] falls strictly inside some construct.
-
-    Every construct in the vocabulary is at least one object on the line -- a
-    tate-chu-yoko run, a base character group, an ornamented complex, a note set on
-    lines of its own, a run given a length of its own, a formula -- and §3.6.3's cut
-    is not a break opportunity that a rule about characters could permit or forbid.
-    It is the tab's own, so the only thing that can stop it is there being no line
-    boundary at that point at all, which is what standing inside a construct means.
-    A construct that begins or ends exactly at the sign leaves the cut available:
-    the sign is then beside the construct rather than in it. *)
-let is_inside_construct (paragraph : Paragraph.t) (offset : int) : bool =
-  Array.exists
-    (fun (construct : Construct.t) ->
-      let first, last = construct.Construct.range in
-      first < offset && offset < last)
-    paragraph.Paragraph.constructs
-
 (** Whether the cluster at [ordinal] is a tab sign §3.6 has anything to say about.
 
     §3.6.3 corresponds the signs of a {i line} with the stops of that line, and three
@@ -424,19 +407,7 @@ let is_inside_construct (paragraph : Paragraph.t) (offset : int) : bool =
     README.md, where the reference engine's answer at the first character is recorded
     as a disagreement rather than followed. *)
 let is_line_tab (paragraph : Paragraph.t) (ordinal : int) : bool =
-  match cluster_at paragraph ordinal with
-  | None -> false
-  | Some cluster ->
-    is_tab paragraph cluster
-    && not
-         (Array.exists
-            (fun (construct : Construct.t) ->
-              match construct.Construct.kind with
-              | Construct.Warichu | Construct.Furawake _ | Construct.Tate_chu_yoko ->
-                let first, last = construct.Construct.range in
-                first <= cluster.first && cluster.last <= last
-              | _ -> false)
-            paragraph.Paragraph.constructs)
+  Paragraph.is_line_tab paragraph ordinal
 
 (** §C.2 note 5's {i kinds} of inseparable character, as §C.3's very loose level
     enumerates them: each mark is its own kind, and the three code points of the
@@ -2270,12 +2241,12 @@ let ruby_gaps ~(line_start : int) ~(line_end : int) (spans : ruby_span list) : i
     "if there is only one character, it should be aligned to the left of the jidori
     block", which is the same sentence about the same situation.
 
-    One bullet of §3.7.3 is left unimplemented deliberately. Its two locales disagree:
-    the English says to "add the same spacing to those space characters as is being
-    added to the other characters" and the Japanese says the opposite, that a space
-    takes the extra on one of its two sides and not on both. The reference engine opens
-    both sides, which is the English reading; see README.md, "Observable policies with
-    no written source". *)
+    One bullet of §3.7.3 cannot be read as one locale-independent rule because its two
+    locales disagree: the English says to "add the same spacing to those space
+    characters as is being added to the other characters" and the Japanese says the
+    opposite, that a space takes the extra on one of its two sides and not on both. The
+    reference engine opens both sides, the recorded English reading; see README.md,
+    "Observable policies with no written source". *)
 let jidori_extras (paragraph : Paragraph.t) (style : Style.t) ~(stacks : stack list)
     ~(line_start : int) ~(line_end : int) : int array =
   let count = Num.usub line_end line_start in
@@ -2797,10 +2768,11 @@ type node = {
     before a tab -- §3.6.3's cut is the tab's own and answers to no character class,
     which is why it can leave an opening bracket at the line end.
 
-    A sign standing inside a construct is the exception, and for the same reason:
-    the cut is not a break opportunity but a line boundary, and there is no line
-    boundary inside one object. A sign inside a warichu or a furawake is not even a
-    sign of this line ({!is_line_tab}), so it never runs any stops out to begin with.
+    A sign standing at a boundary {!Paragraph.break_blocked} rejects is the exception,
+    and for the same reason: the cut is not a break opportunity but a line boundary,
+    and there is no boundary there. Emphasis dots deliberately do not block their
+    per-character boundaries. A sign inside a warichu or a furawake is not even a sign
+    of this line ({!is_line_tab}), so it never runs any stops out to begin with.
 
     A tab at offset zero is the head candidate already, and a caller who stated a
     break there has said the same thing twice; both are dropped so that no two
@@ -2808,13 +2780,14 @@ type node = {
 let tab_candidates (paragraph : Paragraph.t) (stated : int list) : candidate list =
   let clusters = paragraph.Paragraph.text.Model.clusters in
   Array.to_list clusters
-  |> List.filter_map (fun (cluster : Model.cluster) ->
+  |> List.mapi (fun ordinal (cluster : Model.cluster) -> (ordinal, cluster))
+  |> List.filter_map (fun (ordinal, (cluster : Model.cluster)) ->
          let offset = cluster.Model.first in
          if
-           (not (is_tab paragraph cluster))
+           (not (is_line_tab paragraph ordinal))
            || offset = 0
            || List.mem offset stated
-           || is_inside_construct paragraph offset
+           || Paragraph.break_blocked paragraph offset
          then None
          else
            Some
