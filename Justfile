@@ -10,9 +10,9 @@ export RUSTDOCFLAGS := "-D warnings"
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
 core_crates := "-p jlreq"
 
-# Mutation testing targets the sole public library; xtask is repository tooling and the
-# conformance product is an external black-box runner.
-mutant_crates := "-p jlreq"
+# Mutation testing covers both handwritten Rust products. Generated tables and repository
+# tooling have independent generation/attestation gates.
+mutant_crates := "-p jlreq -p jlreq-conformance"
 
 # A developer must be able to inspect an archive before committing; CI packages a clean
 # checkout and therefore deliberately omits Cargo's dirty-tree escape hatch.
@@ -67,6 +67,9 @@ sample_engine := "target" / "debug/jlreq-sample-engine"
 # with the rest of `target/`, and nothing but the next run of the same census reads it.
 census_dir := "target" / "census"
 
+# Generated, reviewable result of the exhaustive three-engine census.
+census_summary := "docs/generated/conformance-summary.md"
+
 # List the available development commands.
 default:
     @just --list
@@ -88,27 +91,41 @@ lint:
     cargo clippy --workspace --all-targets --all-features -- -D warnings
     cargo clippy --workspace --all-targets --no-default-features -- -D warnings
 
-# Run the workspace suite. Nextest runs normal tests process-per-test; Cargo
-# separately runs doctests, which nextest does not currently support.
+# Run the workspace suite. Nextest runs ordinary harnessed tests process-per-test. Cargo
+# separately runs the harness-free synthetic transport executable and doctests, neither of
+# which nextest currently executes.
 test:
     cargo nextest run --workspace --all-features
+    cargo test -p jlreq --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
+    cargo test --release -p jlreq --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
 # Run the complete test suite with the non-fail-fast CI profile.
 test-ci:
     cargo nextest run --profile ci --workspace --all-features
+    cargo test -p jlreq --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
+    cargo test --release -p jlreq --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
 # Build public documentation with warnings denied.
 doc:
     cargo doc --workspace --all-features --no-deps
 
-# Build and verify the public library archive, then inspect every file Cargo would put in the
-# CLI archive. Cargo cannot create that second archive until its exact-version jlreq
-# dependency has been published; the CLI's workspace build, tests, and MSRV run separately.
+# Build and verify both public crate archives. The temporary crates.io patch lets Cargo verify
+# the exact-version inter-crate dependency before jlreq has actually been uploaded.
 package:
     cargo package -p jlreq --locked {{package_dirty}}
-    cargo package -p jlreq-conformance --locked {{package_dirty}} --list
+    cargo package -p jlreq-conformance --locked {{package_dirty}} --offline --config 'patch.crates-io.jlreq.path="crates/jlreq"'
+    sh scripts/verify-crates.sh
+
+# Ask Cargo to execute its complete crates.io publication preflight while retaining the
+# upload locally. The patch validates jlreq-conformance before the first jlreq release has
+# appeared in the index; published metadata still carries only version 0.1.0.
+publish-dry-run:
+    cargo publish --dry-run --locked {{package_dirty}} -p jlreq
+    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-conformance --config 'patch.crates-io.jlreq.path="crates/jlreq"'
 
 # Compile no-default, every individual feature, and representative feature pairs.
 feature-matrix:
@@ -127,18 +144,48 @@ wasm:
     rustup target add wasm32-unknown-unknown
     cargo check {{core_crates}} --target wasm32-unknown-unknown --no-default-features
 
-# Exercise malformed and extreme public inputs under libFuzzer and sanitizers. The target
-# is a separate nightly workspace, so none of its dependencies enter the product graph.
-# cargo-fuzz's MSVC runtime does not execute reliably; Windows still compiles the exact
-# harness, while the required Linux CI job performs the bounded sanitizer run.
+# Exercise input validation, composition/arithmetic, and protocol parsing separately under
+# libFuzzer. Curated seeds are copied below target/ so a run never dirties the source tree.
 fuzz-check:
-    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bin public_api" } else { "cargo +nightly fuzz run public_api --fuzz-dir fuzz -- -runs=10000" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target input_validation 30" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target composition 30" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target protocol_parser 30" } }}
 
 # The install-action cargo-fuzz binary is itself built for musl. cargo-fuzz 0.13.2
 # otherwise mistakes that build triple for the fuzz target, but ASan requires the
 # dynamically linked GNU target used by GitHub's Ubuntu runner.
 fuzz-check-linux-ci:
-    cargo +nightly fuzz run public_api --fuzz-dir fuzz --target x86_64-unknown-linux-gnu -- -runs=10000
+    just _fuzz-target-linux input_validation 30
+    just _fuzz-target-linux composition 30
+    just _fuzz-target-linux protocol_parser 30
+
+# A single bounded fuzz target. Runtime corpora are disposable target/ state; only
+# fuzz/seeds is reviewed and committed.
+[private]
+_fuzz-target target seconds:
+    mkdir -p target/fuzz-corpus/{{target}}
+    cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
+    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz -- -max_total_time={{seconds}} -timeout=10
+
+[private]
+_fuzz-target-linux target seconds:
+    mkdir -p target/fuzz-corpus/{{target}}
+    cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
+    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz --target x86_64-unknown-linux-gnu -- -max_total_time={{seconds}} -timeout=10
+
+# Scheduled sanitizer budget: fifteen minutes for each independent failure domain.
+fuzz-scheduled:
+    just _fuzz-target-linux input_validation 900
+    just _fuzz-target-linux composition 900
+    just _fuzz-target-linux protocol_parser 900
+
+# Each handwritten product must independently stay above both release thresholds. Generated
+# tables, test fixtures, xtask, and independent engines are covered by their own gates. The
+# transport regression deliberately kills its stalled synthetic engine, so LLVM may see that
+# one incomplete profile; `all` still rejects a run in which no valid profile can be merged.
+coverage:
+    cargo llvm-cov -p jlreq --all-features --ignore-filename-regex '(/src/generated/|/tests/)' --fail-under-lines 90 --fail-under-regions 85 --summary-only
+    cargo llvm-cov -p jlreq-conformance --all-features --exclude-from-report jlreq --ignore-filename-regex '(/tests/)' --failure-mode all --fail-under-lines 90 --fail-under-regions 85 --summary-only
 
 # Reject std, I/O, and font dependencies in the layout core (docs/adr/0001).
 purity:
@@ -148,9 +195,15 @@ purity:
 placeholder:
     cargo run --quiet -p xtask -- placeholder
 
-# Hold jlreq to the exact 1.0 surface and all 22 typed Style mappings.
+# Hold jlreq to the exact 0.1.0 export surface and all 22 typed Style mappings.
 api:
     cargo run --quiet -p xtask -- api
+
+# Before the initial release, hold the local 0.1.0 control in both directions. For every
+# later 0.1.x candidate, additionally compare the complete rustdoc API with the latest
+# published jlreq release and reject patch-incompatible changes.
+semver:
+    sh scripts/check-semver.sh
 
 # Require the private implementation modules to follow the one-way architecture in
 # ARCHITECTURE.md.
@@ -189,8 +242,8 @@ attest:
 conform:
     cargo run --quiet -p xtask -- conform --check
 
-# Hold the unreleased 0.0.0 state, reject CRLF in tracked UTF-8 files, and reject broken
-# local Markdown links (CONTRIBUTING.md).
+# Hold the prepared 0.1.0 state without performing publication, reject CRLF in tracked UTF-8
+# files, and reject broken local Markdown links (CONTRIBUTING.md).
 repository:
     cargo run --quiet -p xtask -- repository
 
@@ -208,11 +261,16 @@ shear:
 
 # Check REUSE/SPDX compliance.
 reuse:
-    uvx --with charset-normalizer==3.4.9 reuse==6.2.0 lint
+    uvx --with charset-normalizer==3.4.9 reuse==6.2.0 --no-multiprocessing lint
 
 # Validate GitHub Actions workflows.
 actionlint:
     actionlint -color
+
+# Validate every repository-owned POSIX shell entry point, including release packaging and
+# the three-engine census driver.
+shellcheck:
+    shellcheck engines/census-all.sh scripts/*.sh
 
 # Reject high-severity GitHub Actions and Dependabot security findings without
 # granting the auditor network or repository credentials.
@@ -225,11 +283,12 @@ msrv:
     cargo msrv verify --path crates/jlreq-conformance
     cargo msrv verify --path xtask
 
-# Mutation-test the crates with real logic against their own `#[cfg(test)]` suites, or one
-# crate if `crate` is given (e.g. `just mutants jlreq`). It remains a scheduled report
-# outside `ci-required` because a full mutation run is intentionally slow.
+# Mutation-test both handwritten products, or one package/shard when supplied. Generated
+# table and exact equivalent-mutant exclusions are pinned in docs/mutation-ledger.toml. Any
+# missed or timed-out mutant makes cargo-mutants, and therefore this gate, fail.
 #
-# `--test-tool nextest` matches `just test`. No `-D warnings` here unlike the other gates:
+# Cargo's test tool is intentional: unlike nextest it also runs the harness-free synthetic
+# transport executable. No `-D warnings` here unlike the other gates:
 # `[workspace.lints]` sets these at `warn`, not `deny`, and CI only escalates them to errors
 # by exporting `RUSTFLAGS` per job — which this recipe deliberately does not do. Mutated
 # code that merely provokes a new lint (an unused binding, say) still builds and runs
@@ -238,8 +297,20 @@ msrv:
 # a different, structural thing: generic replacement values (`Default::default()`,
 # `::std::iter::empty()`) that do not type-check against this crate's domain types or its
 # `no_std` boundary — see the milestone report for the per-crate rate.
-mutants crate="":
-    cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} --test-tool nextest --no-times --colors=never -j 4
+mutants crate="" shard="":
+    sh scripts/verify-mutation-ledger.sh
+    cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} {{ if shard == "" { "" } else { "--shard " + shard } }} --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
+
+# Pull requests exercise only mutations in the changed Rust surface; weekly and release
+# workflows run the complete sharded gate above.
+mutants-smoke base:
+    sh scripts/verify-mutation-ledger.sh
+    cargo mutants --workspace --in-diff {{base}} --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
+
+# Hold generated and equivalent-mutant exclusions to their individual source hashes and
+# require every cargo-mutants regex to have one proof in the reviewable ledger.
+mutation-ledger:
+    sh scripts/verify-mutation-ledger.sh
 
 # Build the independent OCaml reference engine (engines/ocaml/README.md). The engines are
 # outside the Cargo workspace and no Rust gate reads them, so the recipes below are the
@@ -431,15 +502,34 @@ census-racket kind: build-engine-racket ocaml-build
     diff {{census_dir}}/{{kind}}.rust.ndjson {{census_dir}}/{{kind}}.racket.ndjson > {{census_dir}}/{{kind}}.racket.diff || true
     echo "census-racket {{kind}}: $(wc -l < {{census_dir}}/{{kind}}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{census_dir}}/{{kind}}.racket.diff || true) differing response(s) -- {{census_dir}}/{{kind}}.racket.diff"
 
+# Run every census in the generator registry through Rust, OCaml, and Racket. The script
+# verifies all three pairings, the response cardinality, the ten-kind registry, the
+# 122,199-case floor, and the committed generated summary. Any difference is fatal.
+census-all: ocaml-test build-engine-racket test-engine-racket
+    cargo build --quiet -p jlreq-conformance --bins
+    sh engines/census-all.sh {{census_probe}} {{sample_engine}} {{ocaml_engine}} {{racket_engine}} {{census_summary}}
+
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).
-design: purity placeholder api direction derive-check generate-check attest conform repository
+design: purity placeholder api direction derive-check generate-check attest conform mutation-ledger repository
     @echo "design gates passed"
 
 # Fast deterministic checks used during the edit/commit loop.
-check: fmt-check toml-check typos lint design shear reuse actionlint zizmor
+check: fmt-check toml-check typos lint design shear reuse shellcheck actionlint zizmor
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check design deny shear reuse actionlint zizmor msrv conform-engines
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check coverage design semver deny shear reuse shellcheck actionlint zizmor msrv conform-engines
     @echo "local CI passed"
+
+# Release acceptance performs no publication, tag, GitHub Release, or external settings
+# change. It intentionally requires a clean tracked tree so generated and packaged output
+# is reproducible from the candidate commit.
+release-check:
+    test -z "$(git status --porcelain --untracked-files=no)" || { echo "release-check requires a clean tracked tree" >&2; exit 1; }
+    just ci
+    just publish-dry-run
+    just census-all
+    just mutants jlreq
+    just mutants jlreq-conformance
+    sh scripts/verify-release-state.sh

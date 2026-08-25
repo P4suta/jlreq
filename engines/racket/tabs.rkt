@@ -56,6 +56,7 @@
          "spacing.rkt")
 
 (provide tab-sign?
+         line-tab-sign?
          validate-tabs
          stops-in-order
          tab-target)
@@ -66,6 +67,21 @@
 (define (tab-sign? para one)
   (define text (source-slice (paragraph-source para) (item-start one) (item-end one)))
   (and (= (string-length text) 1) (char=? (string-ref text 0) tab-character)))
+
+;; Whether the sign has a coordinate on the outer line's inline axis. Warichu and
+;; furawake always stack their text on sublines; tate-chu-yoko does so only in vertical
+;; composition. A construct's first item is contained just like every later item.
+(define (line-tab-sign? para one)
+  (and (tab-sign? para one)
+       (not
+        (for/or ([each (in-list (paragraph-constructs para))])
+          (define stacked?
+            (or (memq (construct-kind each) '(warichu furawake))
+                (and (eq? (construct-kind each) 'tate-chu-yoko)
+                     (eq? (paragraph-writing-mode para) 'vertical-rl))))
+          (and stacked?
+               (>= (item-start one) (construct-start each))
+               (<= (item-end one) (construct-end each)))))))
 
 ;; The caller's stops, in the order they stand along the line.
 (define (stops-in-order para)
@@ -97,7 +113,7 @@
            (fail-input "input.tab-count: a stretch of the paragraph holds ~a tab sign(s) and the request states ~a tab stop(s)"
                        signs stops)))
        (count (add1 index)
-              (+ (if cut? 0 signs) (if (tab-sign? para one) 1 0)))])))
+              (+ (if cut? 0 signs) (if (line-tab-sign? para one) 1 0)))])))
 
 ;; Where the string after a sign has to start, for the sign to put it at `stop`.
 ;;

@@ -21,7 +21,7 @@ SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 [[annotations]]
-path = ["**/tests/fixtures/**", "fuzz/corpus/**"]
+path = ["**/tests/fixtures/**", "fuzz/corpus/**", "fuzz/seeds/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"

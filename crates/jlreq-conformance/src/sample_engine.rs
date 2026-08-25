@@ -5,7 +5,7 @@
 //! Reference implementation of the language-independent conformance protocol.
 
 use std::{
-    io::{self, BufRead},
+    io::{self, BufRead, Write},
     process::ExitCode,
 };
 
@@ -25,6 +25,9 @@ use serde_json::{Map, Value, json};
 
 const PROTOCOL: &str = "jlreq.conformance/1";
 const SPEC: &str = jlreq::SPECIFICATION;
+const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
+const MAX_STREAM_BYTES: usize = 256 * 1024 * 1024;
+const MAX_MESSAGES: usize = 200_000;
 
 fn main() -> ExitCode {
     match run() {
@@ -38,14 +41,42 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), String> {
     let stdin = io::stdin();
-    for (line_index, line) in stdin.lock().lines().enumerate() {
-        let line = line.map_err(|error| error.to_string())?;
+    let stdout = io::stdout();
+    let mut input = stdin.lock();
+    let mut output = stdout.lock();
+    run_stream(&mut input, &mut output, MAX_MESSAGES)
+}
+
+fn run_stream(
+    input: &mut dyn BufRead,
+    output: &mut dyn Write,
+    max_messages: usize,
+) -> Result<(), String> {
+    let mut total_bytes = 0_usize;
+    let mut line_number = 0_usize;
+    let mut message_count = 0_usize;
+    loop {
+        let previous_total = total_bytes;
+        let Some(line) =
+            read_limited_line(input, &mut total_bytes, MAX_MESSAGE_BYTES, MAX_STREAM_BYTES)?
+        else {
+            break;
+        };
+        if total_bytes == previous_total {
+            return Err("input reader made no progress".to_owned());
+        }
+        line_number = line_number.saturating_add(1);
+        let line = std::str::from_utf8(&line)
+            .map_err(|error| format!("line {line_number}: input is not UTF-8: {error}"))?;
         if line.trim().is_empty() {
             continue;
         }
-        let line_number = line_index.saturating_add(1);
+        message_count = message_count.saturating_add(1);
+        if message_count > max_messages {
+            return Err(format!("input exceeds the {max_messages} message limit"));
+        }
         let envelope: Value =
-            serde_json::from_str(&line).map_err(|error| format!("line {line_number}: {error}"))?;
+            serde_json::from_str(line).map_err(|error| format!("line {line_number}: {error}"))?;
         let object = object(&envelope, "message")?;
         exact_string(object, "protocol", PROTOCOL)?;
         exact_string(object, "spec", SPEC)?;
@@ -54,18 +85,64 @@ fn run() -> Result<(), String> {
             .get("request")
             .ok_or_else(|| "request is required".to_owned())?;
         let (paragraph, style) = parse_request(request)?;
-        let layout = jlreq::compose(&paragraph, &style);
-        println!(
-            "{}",
-            json!({
+        let layout = jlreq::compose(&paragraph, &style)
+            .map_err(|error| format!("{}: {}", error.code(), error))?;
+        serde_json::to_writer(
+            &mut *output,
+            &json!({
                 "protocol": PROTOCOL,
                 "spec": SPEC,
                 "id": id,
                 "response": layout_json(&layout),
-            })
-        );
+            }),
+        )
+        .map_err(|error| format!("could not encode response {id:?}: {error}"))?;
+        output
+            .write_all(b"\n")
+            .and_then(|()| output.flush())
+            .map_err(|error| format!("could not write response {id:?}: {error}"))?;
     }
     Ok(())
+}
+
+fn read_limited_line(
+    reader: &mut dyn BufRead,
+    total_bytes: &mut usize,
+    max_message_bytes: usize,
+    max_stream_bytes: usize,
+) -> Result<Option<Vec<u8>>, String> {
+    let mut line = Vec::new();
+    loop {
+        let available = reader
+            .fill_buf()
+            .map_err(|error| format!("could not read input: {error}"))?;
+        if available.is_empty() {
+            return if line.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(line))
+            };
+        }
+        let newline = available.iter().position(|byte| *byte == b'\n');
+        let content = newline.unwrap_or(available.len());
+        let consumed = content.saturating_add(usize::from(newline.is_some()));
+        *total_bytes = total_bytes.saturating_add(consumed);
+        if *total_bytes > max_stream_bytes {
+            return Err(format!(
+                "input exceeds the {max_stream_bytes} byte total limit"
+            ));
+        }
+        if line.len().saturating_add(content) > max_message_bytes {
+            return Err(format!(
+                "input message exceeds the {max_message_bytes} byte line limit"
+            ));
+        }
+        line.extend_from_slice(&available[..content]);
+        reader.consume(consumed);
+        if newline.is_some() {
+            return Ok(Some(line));
+        }
+    }
 }
 
 fn parse_request(value: &Value) -> Result<(Paragraph, Style), String> {
@@ -708,4 +785,131 @@ fn one_char(value: &str, name: &str) -> Result<char, String> {
         return Err(format!("{name} must contain one Unicode scalar"));
     }
     Ok(character)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        KinsokuLevel, MAX_MESSAGE_BYTES, MAX_STREAM_BYTES, Style, exact_string, parse_style,
+        profile_style, read_limited_line, render_style_error, run_stream,
+    };
+    use serde_json::json;
+    use std::io::Cursor;
+
+    fn request(id: &str) -> String {
+        json!({
+            "protocol": "jlreq.conformance/1",
+            "spec": "jlreq-2020-08-11+unicode-17.0.0",
+            "id": id,
+            "request": {
+                "source": "a",
+                "size": {"inline": 1000, "block": 1000},
+                "frame": "full-em",
+                "clusters": [{"range": [0, 1], "advance": 500}],
+                "line_extent": 1000
+            }
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn stream_limits_are_inclusive_and_have_stable_defaults() {
+        assert_eq!(MAX_MESSAGE_BYTES, 1_048_576);
+        assert_eq!(MAX_STREAM_BYTES, 268_435_456);
+
+        let mut total = 0;
+        let mut input = Cursor::new(b"abc\n".as_slice());
+        assert_eq!(
+            read_limited_line(&mut input, &mut total, 3, 4),
+            Ok(Some(b"abc".to_vec()))
+        );
+        assert_eq!(total, 4);
+
+        let mut total = 0;
+        let mut input = Cursor::new(b"abc\n".as_slice());
+        assert!(read_limited_line(&mut input, &mut total, 2, 4).is_err());
+
+        let mut total = 0;
+        let mut input = Cursor::new(b"abc\n".as_slice());
+        assert!(read_limited_line(&mut input, &mut total, 3, 3).is_err());
+    }
+
+    #[test]
+    fn stream_message_count_is_checked_after_the_exact_limit() {
+        let input = format!("{}\n{}\n", request("one"), request("two"));
+        let mut input = Cursor::new(input.into_bytes());
+        let mut output = Vec::new();
+        assert_eq!(
+            run_stream(&mut input, &mut output, 1),
+            Err("input exceeds the 1 message limit".to_owned())
+        );
+        let output = String::from_utf8(output).expect("engine output is UTF-8");
+        assert_eq!(output.lines().count(), 1);
+    }
+
+    #[test]
+    fn profile_and_error_rendering_preserve_semantics() {
+        assert_eq!(profile_style("jlreq-2020"), Ok(Style::jlreq_2020()));
+        assert_eq!(profile_style("book-2020"), Ok(Style::book_2020()));
+        assert_eq!(profile_style("magazine-2020"), Ok(Style::magazine_2020()));
+        assert_eq!(profile_style("newspaper-2020"), Ok(Style::newspaper_2020()));
+        assert_eq!(
+            profile_style("jis-reading-2020"),
+            Ok(Style::jis_reading_2020())
+        );
+        assert!(profile_style("unknown").is_err());
+
+        let error = Style::builder()
+            .kinsoku_level(KinsokuLevel::VeryStrict)
+            .build()
+            .expect_err("the default breakable numeral conflicts with very-strict");
+        assert_eq!(
+            render_style_error(error),
+            "style.very-strict-grouped-numeral: very-strict kinsoku excludes a breakable grouped-numeral boundary"
+        );
+    }
+
+    #[test]
+    fn every_style_setting_round_trips_through_the_protocol_parser() {
+        let style = json!({
+            "profile": "jlreq-2020",
+            "kinsoku.level": "strict",
+            "adjustment.reduction_table": "table-3",
+            "spacing.line_end_punctuation": "half-em",
+            "spacing.line_end_full_stop_comma": "preferred",
+            "spacing.line_head_opening_bracket": "pattern-1",
+            "ruby.overhang_kana": "kana",
+            "ruby.overhang_indent": "permitted",
+            "ruby.alignment": "nakatsuki",
+            "ruby.group_distribution": "jis",
+            "ruby.jukugo_layout": "group",
+            "kinsoku.iteration_mark_at_line_head": "prohibited",
+            "adjustment.hanging_punctuation": "none",
+            "kinsoku.grouped_numeral_before_western": "breakable",
+            "spacing.sentence_medial_dividing_mark": "solid",
+            "adjustment.japanese_latin_expansion_ceiling": "half-em",
+            "adjustment.expansion_order": "jis",
+            "adjustment.preference": "least-adjustment",
+            "adjustment.remainder": "leading",
+            "classification.unlisted_code_point": "by-frame",
+            "classification.ambiguous_context": "lowest-class",
+            "classification.grouped_numeral_qualification": "by-width",
+            "kinsoku.relaxation_mechanism": "reclassify"
+        });
+
+        assert_eq!(parse_style(&style), Ok(Style::jlreq_2020()));
+    }
+
+    #[test]
+    fn exact_envelope_strings_reject_near_misses() {
+        let envelope = json!({"protocol": "other"});
+        assert!(
+            exact_string(
+                envelope.as_object().expect("envelope object"),
+                "protocol",
+                "jlreq.conformance/1"
+            )
+            .is_err()
+        );
+    }
 }

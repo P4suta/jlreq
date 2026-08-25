@@ -13,7 +13,7 @@
 //! - Source SHA-256: `3e93d1104a5c730bc9eca01880ef989520b7c3ebb1ef98833be0424a44edbd66`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/spacing.rs`
-//! - Generator SHA-256: `23efc502ed358c12303978c55aa110c667e2145dc2ebd0ab775e889eed711109`
+//! - Generator SHA-256: `c8974d1fe3f413864bf20ad59a6418cea98202fb0ab5d5fe26364566b408f9fa`
 //! - Entries: 784
 
 use crate::spec::RawBreakCell;

@@ -5,8 +5,9 @@
 //! Black-box acceptance tests for the intentionally small public API.
 
 use jlreq::{
-    Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
-    RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
+    Alignment, Break, Cluster, ClusterRole, Composer, CompositionLimits, CompositionResource,
+    Construct, CoordinateTransform, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText, Size,
+    Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
         AdjustmentPreference, AmbiguousContext, ExpansionOrder, GroupRubyDistribution,
         GroupedNumeralBeforeWestern, GroupedNumeralQualification, HangingPunctuation,
@@ -16,6 +17,12 @@ use jlreq::{
         SentenceMedialDividingMark, UnlistedCodePoint,
     },
 };
+
+macro_rules! compose_ok {
+    ($paragraph:expr, $style:expr) => {
+        jlreq::compose($paragraph, $style).expect("fixture stays within composition limits")
+    };
+}
 
 fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, jlreq::InputError> {
     let clusters = source.char_indices().map(|(start, character)| {
@@ -120,7 +127,7 @@ fn all_nine_constructs_compose_in_both_writing_modes() {
                 .writing_mode(mode)
                 .build()
                 .expect("valid construct paragraph");
-            let layout = jlreq::compose(&paragraph, &Style::default());
+            let layout = compose_ok!(&paragraph, &Style::default());
             assert_eq!(layout.lines().len(), 1);
             assert_eq!(layout.lines()[0].clusters().len(), 1);
         }
@@ -137,7 +144,7 @@ fn jidori_fills_declared_cells_and_keeps_its_outer_boundary_separate() {
             .alignment(Alignment::Start)
             .build()
             .expect("valid jidori paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(
             line.clusters()
@@ -167,7 +174,7 @@ fn jidori_leaves_trailing_space_when_no_internal_boundary_can_expand() {
             .alignment(Alignment::Start)
             .build()
             .expect("valid closed jidori paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 4_000);
         assert_eq!(line.clusters()[0].inline(), 0);
@@ -187,7 +194,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid upright paragraph");
-    let upright_layout = jlreq::compose(&upright, &Style::default());
+    let upright_layout = compose_ok!(&upright, &Style::default());
     let upright_cluster = &upright_layout.lines()[0].clusters()[0];
     assert_eq!(upright_cluster.writing_mode(), WritingMode::VerticalRl);
     assert_eq!(upright_cluster.transform(), CoordinateTransform::Identity);
@@ -199,7 +206,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid rotated paragraph");
-    let rotated_layout = jlreq::compose(&rotated, &Style::default());
+    let rotated_layout = compose_ok!(&rotated, &Style::default());
     assert!(rotated_layout.lines()[0].clusters().iter().all(|cluster| {
         cluster.writing_mode() == WritingMode::VerticalRl
             && cluster.transform() == CoordinateTransform::RotateClockwise
@@ -213,7 +220,7 @@ fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid tate-chu-yoko paragraph");
-    let tate_chu_yoko_layout = jlreq::compose(&tate_chu_yoko, &Style::default());
+    let tate_chu_yoko_layout = compose_ok!(&tate_chu_yoko, &Style::default());
     assert!(
         tate_chu_yoko_layout.lines()[0]
             .clusters()
@@ -249,7 +256,7 @@ fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
         .build()
         .expect("valid tate-chu-yoko paragraph");
 
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     let first = &layout.lines()[0];
     assert_eq!(first.inline_extent(), 4_000);
     assert_eq!(first.block_extent(), 1_200);
@@ -315,7 +322,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
             .writing_mode(WritingMode::VerticalRl)
             .build()
             .expect("valid punctuation paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         let first_digit = line
             .clusters()
@@ -353,7 +360,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         .writing_mode(WritingMode::VerticalRl)
         .build()
         .expect("valid line-end paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines()[0].inline_extent(), 1_500);
     assert_eq!(layout.lines()[0].clusters()[0].advance(), 1_500);
 
@@ -373,7 +380,7 @@ fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
         .writing_mode(WritingMode::VerticalRl)
         .build()
         .expect("valid multi-key paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0].clusters()[1].inline(),
         1_500,
@@ -388,7 +395,7 @@ fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
         .build()
         .expect("valid Appendix A paragraph");
 
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     let line = &layout.lines()[0];
     assert_eq!(
         line.clusters()
@@ -421,7 +428,7 @@ fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
             .sentence_medial_dividing_mark(choice)
             .build()
             .expect("consistent dividing-mark style");
-        jlreq::compose(&paragraph, &style).lines()[0]
+        compose_ok!(&paragraph, &style).lines()[0]
             .clusters()
             .iter()
             .map(jlreq::ClusterPlacement::inline)
@@ -469,7 +476,7 @@ fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
     let one_line = Paragraph::builder(text.clone(), 4_000)
         .build()
         .expect("valid one-line paragraph");
-    let layout = jlreq::compose(&one_line, &Style::default());
+    let layout = compose_ok!(&one_line, &Style::default());
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 4_000);
     assert_eq!(
@@ -486,7 +493,7 @@ fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
         .breaks([Break::allowed(6)])
         .build()
         .expect("valid wrapping paragraph");
-    let layout = jlreq::compose(&wrapped, &Style::default());
+    let layout = compose_ok!(&wrapped, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].inline_extent(), 2_000);
     assert_eq!(layout.lines()[1].clusters()[0].inline(), 0);
@@ -514,7 +521,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .unlisted_code_point(choice)
             .build()
             .expect("consistent unlisted style");
-        jlreq::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[1].inline()
     };
     assert_eq!(unlisted(UnlistedCodePoint::ByFrame), 950);
     assert_eq!(unlisted(UnlistedCodePoint::Ideographic), 700);
@@ -539,7 +546,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .ambiguous_context(choice)
             .build()
             .expect("consistent ambiguity style");
-        jlreq::compose(&paragraph, &style).lines()[0].clusters()[1].inline()
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[1].inline()
     };
     assert_eq!(ambiguous(AmbiguousContext::LowestClass), 1_000);
     assert_eq!(ambiguous(AmbiguousContext::HighestClass), 1_250);
@@ -566,7 +573,7 @@ fn classification_choices_change_black_box_spacing_and_breaks() {
             .grouped_numeral_qualification(choice)
             .build()
             .expect("consistent grouped-numeral style");
-        jlreq::compose(&paragraph, &style).lines().len()
+        compose_ok!(&paragraph, &style).lines().len()
     };
     assert_eq!(grouped(GroupedNumeralQualification::ByWidth), 2);
     assert_eq!(grouped(GroupedNumeralQualification::ByRole), 1);
@@ -598,7 +605,7 @@ fn table_one_spaces_japanese_and_western_text_by_the_referents_em() {
         let paragraph = Paragraph::builder(text, 3_000)
             .build()
             .expect("valid mixed-size paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         (
             line.clusters()
@@ -643,7 +650,7 @@ fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
             .writing_mode(mode)
             .build()
             .expect("valid punctuation paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         (
             line.clusters()
@@ -730,7 +737,7 @@ fn western_word_space_collapses_only_at_true_line_edges() {
             .alignment(alignment)
             .build()
             .expect("valid word-space paragraph");
-        jlreq::compose(&paragraph, &Style::default())
+        compose_ok!(&paragraph, &Style::default())
     }
 
     let edged = compose_ascii(" AB ", [], Alignment::Start, 2_000);
@@ -812,7 +819,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
             .writing_mode(mode)
             .build()
             .expect("valid balanced warichu paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 1);
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 3_000);
@@ -857,7 +864,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         .constructs([Construct::warichu(0..5)])
         .build()
         .expect("word-space breaks are valid inside warichu");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 250);
     assert_eq!(
@@ -880,7 +887,7 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         .constructs([Construct::warichu(0..10)])
         .build()
         .expect("valid straddling warichu paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..5);
     assert_eq!(layout.lines()[1].range(), 5..10);
@@ -942,7 +949,7 @@ fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
             .constructs([Construct::warichu(3..12)])
             .build()
             .expect("valid seam paragraph");
-        jlreq::compose(&paragraph, &Style::default())
+        compose_ok!(&paragraph, &Style::default())
     }
 
     let natural = compose_at(16_000);
@@ -999,7 +1006,7 @@ fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
             .writing_mode(mode)
             .build()
             .expect("one declared split builds two furiwake lines");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 1);
         let line = &layout.lines()[0];
         assert_eq!(line.inline_extent(), 2_000);
@@ -1057,7 +1064,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(3..6)])
         .build()
         .expect("valid inline formula paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
@@ -1079,7 +1086,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..5)])
         .build()
         .expect("valid display formula paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
@@ -1096,7 +1103,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..3)])
         .build()
         .expect("either side of an equality token is a valid caller-declared break");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].inline_extent(), 500);
     assert_eq!(layout.lines()[1].inline_extent(), 1_750);
@@ -1108,7 +1115,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         .constructs([Construct::formula(0..8)])
         .build()
         .expect("valid independent formula alternatives");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(
         layout
             .lines()
@@ -1151,7 +1158,7 @@ fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
             .writing_mode(mode)
             .build()
             .expect("valid emphasis paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.block_extent(), 1_500);
         assert_eq!(line.attachments().len(), 2);
@@ -1180,7 +1187,7 @@ fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
         ])
         .build()
         .expect("two disjoint emphasis runs are valid");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines()[0].attachments().len(), 2);
     assert_eq!(
         layout.lines()[0].block_extent(),
@@ -1221,7 +1228,7 @@ fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
         .writing_mode(mode)
         .build()
         .expect("valid ruby paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         let line = &layout.lines()[0];
         assert_eq!(line.block_extent(), 1_700);
         assert_eq!(line.attachments().len(), 2);
@@ -1254,7 +1261,7 @@ fn group_ruby_distribution_changes_leading_and_interior_shares() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("consistent group-ruby style");
-        jlreq::compose(&paragraph, &style).lines()[0]
+        compose_ok!(&paragraph, &style).lines()[0]
             .attachments()
             .iter()
             .map(jlreq::Attachment::inline)
@@ -1296,7 +1303,7 @@ fn single_character_group_ruby_flush_stays_at_the_base_start() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("consistent group-ruby style");
-        jlreq::compose(&paragraph, &style).lines()[0].attachments()[0].inline()
+        compose_ok!(&paragraph, &style).lines()[0].attachments()[0].inline()
     };
 
     assert_eq!(compose_with(GroupRubyDistribution::Jis), 850);
@@ -1327,7 +1334,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
             .group_ruby_distribution(distribution)
             .build()
             .expect("valid group-ruby style");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
 
     let jis = compose_with(GroupRubyDistribution::Jis);
@@ -1393,7 +1400,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .constructs([Construct::ruby(ruby)])
         .build()
         .expect("valid ruby paragraph");
-        jlreq::compose(&paragraph, &Style::default())
+        compose_ok!(&paragraph, &Style::default())
     };
 
     let mono_layout = compose_kind(mono.clone());
@@ -1434,7 +1441,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid adjusted ruby paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         assert_eq!(
             layout.lines()[0].clusters()[1].inline(),
             expected_second_base,
@@ -1451,7 +1458,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
         .constructs([Construct::ruby(ruby)])
         .build()
         .expect("mono and jukugo may split at a declared run boundary");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         assert_eq!(layout.lines().len(), 2);
         assert_eq!(layout.lines()[0].attachments().len(), 1);
         assert_eq!(layout.lines()[0].attachments()[0].range(), 0..3);
@@ -1501,7 +1508,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             .writing_mode(mode)
             .build()
             .expect("valid phonetic jukugo paragraph");
-            jlreq::compose(&paragraph, &phonetic)
+            compose_ok!(&paragraph, &phonetic)
         };
 
     let forward = compose(
@@ -1740,7 +1747,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     .alignment(Alignment::Start)
     .build()
     .expect("valid long-ruby paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(
         layout.lines()[0]
             .clusters()
@@ -1771,7 +1778,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid overhang-neighbor paragraph");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
     let ideograph = compose_preceding('前', Style::default());
     let opening = compose_preceding('「', Style::default());
@@ -1841,7 +1848,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid ruby-indent paragraph");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
     let permitted = compose_indent(Style::default());
     let prohibited = compose_indent(
@@ -1866,7 +1873,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
     .alignment(Alignment::Start)
     .build()
     .expect("valid overhang-fixpoint paragraph");
-    let fixpoint = jlreq::compose(&fixpoint, &Style::default());
+    let fixpoint = compose_ok!(&fixpoint, &Style::default());
     assert_eq!(
         fixpoint
             .lines()
@@ -1901,7 +1908,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         .writing_mode(mode)
         .build()
         .expect("valid construct-run paragraph");
-        jlreq::compose(&paragraph, &Style::default()).lines()[0]
+        compose_ok!(&paragraph, &Style::default()).lines()[0]
             .clusters()
             .iter()
             .map(jlreq::ClusterPlacement::inline)
@@ -1971,7 +1978,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
     .writing_mode(WritingMode::VerticalRl)
     .build()
     .expect("valid single tate-chu-yoko run");
-    let same_tcy = jlreq::compose(&same_tcy, &Style::default());
+    let same_tcy = compose_ok!(&same_tcy, &Style::default());
     assert_eq!(
         same_tcy.lines()[0]
             .clusters()
@@ -2008,7 +2015,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid mixed-size complex paragraph");
-    let mixed = jlreq::compose(&mixed, &Style::default());
+    let mixed = compose_ok!(&mixed, &Style::default());
     assert_eq!(
         mixed.lines()[0]
             .clusters()
@@ -2112,10 +2119,7 @@ fn complex_break_rules_distinguish_internal_and_run_boundaries() {
         ])
         .build()
         .expect("the boundary between distinct ornamented complexes is breakable");
-    assert_eq!(
-        jlreq::compose(&separate, &Style::default()).lines().len(),
-        2
-    );
+    assert_eq!(compose_ok!(&separate, &Style::default()).lines().len(), 2);
 }
 
 #[test]
@@ -2141,7 +2145,7 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid tab paragraph");
-    let layout = jlreq::compose(&tabbed, &Style::default());
+    let layout = compose_ok!(&tabbed, &Style::default());
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 3_000);
 
     let source = "日本語";
@@ -2151,7 +2155,7 @@ fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
         .widow(Widow::MinimumClusters(2))
         .build()
         .expect("valid mixed-break paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..6);
 }
@@ -2173,6 +2177,49 @@ fn tab_characters_require_declared_stops() {
 }
 
 #[test]
+fn tabs_set_off_the_line_do_not_consume_or_require_stops() {
+    let cases = [
+        (
+            Construct::tate_chu_yoko(1..2),
+            WritingMode::VerticalRl,
+            "vertical tate-chu-yoko",
+        ),
+        (
+            Construct::warichu(1..2),
+            WritingMode::HorizontalTb,
+            "warichu",
+        ),
+        (
+            Construct::furawake(1..2, 1, 0),
+            WritingMode::HorizontalTb,
+            "furawake",
+        ),
+    ];
+    for (construct, mode, label) in cases {
+        let paragraph = Paragraph::builder(
+            shaped("A\tB", Frame::Proportional, 500).expect("valid tab fixture"),
+            4_000,
+        )
+        .constructs([construct])
+        .writing_mode(mode)
+        .build()
+        .unwrap_or_else(|error| panic!("{label} rejected its internal tab: {error}"));
+        assert!(paragraph.tab_stops().is_empty());
+        compose_ok!(&paragraph, &Style::default());
+    }
+
+    let horizontal = Paragraph::builder(
+        shaped("A\tB", Frame::Proportional, 500).expect("valid horizontal fixture"),
+        4_000,
+    )
+    .constructs([Construct::tate_chu_yoko(1..2)])
+    .writing_mode(WritingMode::HorizontalTb)
+    .build()
+    .expect_err("horizontal tate-chu-yoko is ordinary inline text");
+    assert_eq!(horizontal.code(), "input.insufficient-tab-stops");
+}
+
+#[test]
 fn tab_alignments_are_direction_independent() {
     let cases = [
         (TabAlignment::Start, [3_000, 3_500]),
@@ -2190,7 +2237,7 @@ fn tab_alignments_are_direction_independent() {
                 .writing_mode(writing_mode)
                 .build()
                 .expect("valid tab paragraph");
-            let layout = jlreq::compose(&paragraph, &Style::default());
+            let layout = compose_ok!(&paragraph, &Style::default());
             assert_eq!(
                 [
                     layout.lines()[0].clusters()[2].inline(),
@@ -2210,7 +2257,7 @@ fn exhausted_tab_positions_continue_on_the_next_line() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid overflowing tab paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
 
     assert_eq!(layout.lines().len(), 2);
     assert_eq!(layout.lines()[0].range(), 0..4);
@@ -2237,7 +2284,7 @@ fn a_tab_sign_that_opens_a_tate_chu_yoko_run_is_set_in_the_run() {
         .writing_mode(WritingMode::VerticalRl)
         .build()
         .expect("valid tate-chu-yoko tab paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::default());
+    let layout = compose_ok!(&paragraph, &Style::default());
 
     assert_eq!(layout.lines().len(), 1);
     let line = &layout.lines()[0];
@@ -2283,7 +2330,7 @@ fn a_tab_sign_inside_a_warichu_takes_no_stop_and_steps_no_cursor() {
             .alignment(Alignment::Start)
             .build()
             .expect("valid warichu tab paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
 
         assert_eq!(layout.lines().len(), 1);
         let line = &layout.lines()[0];
@@ -2319,10 +2366,7 @@ fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
     assert_eq!(paragraph.breaks().len(), 2);
     assert_eq!(paragraph.breaks()[0].offset(), 3);
     assert!(paragraph.breaks()[1].is_mandatory());
-    assert_eq!(
-        jlreq::compose(&paragraph, &Style::default()).lines().len(),
-        2
-    );
+    assert_eq!(compose_ok!(&paragraph, &Style::default()).lines().len(), 2);
 }
 
 #[test]
@@ -2334,7 +2378,7 @@ fn table_two_prohibits_a_closing_bracket_at_every_kinsoku_level() {
         .build()
         .expect("valid break opportunities");
 
-    let layout = jlreq::compose(&paragraph, &Style::newspaper_2020());
+    let layout = compose_ok!(&paragraph, &Style::newspaper_2020());
     assert_eq!(layout.lines()[0].range(), 0..6);
 }
 
@@ -2344,7 +2388,7 @@ fn lines_at_only_boundary(text: ShapedText, offset: usize, style: &Style) -> Opt
         .alignment(Alignment::Start)
         .build()
         .ok()?;
-    Some(jlreq::compose(&paragraph, style).lines().len())
+    Some(compose_ok!(&paragraph, style).lines().len())
 }
 
 #[test]
@@ -2492,7 +2536,7 @@ fn reduction_tables_apply_their_distinct_floor_to_an_overfull_boundary() {
             .reduction_table(table)
             .build()
             .expect("consistent reduction style");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
 
     for table in [ReductionTable::Table3, ReductionTable::Table4] {
@@ -2513,7 +2557,7 @@ fn reduction_uses_lower_priority_stages_only_after_earlier_ones() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid staged paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
     let positions: Vec<_> = layout.lines()[0]
         .clusters()
         .iter()
@@ -2541,7 +2585,7 @@ fn western_word_space_reduces_first_and_keeps_a_quarter_em() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid Western-space paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_250);
     assert_eq!(layout.lines()[0].inline_extent(), 2_250);
@@ -2567,7 +2611,7 @@ fn generated_reduction_tables_include_the_line_end_axis() {
             .reduction_table(table)
             .build()
             .expect("consistent reduction style");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
 
     assert_eq!(
@@ -2599,7 +2643,7 @@ fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
             .line_head_opening_bracket(pattern)
             .build()
             .expect("consistent line-head style");
-        jlreq::compose(&paragraph, &style).lines()[0].clusters()[0].inline()
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[0].inline()
     };
     assert_eq!(compose_first(LineHeadOpeningBracket::Pattern1), 1_000);
     assert_eq!(compose_first(LineHeadOpeningBracket::Pattern2), 1_500);
@@ -2615,7 +2659,7 @@ fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
             .line_head_opening_bracket(pattern)
             .build()
             .expect("consistent line-head style");
-        jlreq::compose(&paragraph, &style).lines()[1].clusters()[0].inline()
+        compose_ok!(&paragraph, &style).lines()[1].clusters()[0].inline()
     };
     assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern1), 0);
     assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern2), 500);
@@ -2642,7 +2686,7 @@ fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
             .hanging_punctuation(hanging)
             .build()
             .expect("consistent hanging style");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
 
     let none = compose_with(HangingPunctuation::None);
@@ -2671,7 +2715,7 @@ fn optimal_search_counts_reducible_space_before_choosing_a_break() {
         .alignment(Alignment::Start)
         .build()
         .expect("valid reducible search paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines().len(), 1);
     assert_eq!(layout.lines()[0].inline_extent(), 3_000);
@@ -2685,7 +2729,7 @@ fn table_six_does_not_expand_a_boundary_it_marks_closed() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid closed-expansion paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].inline_extent(), 2_000);
 }
@@ -2717,7 +2761,7 @@ fn japanese_latin_expansion_ceiling_changes_the_stage_distribution() {
             .japanese_latin_expansion_ceiling(ceiling)
             .build()
             .expect("consistent expansion style");
-        jlreq::compose(&paragraph, &style)
+        compose_ok!(&paragraph, &style)
     };
 
     let half = compose_with(JapaneseLatinExpansionCeiling::HalfEm);
@@ -2749,7 +2793,7 @@ fn western_word_space_expands_to_half_an_em_at_the_first_stage() {
         .alignment(Alignment::Justify)
         .build()
         .expect("valid Western expansion paragraph");
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020());
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
 
     assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
     assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_500);
@@ -2763,10 +2807,84 @@ fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
         .build()
         .expect("valid paragraph");
     let mut composer = jlreq::Composer::new();
-    let first = composer.compose(&paragraph, &Style::default());
-    let second = composer.compose(&paragraph, &Style::book_2020());
+    let first = composer
+        .compose(&paragraph, &Style::default())
+        .expect("composition succeeds");
+    let second = composer
+        .compose(&paragraph, &Style::book_2020())
+        .expect("composition succeeds");
     assert_eq!(first.lines().len(), 2);
     assert_eq!(second.lines().len(), 2);
+}
+
+#[test]
+fn composition_limits_are_typed_atomic_and_reusable() {
+    fn assert_error<T: core::error::Error>() {}
+    assert_error::<jlreq::InputError>();
+    assert_error::<jlreq::style::StyleError>();
+    assert_error::<jlreq::ComposeError>();
+
+    let defaults = CompositionLimits::default();
+    assert_eq!(defaults.max_clusters(), 65_536);
+    assert_eq!(defaults.max_break_candidates(), 65_536);
+    assert_eq!(defaults.max_constructs(), 4_096);
+    assert_eq!(defaults.max_tab_stops(), 4_096);
+    assert_eq!(defaults.max_search_transitions(), 8_000_000);
+
+    let paragraph = Paragraph::builder(
+        shaped("日本語", Frame::FullEm, 0).expect("valid zero-width fixture"),
+        1_000,
+    )
+    .breaks([Break::allowed(3), Break::allowed(6)])
+    .build()
+    .expect("valid pathological paragraph");
+    let limits = defaults.with_max_search_transitions(1);
+    let mut composer = Composer::with_limits(limits);
+    assert_eq!(composer.limits(), limits);
+    let error = composer
+        .compose(&paragraph, &Style::default())
+        .expect_err("the exact search must stop at its declared budget");
+    assert_eq!(error.code(), "compose.transition-limit");
+    assert_eq!(error.resource(), CompositionResource::SearchTransitions);
+    assert_eq!(error.limit(), 1);
+    assert_eq!(error.observed(), 2);
+
+    composer.set_limits(defaults);
+    let recovered = composer
+        .compose(&paragraph, &Style::default())
+        .expect("the composer is reusable after an error");
+    assert!(!recovered.lines().is_empty());
+
+    let static_error = Composer::with_limits(defaults.with_max_clusters(2))
+        .compose(&paragraph, &Style::default())
+        .expect_err("three clusters exceed the configured limit");
+    assert_eq!(static_error.code(), "compose.cluster-limit");
+    assert_eq!(static_error.resource(), CompositionResource::Clusters);
+    assert_eq!(static_error.limit(), 2);
+    assert_eq!(static_error.observed(), 3);
+
+    let empty = Paragraph::builder(
+        ShapedText::new(
+            "",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [],
+        )
+        .expect("valid empty text"),
+        1_000,
+    )
+    .build()
+    .expect("valid empty paragraph");
+    let zero = CompositionLimits::default()
+        .with_max_clusters(0)
+        .with_max_break_candidates(0)
+        .with_max_constructs(0)
+        .with_max_tab_stops(0)
+        .with_max_search_transitions(0);
+    let layout = Composer::with_limits(zero)
+        .compose(&empty, &Style::default())
+        .expect("an empty paragraph always succeeds");
+    assert!(layout.lines().is_empty());
 }
 
 #[test]
@@ -2781,7 +2899,7 @@ fn line_extent_is_occupied_width_not_the_shifted_end_coordinate() {
             .alignment(alignment)
             .build()
             .expect("valid aligned paragraph");
-        let layout = jlreq::compose(&paragraph, &Style::default());
+        let layout = compose_ok!(&paragraph, &Style::default());
         assert_eq!(layout.lines()[0].inline_origin(), origin);
         assert_eq!(layout.lines()[0].inline_extent(), 1_000);
     }

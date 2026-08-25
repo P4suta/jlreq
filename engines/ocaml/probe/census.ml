@@ -2642,12 +2642,18 @@ let print_classes () : unit =
         (Jlreq.Tables.row_label value)
   done
 
+(** The registry names, one per line. Automation consumes this command instead of
+    copying the list, so adding an eleventh census cannot silently shrink a full run. *)
+let print_kinds () : unit = List.iter (fun kind -> print_endline kind.kind_name) kinds
+
 let usage () =
   let buffer = Buffer.create 512 in
   Buffer.add_string buffer
     "usage: census generate <kind>   one NDJSON request envelope per line, on stdout\n";
   Buffer.add_string buffer
     "       census classes           the representative code point chosen for each class, as TSV\n";
+  Buffer.add_string buffer
+    "       census kinds             every registered census name, one per line\n";
   Buffer.add_string buffer
     "       census normalize         a response stream on stdin, with every object's keys sorted,\n\
     \                                so that `diff` means what it looks like it means\n";
@@ -2661,6 +2667,7 @@ let usage () =
 let run (arguments : string list) : unit =
   match arguments with
   | [ "classes" ] -> print_classes ()
+  | [ "kinds" ] -> print_kinds ()
   | [ "normalize" ] -> normalize ()
   | [ "generate"; name ] -> (
     match List.find_opt (fun kind -> String.equal kind.kind_name name) kinds with

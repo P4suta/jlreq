@@ -1,0 +1,150 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# This workflow is intentionally manual and protected by the `release` environment. Merely
+# merging it performs no external mutation. See docs/RELEASING.md before approving a run.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version already finalized in Cargo.toml and CHANGELOG.md
+        required: true
+        default: 0.1.0
+        type: string
+      commit:
+        description: Full candidate commit SHA that passed Release check
+        required: true
+        type: string
+      release_check_run_id:
+        description: Successful Release check workflow run ID for that commit
+        required: true
+        type: string
+      authentication:
+        description: First release uses a scoped token; later releases use OIDC
+        required: true
+        default: initial-token
+        type: choice
+        options:
+          - initial-token
+          - trusted-publishing
+      confirmation:
+        description: Type "publish jlreq VERSION" to acknowledge irreversible uploads
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish crates, tag, and GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    env:
+      VERSION: ${{ inputs.version }}
+      CANDIDATE_COMMIT: ${{ inputs.commit }}
+      RELEASE_CHECK_RUN_ID: ${{ inputs.release_check_run_id }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: validate explicit authorization
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |-
+          test "$CONFIRMATION" = "publish jlreq $VERSION"
+          printf '%s' "$CANDIDATE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$RELEASE_CHECK_RUN_ID" | grep -Eq '^[0-9]+$'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0
+      - name: verify candidate identity and finalized notes
+        run: |-
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_COMMIT"
+          grep -F "version = \"$VERSION\"" Cargo.toml >/dev/null
+          grep -Eq "^## \[$VERSION\] - 20[0-9]{2}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_CHECK_RUN_ID")
+          test "$(jq -r .name <<<"$run")" = "Release check"
+          test "$(jq -r .conclusion <<<"$run")" = "success"
+          test "$(jq -r .head_sha <<<"$run")" = "$CANDIDATE_COMMIT"
+          test -z "$(git ls-remote --tags origin "refs/tags/v$VERSION")"
+      - name: download attested release-check artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: release-*
+          path: target/release-artifacts
+          merge-multiple: true
+          run-id: ${{ inputs.release_check_run_id }}
+          github-token: ${{ github.token }}
+      - name: verify binary checksums and crate dry-runs
+        run: |-
+          for checksum in target/release-artifacts/*.sha256; do
+            (cd "$(dirname "$checksum")" && sha256sum --check "$(basename "$checksum")")
+          done
+          just package
+          just publish-dry-run
+      - name: obtain Trusted Publishing token
+        if: inputs.authentication == 'trusted-publishing'
+        id: crates_io_auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1
+      - name: publish jlreq with first-release token
+        if: inputs.authentication == 'initial-token'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked -p jlreq
+      - name: publish jlreq with Trusted Publishing
+        if: inputs.authentication == 'trusted-publishing'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        run: cargo publish --locked -p jlreq
+      - name: wait for jlreq in the crates.io index
+        run: |-
+          for attempt in $(seq 1 30); do
+            if cargo info "jlreq@$VERSION" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "jlreq $VERSION is not visible yet (attempt $attempt/30)"
+            sleep 10
+          done
+          echo "jlreq $VERSION was uploaded but did not become visible; inspect crates.io before retrying" >&2
+          exit 1
+      - name: publish jlreq-conformance with first-release token
+        if: inputs.authentication == 'initial-token'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked -p jlreq-conformance
+      - name: publish jlreq-conformance with Trusted Publishing
+        if: inputs.authentication == 'trusted-publishing'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        run: cargo publish --locked -p jlreq-conformance
+      - name: create tag and GitHub Release after both uploads
+        run: |-
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { capture = 1; next }
+            capture && $0 ~ "^## \\[" { exit }
+            capture { print }
+          ' CHANGELOG.md > target/release-notes.md
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "v$VERSION" -m "jlreq $VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" \
+            target/release-artifacts/* \
+            target/package/jlreq-"$VERSION".crate \
+            target/package/jlreq-conformance-"$VERSION".crate \
+            --target "$CANDIDATE_COMMIT" \
+            --title "jlreq $VERSION" \
+            --notes-file target/release-notes.md

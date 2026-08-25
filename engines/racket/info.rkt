@@ -24,7 +24,7 @@
 (define pkg-desc "An independent Racket implementation of the jlreq conformance protocol")
 (define pkg-authors '("jlreq contributors"))
 (define license '(MIT OR Apache-2.0))
-(define version "0.0.0")
+(define version "0.1.0")
 
 (define deps '("base"))
 (define build-deps '("compiler-lib" "rackunit-lib"))

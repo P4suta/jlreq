@@ -1,13 +1,13 @@
 # Roadmap
 
-## Current status: unreleased 0.0.0
+## Current status: 0.1.0 prepared, not published
 
-jlreq has not reached 0.1. Both product packages set `publish = false`; there is no
-released compatibility contract, support line, release date, or implied path to 1.0.
-Passing the repository's implementation and conformance gates is evidence about the current
-tree, not a release decision.
+Both product packages and their release artifacts are ready for 0.1.0. The public Rust API,
+stable error codes, protocol v1, integer placement, MSRV 1.85, and `no_std + alloc` boundary
+are the 0.1.x compatibility line. Preparation deliberately does not upload crates, create a
+tag or GitHub Release, configure a Trusted Publisher, or change branch protection.
 
-The current implementation is exploring a deliberately small eventual product boundary:
+The release has a deliberately small product boundary:
 
 - one dependency-free `no_std + alloc` Rust library;
 - one validated paragraph composition pipeline for caller-shaped UTF-8 clusters;
@@ -48,25 +48,22 @@ whole suite. Ten synthetic censuses agree with the Rust engine across 122,199 fu
 requests, and the twenty-six observable policies the exercise turned up — rules two engines
 must share to pass the same case, stated in no sentence of JLReq and no file under `docs/` —
 are listed in `engines/ocaml/README.md` and are candidates for `docs/decisions/`.
-`engines/racket/` will follow the same shape. See
+[`engines/racket/`](engines/racket/README.md) independently implements the same complete
+protocol surface. The generated census summary, rather than prose copied by hand, records
+all ten census counts and all three pairwise zero-difference results. See
+[the summary](docs/generated/conformance-summary.md) and
 [ADR 0024](docs/adr/0024-independent-reference-engines.md).
 
-## Before any release
+## Publication-only work remaining
 
-- Keep development test-first: reproduce an observable failure, verify Red, implement the
-  smallest coherent behavior, verify Green through the Rust API and protocol suite, then
-  refactor under the architecture gates.
-- Expand mixed-script and vertical reference fixtures, malformed-input fuzz corpora, and
-  arithmetic-extreme coverage.
-- Profile realistic paragraphs without exposing implementation tuning knobs.
-- Treat `docs/api-1.0.toml` as a candidate-surface control only; compatibility remains open
-  to change before an explicit release decision.
-- Do not remove `publish = false`, create a version tag, or move changelog entries out of
-  `Unreleased` as part of ordinary development work.
+- Choose the release date and move the completed `Unreleased` notes to `0.1.0`.
+- With explicit maintainer approval, upload `jlreq`, wait for the crates.io index, then
+  upload `jlreq-conformance`.
+- Configure crates.io Trusted Publishing after that required first manual publication.
+- Create the `v0.1.0` tag and GitHub Release from the already verified artifacts.
+- Apply any desired external branch-protection settings separately.
 
-## Candidate long-term invariants
-
-These are design goals to evaluate before a stable release, not current promises:
+## Release-line invariants
 
 - `Style::default()` remains identical to `Style::jlreq_2020()`.
 - A future JLReq revision adds a dated profile and specification identifier rather than

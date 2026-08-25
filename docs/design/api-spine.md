@@ -1,12 +1,18 @@
-# The candidate 1.0 API spine
+# The 0.1.0 API spine
 
 This is the human-readable contract for the only public Rust library, `jlreq`. The exact
 directly exported names and the 22 Style mappings are machine-readable in
-[`docs/api-1.0.toml`](../api-1.0.toml) and checked in both directions by `xtask api`.
+[`docs/public-api.toml`](../public-api.toml) and checked in both directions by `xtask api`.
 
-This document describes a candidate 1.0 contract for the unreleased `0.0.0` workspace. It
-is a mechanical design control, not a compatibility promise. The old multi-crate API is not
-carried forward and has no compatibility facade.
+This document describes the 0.1.0 contract. It is both a mechanical design control and the
+compatibility floor for 0.1.x. The old multi-crate API is not carried forward and has no
+compatibility facade.
+
+Before the first publication, `just semver` enforces the local export and Style mapping in
+`docs/public-api.toml`; there is no registry baseline to compare yet. For every later 0.1.x
+candidate the same required gate uses `cargo-semver-checks` in patch mode against the latest
+normal, non-yanked jlreq release. This rolling baseline protects APIs added by intermediate
+0.1.x releases as well as the original 0.1.0 surface.
 
 ## Principles
 
@@ -14,8 +20,8 @@ carried forward and has no compatibility facade.
 - All public geometry is a bounded `i32` in the caller's unit.
 - Inputs are already shaped. Font I/O, shaping, UAX #14, bidi, and rendering are out of
   scope.
-- `ParagraphBuilder::build` is the validation boundary. Composition of a validated
-  paragraph does not fail.
+- `ParagraphBuilder::build` is the representation-validation boundary. Composition of a
+  validated paragraph returns either a complete exact layout or a typed resource error.
 - Classification, spacing records, lowering seams, feasibility, ladders, badness, and rule
   IDs are private.
 - Public result types are read-only views with private fields.
@@ -29,11 +35,12 @@ let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters
 let paragraph = Paragraph::builder(text, 20_000)
     .breaks(break_offsets.map(Break::allowed))
     .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020());
+let layout = jlreq::compose(&paragraph, &Style::book_2020())?;
 
 for line in layout.lines() {
     for placement in line.clusters() {
-        draw(placement);
+        // Pass `placement` to the caller's renderer.
+        let _ = placement;
     }
 }
 ```
@@ -105,7 +112,7 @@ rejects contradictions at `build()`. Profiles are:
 - `jis_reading_2020` (the alternatives JLReq records, not complete JIS X 4051 conformance).
 
 The `jlreq::style` namespace contains the 22 dedicated choice enums. Their complete names
-and specification paths live in `docs/api-1.0.toml`; generic `Question`, `Choice`, and
+and specification paths live in `docs/public-api.toml`; generic `Question`, `Choice`, and
 string-setting types are intentionally absent.
 
 ## Results
@@ -133,10 +140,12 @@ reference string are contractual. It exposes no internal rule sequence.
 
 `InputError` means no valid paragraph could be built; its stable code and optional range are
 for programs, while its message may improve. `StyleError` similarly exposes a stable
-conflict code.
+conflict code. `ComposeError` exposes a stable code, resource, limit, and observed count;
+it never carries a partial layout.
 
 `Style::default()` never changes meaning. A new specification revision adds a dated profile
 and a new specification identifier. The process protocol is versioned separately.
 
-The candidate 1.0 design has no planned compatibility layer for the former experimental
-API. Until an explicit release decision, all of this surface may still change.
+The 0.1.0 design has no compatibility layer for the former experimental API. After 0.1.0,
+compatible 0.1.x releases preserve this surface and its stable codes; incompatible changes
+require a semver-minor release while the major version is zero.

@@ -4,6 +4,7 @@
 
 //! Repository-wide checks that do not belong to a Cargo package.
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -14,7 +15,7 @@ use crate::shared::{self, Gate};
 /// The repository-hygiene gate exposed by the dispatcher.
 pub(crate) const GATE: Gate = Gate {
     name: "repository",
-    purpose: "the workspace is unreleased, tracked UTF-8 files use LF, and local Markdown links resolve",
+    purpose: "the 0.1.0 workspace is release-ready, tracked UTF-8 files use LF, and local Markdown links resolve",
     reference: "CONTRIBUTING.md",
     run,
 };
@@ -32,7 +33,8 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let mut utf8_files = 0_usize;
     let mut documents = 0_usize;
     let mut links = 0_usize;
-    let mut violations = unreleased_state_violations(&root)?;
+    let mut violations = release_ready_state_violations(&root)?;
+    violations.extend(error_code_violations(&root)?);
     for file in &files {
         let bytes = fs::read(file)?;
         let Ok(source) = std::str::from_utf8(&bytes) else {
@@ -63,12 +65,60 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     Ok(violations)
 }
 
-/// Refuse to let development snapshots become publishable or acquire a release version.
-fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
+/// Require the user-facing error-code reference and product literals to name the same set.
+fn error_code_violations(root: &Path) -> io::Result<Vec<String>> {
+    let mut code = BTreeSet::new();
+    for name in [
+        "construct.rs",
+        "limits.rs",
+        "model.rs",
+        "normalize.rs",
+        "paragraph.rs",
+        "pipeline.rs",
+        "style.rs",
+    ] {
+        let source = fs::read_to_string(root.join("crates/jlreq/src").join(name))?;
+        code.extend(quoted_error_codes(&source, '"'));
+    }
+    let reference = fs::read_to_string(root.join("docs/error-codes.md"))?;
+    let documented = quoted_error_codes(&reference, '`');
+    let mut violations = Vec::new();
+    for missing in code.difference(&documented) {
+        violations.push(format!(
+            "docs/error-codes.md: missing product code `{missing}`"
+        ));
+    }
+    for stale in documented.difference(&code) {
+        violations.push(format!(
+            "docs/error-codes.md: unknown product code `{stale}`"
+        ));
+    }
+    Ok(violations)
+}
+
+fn quoted_error_codes(source: &str, delimiter: char) -> BTreeSet<String> {
+    source
+        .split(delimiter)
+        .enumerate()
+        .filter(|(index, value)| {
+            index % 2 == 1
+                && ["input.", "style.", "compose.", "layout."]
+                    .iter()
+                    .any(|prefix| value.starts_with(prefix))
+                && value
+                    .chars()
+                    .all(|character| character.is_ascii_lowercase() || ".-".contains(character))
+        })
+        .map(|(_, value)| value.to_owned())
+        .collect()
+}
+
+/// Keep the manifests publishable while all externally mutating release actions stay disabled.
+fn release_ready_state_violations(root: &Path) -> io::Result<Vec<String>> {
     let mut violations = Vec::new();
     let workspace = fs::read_to_string(root.join("Cargo.toml"))?;
-    if !workspace.contains("version = \"0.0.0\"") {
-        violations.push("Cargo.toml: development snapshots use version 0.0.0".to_owned());
+    if !workspace.contains("version = \"0.1.0\"") {
+        violations.push("Cargo.toml: the release-ready workspace uses version 0.1.0".to_owned());
     }
 
     for manifest in [
@@ -76,17 +126,20 @@ fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
         "crates/jlreq-conformance/Cargo.toml",
     ] {
         let source = fs::read_to_string(root.join(manifest))?;
-        if !source.lines().any(|line| line.trim() == "publish = false") {
-            violations.push(format!(
-                "{manifest}: development packages set publish = false"
-            ));
+        if source.lines().any(|line| line.trim() == "publish = false") {
+            violations.push(format!("{manifest}: release packages must be publishable"));
+        }
+        for required in ["LICENSE-MIT", "LICENSE-APACHE", "README.md"] {
+            if !source.contains(&format!("\"{required}\"")) {
+                violations.push(format!("{manifest}: package include list omits {required}"));
+            }
         }
     }
 
     let conformance = fs::read_to_string(root.join("crates/jlreq-conformance/Cargo.toml"))?;
-    if !conformance.contains("jlreq = { version = \"0.0.0\", path = \"../jlreq\" }") {
+    if !conformance.contains("jlreq = { version = \"0.1.0\", path = \"../jlreq\" }") {
         violations.push(
-            "crates/jlreq-conformance/Cargo.toml: the local jlreq dependency uses version 0.0.0"
+            "crates/jlreq-conformance/Cargo.toml: jlreq needs version 0.1.0 plus its local path"
                 .to_owned(),
         );
     }
@@ -98,9 +151,8 @@ fn unreleased_state_violations(root: &Path) -> io::Result<Vec<String>> {
             "git_tag_enable = true" | "git_release_enable = true"
         )
     }) {
-        violations.push(
-            "release-plz.toml: development snapshots do not create tags or releases".to_owned(),
-        );
+        violations
+            .push("release-plz.toml: preparation must not create tags or releases".to_owned());
     }
 
     let changelog = fs::read_to_string(root.join("CHANGELOG.md"))?;
@@ -131,6 +183,10 @@ fn tracked_files(root: &Path) -> io::Result<Vec<PathBuf>> {
         .split(|byte| *byte == 0)
         .filter(|path| !path.is_empty())
         .map(|path| root.join(String::from_utf8_lossy(path).as_ref()))
+        // During a rename, the index still names the old path until the change is staged.
+        // A clean candidate commit has no such entries; skipping them keeps the gate useful
+        // while the replacement file is being authored.
+        .filter(|path| path.exists())
         .collect::<Vec<_>>();
     documents.sort();
     Ok(documents)
@@ -226,7 +282,7 @@ fn unresolved_link(root: &Path, document: &Path, target: &str) -> Option<String>
 
 #[cfg(test)]
 mod tests {
-    use super::{Link, local_links, unreleased_state_violations, unresolved_link};
+    use super::{Link, local_links, release_ready_state_violations, unresolved_link};
     use std::path::Path;
 
     #[test]
@@ -260,11 +316,12 @@ mod tests {
     }
 
     #[test]
-    fn the_workspace_is_explicitly_an_unreleased_development_snapshot() -> std::io::Result<()> {
+    fn the_workspace_is_publishable_but_external_release_actions_are_inert() -> std::io::Result<()>
+    {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .expect("workspace root");
-        assert_eq!(unreleased_state_violations(root)?, Vec::<String>::new());
+        assert_eq!(release_ready_state_violations(root)?, Vec::<String>::new());
         Ok(())
     }
 }

@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 
 # jlreq
 
-`jlreq` is a dependency-free `no_std + alloc` Japanese line-composition engine for
+`jlreq` 0.1.0 is a dependency-free `no_std + alloc` Japanese line-composition engine for
 already-shaped text. Callers provide UTF-8 byte ranges, cluster advances, and line-break
-opportunities; jlreq returns logical placements and diagnostics without loading fonts,
-shaping, running bidi, or drawing.
+opportunities; jlreq returns integer logical placements without loading fonts, shaping,
+running bidi, rendering, or discovering UAX #14 breaks.
 
 ```rust
 use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
@@ -22,17 +22,22 @@ let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters
 let paragraph = Paragraph::builder(text, 4_000)
     .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
     .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020());
+let layout = jlreq::compose(&paragraph, &Style::book_2020())
+    .expect("this small paragraph is within the default resource limits");
 
-for line in layout.lines() {
-    for placement in line.clusters() {
-        draw(placement);
-    }
-}
+assert_eq!(layout.lines().len(), 2);
 # Ok::<(), jlreq::InputError>(())
 ```
 
-See the [repository guide](https://github.com/P4suta/jlreq) for the unreleased development
-status, scope, shaping and segmentation integrations, the language-independent conformance
-protocol, and development policy. Generate API documentation locally with
-`cargo doc -p jlreq --open`.
+Composition returns either a complete exact `Layout` or a typed `ComposeError`; it never
+returns a partial layout or silently changes search strategy. `CompositionLimits` bounds
+clusters, break candidates, constructs, tab stops, and exact-search transitions. A
+`Composer` retains scratch allocation across calls and remains reusable after an error.
+
+The packaged, executable examples cover [minimal composition](examples/minimal.rs),
+[Composer reuse and a resource refusal](examples/composer.rs), and
+[vertical placement](examples/vertical.rs). The repository's
+[ICU4X + HarfRust integration test](https://github.com/P4suta/jlreq/blob/main/crates/jlreq-conformance/tests/reference_integration.rs)
+shows the intended segmentation/shaping boundary. See the
+[repository guide](https://github.com/P4suta/jlreq) for scope and protocol details, or run
+`cargo doc -p jlreq --open` for the API reference.

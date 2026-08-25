@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Candidate public names for a possible jlreq 1.0. The workspace remains an unpublished
-# 0.0.0 snapshot, so this is a development control rather than a compatibility promise.
-# Signatures and openness are checked by xtask's structural API pass; this file makes
-# additions and removals deliberate. Implementation modules remain private.
+# Public names released by jlreq 0.1.0. The `api` gate checks this list in both directions;
+# every compatible 0.1.x release must preserve it. The `semver` gate reads the release
+# contract below and compares later 0.1.x candidates with the latest published jlreq.
+# Implementation modules remain private.
+
+baseline_version = "0.1.0"
+compatible_series = "0.1"
 
 [[module]]
 path = "jlreq"
@@ -17,6 +20,9 @@ items = [
   "ClusterPlacement",
   "ClusterRole",
   "Composer",
+  "ComposeError",
+  "CompositionLimits",
+  "CompositionResource",
   "Construct",
   "CoordinateTransform",
   "Diagnostic",

@@ -26,6 +26,10 @@ clreq = "clreq"       # the W3C Requirements for Chinese Text Layout
 # Unicode property values a conformance case names, which are the standard's spelling.
 Nd = "Nd" # General_Category=Nd, the decimal digits
 
+[default.extend-identifiers]
+# The 7-Zip bare-output switch used when auditing Windows release archives.
+ba = "ba"
+
 [files]
 extend-exclude = [
   "target/**",

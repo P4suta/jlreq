@@ -200,7 +200,7 @@ laundered into a requirement on the way to the generated table.
 Three further controls hold that file. `docs/design/api-spine.md` publishes one `Question`
 constant per row and the `api` gate subtracts the two lists in both directions, so a
 constant nobody read the specification for and a row no caller can name each fail the build.
-`docs/api-1.0.toml` maps every one of the twenty-two questions to a dedicated public enum
+`docs/public-api.toml` maps every one of the twenty-two questions to a dedicated public enum
 and records its answer count; the API gate holds those mappings against the derived rows in
 both directions. A `divergent` row is also checked for still diverging: the
 derivation compares the character classes the two renderings of its address cite and refuses
@@ -448,7 +448,7 @@ which heading closes a class name — so a change to one rewrites the meaning of
 rows with the source digest, the specification date and the entry count all unchanged. Every
 derived file therefore states `Reader:` and `Reader SHA-256:`, every generated file states
 `Generator:` and `Generator SHA-256:`, and `data/manifest.toml` records a digest for each of
-those modules. This replaces a `Generator: xtask 0.0.0` line taken from the shared workspace
+those modules. This replaces the former line that recorded only xtask's shared workspace
 version, which moved on a release and never on a change to a generator: churn where
 information was wanted, and the one recorded identifier that could not distinguish two
 generators.

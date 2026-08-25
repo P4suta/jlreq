@@ -36,14 +36,17 @@ bounds, UTF-8 cluster coverage, and unknown fields in addition to the envelope v
 ## Commands
 
 ```text
-jlreq-conformance list [SUITE.ndjson]
-jlreq-conformance validate [SUITE.ndjson|-]
-jlreq-conformance run ENGINE [SUITE.ndjson]
+jlreq-conformance [OPTIONS] list [SUITE.ndjson]
+jlreq-conformance [OPTIONS] validate [SUITE.ndjson|-]
+jlreq-conformance [OPTIONS] run ENGINE [SUITE.ndjson]
 ```
 
 With no suite path, `list` and `run` use the built-in suite. `validate` reads stdin unless a
-path is provided. `run` starts `ENGINE` once, sends every request to its stdin, closes
-stdin, then reads one response per request from stdout.
+path is provided. `run` starts `ENGINE` once and concurrently writes requests, reads
+responses, drains stderr, and watches the child. The defaults are a 30-second no-progress
+timeout, 1 MiB per message, 256 MiB per stream, and 200,000 cases; the corresponding
+`--timeout-seconds`, `--max-message-bytes`, `--max-suite-bytes`, and `--max-cases` options
+may lower or raise them. `--verbose` prints a bounded first JSON difference.
 
 Exit codes are fixed:
 
@@ -53,9 +56,9 @@ Exit codes are fixed:
 | 1 | one or more observable results differed |
 | 2 | invalid JSON/input, protocol mismatch, process error, or malformed response |
 
-Response IDs must occur in request order and match exactly. A missing, extra, or reordered
-response is a protocol error. A valid response whose result differs from `expected` is a
-conformance difference.
+Responses may arrive in any order and are associated by their unique `id`. A duplicate,
+unknown, missing, or extra response is a protocol error. A valid response whose result
+differs from `expected` is a conformance difference.
 
 ## Request model
 
@@ -112,8 +115,10 @@ falsifiable. [`engines/`](../../engines/) holds independent implementations of t
 that make the claim testable. They are not products: each is outside the Cargo workspace,
 [ADR 0022](../adr/0022-unified-public-crate-and-process-conformance.md)'s public-surface
 gates (`purity`, `api`, `direction`, `derive`, `generate`) never see them, and none is a
-`jlreq` dependency in either direction. The first is [`engines/ocaml/`](../../engines/ocaml/README.md);
-`engines/racket/` follows the same shape.
+`jlreq` dependency in either direction. The two are
+[`engines/ocaml/`](../../engines/ocaml/README.md) and
+[`engines/racket/`](../../engines/racket/README.md); both implement the complete built-in
+suite and participate in every release census.
 
 They exist for two reasons:
 
@@ -216,3 +221,7 @@ Editorial guidance and statements no layout result can observe carry explicit
 `editorial` or `non-observable` classifications with evidence; empty cases never count as
 coverage. The bundled sample engine runs the complete protocol-v1 suite as an external process
 using only this contract.
+
+The release census enumerates all ten generator kinds and compares all three engine
+pairings. Its case counts and zero-difference result are generated, never copied into this
+document by hand: see the [current census summary](../generated/conformance-summary.md).

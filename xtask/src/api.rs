@@ -4,9 +4,9 @@
 
 //! The `api` gate.
 //!
-//! Holds the unified candidate surface exactly to `docs/api-1.0.toml`, including the
+//! Holds the released 0.1.0 surface exactly to `docs/public-api.toml`, including the
 //! bidirectional mapping from all 22 specification questions to dedicated Style enums.
-//! The retired pre-1.0 crate surfaces are deliberately outside this gate. Their structural
+//! The retired pre-0.1 crate surfaces are deliberately outside this gate. Their structural
 //! parser remains unit-tested for repository archaeology, but is inactive unless somebody
 //! restores the deleted `docs/api-frozen.toml` control.
 //!
@@ -80,9 +80,9 @@
 //! Visibility is read literally: a type is public when it is declared `pub`, whether or not
 //! a `pub use` re-exports it. That is the outer bound and it fails closed — a `pub` type is
 //! one export line away from an adopter's hands, so holding it to the frozen shape now is
-//! what keeps the shape from being decided by that line. The 1.0 surface governed by the
+//! what keeps the shape from being decided by that line. The 0.1.0 surface governed by the
 //! active path is the sole `jlreq` library and the `jlreq::style` namespace, compared
-//! exactly with `docs/api-1.0.toml`.
+//! exactly with `docs/public-api.toml`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -94,7 +94,7 @@ use crate::shared::{self, Gate};
 /// The `api` gate, as the dispatcher sees it.
 pub(crate) const GATE: Gate = Gate {
     name: "api",
-    purpose: "jlreq matches docs/api-1.0.toml and its 22 typed Style mappings exactly",
+    purpose: "jlreq matches docs/public-api.toml and its 22 typed Style mappings exactly",
     reference: concat!(
         "docs/adr/0012-outcome-and-detail-compatibility.md ",
         "and docs/design/api-spine.md"
@@ -113,7 +113,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     }
     let root = shared::workspace_root()?;
     let mut violations = Vec::new();
-    // Keep the historical parser executable only for repository archaeology: the 1.0
+    // Keep the historical parser executable only for repository archaeology: the 0.1.0
     // workspace does not ship this file, so it is never part of the release contract.
     if root.join("docs").join("api-frozen.toml").is_file() {
         let control = Control::read(&root)?;
@@ -131,16 +131,16 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
         }
     }
     check_policy_space(&root, &mut violations)?;
-    check_one_point_zero_allowlist(&root, &mut violations)?;
-    println!("api: checked the sole public Rust crate against docs/api-1.0.toml");
+    check_zero_one_zero_allowlist(&root, &mut violations)?;
+    println!("api: checked the sole public Rust crate against docs/public-api.toml");
     Ok(violations)
 }
 
 // -------------------------------------------------------------------------------------
-// The jlreq 1.0 allowlist
+// The jlreq 0.1.0 allowlist
 // -------------------------------------------------------------------------------------
 
-/// One public module whose directly exported item names are frozen for 1.0.
+/// One public module whose directly exported item names are frozen for 0.1.0.
 #[derive(Debug)]
 struct AllowedModule {
     /// `jlreq` for the crate root, or a public module path such as `jlreq::style`.
@@ -160,26 +160,26 @@ struct StyleChoiceMapping {
     count: usize,
 }
 
-/// Read the explicit 1.0 surface and reject missing, extra, or duplicated module rows.
+/// Read the explicit 0.1.0 surface and reject missing, extra, or duplicated module rows.
 fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
-    let path = root.join("docs").join("api-1.0.toml");
+    let path = root.join("docs").join("public-api.toml");
     let text = fs::read_to_string(path)?;
     let entries = entries_of(&text);
     let mut modules = Vec::new();
     let mut paths = BTreeSet::new();
     for entry in entries.iter().filter(|entry| entry.table == "module") {
         let module_path = entry.single("path").ok_or_else(|| {
-            malformed("a `[[module]]` entry in docs/api-1.0.toml has no path".to_owned())
+            malformed("a `[[module]]` entry in docs/public-api.toml has no path".to_owned())
         })?;
         let items: BTreeSet<String> = entry.list("items").iter().cloned().collect();
         if items.is_empty() {
             return Err(malformed(format!(
-                "the `[[module]]` entry for `{module_path}` in docs/api-1.0.toml has no items"
+                "the `[[module]]` entry for `{module_path}` in docs/public-api.toml has no items"
             )));
         }
         if !paths.insert(module_path.to_owned()) {
             return Err(malformed(format!(
-                "docs/api-1.0.toml lists the module `{module_path}` more than once"
+                "docs/public-api.toml lists the module `{module_path}` more than once"
             )));
         }
         modules.push(AllowedModule {
@@ -189,7 +189,7 @@ fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
     }
     if modules.is_empty() {
         return Err(malformed(
-            "docs/api-1.0.toml has no `[[module]]` entries".to_owned(),
+            "docs/public-api.toml has no `[[module]]` entries".to_owned(),
         ));
     }
     Ok(modules)
@@ -197,7 +197,7 @@ fn allowed_modules(root: &Path) -> io::Result<Vec<AllowedModule>> {
 
 /// Read the complete mapping from specification questions to typed public enums.
 fn style_choice_mappings(root: &Path) -> io::Result<Vec<StyleChoiceMapping>> {
-    let path = root.join("docs").join("api-1.0.toml");
+    let path = root.join("docs").join("public-api.toml");
     let text = fs::read_to_string(path)?;
     let entries = entries_of(&text);
     let mut mappings = Vec::new();
@@ -225,7 +225,7 @@ fn style_choice_mappings(root: &Path) -> io::Result<Vec<StyleChoiceMapping>> {
     }
     if mappings.is_empty() {
         return Err(malformed(
-            "docs/api-1.0.toml has no `[[style_choice]]` entries".to_owned(),
+            "docs/public-api.toml has no `[[style_choice]]` entries".to_owned(),
         ));
     }
     Ok(mappings)
@@ -243,19 +243,19 @@ fn check_style_choice_mappings(
     for mapping in mappings {
         if !seen_questions.insert(&mapping.question) {
             violations.push(format!(
-                "docs/api-1.0.toml maps `{}` more than once",
+                "docs/public-api.toml maps `{}` more than once",
                 mapping.question
             ));
         }
         if !seen_types.insert(&mapping.rust_type) {
             violations.push(format!(
-                "docs/api-1.0.toml maps more than one question to `{}`",
+                "docs/public-api.toml maps more than one question to `{}`",
                 mapping.rust_type
             ));
         }
         if !style_items.contains(&mapping.rust_type) {
             violations.push(format!(
-                "docs/api-1.0.toml maps `{}` to `{}`, which jlreq::style does not export",
+                "docs/public-api.toml maps `{}` to `{}`, which jlreq::style does not export",
                 mapping.question, mapping.rust_type
             ));
         }
@@ -264,7 +264,7 @@ fn check_style_choice_mappings(
             .find(|question| question.path == mapping.question)
         else {
             violations.push(format!(
-                "docs/api-1.0.toml maps `{}`, which {POLICY_SPACE} does not record",
+                "docs/public-api.toml maps `{}`, which {POLICY_SPACE} does not record",
                 mapping.question
             ));
             continue;
@@ -283,7 +283,7 @@ fn check_style_choice_mappings(
     for question in derived {
         if !seen_questions.contains(&question.path) {
             violations.push(format!(
-                "{POLICY_SPACE} records `{}`, but docs/api-1.0.toml maps it to no typed enum",
+                "{POLICY_SPACE} records `{}`, but docs/public-api.toml maps it to no typed enum",
                 question.path
             ));
         }
@@ -303,21 +303,21 @@ fn check_allowed_items(allowed: &AllowedModule, source: &str) -> Vec<String> {
     let mut violations = Vec::new();
     for missing in allowed.items.difference(&actual) {
         violations.push(format!(
-            "docs/api-1.0.toml allows `{path}::{missing}`, but that item is not exported",
+            "docs/public-api.toml allows `{path}::{missing}`, but that item is not exported",
             path = allowed.path
         ));
     }
     for extra in actual.difference(&allowed.items) {
         violations.push(format!(
-            "`{path}::{extra}` is exported but absent from docs/api-1.0.toml",
+            "`{path}::{extra}` is exported but absent from docs/public-api.toml",
             path = allowed.path
         ));
     }
     violations
 }
 
-/// Hold the only public Rust crate to the root and style-module names frozen for 1.0.
-fn check_one_point_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
+/// Hold the only public Rust crate to the root and style-module names frozen for 0.1.0.
+fn check_zero_one_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
     let modules = allowed_modules(root)?;
     for module in &modules {
         let relative = match module.path.as_str() {
@@ -330,7 +330,7 @@ fn check_one_point_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> 
             },
             path => {
                 return Err(malformed(format!(
-                    "docs/api-1.0.toml names `{path}`; the only public Rust crate is `jlreq`"
+                    "docs/public-api.toml names `{path}`; the only public Rust crate is `jlreq`"
                 )));
             },
         };
@@ -339,7 +339,7 @@ fn check_one_point_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> 
         violations.extend(check_allowed_items(module, &source));
     }
     println!(
-        "api: docs/api-1.0.toml freezes {items} item name(s) across {modules} public module(s).",
+        "api: docs/public-api.toml freezes {items} item name(s) across {modules} public module(s).",
         items = modules
             .iter()
             .map(|module| module.items.len())
@@ -832,7 +832,7 @@ impl Surface {
         Ok(Self { members })
     }
 
-    /// Published members plus the blocked jlreq release candidate.
+    /// Published members in the jlreq release line.
     fn published(&self) -> impl Iterator<Item = &Member> {
         self.members
             .iter()
@@ -2603,9 +2603,9 @@ fn report(control: &Control, surface: &Surface) {
 /// The derived policy space those constants are generated from.
 const POLICY_SPACE: &str = "spec/derived/questions.tsv";
 
-/// Hold the derived policy space equal to the dedicated typed enums 1.0 publishes.
+/// Hold the derived policy space equal to the dedicated typed enums 0.1.0 publishes.
 ///
-/// `docs/api-1.0.toml` maps every derived question path to one public enum and its closed
+/// `docs/public-api.toml` maps every derived question path to one public enum and its closed
 /// choice count. The subtraction runs in both directions, so an unmapped specification row,
 /// an invented public setting, or a changed answer count is a failure.
 ///
@@ -2624,7 +2624,7 @@ fn check_policy_space(root: &Path, violations: &mut Vec<String>) -> io::Result<(
         .iter()
         .find(|module| module.path == "jlreq::style")
         .map(|module| &module.items)
-        .ok_or_else(|| malformed("docs/api-1.0.toml has no `jlreq::style` module".to_owned()))?;
+        .ok_or_else(|| malformed("docs/public-api.toml has no `jlreq::style` module".to_owned()))?;
     let derived = derived_questions(root)?.ok_or_else(|| {
         malformed(format!(
             "{POLICY_SPACE} does not exist, so the typed Style mapping cannot be checked"
@@ -2636,7 +2636,7 @@ fn check_policy_space(root: &Path, violations: &mut Vec<String>) -> io::Result<(
         style_items,
     ));
     println!(
-        "api: docs/api-1.0.toml maps {mappings} typed Style choice(s) onto {rows} generated JLReq question(s).",
+        "api: docs/public-api.toml maps {mappings} typed Style choice(s) onto {rows} generated JLReq question(s).",
         mappings = mappings.len(),
         rows = derived.len()
     );
@@ -2776,7 +2776,7 @@ mod tests {
     }
 
     #[test]
-    fn one_point_zero_allowlist_is_exact_in_both_directions() {
+    fn zero_one_zero_allowlist_is_exact_in_both_directions() {
         let allowed = AllowedModule {
             path: "jlreq".to_owned(),
             items: ["Style".to_owned(), "compose".to_owned()]
@@ -2882,7 +2882,7 @@ mod tests {
     }
 
     #[test]
-    fn the_jlreq_release_candidate_is_checked_before_publication() {
+    fn the_jlreq_release_surface_is_checked_for_compatibility() {
         let surface = Surface {
             members: vec![
                 internal_member("jlreq", "pub struct PublicApi;\n"),
@@ -3422,7 +3422,7 @@ mod tests {
 
     #[test]
     fn the_repository_itself_holds_every_check() {
-        let violations = super::run(&[]).expect("the 1.0 API gate runs");
+        let violations = super::run(&[]).expect("the 0.1.0 API gate runs");
         assert!(violations.is_empty(), "{violations:#?}");
     }
 }

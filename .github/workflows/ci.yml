@@ -164,7 +164,7 @@ jobs:
       - run: just wasm
 
   fuzz:
-    name: fuzz (public API invariants)
+    name: fuzz (validation, composition, protocol)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -179,6 +179,21 @@ jobs:
         with:
           workspaces: fuzz -> target
       - run: just fuzz-check-linux-ci
+
+  coverage:
+    name: coverage (handwritten products)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-llvm-cov@0.9.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: just coverage
 
   purity:
     name: purity (no std, I/O, font, or float in the core)
@@ -216,6 +231,18 @@ jobs:
       # enforcement path that gates a merge. A job that runs the aggregate cannot drift from
       # it.
       - run: just design
+
+  semver:
+    name: semver compatibility (0.1.x)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-semver-checks@0.50.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: just semver
 
   conform-ocaml:
     # The independent OCaml reference engine (engines/ocaml/README.md) answering the
@@ -361,13 +388,15 @@ jobs:
       - run: just shear
 
   actionlint:
-    name: actionlint + zizmor (workflow self-check)
+    name: shellcheck + actionlint + zizmor (automation self-check)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
         with:
-          tool: just@1.50.0,zizmor@1.28.0
+          tool: just@1.50.0,shellcheck@0.11.0,zizmor@1.28.0
+      - name: shellcheck
+        run: just shellcheck
       - name: actionlint
         env:
           ACTIONLINT_VERSION: 1.7.12
@@ -400,8 +429,10 @@ jobs:
       - no_std
       - wasm
       - fuzz
+      - coverage
       - purity
       - design
+      - semver
       - conform-ocaml
       - conform-racket
       - doc

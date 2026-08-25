@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Scheduled fuzz
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "19 2 * * 6"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-fuzz
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # nightly
+        with:
+          toolchain: nightly
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-fuzz@0.13.2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: fuzz -> target
+      - run: just fuzz-scheduled

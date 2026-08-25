@@ -298,3 +298,43 @@ impl Layout {
         &self.diagnostics
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attachment_and_diagnostic_accessors_preserve_all_fields() {
+        let attachment = Attachment {
+            construct: 7,
+            range: 3..9,
+            inline: 11,
+            block: -13,
+            advance: 17,
+            size: Size::new(19, 23).expect("positive size"),
+            writing_mode: WritingMode::VerticalRl,
+            transform: CoordinateTransform::TateChuYoko,
+            symbol: Some('・'),
+        };
+        assert_eq!(attachment.construct(), 7);
+        assert_eq!(attachment.range(), 3..9);
+        assert_eq!(attachment.inline(), 11);
+        assert_eq!(attachment.block(), -13);
+        assert_eq!(attachment.advance(), 17);
+        assert_eq!(attachment.size(), Size::new(19, 23).expect("positive size"));
+        assert_eq!(attachment.writing_mode(), WritingMode::VerticalRl);
+        assert_eq!(attachment.transform(), CoordinateTransform::TateChuYoko);
+        assert_eq!(attachment.symbol(), Some('・'));
+
+        let diagnostic = Diagnostic {
+            code: "layout.test",
+            severity: Severity::Warning,
+            range: Some(5..8),
+            jlreq: "3.1.1",
+        };
+        assert_eq!(diagnostic.code(), "layout.test");
+        assert_eq!(diagnostic.severity(), Severity::Warning);
+        assert_eq!(diagnostic.range(), Some(5..8));
+        assert_eq!(diagnostic.jlreq(), "3.1.1");
+    }
+}

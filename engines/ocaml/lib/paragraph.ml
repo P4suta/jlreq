@@ -66,6 +66,34 @@ type t = {
 let is_mandatory (opportunity : break_opportunity) : bool = opportunity.kind = Mandatory
 let is_discretionary (opportunity : break_opportunity) : bool = opportunity.kind = Discretionary
 
+(** Whether a shaped cluster is one of §3.6.3's signs of the outer line.
+
+    Warichu and furawake text is set on sublines beside the outer line. Tate-chu-yoko
+    is likewise off the outer inline axis only in vertical composition; in horizontal
+    composition its text remains ordinary inline text. The containment test includes a
+    construct's first cluster. *)
+let line_tab_in (text : Model.shaped_text) (constructs : Construct.t array)
+    (writing_mode : Model.writing_mode) (ordinal : int) : bool =
+  if ordinal < 0 || ordinal >= Array.length text.Model.clusters then false
+  else
+    let cluster = text.Model.clusters.(ordinal) in
+    String.equal (Model.cluster_piece text cluster) "\t"
+    && not
+         (Array.exists
+            (fun (construct : Construct.t) ->
+              let stacked =
+                match construct.Construct.kind with
+                | Construct.Warichu | Construct.Furawake _ -> true
+                | Construct.Tate_chu_yoko -> writing_mode = Model.Vertical_rl
+                | _ -> false
+              in
+              let first, last = construct.Construct.range in
+              stacked && first <= cluster.Model.first && cluster.Model.last <= last)
+            constructs)
+
+let is_line_tab (paragraph : t) (ordinal : int) : bool =
+  line_tab_in paragraph.text paragraph.constructs paragraph.writing_mode ordinal
+
 (** The ordinal of the first cluster whose range starts at or after [offset].
 
     Lines are cut at byte offsets and placed as cluster runs, so this is the one
@@ -245,37 +273,44 @@ let scalars_across (source : string) (offset : int) : int option * int option =
     both. A warichu splits into two sublines (§3.4.2) and a furawake into its declared
     columns (§3.7.2), so a break inside one of those is exactly what the caller means
     by it. *)
-let check_indivisible_constructs (text : Model.shaped_text) (breaks : break_opportunity list)
-    (constructs : Construct.t array) : unit =
-  let refuse ?(unless = fun _ -> false) ordinal (first, last) =
-    List.iter
-      (fun opportunity ->
-        if
-          first < opportunity.offset
-          && opportunity.offset < last
-          && not (unless opportunity.offset)
-        then
-          fail
-            "a break is at byte %d, inside construct %d, which covers bytes %d..%d and is \
-             indivisible"
-            opportunity.offset ordinal first last)
-      breaks
-  in
+let construct_blocks_break (text : Model.shaped_text) (offset : int)
+    (construct : Construct.t) : bool =
   let at_a_math_token offset =
     let before, after = scalars_across text.Model.source offset in
     let token = function Some scalar -> Construct.is_math_token scalar | None -> false in
     token before || token after
   in
+  let inside (first, last) = first < offset && offset < last in
+  match construct.Construct.kind with
+  | Construct.Tate_chu_yoko | Construct.Jidori _ | Construct.Reference_mark _
+  | Construct.Script _ ->
+    inside construct.Construct.range
+  | Construct.Formula -> inside construct.Construct.range && not (at_a_math_token offset)
+  | Construct.Ruby { runs; _ } ->
+    List.exists (fun (run : Construct.ruby_run) -> inside run.Construct.run_base) runs
+  | Construct.Warichu | Construct.Emphasis_dots _ | Construct.Furawake _ -> false
+
+(** Whether the same invariant that rejects a caller-supplied break also blocks an
+    automatically supplied tab cut. Keeping the answer here prevents transport into the
+    search from inventing a boundary the validated paragraph itself would reject. *)
+let break_blocked (paragraph : t) (offset : int) : bool =
+  Array.exists
+    (construct_blocks_break paragraph.text offset)
+    paragraph.constructs
+
+let check_indivisible_constructs (text : Model.shaped_text) (breaks : break_opportunity list)
+    (constructs : Construct.t array) : unit =
   Array.iteri
     (fun ordinal (construct : Construct.t) ->
-      match construct.Construct.kind with
-      | Construct.Tate_chu_yoko | Construct.Jidori _ | Construct.Reference_mark _
-      | Construct.Script _ ->
-        refuse ordinal construct.Construct.range
-      | Construct.Formula -> refuse ~unless:at_a_math_token ordinal construct.Construct.range
-      | Construct.Ruby { runs; _ } ->
-        List.iter (fun (run : Construct.ruby_run) -> refuse ordinal run.Construct.run_base) runs
-      | Construct.Warichu | Construct.Emphasis_dots _ | Construct.Furawake _ -> ())
+      List.iter
+        (fun opportunity ->
+          if construct_blocks_break text opportunity.offset construct then
+            let first, last = construct.Construct.range in
+            fail
+              "a break is at byte %d, inside construct %d, which covers bytes %d..%d and is \
+               indivisible"
+              opportunity.offset ordinal first last)
+        breaks)
     constructs
 
 (** §3.7.2's columns, as a shape the request has to have.
@@ -319,6 +354,7 @@ let check_furawake_splits (breaks : break_opportunity list) (constructs : Constr
     mandatory breaks rather than over the whole paragraph, and a surplus of stops
     is not an error -- a stop the line never reaches is simply never used. *)
 let check_tab_stop_supply (text : Model.shaped_text) (breaks : break_opportunity list)
+    (constructs : Construct.t array) (writing_mode : Model.writing_mode)
     (tab_stops : tab_stop list) : unit =
   let supply = List.length tab_stops in
   let boundaries =
@@ -328,8 +364,8 @@ let check_tab_stop_supply (text : Model.shaped_text) (breaks : break_opportunity
          breaks)
   in
   let signs = ref 0 in
-  Array.iter
-    (fun (cluster : Model.cluster) ->
+  Array.iteri
+    (fun ordinal (cluster : Model.cluster) ->
       let rec reach () =
         match !boundaries with
         | offset :: rest when offset <= cluster.Model.first ->
@@ -339,7 +375,7 @@ let check_tab_stop_supply (text : Model.shaped_text) (breaks : break_opportunity
         | _ -> ()
       in
       reach ();
-      if String.equal (Model.cluster_piece text cluster) "\t" then begin
+      if line_tab_in text constructs writing_mode ordinal then begin
         incr signs;
         if !signs > supply then
           fail "a line holds %d tab sign(s) and the request states %d tab stop(s)" !signs supply
@@ -408,13 +444,13 @@ let build ~(text : Model.shaped_text) ~(line_extent : int)
             fail "two tab stops are stated at %d" stop.position)
         tab_stops)
     tab_stops;
-  check_tab_stop_supply text breaks tab_stops;
+  let constructs = Array.of_list constructs in
+  check_tab_stop_supply text breaks constructs writing_mode tab_stops;
   (* §3.6.3 walks the stops "in order", and the order of positions along the line
      is the only order a line knows: the caller's listing order is how the stops
      were written down, not where they are. Sorting here means the search and the
      placement never have to ask. *)
   let tab_stops = List.sort (fun left right -> compare left.position right.position) tab_stops in
-  let constructs = Array.of_list constructs in
   check_constructs text constructs;
   check_indivisible_constructs text breaks constructs;
   check_furawake_splits breaks constructs;

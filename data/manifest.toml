@@ -11,7 +11,7 @@
 
 [[file]]
 path = "ROADMAP.md"
-sha256 = "a6b10efed08e330003e172ee7fd9fcf1a8b3b81e5df62c731833df3e685020b6"
+sha256 = "8d2b11a5e4ae31c948c625a7f4c4828dbac3c68294f727fa480cc3edeff499e4"
 
 [[file]]
 path = "crates/jlreq-conformance/protocol.schema.json"
@@ -23,51 +23,51 @@ sha256 = "8f8f70b5f193a140994c8ca42bde5e46a445f55465b6b098012f7ffd0ccbadcf"
 
 [[file]]
 path = "crates/jlreq/src/generated/appendix_a.rs"
-sha256 = "a15fbbc79376857b1fa9ee4dab2b952917d19da3b68e49cb185a962e8180cef7"
+sha256 = "00761c3eb613d272f3713e9c6b71383540a273021971a2c22b615eed23f8959a"
 
 [[file]]
 path = "crates/jlreq/src/generated/folding.rs"
-sha256 = "e9252275a61aa1173010453f98ba50b2fa73a4e207e6a7cb75c602fe4ee07b7f"
+sha256 = "11ed0a1852127cadc94ca98efcc6c51a8daedfb33e10033b07abae6353cc5fe0"
 
 [[file]]
 path = "crates/jlreq/src/generated/ideograph.rs"
-sha256 = "d373eb12d21a49e0e8f1486deb6393f6142299652cdb17bd5e47ffb153b57536"
+sha256 = "13e3bb408d7148add03d2348c1360f33cdd71a462f0f4291ad8e5f38af41aef8"
 
 [[file]]
 path = "crates/jlreq/src/generated/script.rs"
-sha256 = "4f52398632c2e28ac508726c2282f24109ddd19d72d048d4961e46cc5d995a72"
+sha256 = "ad15e49f34640d3f949ca7e2a3a3f64315ce68266102759051eb4fe12cace6af"
 
 [[file]]
 path = "crates/jlreq/src/generated/table1.rs"
-sha256 = "5812f8df8d1fb21f644bc6c5455be33df48e79188a452ec98c867d91289aa8b9"
+sha256 = "6de73a04480c3ee32ee59d7d23128aa82783dc0ccbde8559f3be17b77482105c"
 
 [[file]]
 path = "crates/jlreq/src/generated/table2.rs"
-sha256 = "96019ce3b0e56573d3469ab9add361c5e10c74efe4ccf3546fc72ec38d641e23"
+sha256 = "4bb486fd05ae95896b728d26f1b14774a531fd83f7fec05e571530914d59a751"
 
 [[file]]
 path = "crates/jlreq/src/generated/table3.rs"
-sha256 = "192b43ccf7eb5a4f14018927c308c4b564531754933218887804915dc3ae4445"
+sha256 = "9427c738b22ee41090a52b9d2d3f0f1c82c1b072bc26660940ede1d394648176"
 
 [[file]]
 path = "crates/jlreq/src/generated/table4.rs"
-sha256 = "800b3eed5d30e8791c43b9380f40d924e14c214cc194fb1cb75ef563451050a3"
+sha256 = "2cc7292a8b5bbeeaa04dc693c02e68012230f7c0aee10fdd3824f0f68f8bbd47"
 
 [[file]]
 path = "crates/jlreq/src/generated/table5.rs"
-sha256 = "04807f9ab3c637200a27b0fecd52e1c9917ce6f26ad429665f7b8f4aa2f2d9ff"
+sha256 = "ee099abbea8b724d9ffbb2fc5dfed43fa09fac21851d1cf67ff7ca5ce91ba3bb"
 
 [[file]]
 path = "crates/jlreq/src/generated/table6.rs"
-sha256 = "387afbffa61adb57be7d92bdc58d1e99a5b6596d606f498ae40dc5fa4c8c2092"
-
-[[file]]
-path = "docs/api-1.0.toml"
-sha256 = "3b4cd6e0d110ff44523f16d9aaa0074330f1b8f5234b9423264487c580d66c71"
+sha256 = "0eeebc30219709e4cdc8d78f36981e0df9e90fe9097550f1ef636aec5fd4d6ea"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"
 sha256 = "e75e3651a359f3886308b0a01867d18538d4e62423498f405c9b5e1e8c204221"
+
+[[file]]
+path = "docs/public-api.toml"
+sha256 = "419582158ccc214d12a6f0258a75ed5eb78b905abfc0f0202026fc6f294a0517"
 
 [[file]]
 path = "spec/PROVENANCE.toml"
@@ -183,7 +183,7 @@ sha256 = "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
 
 [[file]]
 path = "xtask/src/api.rs"
-sha256 = "04ea79a347b720cfd3c0aca0dcf98cfd5c450bb335266a707cdbe7c821a11eae"
+sha256 = "d2d3c985110fd526be7500fbfa75517b7ff0e986896faf0921f326c0cc5b442d"
 
 [[file]]
 path = "xtask/src/attest.rs"
@@ -211,7 +211,7 @@ sha256 = "b4811f9b3fd18724d82f43c8a1ec82252e865c263c75872dd8a6b6ec9615747e"
 
 [[file]]
 path = "xtask/src/generate.rs"
-sha256 = "0a179849cca8b659685aa55b80144fdb0c75faf64adfddce76fd1b9daab7595a"
+sha256 = "81cc82c92a695f636510c901ace253cdd39a32bbc515312c945be8d7985064b3"
 
 [[file]]
 path = "xtask/src/inventory.rs"

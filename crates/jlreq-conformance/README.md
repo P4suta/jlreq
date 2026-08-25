@@ -12,15 +12,19 @@ every message identifies `jlreq.conformance/1` and
 `jlreq-2020-08-11+unicode-17.0.0`.
 
 ```text
-jlreq-conformance list [SUITE.ndjson]
-jlreq-conformance validate [SUITE.ndjson|-]
-jlreq-conformance run ENGINE [SUITE.ndjson]
+jlreq-conformance [OPTIONS] list [SUITE.ndjson]
+jlreq-conformance [OPTIONS] validate [SUITE.ndjson|-]
+jlreq-conformance [OPTIONS] run ENGINE [SUITE.ndjson]
 ```
 
 Exit status 0 means conformance or valid input, 1 means an observable mismatch, and 2 means
-an input, protocol, or engine error. The package includes `protocol.schema.json`, the
-built-in suite, and `jlreq-sample-engine`; it intentionally has no library target.
+an input, protocol, or engine error. The runner streams requests and responses concurrently,
+matches responses by unique `id` in any order, enforces bounded messages/suites/case counts,
+and kills an engine after a configurable period without communication. Run `--help` for
+`--verbose`, timeout, and size-limit controls.
+
+The package includes `protocol.schema.json`, the built-in suite, and
+`jlreq-sample-engine`; it intentionally has no library target.
 
 See the [protocol design](https://github.com/P4suta/jlreq/blob/main/docs/design/conformance.md)
-and [main repository guide](https://github.com/P4suta/jlreq) for the unreleased candidate
-contract.
+and [main repository guide](https://github.com/P4suta/jlreq) for the 0.1.0 contract.

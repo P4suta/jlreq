@@ -1,43 +1,67 @@
 # SPDX-FileCopyrightText: 2026 jlreq contributors
-#
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Mutation testing (cargo-mutants) for the sole public Rust library. xtask is tooling and
-# jlreq-conformance is tested through its process protocol.
-#
-# This is a scheduled report rather than a required gate: a complete mutation run is slow,
-# and surviving mutants are evidence for the next independently-authored test rather than a
-# reason to hide the report behind a permanently red workflow. The command outcome and full
-# report remain visible in the job summary and artifact.
-#
-# Each matrix leg runs `just mutants <crate>`, scoped to one package the way `-p` scopes
-# every other per-crate gate in this repository (see `just msrv`).
+# Pull requests smoke-test changed Rust code. Weekly/manual runs cover both handwritten
+# products in four shards. Generated tables and five exact, proof-backed equivalent mutants
+# are the only configured exclusions and are pinned in docs/mutation-ledger.toml; a missed
+# or timed-out mutant fails the workflow.
 name: Mutants
 
 on:
+  pull_request:
+    paths:
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "Justfile"
+      - ".cargo/mutants.toml"
+      - "docs/mutation-ledger.toml"
+      - "scripts/verify-mutation-ledger.sh"
+      - ".github/workflows/mutants.yml"
   workflow_dispatch:
   schedule:
-    # Weekly (Thu 04:38 UTC, offset from codeql.yml's Mon 03:27 UTC) so the baseline tracks
-    # the test suite even between direct changes to the public library.
     - cron: "38 4 * * 4"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  mutants:
-    name: mutants (${{ matrix.crate }})
+  smoke:
+    name: changed-surface smoke
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # The full library has a broad mutation surface; keep generous runner headroom.
-    timeout-minutes: 60
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: just mutants-smoke '${{ github.event.pull_request.base.sha }}'
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutants-smoke
+          path: mutants.out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  full:
+    name: full (${{ matrix.crate }}, ${{ matrix.shard }})
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        crate: [jlreq]
+        crate: [jlreq, jlreq-conformance]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
@@ -45,28 +69,11 @@ jobs:
         with:
           tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      # Deliberately no `RUSTFLAGS: -D warnings` (unlike clippy/test/design/etc. in
-      # ci.yml): that env var, not the workspace lint levels themselves, is what turns a
-      # warning into a build failure elsewhere in this repo, and mutated code that merely
-      # provokes a new lint should still build and run against the tests here. See the
-      # Justfile's `mutants` recipe for the fuller version of this reasoning.
-      - name: cargo mutants
-        id: cargo_mutants
-        continue-on-error: true
-        run: just mutants ${{ matrix.crate }}
-      - name: summarize mutation result
-        if: always()
-        env:
-          MUTANTS_OUTCOME: ${{ steps.cargo_mutants.outcome }}
-        run: |-
-          echo "## cargo-mutants: $MUTANTS_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$MUTANTS_OUTCOME" != "success" ]; then
-            echo "Surviving mutants or a runner error were reported; inspect the artifact." >> "$GITHUB_STEP_SUMMARY"
-          fi
-      - name: upload mutants.out
-        if: always()
+      - run: just mutants '${{ matrix.crate }}' '${{ matrix.shard }}/4'
+      - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: mutants.out-${{ matrix.crate }}
+          name: mutants-${{ matrix.crate }}-${{ matrix.shard }}-of-4
           path: mutants.out/
+          if-no-files-found: error
           retention-days: 14

@@ -34,6 +34,10 @@ const LAYERS: &[Layer] = &[
         may_depend_on: &[],
     },
     Layer {
+        name: "limits",
+        may_depend_on: &[],
+    },
+    Layer {
         name: "generated",
         may_depend_on: &["spec"],
     },
@@ -63,6 +67,7 @@ const LAYERS: &[Layer] = &[
             "construct",
             "generated",
             "layout",
+            "limits",
             "model",
             "normalize",
             "paragraph",
@@ -76,6 +81,7 @@ const LAYERS: &[Layer] = &[
             "construct",
             "generated",
             "layout",
+            "limits",
             "model",
             "normalize",
             "paragraph",

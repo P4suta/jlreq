@@ -1124,6 +1124,12 @@ let run () =
     ~actual:
       (built ~extent:2500 ~constructs:[ Jidori (0, 2, 2) ] ~tab_stops:[ at 1000 ]
          [ letter "A"; letter "A"; tab; letter "B" ]);
+  let emphasis_tab =
+    compose_built ~extent:3000 ~constructs:[ Emphasis (0, 3, dot) ]
+      ~tab_stops:[ at 500 ] [ p opening_bracket; p "\t"; p opening_bracket ]
+  in
+  Check.equal_int "an exhausted tab may cut between two emphasis complexes" ~expected:2
+    ~actual:(List.length emphasis_tab.Layout.lines);
   (* A warichu's sublines are not the line, so a sign on one takes no stop at all --
      and the cursor a stop is measured against steps once past the whole block, not
      once per character inside it: the outer sign below stands at 1000, the block's
@@ -1135,12 +1141,12 @@ let run () =
     ~expected:"(1000/1000) [0:-500+500 500:-500+500 0:500+500] []"
     ~actual:
       (built ~extent:4000 ~constructs:[ Warichu (0, 3) ] ~breaks:[ (2, Paragraph.Allowed) ]
-         ~tab_stops:[ at 2000 ] [ letter "A"; tab; letter "B" ]);
+         ~tab_stops:[] [ letter "A"; tab; letter "B" ]);
   Check.equal_string "and the stop past the block is measured from the block's own width"
     ~expected:"(1700/1000) [0:-500+500 500:-500+500 0:500+500 1000:0+200 1200:0+500] []"
     ~actual:
       (built ~extent:4000 ~constructs:[ Warichu (0, 3) ] ~breaks:[ (2, Paragraph.Allowed) ]
-         ~tab_stops:[ at 1200; at 3000 ] [ letter "A"; tab; letter "B"; tab; letter "C" ]);
+         ~tab_stops:[ at 1200 ] [ letter "A"; tab; letter "B"; tab; letter "C" ]);
 
   (* §3.6.1: "if there is more than one tab sign, it is necessary to set the same
      numbers of tab positions and tab types as the number of tab signs". A stretch

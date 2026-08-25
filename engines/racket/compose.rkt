@@ -757,11 +757,10 @@
              ;; §3.6.3's fourth case sends the sign and what follows it to the next
              ;; line, and there are two places it has nothing to say to. A sign at
              ;; the line head has no earlier boundary to be sent back from, and a
-             ;; sign inside a construct the caller declared cannot end the line
-             ;; there -- the construct is indivisible and the boundary is not one
-             ;; (docs/decisions/construct-break-refusal.md). Both keep their line
-             ;; and take one em of the paragraph's own size.
-             [(or (zero? offset) (inside-construct? para (vector-ref items (+ first offset))))
+             ;; sign at a boundary the paragraph's construct invariants block cannot
+             ;; end the line there (docs/decisions/construct-break-refusal.md). Both
+             ;; keep their line and take one em of the paragraph's own size.
+             [(or (zero? offset) (tab-cut-blocked? para items (+ first offset)))
               (vector-set! out offset (extent-inline (paragraph-size para)))]
              [else (set! cut #t)]))
          (walk (add1 offset)
@@ -769,11 +768,27 @@
                      (vector-ref fixed (add1 offset))))))
      (values out cut)]))
 
-;; Whether the item stands strictly inside a construct the caller declared.
-(define (inside-construct? para one)
+;; Whether the paragraph's ordinary construct-break invariant blocks an automatic
+;; §3.6.3 cut before item `index`. Emphasis dots leave each character boundary open;
+;; ruby leaves only run boundaries open; formulae leave their named math-token
+;; boundaries open. Warichu and furawake are listed for completeness, although a tab
+;; inside either is not a sign of the outer line and never reaches this predicate.
+(define (tab-cut-blocked? para items index)
+  (define offset (item-start (vector-ref items index)))
+  (define (inside? start end) (< start offset end))
+  (define math-boundary?
+    (or (and (positive? index) (math-class? (item-class (vector-ref items (sub1 index)))))
+        (math-class? (item-class (vector-ref items index)))))
   (for/or ([each (in-list (paragraph-constructs para))])
-    (and (> (item-start one) (construct-start each))
-         (< (item-end one) (construct-end each)))))
+    (case (construct-kind each)
+      [(emphasis-dots warichu furawake) #f]
+      [(formula)
+       (and (inside? (construct-start each) (construct-end each)) (not math-boundary?))]
+      [(ruby)
+       (for/or ([found (in-list (cdr (assq 'runs (construct-payload each))))])
+         (define base (hash-ref found 'base))
+         (inside? (car base) (cadr base)))]
+      [else (inside? (construct-start each) (construct-end each))])))
 
 ;; Whether the item is set inside a structure that stacks its text off the line: a
 ;; tate-chu-yoko run, which runs across the line, or a warichu's and a furawake's
@@ -784,12 +799,6 @@
 ;; A structure's FIRST character is set in the structure exactly as the rest are, so
 ;; it is in it and not beside it; a construct that ends where the item begins is
 ;; behind the item and does not contain it at all.
-(define (in-stacked-structure? para one)
-  (for/or ([each (in-list (paragraph-constructs para))])
-    (and (memq (construct-kind each) '(tate-chu-yoko warichu furawake))
-         (>= (item-start one) (construct-start each))
-         (<= (item-end one) (construct-end each)))))
-
 ;; Whether the item is a tab sign §3.6.3 has anything to say about.
 ;;
 ;; §3.6.3 corresponds the signs of a LINE with the stops of that line, and both
@@ -802,7 +811,7 @@
 ;; position each, so a stop reaches a sign inside one of those like any other
 ;; character (docs/decisions/tab-line-correspondence.md).
 (define (line-sign? para one)
-  (and (tab-sign? para one) (not (in-stacked-structure? para one))))
+  (line-tab-sign? para one))
 
 ;; The string one sign puts at its stop: what stands between it and the next sign of
 ;; the line, or the line end, as `(width . text)` pairs. A sign the line does not
@@ -1453,7 +1462,8 @@
                        ;; that is not a sign of this line offers no such boundary:
                        ;; it never runs any stops out, and there is no line boundary
                        ;; inside the one position its structure holds.
-                       (line-sign? para (vector-ref items index))
+                       (and (line-sign? para (vector-ref items index))
+                            (not (tab-cut-blocked? para items index)))
                        (and kind
                             (or (eq? kind 'mandatory)
                                 (breakable? para style

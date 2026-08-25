@@ -34,6 +34,6 @@ body:
     id: version
     attributes:
       label: Version
-      placeholder: "jlreq 0.0.0 (git revision), rustc 1.85.0, x86_64-unknown-linux-gnu"
+      placeholder: "jlreq 0.1.0, rustc 1.85.0, x86_64-unknown-linux-gnu"
     validations:
       required: true

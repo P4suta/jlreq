@@ -73,14 +73,14 @@ pub(crate) const MATH_SYMBOL: u8 = 17;
 pub(crate) const MATH_OPERATOR: u8 = 18;
 const IDEOGRAPH: u8 = 19;
 const CONSTRUCT_CLASSES: u32 = class_bit(20)
-    | class_bit(21)
-    | class_bit(22)
-    | class_bit(23)
-    | class_bit(24)
-    | class_bit(25)
-    | class_bit(28)
-    | class_bit(29)
-    | class_bit(30);
+    .saturating_add(class_bit(21))
+    .saturating_add(class_bit(22))
+    .saturating_add(class_bit(23))
+    .saturating_add(class_bit(24))
+    .saturating_add(class_bit(25))
+    .saturating_add(class_bit(28))
+    .saturating_add(class_bit(29))
+    .saturating_add(class_bit(30));
 
 pub(crate) fn class_of(
     piece: &str,
@@ -184,6 +184,15 @@ const fn class_bit(class: u8) -> u32 {
     1_u32 << class.saturating_sub(1)
 }
 
+fn insert_class(set: u32, class: u8) -> u32 {
+    let bit = class_bit(class);
+    if set & bit == 0 {
+        set.saturating_add(bit)
+    } else {
+        set
+    }
+}
+
 fn candidates(key: [u32; MAX_KEY_LEN]) -> u32 {
     let literal = listings(key);
     let selected = if literal.is_empty() && key[1] == 0 {
@@ -195,12 +204,12 @@ fn candidates(key: [u32; MAX_KEY_LEN]) -> u32 {
     };
     let mut classes = selected
         .iter()
-        .fold(0_u32, |set, listing| set | class_bit(listing.class));
+        .fold(0_u32, |set, listing| insert_class(set, listing.class));
     if key[1] == 0
         && char::from_u32(key[0]).is_some_and(is_ideograph)
         && classes & class_bit(IDEOGRAPH) == 0
     {
-        classes |= class_bit(IDEOGRAPH);
+        classes = insert_class(classes, IDEOGRAPH);
     }
     classes
 }
@@ -216,7 +225,7 @@ fn narrow_by_usage(classes: u32, key: [u32; MAX_KEY_LEN], mode: WritingMode) -> 
                 || (usage == crate::generated::appendix_a::USAGE_VERTICAL_ONLY
                     && mode == WritingMode::VerticalRl);
             if permitted {
-                set | class_bit(listing.class)
+                insert_class(set, listing.class)
             } else {
                 set
             }
@@ -235,7 +244,7 @@ fn narrow_by_frame(classes: u32, key: [u32; MAX_KEY_LEN], frame: Frame) -> u32 {
         .fold(0_u32, |set, listing| {
             let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
             if frames == crate::generated::appendix_a::FRAMES_UNSTATED || frames & frame_bit != 0 {
-                set | class_bit(listing.class)
+                insert_class(set, listing.class)
             } else {
                 set
             }
@@ -247,18 +256,25 @@ fn narrow_by_frame(classes: u32, key: [u32; MAX_KEY_LEN], frame: Frame) -> u32 {
             let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
             let stated_by_advance = matches!(listing.class, 1 | 2 | 5 | 6 | 7)
                 && matches!(frame, Frame::FullEm | Frame::HalfEm);
-            if listing.class < 20 && (frames & frame_bit != 0 || stated_by_advance) {
-                set | class_bit(listing.class)
+            if (1..20).contains(&listing.class) && (frames & frame_bit != 0 || stated_by_advance) {
+                insert_class(set, listing.class)
             } else {
                 set
             }
         });
     if explicitly_stated != 0 {
-        narrowed = keep(narrowed, narrowed & (explicitly_stated | CONSTRUCT_CLASSES));
+        narrowed = keep(
+            narrowed,
+            narrowed & explicitly_stated.saturating_add(CONSTRUCT_CLASSES),
+        );
     }
     if frame == Frame::Proportional {
-        let without_half_advance =
-            narrowed & !(class_bit(1) | class_bit(2) | class_bit(5) | class_bit(6) | class_bit(7));
+        let half_advance_classes = class_bit(1)
+            .saturating_add(class_bit(2))
+            .saturating_add(class_bit(5))
+            .saturating_add(class_bit(6))
+            .saturating_add(class_bit(7));
+        let without_half_advance = narrowed & !half_advance_classes;
         narrowed = keep(narrowed, without_half_advance);
     }
     if narrowed & class_bit(IDEOGRAPH) != 0 && narrowed & class_bit(27) != 0 {
@@ -423,6 +439,214 @@ fn script(character: char) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::{string::String, vec::Vec};
+
+    const ALL_CLASSES: u32 = (1_u32 << 30) - 1;
+    const REFERENCE_CONSTRUCT_CLASSES: u32 = ref_bit(20)
+        | ref_bit(21)
+        | ref_bit(22)
+        | ref_bit(23)
+        | ref_bit(24)
+        | ref_bit(25)
+        | ref_bit(28)
+        | ref_bit(29)
+        | ref_bit(30);
+
+    const fn ref_bit(class: u8) -> u32 {
+        1_u32 << class.saturating_sub(1)
+    }
+
+    fn ref_literal(key: [u32; MAX_KEY_LEN]) -> Vec<&'static crate::generated::appendix_a::Listing> {
+        LISTINGS
+            .iter()
+            .filter(|listing| listing.key == key)
+            .collect()
+    }
+
+    fn ref_fold(character: char) -> Option<char> {
+        FOLDS
+            .iter()
+            .find(|fold| fold.source == character as u32)
+            .and_then(|fold| char::from_u32(fold.target))
+    }
+
+    fn ref_candidate_listings(
+        key: [u32; MAX_KEY_LEN],
+    ) -> Vec<&'static crate::generated::appendix_a::Listing> {
+        let literal = ref_literal(key);
+        if !literal.is_empty() || key[1] != 0 {
+            return literal;
+        }
+        char::from_u32(key[0])
+            .and_then(ref_fold)
+            .map_or(literal, |folded| ref_literal([folded as u32, 0]))
+    }
+
+    fn ref_is_ideograph(character: char) -> bool {
+        let code_point = character as u32;
+        IDEOGRAPH_RANGES
+            .iter()
+            .any(|range| range.first <= code_point && code_point <= range.last)
+    }
+
+    fn ref_candidates(key: [u32; MAX_KEY_LEN]) -> u32 {
+        let mut classes = ref_candidate_listings(key)
+            .iter()
+            .fold(0, |set, listing| set | ref_bit(listing.class));
+        if key[1] == 0
+            && char::from_u32(key[0]).is_some_and(ref_is_ideograph)
+            && classes & ref_bit(IDEOGRAPH) == 0
+        {
+            classes |= ref_bit(IDEOGRAPH);
+        }
+        classes
+    }
+
+    const fn ref_keep(original: u32, narrowed: u32) -> u32 {
+        if narrowed == 0 { original } else { narrowed }
+    }
+
+    fn ref_narrow_by_usage(classes: u32, key: [u32; MAX_KEY_LEN], mode: WritingMode) -> u32 {
+        let narrowed = ref_candidate_listings(key).iter().fold(0, |set, listing| {
+            let usage = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].usage;
+            let permitted = usage == crate::generated::appendix_a::USAGE_UNQUALIFIED
+                || (usage == crate::generated::appendix_a::USAGE_HORIZONTAL_ONLY
+                    && mode == WritingMode::HorizontalTb)
+                || (usage == crate::generated::appendix_a::USAGE_VERTICAL_ONLY
+                    && mode == WritingMode::VerticalRl);
+            if permitted {
+                set | ref_bit(listing.class)
+            } else {
+                set
+            }
+        });
+        ref_keep(classes, classes & narrowed)
+    }
+
+    fn ref_narrow_by_frame(classes: u32, key: [u32; MAX_KEY_LEN], frame: Frame) -> u32 {
+        let frame_bit = match frame {
+            Frame::FullEm => crate::generated::appendix_a::FRAME_FULL_EM,
+            Frame::HalfEm => crate::generated::appendix_a::FRAME_HALF_EM,
+            Frame::Proportional => crate::generated::appendix_a::FRAME_PROPORTIONAL,
+        };
+        let listings = ref_candidate_listings(key);
+        let permitted = listings.iter().fold(0, |set, listing| {
+            let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
+            if frames == crate::generated::appendix_a::FRAMES_UNSTATED || frames & frame_bit != 0 {
+                set | ref_bit(listing.class)
+            } else {
+                set
+            }
+        });
+        let mut narrowed = ref_keep(classes, classes & permitted);
+        let explicitly_stated = listings.iter().fold(0, |set, listing| {
+            let frames = crate::generated::appendix_a::REMARKS[usize::from(listing.remark)].frames;
+            let stated_by_advance = matches!(listing.class, 1 | 2 | 5 | 6 | 7)
+                && matches!(frame, Frame::FullEm | Frame::HalfEm);
+            if listing.class < 20 && (frames & frame_bit != 0 || stated_by_advance) {
+                set | ref_bit(listing.class)
+            } else {
+                set
+            }
+        });
+        if explicitly_stated != 0 {
+            narrowed = ref_keep(
+                narrowed,
+                narrowed & (explicitly_stated | REFERENCE_CONSTRUCT_CLASSES),
+            );
+        }
+        if frame == Frame::Proportional {
+            let without_half_advance =
+                narrowed & !(ref_bit(1) | ref_bit(2) | ref_bit(5) | ref_bit(6) | ref_bit(7));
+            narrowed = ref_keep(narrowed, without_half_advance);
+        }
+        if narrowed & ref_bit(IDEOGRAPH) != 0 && narrowed & ref_bit(27) != 0 {
+            narrowed = match frame {
+                Frame::Proportional => narrowed & !ref_bit(IDEOGRAPH),
+                Frame::FullEm => narrowed & !ref_bit(27),
+                Frame::HalfEm if narrowed & ref_bit(24) != 0 => narrowed & !ref_bit(IDEOGRAPH),
+                _ => narrowed,
+            };
+        }
+        narrowed
+    }
+
+    fn ref_narrow_by_role(
+        classes: u32,
+        role: Option<ClusterRole>,
+        character: char,
+        grouped_numeral_requires_role: bool,
+    ) -> u32 {
+        let selected = match role {
+            Some(
+                ClusterRole::DecimalPoint
+                | ClusterRole::DigitGroupSeparator
+                | ClusterRole::GroupedNumeral,
+            ) => ref_bit(24),
+            Some(ClusterRole::SentenceMedial | ClusterRole::SentenceTerminator) => ref_bit(4),
+            Some(ClusterRole::UnitSymbol) => ref_bit(25),
+            Some(ClusterRole::WarichuBracket) if single_has_class(character, OPENING_BRACKET) => {
+                ref_bit(28)
+            },
+            Some(ClusterRole::WarichuBracket) if single_has_class(character, CLOSING_BRACKET) => {
+                ref_bit(29)
+            },
+            _ if grouped_numeral_requires_role && classes & ref_bit(24) != 0 => {
+                return ref_bit(27);
+            },
+            _ => return classes,
+        };
+        ref_keep(classes, classes & selected)
+    }
+
+    fn ref_first(classes: u32) -> Option<u8> {
+        (1..=30).find(|class| classes & ref_bit(*class) != 0)
+    }
+
+    fn ref_last(classes: u32) -> Option<u8> {
+        (1..=30).rev().find(|class| classes & ref_bit(*class) != 0)
+    }
+
+    fn ref_class_of(
+        piece: &str,
+        frame: Frame,
+        role: Option<ClusterRole>,
+        mode: WritingMode,
+        unlisted_is_ideographic: bool,
+        highest: bool,
+        grouped_requires_role: bool,
+    ) -> u8 {
+        let mut characters = piece.chars();
+        let Some(first) = characters.next() else {
+            return IDEOGRAPH;
+        };
+        let second = characters.next();
+        if characters.next().is_some() {
+            return if frame == Frame::Proportional { 27 } else { 19 };
+        }
+        let key = [first as u32, second.map_or(0, |character| character as u32)];
+        let mut classes = ref_candidates(key);
+        if classes == 0 {
+            return if unlisted_is_ideographic || frame != Frame::Proportional {
+                19
+            } else {
+                27
+            };
+        }
+        classes = ref_narrow_by_usage(classes, key, mode);
+        classes = ref_narrow_by_frame(classes, key, frame);
+        classes = ref_narrow_by_role(classes, role, first, grouped_requires_role);
+        let select = |set| {
+            if highest {
+                ref_last(set)
+            } else {
+                ref_first(set)
+            }
+        };
+        select(classes & !REFERENCE_CONSTRUCT_CLASSES)
+            .or_else(|| select(classes))
+            .unwrap_or(IDEOGRAPH)
+    }
 
     #[test]
     fn literal_membership_precedes_wide_folding() {
@@ -476,5 +700,188 @@ mod tests {
             ),
             19
         );
+    }
+
+    #[test]
+    fn handwritten_candidate_narrowing_matches_an_independent_table_oracle() {
+        let frames = [Frame::FullEm, Frame::HalfEm, Frame::Proportional];
+        let modes = [WritingMode::HorizontalTb, WritingMode::VerticalRl];
+        let mut previous = None;
+        for listing in LISTINGS {
+            let key = listing.key;
+            if previous == Some(key) {
+                continue;
+            }
+            previous = Some(key);
+            assert_eq!(
+                candidates(key),
+                ref_candidates(key),
+                "candidates for {key:?}"
+            );
+            let actual = listings_for_candidate(key)
+                .iter()
+                .map(|listing| (listing.key, listing.class, listing.remark))
+                .collect::<Vec<_>>();
+            let expected = ref_candidate_listings(key)
+                .iter()
+                .map(|listing| (listing.key, listing.class, listing.remark))
+                .collect::<Vec<_>>();
+            assert_eq!(actual, expected, "listings for {key:?}");
+            for mode in modes {
+                assert_eq!(
+                    narrow_by_usage(ALL_CLASSES, key, mode),
+                    ref_narrow_by_usage(ALL_CLASSES, key, mode),
+                    "usage for {key:?} {mode:?}"
+                );
+            }
+            for frame in frames {
+                assert_eq!(
+                    narrow_by_frame(ALL_CLASSES, key, frame),
+                    ref_narrow_by_frame(ALL_CLASSES, key, frame),
+                    "frame for {key:?} {frame:?}"
+                );
+            }
+
+            let mut piece = String::new();
+            piece.push(char::from_u32(key[0]).expect("generated scalar"));
+            if let Some(second) = char::from_u32(key[1]).filter(|_| key[1] != 0) {
+                piece.push(second);
+            }
+            for frame in frames {
+                for mode in modes {
+                    for highest in [false, true] {
+                        for grouped in [false, true] {
+                            assert_eq!(
+                                class_of(&piece, frame, None, mode, false, highest, grouped),
+                                ref_class_of(&piece, frame, None, mode, false, highest, grouped),
+                                "class for {key:?} {frame:?} {mode:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn role_narrowing_and_unlisted_shapes_match_the_oracle() {
+        assert_eq!(CONSTRUCT_CLASSES, REFERENCE_CONSTRUCT_CLASSES);
+        let ideograph_key = ['𠀀' as u32, 0];
+        assert_eq!(candidates(ideograph_key), ref_bit(IDEOGRAPH));
+
+        let synthetic = ['🦀' as u32, 0];
+        let ideograph_or_western = ref_bit(IDEOGRAPH) | ref_bit(27);
+        assert_eq!(
+            narrow_by_frame(ideograph_or_western, synthetic, Frame::HalfEm),
+            ideograph_or_western,
+            "half-em without a cl-24 candidate keeps an otherwise ambiguous mask"
+        );
+
+        let unknown_pair = ['（' as u32, 'x' as u32];
+        assert!(listings_for_candidate(unknown_pair).is_empty());
+
+        let roles = [
+            None,
+            Some(ClusterRole::DecimalPoint),
+            Some(ClusterRole::DigitGroupSeparator),
+            Some(ClusterRole::SentenceMedial),
+            Some(ClusterRole::SentenceTerminator),
+            Some(ClusterRole::GroupedNumeral),
+            Some(ClusterRole::UnitSymbol),
+            Some(ClusterRole::QuantitySymbol),
+            Some(ClusterRole::Formula),
+            Some(ClusterRole::WarichuBracket),
+        ];
+        for character in ['（', '）', '.', '!', '1', 'A'] {
+            for role in roles {
+                for grouped in [false, true] {
+                    assert_eq!(
+                        narrow_by_role(ALL_CLASSES, role, character, grouped),
+                        ref_narrow_by_role(ALL_CLASSES, role, character, grouped),
+                        "role {role:?} for {character:?}"
+                    );
+                }
+            }
+        }
+        for (piece, frame) in [
+            ("", Frame::FullEm),
+            ("🦀", Frame::FullEm),
+            ("🦀", Frame::Proportional),
+            ("abc", Frame::FullEm),
+            ("abc", Frame::Proportional),
+        ] {
+            for unlisted in [false, true] {
+                assert_eq!(
+                    class_of(
+                        piece,
+                        frame,
+                        None,
+                        WritingMode::HorizontalTb,
+                        unlisted,
+                        false,
+                        false
+                    ),
+                    ref_class_of(
+                        piece,
+                        frame,
+                        None,
+                        WritingMode::HorizontalTb,
+                        unlisted,
+                        false,
+                        false
+                    )
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn unicode_range_searches_include_both_endpoints_only() {
+        for range in IDEOGRAPH_RANGES {
+            for code_point in [range.first, range.last] {
+                let character = char::from_u32(code_point).expect("ideograph scalar");
+                assert!(is_ideograph(character));
+            }
+            if let Some(character) = range
+                .first
+                .checked_sub(1)
+                .and_then(char::from_u32)
+                .filter(|character| !ref_is_ideograph(*character))
+            {
+                assert!(!is_ideograph(character));
+            }
+            if let Some(character) = range
+                .last
+                .checked_add(1)
+                .and_then(char::from_u32)
+                .filter(|character| !ref_is_ideograph(*character))
+            {
+                assert!(!is_ideograph(character));
+            }
+        }
+        for range in SCRIPT_RANGES {
+            for code_point in [range.first, range.last] {
+                let character = char::from_u32(code_point).expect("script scalar");
+                assert_eq!(script(character), Some(range.script));
+            }
+            if let Some(character) = range.first.checked_sub(1).and_then(char::from_u32) {
+                let expected = SCRIPT_RANGES
+                    .iter()
+                    .find(|candidate| {
+                        candidate.first <= character as u32 && character as u32 <= candidate.last
+                    })
+                    .map(|candidate| candidate.script);
+                assert_eq!(script(character), expected);
+            }
+            if let Some(character) = range.last.checked_add(1).and_then(char::from_u32) {
+                let expected = SCRIPT_RANGES
+                    .iter()
+                    .find(|candidate| {
+                        candidate.first <= character as u32 && character as u32 <= candidate.last
+                    })
+                    .map(|candidate| candidate.script);
+                assert_eq!(script(character), expected);
+            }
+        }
     }
 }
