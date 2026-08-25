@@ -23,6 +23,8 @@
 #     make the architecture in docs/adr/ true rather than aspirational.
 #   - A single `ci-required` aggregation gate is the one status context branch protection
 #     references, so the ruleset never desyncs as jobs are added or renamed.
+#   - Pull requests mutation-test only changed Rust product lines; weekly/manual and release
+#     gates retain exhaustive, sharded coverage.
 
 name: CI
 
@@ -194,6 +196,29 @@ jobs:
           tool: just@1.50.0,cargo-llvm-cov@0.9.0
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: just coverage
+
+  mutation-smoke:
+    name: mutation smoke (changed Rust product lines)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: just mutants-smoke '${{ github.event.pull_request.base.sha }}'
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutants-smoke
+          path: mutants.out/
+          if-no-files-found: ignore
+          retention-days: 14
 
   purity:
     name: purity (no std, I/O, font, or float in the core)
@@ -430,6 +455,7 @@ jobs:
       - wasm
       - fuzz
       - coverage
+      - mutation-smoke
       - purity
       - design
       - semver
