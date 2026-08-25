@@ -15,6 +15,7 @@ on:
       - "Justfile"
       - ".cargo/mutants.toml"
       - "docs/mutation-ledger.toml"
+      - "scripts/run-mutation-smoke.sh"
       - "scripts/verify-mutation-ledger.sh"
       - ".github/workflows/mutants.yml"
   workflow_dispatch:

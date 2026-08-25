@@ -305,7 +305,7 @@ mutants crate="" shard="":
 # workflows run the complete sharded gate above.
 mutants-smoke base:
     sh scripts/verify-mutation-ledger.sh
-    cargo mutants --workspace --in-diff {{base}} --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
+    sh scripts/run-mutation-smoke.sh {{ quote(base) }}
 
 # Hold generated and equivalent-mutant exclusions to their individual source hashes and
 # require every cargo-mutants regex to have one proof in the reviewable ledger.
