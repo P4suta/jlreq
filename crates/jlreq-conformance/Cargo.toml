@@ -46,7 +46,7 @@ jlreq = { version = "0.1.0", path = "../jlreq" }
 serde_json = "1.0"
 
 [dev-dependencies]
-harfrust = "=0.13.0"
+harfrust = "=0.13.2"
 icu_segmenter = "=2.1.2"
 
 [lints]
