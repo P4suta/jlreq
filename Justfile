@@ -121,6 +121,7 @@ doc:
 # Build and verify all three public crate archives. Temporary crates.io patches validate the
 # exact-version core dependency before the initial release reaches the registry.
 package:
+    cargo fetch --locked
     cargo package -p jlreq-core --locked {{package_dirty}}
     cargo package -p jlreq --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
     cargo package -p jlreq-conformance --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
