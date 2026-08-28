@@ -3,7 +3,9 @@
 
 //! Compose a vertical line and inspect the Latin cluster's coordinate transform.
 
-use jlreq::{Cluster, CoordinateTransform, Frame, Paragraph, ShapedText, Size, Style, WritingMode};
+use jlreq_core::{
+    Cluster, CoordinateTransform, Frame, Paragraph, ShapedText, Size, Style, WritingMode,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = "縦A";
@@ -14,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let paragraph = Paragraph::builder(text, 4_000)
         .writing_mode(WritingMode::VerticalRl)
         .build()?;
-    let layout = jlreq::compose(&paragraph, &Style::jlreq_2020())?;
+    let layout = jlreq_core::compose(&paragraph, &Style::jlreq_2020())?;
 
     assert_eq!(
         layout.lines()[0].clusters()[1].transform(),

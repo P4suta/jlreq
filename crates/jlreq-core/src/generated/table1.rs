@@ -13,7 +13,7 @@
 //! - Source SHA-256: `02736559abf8f4be082781304b9291dbf8765ab95c8d07c630128153cce2332f`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/generate.rs`, `xtask/src/spacing.rs`
-//! - Generator SHA-256: `c8974d1fe3f413864bf20ad59a6418cea98202fb0ab5d5fe26364566b408f9fa`
+//! - Generator SHA-256: `aff4dd3baf294cabb5cf358f4f29005075985279af1df3f0cb5287cf85bdd6cb`
 //! - Entries: 841
 
 use crate::spec::{RawHang, RawSpacingCell, RawTerm, em};

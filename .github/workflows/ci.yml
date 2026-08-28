@@ -6,7 +6,8 @@
 # alternatives JLReq records; complete JIS X 4051 conformance is not claimed).
 #
 # Layout under test:
-#   - jlreq              dependency-free no_std + alloc public library.
+#   - jlreq              std high-level font/shaping/layout facade (MSRV 1.88).
+#   - jlreq-core         dependency-free no_std + alloc composition core (MSRV 1.85).
 #   - jlreq-conformance  binary-only protocol runner and sample engine.
 #   - xtask          repository policy checks shared by Just and CI.
 #   - engines/ocaml      an independent reference engine, outside the Cargo workspace,
@@ -303,7 +304,7 @@ jobs:
   conform-racket:
     # The independent Racket reference engine (engines/racket/README.md), on the same
     # terms as conform-ocaml: it shares no code with the Rust engine, builds its tables
-    # from spec/ rather than from crates/jlreq/src/generated/, and is gated by the
+    # from spec/ rather than from crates/jlreq-core/src/generated/, and is gated by the
     # cumulative suite engines/racket/milestones/CURRENT points at rather than by the
     # whole one.
     name: conform-racket (independent Racket engine)
@@ -370,7 +371,7 @@ jobs:
       - uses: crate-ci/typos@8a48f81b6c64dcfea44b3633223084c4be58ac5f # v1.49.0
 
   msrv:
-    name: msrv (workspace 1.85)
+    name: msrv (facade 1.88; core/tooling 1.85)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

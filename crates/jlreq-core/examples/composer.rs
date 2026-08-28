@@ -3,12 +3,12 @@
 
 //! Reuse one composer, handle a typed resource error, and continue composing afterward.
 
-use jlreq::{
+use jlreq_core::{
     Cluster, Composer, CompositionLimits, CompositionResource, Frame, Paragraph, ShapedText, Size,
     Style,
 };
 
-fn paragraph(source: &str) -> Result<Paragraph, jlreq::InputError> {
+fn paragraph(source: &str) -> Result<Paragraph, jlreq_core::InputError> {
     let clusters = source.char_indices().map(|(start, character)| {
         Cluster::new(start..start.saturating_add(character.len_utf8()), 1_000)
     });

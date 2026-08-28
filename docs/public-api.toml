@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Public names released by jlreq 0.1.0. The `api` gate checks this list in both directions;
+# Public names released by the jlreq 0.1.0 facade and core. The `api` gate checks this list in both directions;
 # every compatible 0.1.x release must preserve it. The `semver` gate reads the release
-# contract below and compares later 0.1.x candidates with the latest published jlreq.
+# contract below and compares later 0.1.x candidates with the latest published jlreq-core
+# and jlreq releases.
 # Implementation modules remain private.
 
 baseline_version = "0.1.0"
@@ -12,6 +13,49 @@ compatible_series = "0.1"
 
 [[module]]
 path = "jlreq"
+items = [
+  "Affinity",
+  "Alignment",
+  "AnnotationSource",
+  "BaseDirection",
+  "Diagnostic",
+  "DiagnosticSeverity",
+  "Document",
+  "DocumentBuilder",
+  "FontId",
+  "FontLibrary",
+  "FontResource",
+  "FontSlant",
+  "FontStyle",
+  "FontVariation",
+  "GlyphPlacement",
+  "GlyphTransform",
+  "HitTest",
+  "LayoutEngine",
+  "LayoutError",
+  "LayoutOptions",
+  "OpenTypeFeature",
+  "OpenTypeTag",
+  "OptionKind",
+  "Point",
+  "Rect",
+  "Resource",
+  "ResourceLimits",
+  "RubyKind",
+  "RubyRun",
+  "ScriptPosition",
+  "SpanStyle",
+  "TextLayout",
+  "TextLine",
+  "TextRole",
+  "WritingMode",
+  "core",
+  "layout",
+  "layout_document",
+]
+
+[[module]]
+path = "jlreq_core"
 items = [
   "Alignment",
   "Attachment",
@@ -52,7 +96,7 @@ items = [
 ]
 
 [[module]]
-path = "jlreq::style"
+path = "jlreq_core::style"
 items = [
   "AdjustmentPreference",
   "AmbiguousContext",

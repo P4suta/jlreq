@@ -14,16 +14,30 @@ git_release_enable = false
 changelog_update = false
 
 [[package]]
-name = "jlreq"
+name = "jlreq-core"
 version_group = "jlreq"
 changelog_update = false
 changelog_path = "./CHANGELOG.md"
-changelog_include = ["jlreq", "jlreq-conformance"]
+changelog_include = ["jlreq-core", "jlreq", "jlreq-conformance"]
 git_tag_enable = false
 git_tag_name = "v{{ version }}"
 git_release_enable = false
 git_release_draft = false
 
 [[package]]
+name = "jlreq"
+version_group = "jlreq"
+changelog_update = false
+changelog_path = "./CHANGELOG.md"
+changelog_include = ["jlreq-core", "jlreq", "jlreq-conformance"]
+git_tag_enable = false
+git_release_enable = false
+
+[[package]]
 name = "jlreq-conformance"
 version_group = "jlreq"
+changelog_update = false
+changelog_path = "./CHANGELOG.md"
+changelog_include = ["jlreq-core", "jlreq", "jlreq-conformance"]
+git_tag_enable = false
+git_release_enable = false

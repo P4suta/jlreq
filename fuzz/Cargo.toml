@@ -13,7 +13,9 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "=0.4.13"
+font-test-data = "=0.9.1"
 jlreq = { path = "../crates/jlreq" }
+jlreq-core = { path = "../crates/jlreq-core" }
 serde_json = "1.0"
 
 [[bin]]
@@ -33,6 +35,13 @@ bench = false
 [[bin]]
 name = "protocol_parser"
 path = "fuzz_targets/protocol_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "high_level_layout"
+path = "fuzz_targets/high_level_layout.rs"
 test = false
 doc = false
 bench = false

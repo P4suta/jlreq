@@ -24,7 +24,7 @@ use serde_json::{Map, Value};
 use validation::{validate_request, validate_response};
 
 const PROTOCOL: &str = "jlreq.conformance/1";
-const SPEC: &str = jlreq::SPECIFICATION;
+const SPEC: &str = jlreq_core::SPECIFICATION;
 const BUILTIN_SUITE: &str = include_str!("../suite.ndjson");
 #[cfg(test)]
 const PROTOCOL_SCHEMA: &str = include_str!("../protocol.schema.json");

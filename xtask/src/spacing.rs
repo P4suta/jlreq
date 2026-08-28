@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Stage 2 generation for the unified engine: the six captured matrices of Appendices B
-//! through E, turned into private `static` arrays under `crates/jlreq/src/generated/`.
+//! through E, turned into private `static` arrays under `crates/jlreq-core/src/generated/`.
 //!
 //! `spec/captured/table<N>.en.tsv` is the input for each unit. The Japanese rendering,
 //! `table<N>.ja.tsv`, is not: `generate`'s own `Unit` reads one file, and the control that
@@ -46,11 +46,11 @@ pub(crate) const TABLE1: Unit = Unit {
     emit: emit_table1,
 };
 
-/// Table 1 behind the sole public library's dependency-free private boundary.
+/// Table 1 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE1: Unit = Unit {
     input: "spec/captured/table1.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table1.rs",
+    output: "crates/jlreq-core/src/generated/table1.rs",
     summary: "Table 1, \"Spacing between Characters\" (Appendix B).",
     emit: emit_unified_table1,
 };
@@ -64,11 +64,11 @@ pub(crate) const TABLE2: Unit = Unit {
     emit: emit_table2,
 };
 
-/// Table 2 behind the sole public library's dependency-free private boundary.
+/// Table 2 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE2: Unit = Unit {
     input: "spec/captured/table2.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table2.rs",
+    output: "crates/jlreq-core/src/generated/table2.rs",
     summary: "Table 2, \"Possibilities for Line-breaking between Characters\" (Appendix C).",
     emit: emit_unified_table2,
 };
@@ -82,11 +82,11 @@ pub(crate) const TABLE3: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 3 behind the sole public library's dependency-free private boundary.
+/// Table 3 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE3: Unit = Unit {
     input: "spec/captured/table3.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table3.rs",
+    output: "crates/jlreq-core/src/generated/table3.rs",
     summary: "Table 3, JLReq's own reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -100,11 +100,11 @@ pub(crate) const TABLE4: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 4 behind the sole public library's dependency-free private boundary.
+/// Table 4 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE4: Unit = Unit {
     input: "spec/captured/table4.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table4.rs",
+    output: "crates/jlreq-core/src/generated/table4.rs",
     summary: "Table 4, the JIS X 4051 reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -118,11 +118,11 @@ pub(crate) const TABLE5: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 5 behind the sole public library's dependency-free private boundary.
+/// Table 5 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE5: Unit = Unit {
     input: "spec/captured/table5.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table5.rs",
+    output: "crates/jlreq-core/src/generated/table5.rs",
     summary: "Table 5, the book-practice reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -142,11 +142,11 @@ pub(crate) const TABLE6: Unit = Unit {
     },
 };
 
-/// Table 6 behind the sole public library's dependency-free private boundary.
+/// Table 6 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE6: Unit = Unit {
     input: "spec/captured/table6.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table6.rs",
+    output: "crates/jlreq-core/src/generated/table6.rs",
     summary: "Table 6, \"Opportunities for Inter-character Space Expansion\" (Appendix E).",
     emit: |table| emit_unified_ranged(table, RangedTable::Expansion, "E"),
 };

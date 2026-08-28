@@ -4,7 +4,7 @@
 
 //! Black-box acceptance tests for the intentionally small public API.
 
-use jlreq::{
+use jlreq_core::{
     Alignment, Break, Cluster, ClusterRole, Composer, CompositionLimits, CompositionResource,
     Construct, CoordinateTransform, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText, Size,
     Style, TabAlignment, TabStop, Widow, WritingMode,
@@ -20,11 +20,11 @@ use jlreq::{
 
 macro_rules! compose_ok {
     ($paragraph:expr, $style:expr) => {
-        jlreq::compose($paragraph, $style).expect("fixture stays within composition limits")
+        jlreq_core::compose($paragraph, $style).expect("fixture stays within composition limits")
     };
 }
 
-fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, jlreq::InputError> {
+fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, jlreq_core::InputError> {
     let clusters = source.char_indices().map(|(start, character)| {
         Cluster::new(start..start.saturating_add(character.len_utf8()), advance)
     });
@@ -149,14 +149,14 @@ fn jidori_fills_declared_cells_and_keeps_its_outer_boundary_separate() {
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             [0, 3_000, 4_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::advance)
+                .map(jlreq_core::ClusterPlacement::advance)
                 .collect::<Vec<_>>(),
             [3_000, 1_000, 1_000]
         );
@@ -400,7 +400,7 @@ fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
     assert_eq!(
         line.clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         vec![0, 1_500, 2_500]
     );
@@ -431,7 +431,7 @@ fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
         compose_ok!(&paragraph, &style).lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>()
     };
 
@@ -483,7 +483,7 @@ fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 3_000],
         "a sentence-final dividing mark carries a fixed one-em following space"
@@ -610,7 +610,7 @@ fn table_one_spaces_japanese_and_western_text_by_the_referents_em() {
         (
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect(),
             line.inline_extent(),
         )
@@ -655,7 +655,7 @@ fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
         (
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect(),
             line.inline_extent(),
         )
@@ -718,7 +718,7 @@ fn western_word_space_collapses_only_at_true_line_edges() {
         breaks: impl IntoIterator<Item = Break>,
         alignment: Alignment,
         line_extent: i32,
-    ) -> jlreq::Layout {
+    ) -> jlreq_core::Layout {
         let clusters = source.char_indices().map(|(start, character)| {
             Cluster::new(
                 start..start.saturating_add(character.len_utf8()),
@@ -827,14 +827,14 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             vec![0, 1_000, 1_500, 1_000, 1_500, 2_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::block)
+                .map(jlreq_core::ClusterPlacement::block)
                 .collect::<Vec<_>>(),
             if mode == WritingMode::HorizontalTb {
                 vec![0, 0, 0, 500, 500, 0]
@@ -895,8 +895,8 @@ fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
         layout
             .lines()
             .iter()
-            .flat_map(jlreq::Line::clusters)
-            .map(jlreq::ClusterPlacement::range)
+            .flat_map(jlreq_core::Line::clusters)
+            .map(jlreq_core::ClusterPlacement::range)
             .collect::<Vec<_>>(),
         (0..10).map(|start| start..start + 1).collect::<Vec<_>>()
     );
@@ -944,7 +944,7 @@ fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
         .expect("valid seam fixture")
     }
 
-    fn compose_at(measure: i32) -> jlreq::Layout {
+    fn compose_at(measure: i32) -> jlreq_core::Layout {
         let paragraph = Paragraph::builder(note(), measure)
             .constructs([Construct::warichu(3..12)])
             .build()
@@ -958,7 +958,7 @@ fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
         natural.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         vec![0, 1_250, 1_750, 1_250, 2_250],
         "the seam's own amount stands nowhere on the line even where nothing adjusts"
@@ -1014,14 +1014,14 @@ fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             vec![0, 0, 1_000]
         );
         assert_eq!(
             line.clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::block)
+                .map(jlreq_core::ClusterPlacement::block)
                 .collect::<Vec<_>>(),
             if mode == WritingMode::HorizontalTb {
                 vec![-600, 600, 600]
@@ -1091,7 +1091,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::advance)
+            .map(jlreq_core::ClusterPlacement::advance)
             .collect::<Vec<_>>(),
         vec![750, 1_250, 500, 1_000, 500],
         "display equations have quarter-em equality spacing and solid operators"
@@ -1120,7 +1120,7 @@ fn formula_spacing_width_and_breaks_follow_math_token_context() {
         layout
             .lines()
             .iter()
-            .map(jlreq::Line::range)
+            .map(jlreq_core::Line::range)
             .collect::<Vec<_>>(),
         vec![0..2, 2..8],
         "a feasible break before an equality symbol precedes one before an operator"
@@ -1264,7 +1264,7 @@ fn group_ruby_distribution_changes_leading_and_interior_shares() {
         compose_ok!(&paragraph, &style).lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>()
     };
 
@@ -1342,7 +1342,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         jis.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [250, 1_750],
         "JIS distributes the surplus at a 1:2:1 leading/interior/trailing ratio"
@@ -1351,7 +1351,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         jis.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1361,7 +1361,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         flush.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 2_000],
         "flush aligns both ends and puts the whole surplus between base characters"
@@ -1370,7 +1370,7 @@ fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
         flush.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1407,7 +1407,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let mono_inline: Vec<_> = mono_layout.lines()[0]
         .attachments()
         .iter()
-        .map(jlreq::Attachment::inline)
+        .map(jlreq_core::Attachment::inline)
         .collect();
     assert_eq!(mono_inline, [250, 1_000, 1_500]);
 
@@ -1415,7 +1415,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let jukugo_inline: Vec<_> = jukugo_layout.lines()[0]
         .attachments()
         .iter()
-        .map(jlreq::Attachment::inline)
+        .map(jlreq_core::Attachment::inline)
         .collect();
     assert_eq!(jukugo_inline, mono_inline);
 
@@ -1423,7 +1423,7 @@ fn ruby_kinds_preserve_base_associations_and_break_semantics() {
     let group_inline: Vec<_> = group_layout.lines()[0]
         .attachments()
         .iter()
-        .map(jlreq::Attachment::inline)
+        .map(jlreq_core::Attachment::inline)
         .collect();
     assert_eq!(group_inline, [84, 751, 1_417]);
 
@@ -1526,7 +1526,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         forward.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_000, 3_000],
         "F.2 prefers overhanging the following base and then the following kana"
@@ -1535,7 +1535,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         forward.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1555,7 +1555,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         backward.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_000, 3_000],
         "F.2 falls back to the preceding permitted character when the following one forbids overhang"
@@ -1564,7 +1564,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         backward.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [500, 1_000, 1_500, 2_000, 2_500]
     );
@@ -1585,7 +1585,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             expanded.lines()[0]
                 .clusters()
                 .iter()
-                .map(jlreq::ClusterPlacement::inline)
+                .map(jlreq_core::ClusterPlacement::inline)
                 .collect::<Vec<_>>(),
             [0, 1_250, 2_500, 3_500],
             "F.3 splits the remaining ruby-character width around the run with three ruby characters"
@@ -1594,7 +1594,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
             expanded.lines()[0]
                 .attachments()
                 .iter()
-                .map(jlreq::Attachment::inline)
+                .map(jlreq_core::Attachment::inline)
                 .collect::<Vec<_>>(),
             [1_000, 1_500, 2_000, 2_500, 3_000]
         );
@@ -1616,7 +1616,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         four_ruby.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_250, 3_500],
         "F.4's four-ruby example assigns one ruby-character width around only the eligible base"
@@ -1625,7 +1625,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         four_ruby.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1645,7 +1645,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_head.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_500, 2_500],
         "F.3 keeps both starts flush at line head and puts the whole assigned space after the first base"
@@ -1654,7 +1654,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_head.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [0, 500, 1_000, 1_500, 2_000]
     );
@@ -1674,7 +1674,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_end.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000, 2_500],
         "F.3 keeps both ends flush at line end and puts the whole assigned space before the final base"
@@ -1683,7 +1683,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         line_end.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000]
     );
@@ -1707,7 +1707,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         proportional.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_322, 3_072, 4_500, 5_500],
         "F.3 apportions the total expansion in the 3:4 solid-reading-length ratio and sends the integer remainder leading"
@@ -1716,7 +1716,7 @@ fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
         proportional.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [
             1_000, 1_500, 2_000, 2_500, 3_000, 3_500, 4_000, 4_500, 5_000
@@ -1752,7 +1752,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         layout.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_250, 2_750, 4_000],
         "a long group ruby distributes the base at the JIS 1:2:1 ratio"
@@ -1762,7 +1762,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         layout.lines()[0]
             .attachments()
             .iter()
-            .map(jlreq::Attachment::inline)
+            .map(jlreq_core::Attachment::inline)
             .collect::<Vec<_>>(),
         [1_000, 1_500, 2_000, 2_500, 3_000, 3_500]
     );
@@ -1878,7 +1878,7 @@ fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
         fixpoint
             .lines()
             .iter()
-            .map(jlreq::Line::range)
+            .map(jlreq_core::Line::range)
             .collect::<Vec<_>>(),
         [0..3, 3..6, 6..12],
         "break search remeasures the ruby after each candidate changes its neighbors"
@@ -1911,7 +1911,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         compose_ok!(&paragraph, &Style::default()).lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect()
     }
 
@@ -1983,7 +1983,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         same_tcy.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 0, 1_250],
         "members of one tate-chu-yoko run share an inline item and cannot expand internally"
@@ -2020,7 +2020,7 @@ fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
         mixed.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_100, 2_250, 3_750],
         "the outer second-order site takes 250 first, then third-order shares split the remaining 250 as 100 and 150"
@@ -2561,7 +2561,7 @@ fn reduction_uses_lower_priority_stages_only_after_earlier_ones() {
     let positions: Vec<_> = layout.lines()[0]
         .clusters()
         .iter()
-        .map(jlreq::ClusterPlacement::inline)
+        .map(jlreq_core::ClusterPlacement::inline)
         .collect();
 
     assert_eq!(positions, [0, 1_000, 2_000, 3_400]);
@@ -2698,7 +2698,7 @@ fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
         hanging.lines()[0]
             .clusters()
             .iter()
-            .map(jlreq::ClusterPlacement::inline)
+            .map(jlreq_core::ClusterPlacement::inline)
             .collect::<Vec<_>>(),
         [0, 1_000],
         "hanging changes line accounting, not the shaped placements"
@@ -2806,7 +2806,7 @@ fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
         .breaks([Break::allowed(3)])
         .build()
         .expect("valid paragraph");
-    let mut composer = jlreq::Composer::new();
+    let mut composer = jlreq_core::Composer::new();
     let first = composer
         .compose(&paragraph, &Style::default())
         .expect("composition succeeds");
@@ -2820,9 +2820,9 @@ fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
 #[test]
 fn composition_limits_are_typed_atomic_and_reusable() {
     fn assert_error<T: core::error::Error>() {}
-    assert_error::<jlreq::InputError>();
-    assert_error::<jlreq::style::StyleError>();
-    assert_error::<jlreq::ComposeError>();
+    assert_error::<jlreq_core::InputError>();
+    assert_error::<jlreq_core::style::StyleError>();
+    assert_error::<jlreq_core::ComposeError>();
 
     let defaults = CompositionLimits::default();
     assert_eq!(defaults.max_clusters(), 65_536);

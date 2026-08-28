@@ -4,10 +4,11 @@
 
 //! The `purity` gate.
 //!
-//! Checks the invariants around the sole public library and its conformance product:
+//! Checks the invariants around the facade, dependency-free core, and conformance product:
 //!
-//! - `jlreq` has no normal dependencies and remains `#![no_std]` plus `alloc`;
-//! - `jlreq-conformance` depends only on the library and its product/test tooling;
+//! - `jlreq-core` has no dependencies and remains `#![no_std]` plus `alloc`;
+//! - `jlreq` depends only on the selected shaping/segmentation stack and the core;
+//! - `jlreq-conformance` depends only on the core and its product/test tooling;
 //! - core source names neither floating-point types nor floating-point literals;
 //! - manifests match the two-node product graph in `docs/design/api-spine.md`.
 //!
@@ -65,12 +66,24 @@ impl Adjacency {
 /// The product graph, transcribed rather than derived from the manifests it checks.
 const CRATE_GRAPH: &[Adjacency] = &[
     Adjacency {
-        crate_name: "jlreq",
+        crate_name: "jlreq-core",
         may_depend_on: &[],
     },
     Adjacency {
+        crate_name: "jlreq",
+        may_depend_on: &[
+            "font-test-data",
+            "fontique",
+            "harfrust",
+            "icu_segmenter",
+            "jlreq-core",
+            "rwml-fonts",
+            "unicode-bidi",
+        ],
+    },
+    Adjacency {
         crate_name: "jlreq-conformance",
-        may_depend_on: &["jlreq", "serde_json", "harfrust", "icu_segmenter"],
+        may_depend_on: &["jlreq-core", "serde_json", "harfrust", "icu_segmenter"],
     },
 ];
 
@@ -83,8 +96,10 @@ const CRATE_GRAPH: &[Adjacency] = &[
 /// explicitly. Its manifest is therefore read here. The name is verified against the
 /// manifest rather than assumed from the path, so this pair cannot rot into applying one
 /// crate's row to another.
-const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] =
-    &[("jlreq-conformance", "crates/jlreq-conformance")];
+const NON_CORE_GRAPH_MEMBERS: &[(&str, &str)] = &[
+    ("jlreq", "crates/jlreq"),
+    ("jlreq-conformance", "crates/jlreq-conformance"),
+];
 
 /// One type in the retired cross-crate seam model, retained for parser regression tests.
 #[derive(Debug)]
@@ -113,7 +128,7 @@ const SEAM_OWNER: &str = "jlreq-unit";
 /// The crate root, as `shared::relative_name` spells it.
 const LIB: &str = "lib.rs";
 
-/// Production has no cross-crate seam: all layout layers are private modules of `jlreq`.
+/// Production has no retired cross-crate seam; the public facade/core boundary uses the core API.
 const SEAM: &[SeamType] = &[];
 
 /// One core crate's sources, read once and stripped to code.
@@ -1133,26 +1148,35 @@ mod tests {
     #[test]
     fn a_crate_may_declare_only_what_its_row_permits() {
         let mut violations = Vec::new();
-        check_row("jlreq", "[dependencies]\n", &mut violations);
+        check_row("jlreq-core", "[dependencies]\n", &mut violations);
         assert!(violations.is_empty(), "found {violations:?}");
     }
 
     #[test]
     fn the_unified_products_have_explicit_dependency_rows() {
-        let library = CRATE_GRAPH
+        let core = CRATE_GRAPH
+            .iter()
+            .find(|row| row.crate_name == "jlreq-core")
+            .expect("the dependency-free core has a graph row");
+        assert!(
+            core.may_depend_on.is_empty(),
+            "the no_std core has no external dependencies"
+        );
+
+        let facade = CRATE_GRAPH
             .iter()
             .find(|row| row.crate_name == "jlreq")
-            .expect("the unified public library has a graph row");
-        assert!(
-            library.may_depend_on.is_empty(),
-            "the no_std public library has no external dependencies"
-        );
+            .expect("the high-level facade has a graph row");
+        assert!(facade.may_depend_on.contains(&"jlreq-core"));
+        assert!(facade.may_depend_on.contains(&"harfrust"));
+        assert!(facade.may_depend_on.contains(&"icu_segmenter"));
+        assert!(facade.may_depend_on.contains(&"unicode-bidi"));
 
         let runner = CRATE_GRAPH
             .iter()
             .find(|row| row.crate_name == "jlreq-conformance")
             .expect("the binary-only conformance product has a graph row");
-        assert!(runner.may_depend_on.contains(&"jlreq"));
+        assert!(runner.may_depend_on.contains(&"jlreq-core"));
         assert!(runner.may_depend_on.contains(&"serde_json"));
         assert!(runner.may_depend_on.contains(&"harfrust"));
         assert!(runner.may_depend_on.contains(&"icu_segmenter"));
@@ -1161,7 +1185,11 @@ mod tests {
     #[test]
     fn a_dependency_the_row_omits_is_a_violation_even_when_it_is_core() {
         let mut violations = Vec::new();
-        check_row("jlreq", "[dependencies]\nserde = \"1\"\n", &mut violations);
+        check_row(
+            "jlreq-core",
+            "[dependencies]\nserde = \"1\"\n",
+            &mut violations,
+        );
         assert_eq!(violations.len(), 1, "found {violations:?}");
         assert!(
             violations[0].contains("serde"),

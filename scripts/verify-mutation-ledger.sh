@@ -117,7 +117,7 @@ if grep -Eq '^glob = ' "$ledger"; then
     fail "generated exclusions must name individual paths, not a broad glob"
 fi
 
-find crates/jlreq/src/generated -maxdepth 1 -type f -name '*.rs' -print |
+find crates/jlreq-core/src/generated -maxdepth 1 -type f -name '*.rs' -print |
     LC_ALL=C sort >"$scratch/generated-files.txt"
 cut -f 1 "$scratch/exclusions.tsv" | LC_ALL=C sort >"$scratch/excluded-files.txt"
 if ! cmp -s "$scratch/generated-files.txt" "$scratch/excluded-files.txt"; then
@@ -142,10 +142,10 @@ while IFS="$tab" read -r path expected kind provenance reason; do
     test "$actual" = "$expected" || fail "$path changed: expected $expected, observed $actual"
 done <"$scratch/exclusions.tsv"
 
-if ! grep -Fqx 'exclude_globs = ["crates/jlreq/src/generated/**"]' "$config"; then
+if ! grep -Fqx 'exclude_globs = ["crates/jlreq-core/src/generated/**"]' "$config"; then
     fail "$config must exclude the generated table directory exactly"
 fi
-if grep -Fq '"crates/jlreq/src/generated.rs"' "$config"; then
+if grep -Fq '"crates/jlreq-core/src/generated.rs"' "$config"; then
     fail "$config excludes the handwritten generated.rs integrity checks"
 fi
 

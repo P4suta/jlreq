@@ -9,7 +9,7 @@ use std::{
     process::ExitCode,
 };
 
-use jlreq::{
+use jlreq_core::{
     Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
     RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
@@ -24,7 +24,7 @@ use jlreq::{
 use serde_json::{Map, Value, json};
 
 const PROTOCOL: &str = "jlreq.conformance/1";
-const SPEC: &str = jlreq::SPECIFICATION;
+const SPEC: &str = jlreq_core::SPECIFICATION;
 const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 const MAX_STREAM_BYTES: usize = 256 * 1024 * 1024;
 const MAX_MESSAGES: usize = 200_000;
@@ -85,7 +85,7 @@ fn run_stream(
             .get("request")
             .ok_or_else(|| "request is required".to_owned())?;
         let (paragraph, style) = parse_request(request)?;
-        let layout = jlreq::compose(&paragraph, &style)
+        let layout = jlreq_core::compose(&paragraph, &style)
             .map_err(|error| format!("{}: {}", error.code(), error))?;
         serde_json::to_writer(
             &mut *output,
@@ -592,7 +592,7 @@ fn choice<T: Copy>(name: &str, value: &str, choices: &[(&str, T)]) -> Result<T, 
         .ok_or_else(|| format!("unknown value {value:?} for style setting {name:?}"))
 }
 
-fn layout_json(layout: &jlreq::Layout) -> Value {
+fn layout_json(layout: &jlreq_core::Layout) -> Value {
     json!({
         "lines": layout.lines().iter().map(|line| json!({
             "range": [line.range().start, line.range().end],
@@ -602,8 +602,8 @@ fn layout_json(layout: &jlreq::Layout) -> Value {
             "block_extent": line.block_extent(),
             "clusters": line.clusters().iter().map(|placement| json!({
                 "origin": match placement.origin() {
-                    jlreq::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
-                    jlreq::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
+                    jlreq_core::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
+                    jlreq_core::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
                     _ => json!({"unknown": true}),
                 },
                 "range": [placement.range().start, placement.range().end],
@@ -630,9 +630,9 @@ fn layout_json(layout: &jlreq::Layout) -> Value {
         "diagnostics": layout.diagnostics().iter().map(|diagnostic| json!({
             "code": diagnostic.code(),
             "severity": match diagnostic.severity() {
-                jlreq::Severity::Info => "info",
-                jlreq::Severity::Warning => "warning",
-                jlreq::Severity::Error => "error",
+                jlreq_core::Severity::Info => "info",
+                jlreq_core::Severity::Warning => "warning",
+                jlreq_core::Severity::Error => "error",
                 _ => "unknown",
             },
             "range": diagnostic.range().map(|range| [range.start, range.end]),
@@ -677,11 +677,11 @@ fn parse_size(value: &Value) -> Result<Size, String> {
         .map_err(|error| render_input_error(&error))
 }
 
-fn render_input_error(error: &jlreq::InputError) -> String {
+fn render_input_error(error: &jlreq_core::InputError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 
-fn render_style_error(error: jlreq::style::StyleError) -> String {
+fn render_style_error(error: jlreq_core::style::StyleError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 

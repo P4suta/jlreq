@@ -1,43 +1,48 @@
-<!--
-SPDX-FileCopyrightText: 2026 jlreq contributors
-
-SPDX-License-Identifier: MIT OR Apache-2.0
--->
-
 # jlreq
 
-`jlreq` 0.1.0 is a dependency-free `no_std + alloc` Japanese line-composition engine for
-already-shaped text. Callers provide UTF-8 byte ranges, cluster advances, and line-break
-opportunities; jlreq returns integer logical placements without loading fonts, shaping,
-running bidi, rendering, or discovering UAX #14 breaks.
+`jlreq` turns UTF-8 text, in-memory TTF/OTF/TTC data, a font size, and a line extent into
+renderer-independent, draw-ready glyph placements. It performs grapheme-aware font
+fallback, HarfRust shaping, UAX #9 bidi resolution, UAX #14 line segmentation, and
+deterministic Japanese composition through [`jlreq-core`](https://crates.io/crates/jlreq-core).
 
 ```rust
-use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+# fn quick_start(font_bytes: Vec<u8>) -> Result<(), jlreq::LayoutError> {
+use jlreq::{FontLibrary, LayoutOptions};
 
-let source = "日本語組版";
-let clusters = source.char_indices().map(|(start, ch)| {
-    Cluster::new(start..start + ch.len_utf8(), 1_000)
-});
-let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters)?;
-let paragraph = Paragraph::builder(text, 4_000)
-    .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
-    .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020())
-    .expect("this small paragraph is within the default resource limits");
+let mut fonts = FontLibrary::new();
+fonts.register_font(font_bytes)?;
 
-assert_eq!(layout.lines().len(), 2);
-# Ok::<(), jlreq::InputError>(())
+let options = LayoutOptions::try_new(240.0, 16.0)?;
+let layout = jlreq::layout("日本語組版 — draw-ready glyphs", &fonts, options)?;
+
+for glyph in layout.glyphs() {
+    let font = &layout.fonts()[glyph.font_id().get() as usize];
+    renderer_draw(
+        font.bytes(),
+        font.face_index(),
+        glyph.glyph_id(),
+        glyph.origin(),
+        glyph.transform(),
+    );
+}
+# fn renderer_draw(
+#     _: &[u8], _: u32, _: u32, _: jlreq::Point, _: jlreq::GlyphTransform,
+# ) {}
+# Ok(())
+# }
 ```
 
-Composition returns either a complete exact `Layout` or a typed `ComposeError`; it never
-returns a partial layout or silently changes search strategy. `CompositionLimits` bounds
-clusters, break candidates, constructs, tab stops, and exact-search transitions. A
-`Composer` retains scratch allocation across calls and remains reusable after an error.
+`TextLayout` owns every font resource referenced by its glyphs, so it can be passed to a
+renderer without retaining `FontLibrary`. Glyphs preserve the original UTF-8 byte range,
+physical origin, advances and offsets, transform, bidi level, and visual draw order.
+Rasterization, drawing, PDF serialization, and GPU integration remain renderer concerns.
 
-The packaged, executable examples cover [minimal composition](examples/minimal.rs),
-[Composer reuse and a resource refusal](examples/composer.rs), and
-[vertical placement](examples/vertical.rs). The repository's
-[ICU4X + HarfRust integration test](https://github.com/P4suta/jlreq/blob/main/crates/jlreq-conformance/tests/reference_integration.rs)
-shows the intended segmentation/shaping boundary. See the
-[repository guide](https://github.com/P4suta/jlreq) for scope and protocol details, or run
-`cargo doc -p jlreq --open` for the API reference.
+Use `LayoutEngine` for repeated work, `DocumentBuilder` for spans, explicit break control,
+ruby and the other eight typed inline constructs, and `jlreq::core` when text is already
+shaped and the caller wants exact control over clusters and break opportunities.
+
+The optional `system-fonts` feature exposes Fontique-backed OS font discovery. Layout from
+explicit font bytes is deterministic across supported operating systems; selection from a
+changing system collection is intentionally outside that guarantee.
+
+Licensed under MIT or Apache-2.0, at your option.

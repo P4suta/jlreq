@@ -235,7 +235,7 @@ This is the point of the exercise, so it is worth stating precisely.
 **May not be read into this tree** — the Rust implementation:
 
 - the layout logic in `crates/jlreq/src/` (`pipeline.rs` above all);
-- `crates/jlreq/src/generated/`, and the xtask code generators that write it.
+- `crates/jlreq-core/src/generated/`, and the xtask code generators that write it.
 
 Where the two engines disagree, the disagreement is settled by returning to JLReq
 and to `spec/`, and recorded in `docs/decisions/`. It is never settled by reading
@@ -247,7 +247,7 @@ this second implementation is for.
 
 The exception the rule leaves open is a policy that is *observable* — two engines
 have to agree on it to pass the same case — and stated in no sentence of JLReq and
-no file under `docs/`. Those are read from `crates/jlreq/src/pipeline.rs`, never
+no file under `docs/`. Those are read from `crates/jlreq-core/src/pipeline.rs`, never
 transcribed.
 
 Twenty-six of them were found while this engine was written: two from §3.8.4's

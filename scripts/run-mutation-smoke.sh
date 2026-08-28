@@ -26,7 +26,8 @@ if [ ! -s "$diff_file" ]; then
     exit 0
 fi
 
-cargo mutants -p jlreq -p jlreq-conformance --in-diff "$diff_file" \
+cargo mutants -p jlreq -p jlreq-core -p jlreq-conformance --in-diff "$diff_file" \
+    --all-features \
     --test-tool cargo \
     --minimum-test-timeout 120 \
     --no-times \

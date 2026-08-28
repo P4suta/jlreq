@@ -68,7 +68,7 @@ const QUESTIONS_INVENTORY: &str = "spec/derived/questions.tsv";
 /// and never a rule a case may cover.
 const ANCHORS_INVENTORY: &str = "spec/derived/anchors.tsv";
 /// The crate that declares the fixed-point denominator.
-const UNIT_CRATE: &str = "crates/jlreq/src";
+const UNIT_CRATE: &str = "crates/jlreq-core/src";
 
 /// Validate the conformance suite and report one message per malformed thing.
 fn run(arguments: &[String]) -> io::Result<Vec<String>> {

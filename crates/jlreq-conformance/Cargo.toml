@@ -42,12 +42,12 @@ path = "tests/transport.rs"
 harness = false
 
 [dependencies]
-jlreq = { version = "0.1.0", path = "../jlreq" }
+jlreq-core = { version = "0.1.0", path = "../jlreq-core" }
 serde_json = "1.0"
 
 [dev-dependencies]
-harfrust = "=0.13.0"
-icu_segmenter = "=2.1.2"
+harfrust = "=0.13.3"
+icu_segmenter = "=2.3.0"
 
 [lints]
 workspace = true

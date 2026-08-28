@@ -10,7 +10,7 @@
 # Source: spec/snapshot/index.html
 # Source SHA-256: cfb1def5bf1594d59080a26d8d03c2670bb3116490ab57ef6e131b166a7c832f
 # Reader: xtask/src/classes.rs, xtask/src/derive.rs
-# Reader SHA-256: 673b41ade1f0288a4217fb6569825225aeae5ce15032aa613602083e3d223982
+# Reader SHA-256: aa04cdfeac9951ff411834cab798953c48116aeabdfee532265b930dbbc57f1b
 
 class	name_en	name_ja	enumeration
 cl-01	Opening brackets	始め括弧類	A.1

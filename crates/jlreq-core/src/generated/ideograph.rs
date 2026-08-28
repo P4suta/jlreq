@@ -10,10 +10,10 @@
 //! specification will not carry it forward (ADR 0009).
 //!
 //! - Source: `spec/derived/ideographs.tsv`
-//! - Source SHA-256: `cf61e33039cc37974f3e017e6381e94873df3e55701199a71877b18bbd01886d`
+//! - Source SHA-256: `4faa81a44f8f497198975ff8dad10e843f4da629fee83bb7786f12b61958b0ba`
 //! - Specification: JLReq, 2020-08-11
 //! - Generator: `xtask/src/classes.rs`, `xtask/src/generate.rs`
-//! - Generator SHA-256: `64c173c676c3d099077b59c02d707c9a3d470534f1ac5425d9eab6d1c1e78cdb`
+//! - Generator SHA-256: `085b66191503c549cb51ba66e6ad248c982bebc64f23e3a013031ab4d76718dd`
 //! - Entries: 16
 
 /// One range of code points the Unicode Character Database gives

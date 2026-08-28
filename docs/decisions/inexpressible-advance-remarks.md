@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Reading: what an Appendix A Remarks cell naming only an advance the format cannot express does
 
-- Applies to: [`spec`](../../crates/jlreq/src/spec.rs), and the same lookup in
+- Applies to: [`spec`](../../crates/jlreq-core/src/spec.rs), and the same lookup in
   [`engines/ocaml/lib/spec.ml`](../../engines/ocaml/lib/spec.ml)
 - Standing: `Unstated`
 - JLReq: §A.03, §A.24, §A.25, §A.26, §A.27, §3.9.2

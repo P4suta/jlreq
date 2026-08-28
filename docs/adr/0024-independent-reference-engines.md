@@ -38,8 +38,8 @@ the first one's source.
 starting with `engines/ocaml/` and followed by `engines/racket/`. Each is built from
 `spec/` and from the public protocol contract only
 (`crates/jlreq-conformance/protocol.schema.json`, `docs/design/conformance.md`, the sample
-engine's wire vocabulary); each is barred from reading `crates/jlreq/src/` — `pipeline.rs`
-above all — and from `crates/jlreq/src/generated/` or the xtask generators that write it.
+engine's wire vocabulary); each is barred from reading `crates/jlreq-core/src/` — `pipeline.rs`
+above all — and from `crates/jlreq-core/src/generated/` or the xtask generators that write it.
 The rule, the integer contract both engines follow, and the milestone mechanism are
 recorded in the new "Independent reference engines" section of
 `docs/design/conformance.md`, which is their single shared source rather than something
@@ -95,7 +95,8 @@ reaches `9`.
 
 `engines/` is deliberately not a path to a released product. Neither engine gains a stable
 CLI contract, a version number, or a publish target; both stay tooling in service of the
-`jlreq` and `jlreq-conformance` products ADR 0022 names, the same way `xtask` is tooling and
+the `jlreq`, `jlreq-core`, and `jlreq-conformance` products ADR 0025 names, the same
+way `xtask` is tooling and
 not a product crate. If a reference engine's design or its findings turn out to be broadly
 useful outside this repository, that is a separate, later decision — not a reason to gate
 one here on eventual portability.

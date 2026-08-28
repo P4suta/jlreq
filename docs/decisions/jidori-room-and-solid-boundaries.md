@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Reading: what a jidori measures its room in, and where a run with no boundary left stands
 
-- Applies to: the jidori round in [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the
+- Applies to: the jidori round in [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the
   same round in [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml) and
   [`engines/racket/structure.rkt`](../../engines/racket/structure.rkt)
 - Standing: `Unstated`

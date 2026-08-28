@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: which of §3.2.5 and the matrices states the space beside a tate-chu-yoko run
 
 - Applies to: the cl-30 placement round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Adjudicated` for the first silence — §3.2.5's own prose and the table its own
   sentence points at do not state the same rule, which is the `contradictory` permission

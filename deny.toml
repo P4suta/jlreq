@@ -19,7 +19,16 @@ ignore = []
 [licenses]
 version = 2
 confidence-threshold = 0.93
-allow = ["MIT", "Apache-2.0", "Unlicense"]
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Unlicense",
+  # ICU4X and Unicode-derived support crates.
+  "Unicode-3.0",
+  # Fontique's hash table and Unix dynamic font-discovery dependencies.
+  "Zlib",
+  "ISC",
+]
 
 [bans]
 multiple-versions = "deny"
@@ -30,7 +39,12 @@ highlight = "all"
 workspace-default-features = "allow"
 external-default-features = "allow"
 deny = []
-skip = []
+skip = [
+  # Fontique 0.11.1 uses read-fonts 0.41 while HarfRust 0.13.3 uses 0.43.
+  { crate = "read-fonts@0.41.0", reason = "fixed upstream font-stack versions use distinct read-fonts APIs" },
+  # ICU4X procedural macros remain on syn 2 while the current font stack uses syn 3.
+  { crate = "syn@2.0.119", reason = "fixed upstream ICU4X and font-stack versions span the syn 2/3 boundary" },
+]
 skip-tree = []
 
 [sources]

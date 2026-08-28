@@ -6,7 +6,7 @@
 
 use std::hint::black_box;
 
-use jlreq::{
+use jlreq_core::{
     Alignment, Break, Cluster, Construct, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText,
     Size, Style, TabAlignment, TabStop, Widow, WritingMode,
 };

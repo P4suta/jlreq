@@ -3,7 +3,7 @@
 
 //! Minimal horizontal composition with explicit legal break positions.
 
-use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+use jlreq_core::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let source = "日本語組版";
@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|(offset, _)| Break::allowed(offset)),
         )
         .build()?;
-    let layout = jlreq::compose(&paragraph, &Style::book_2020())?;
+    let layout = jlreq_core::compose(&paragraph, &Style::book_2020())?;
 
     assert_eq!(layout.lines().len(), 2);
     Ok(())

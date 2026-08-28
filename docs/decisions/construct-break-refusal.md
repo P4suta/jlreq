@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: what an engine does with a break the caller states inside an indivisible construct
 
 - Applies to: the feasibility round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §C.2#13, §C.2#6, §C.2#8, §3.3.5, §3.3.6, §3.3.9, §3.7.1, §3.7.3, §3.7.4, §3.4.2,

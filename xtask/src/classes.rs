@@ -1375,7 +1375,7 @@ pub(crate) const APPENDIX_A_TABLE: Unit = Unit {
 pub(crate) const UNIFIED_APPENDIX_A_TABLE: Unit = Unit {
     input: "spec/derived/appendix-a.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/jlreq/src/generated/appendix_a.rs",
+    output: "crates/jlreq-core/src/generated/appendix_a.rs",
     summary: "Appendix A: every enumerated key, the classes naming it, and the Remarks cell.",
     emit: emit_appendix_a,
 };
@@ -1403,7 +1403,7 @@ pub(crate) const IDEOGRAPH_TABLE: Unit = Unit {
 pub(crate) const UNIFIED_IDEOGRAPH_TABLE: Unit = Unit {
     input: "spec/derived/ideographs.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/jlreq/src/generated/ideograph.rs",
+    output: "crates/jlreq-core/src/generated/ideograph.rs",
     summary: "The members of cl-19 that §A.19's table deliberately does not list.",
     emit: emit_ideograph,
 };
@@ -1421,7 +1421,7 @@ pub(crate) const FOLDING_TABLE: Unit = Unit {
 pub(crate) const UNIFIED_FOLDING_TABLE: Unit = Unit {
     input: "spec/derived/folding.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/jlreq/src/generated/folding.rs",
+    output: "crates/jlreq-core/src/generated/folding.rs",
     summary: "The Wide and Narrow decompositions: the only folding §A's preamble permits.",
     emit: emit_folding,
 };
@@ -1439,7 +1439,7 @@ pub(crate) const SCRIPT_TABLE: Unit = Unit {
 pub(crate) const UNIFIED_SCRIPT_TABLE: Unit = Unit {
     input: "spec/derived/scripts.tsv",
     generator: &["xtask/src/classes.rs"],
-    output: "crates/jlreq/src/generated/script.rs",
+    output: "crates/jlreq-core/src/generated/script.rs",
     summary: "The two kana scripts §C.2 note 3's small-kana fallback reads.",
     emit: emit_script,
 };

@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Used only by local package and publish dry-run verification before jlreq-core 0.1.0
+# exists in the crates.io index. Published manifests retain the version-only dependency.
+[patch.crates-io]
+jlreq-core = { path = "crates/jlreq-core" }

@@ -55,6 +55,65 @@ jobs:
       - name: run every non-publishing release gate
         run: opam exec -- just release-check
 
+  crates:
+    name: crate archives, checksums, SBOMs, and provenance
+    needs: acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+        with:
+          tool: just@1.50.0,cargo-cyclonedx@0.5.9
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: build and offline-verify all crate archives
+        run: just package
+      - name: generate one CycloneDX SBOM per crate
+        run: |-
+          for package in jlreq-core jlreq jlreq-conformance; do
+            cargo cyclonedx --format json --spec-version 1.5 --license-strict --all-features \
+              --manifest-path "crates/$package/Cargo.toml"
+            sbom=$(find "crates/$package" -maxdepth 1 -name '*.cdx.json' -print -quit)
+            test -n "$sbom"
+            jq -e --arg package "$package" --arg version "0.1.0" '
+              .bomFormat == "CycloneDX" and
+              .specVersion == "1.5" and
+              .metadata.component.name == $package and
+              .metadata.component.version == $version
+            ' "$sbom"
+            cp "$sbom" "target/dist/$package-0.1.0.cdx.json"
+          done
+      - name: attest jlreq-core archive and SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: target/dist/jlreq-core-0.1.0.crate
+          sbom-path: target/dist/jlreq-core-0.1.0.cdx.json
+      - name: attest jlreq archive and SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: target/dist/jlreq-0.1.0.crate
+          sbom-path: target/dist/jlreq-0.1.0.cdx.json
+      - name: attest jlreq-conformance archive and SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: target/dist/jlreq-conformance-0.1.0.crate
+          sbom-path: target/dist/jlreq-conformance-0.1.0.cdx.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-crates
+          path: |-
+            target/dist/*.crate
+            target/dist/*-crates.sha256
+            target/dist/*.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
   binaries:
     name: binaries (${{ matrix.target }})
     needs: acceptance

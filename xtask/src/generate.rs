@@ -7,7 +7,7 @@
 //! Stage 1 is the `derive` gate, which reads the vendored snapshot and emits
 //! `spec/derived/*.tsv`. Stage 2 is this module: it turns the tab-separated files under
 //! `spec/derived/` and `spec/captured/` into the Rust modules committed at
-//! `crates/jlreq/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
+//! `crates/jlreq-core/src/generated/*.rs`. Tab-separated text needs no dependency to read, which is
 //! what keeps this program's empty dependency table intact, and the SHA-256 below is
 //! hand-written for the same reason.
 //!
@@ -304,7 +304,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 
     println!(
         "{NAME}: examined {units} active generation unit(s), {modules} module(s) under \
-         crates/jlreq/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
+         crates/jlreq-core/src/{GENERATED_DIRECTORY}/ and {entries} digest(s) recorded \
          in {MANIFEST_PATH}",
         units = UNITS.len(),
         modules = found.len(),

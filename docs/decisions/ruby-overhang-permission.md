@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: which space a ruby reading may hang over, where §3.3.8 and Table 1 differ
 
 - Applies to: the ruby overhang round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.3.8, §3.3.3, §B.1, §B.2#7, §A.09, §A.10, §A.15, §A.16

@@ -81,7 +81,7 @@
 //! a `pub use` re-exports it. That is the outer bound and it fails closed — a `pub` type is
 //! one export line away from an adopter's hands, so holding it to the frozen shape now is
 //! what keeps the shape from being decided by that line. The 0.1.0 surface governed by the
-//! active path is the sole `jlreq` library and the `jlreq::style` namespace, compared
+//! active path covers the `jlreq` facade plus the `jlreq_core` root and style namespace, compared
 //! exactly with `docs/public-api.toml`.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -94,7 +94,7 @@ use crate::shared::{self, Gate};
 /// The `api` gate, as the dispatcher sees it.
 pub(crate) const GATE: Gate = Gate {
     name: "api",
-    purpose: "jlreq matches docs/public-api.toml and its 22 typed Style mappings exactly",
+    purpose: "jlreq and jlreq-core match docs/public-api.toml and all typed Style mappings exactly",
     reference: concat!(
         "docs/adr/0012-outcome-and-detail-compatibility.md ",
         "and docs/design/api-spine.md"
@@ -132,7 +132,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     }
     check_policy_space(&root, &mut violations)?;
     check_zero_one_zero_allowlist(&root, &mut violations)?;
-    println!("api: checked the sole public Rust crate against docs/public-api.toml");
+    println!("api: checked both public Rust libraries against docs/public-api.toml");
     Ok(violations)
 }
 
@@ -143,7 +143,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
 /// One public module whose directly exported item names are frozen for 0.1.0.
 #[derive(Debug)]
 struct AllowedModule {
-    /// `jlreq` for the crate root, or a public module path such as `jlreq::style`.
+    /// A crate root, or a public module path such as `jlreq_core::style`.
     path: String,
     /// Every directly nameable item in that module, in no significant order.
     items: BTreeSet<String>,
@@ -154,7 +154,7 @@ struct AllowedModule {
 struct StyleChoiceMapping {
     /// Stable dotted path from `spec/derived/questions.tsv`.
     question: String,
-    /// Public enum in `jlreq::style`.
+    /// Public enum in `jlreq_core::style`.
     rust_type: String,
     /// Number of choices the dated specification records.
     count: usize,
@@ -255,7 +255,7 @@ fn check_style_choice_mappings(
         }
         if !style_items.contains(&mapping.rust_type) {
             violations.push(format!(
-                "docs/public-api.toml maps `{}` to `{}`, which jlreq::style does not export",
+                "docs/public-api.toml maps `{}` to `{}`, which jlreq_core::style does not export",
                 mapping.question, mapping.rust_type
             ));
         }
@@ -316,25 +316,38 @@ fn check_allowed_items(allowed: &AllowedModule, source: &str) -> Vec<String> {
     violations
 }
 
-/// Hold the only public Rust crate to the root and style-module names frozen for 0.1.0.
+/// Hold both public Rust crates to the root and style-module names frozen for 0.1.0.
 fn check_zero_one_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
     let modules = allowed_modules(root)?;
     for module in &modules {
-        let relative = match module.path.as_str() {
-            "jlreq" => "lib.rs".to_owned(),
-            path if path.starts_with("jlreq::") => {
+        let (crate_directory, relative) = match module.path.as_str() {
+            "jlreq" => ("jlreq", "lib.rs".to_owned()),
+            path if path.starts_with("jlreq::") => (
+                "jlreq",
                 format!(
                     "{}.rs",
                     path.trim_start_matches("jlreq::").replace("::", "/")
-                )
-            },
+                ),
+            ),
+            "jlreq_core" => ("jlreq-core", "lib.rs".to_owned()),
+            path if path.starts_with("jlreq_core::") => (
+                "jlreq-core",
+                format!(
+                    "{}.rs",
+                    path.trim_start_matches("jlreq_core::").replace("::", "/")
+                ),
+            ),
             path => {
                 return Err(malformed(format!(
-                    "docs/public-api.toml names `{path}`; the only public Rust crate is `jlreq`"
+                    "docs/public-api.toml names `{path}`; public Rust crates are `jlreq` and `jlreq_core`"
                 )));
             },
         };
-        let source_path = root.join("crates").join("jlreq").join("src").join(relative);
+        let source_path = root
+            .join("crates")
+            .join(crate_directory)
+            .join("src")
+            .join(relative);
         let source = fs::read_to_string(source_path)?;
         violations.extend(check_allowed_items(module, &source));
     }
@@ -2622,9 +2635,11 @@ fn check_policy_space(root: &Path, violations: &mut Vec<String>) -> io::Result<(
     let modules = allowed_modules(root)?;
     let style_items = modules
         .iter()
-        .find(|module| module.path == "jlreq::style")
+        .find(|module| module.path == "jlreq_core::style")
         .map(|module| &module.items)
-        .ok_or_else(|| malformed("docs/public-api.toml has no `jlreq::style` module".to_owned()))?;
+        .ok_or_else(|| {
+            malformed("docs/public-api.toml has no `jlreq_core::style` module".to_owned())
+        })?;
     let derived = derived_questions(root)?.ok_or_else(|| {
         malformed(format!(
             "{POLICY_SPACE} does not exist, so the typed Style mapping cannot be checked"

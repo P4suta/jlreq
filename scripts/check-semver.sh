@@ -20,9 +20,21 @@ contract_value() {
 
 baseline_version=$(contract_value baseline_version)
 compatible_series=$(contract_value compatible_series)
-package_id=$(cargo pkgid -p jlreq)
-current_version=${package_id##*#}
-current_version=${current_version##*@}
+
+package_version() {
+    package_id=$(cargo pkgid -p "$1")
+    version=${package_id##*#}
+    printf '%s\n' "${version##*@}"
+}
+
+current_version=$(package_version jlreq)
+for package in jlreq-core jlreq-conformance; do
+    version=$(package_version "$package")
+    if [ "$version" != "$current_version" ]; then
+        echo "semver: $package $version does not match jlreq $current_version" >&2
+        exit 2
+    fi
+done
 
 case "$baseline_version" in
     "$compatible_series".*) ;;
@@ -35,7 +47,7 @@ esac
 case "$current_version" in
     "$baseline_version" | "$compatible_series".*) ;;
     *)
-        echo "semver: jlreq $current_version is outside the $compatible_series.x contract in $control" >&2
+        echo "semver: workspace products at $current_version are outside the $compatible_series.x contract in $control" >&2
         echo "semver: review and update the release-line policy before continuing" >&2
         exit 2
         ;;
@@ -55,25 +67,29 @@ if [ -n "${JLREQ_SEMVER_BASELINE_ROOT:-}" ]; then
     # The current tree's documentation warnings are already denied by `just doc`. Do not
     # make a later compiler's new warning in an immutable registry baseline masquerade as
     # a semantic-versioning failure.
-    RUSTDOCFLAGS='' cargo semver-checks check-release \
-        --manifest-path crates/jlreq/Cargo.toml \
-        --package jlreq \
-        --baseline-root "$JLREQ_SEMVER_BASELINE_ROOT" \
-        --release-type patch \
-        --all-features
+    for package in jlreq-core jlreq; do
+        RUSTDOCFLAGS='' cargo semver-checks check-release \
+            --manifest-path "crates/$package/Cargo.toml" \
+            --package "$package" \
+            --baseline-root "$JLREQ_SEMVER_BASELINE_ROOT" \
+            --release-type patch \
+            --all-features
+    done
     exit 0
 fi
 
 if [ "$current_version" = "$baseline_version" ]; then
-    echo "semver: $current_version is the initial baseline; registry comparison begins with the next $compatible_series.x candidate"
+    echo "semver: all three products are at the initial $current_version baseline; registry comparison for jlreq-core and jlreq begins with the next $compatible_series.x candidate"
     exit 0
 fi
 
 # For later 0.1.x candidates cargo-semver-checks resolves the latest normal, non-yanked
 # crates.io version. Comparing with the latest release also protects API added in an
 # intermediate patch release, not only the original 0.1.0 surface.
-RUSTDOCFLAGS='' cargo semver-checks check-release \
-    --manifest-path crates/jlreq/Cargo.toml \
-    --package jlreq \
-    --release-type patch \
-    --all-features
+for package in jlreq-core jlreq; do
+    RUSTDOCFLAGS='' cargo semver-checks check-release \
+        --manifest-path "crates/$package/Cargo.toml" \
+        --package "$package" \
+        --release-type patch \
+        --all-features
+done

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: how many sides of an inserted space §3.7.3 opens, where its two renderings differ
 
 - Applies to: the jidori round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Adjudicated`. This is a `divergent` permission in the sense
   `xtask/src/policy.rs` defines — the two renderings of one sentence do not state the same

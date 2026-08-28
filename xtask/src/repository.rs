@@ -34,6 +34,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let mut documents = 0_usize;
     let mut links = 0_usize;
     let mut violations = release_ready_state_violations(&root)?;
+    violations.extend(mutation_shard_violations(&root)?);
     violations.extend(error_code_violations(&root)?);
     for file in &files {
         let bytes = fs::read(file)?;
@@ -65,6 +66,57 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     Ok(violations)
 }
 
+/// Keep cargo-mutants' zero-based shard contract explicit while displaying shards to humans
+/// as one through four. This catches both an omitted shard and the historical 1/4..4/4 bug.
+fn mutation_shard_violations(root: &Path) -> io::Result<Vec<String>> {
+    let source = fs::read_to_string(root.join(".github/workflows/mutants.yml"))?;
+    let indices = yaml_integer_values(&source, "index");
+    let displays = yaml_integer_values(&source, "display");
+    let mut violations = Vec::new();
+    if indices != [0, 1, 2, 3] {
+        violations.push(format!(
+            ".github/workflows/mutants.yml: shard indices must be exactly 0,1,2,3; found {indices:?}"
+        ));
+    }
+    if displays != [1, 2, 3, 4] {
+        violations.push(format!(
+            ".github/workflows/mutants.yml: shard displays must be exactly 1,2,3,4; found {displays:?}"
+        ));
+    }
+    for package in ["jlreq", "jlreq-core", "jlreq-conformance"] {
+        let crate_matrix = "crate: [jlreq, jlreq-core, jlreq-conformance]";
+        if !source.contains(crate_matrix) {
+            violations.push(format!(
+                ".github/workflows/mutants.yml: mutation matrix omits `{package}`"
+            ));
+        }
+    }
+    if !source.contains("${{ matrix.shard.index }}/4") {
+        violations.push(
+            ".github/workflows/mutants.yml: cargo-mutants must receive the zero-based shard index"
+                .to_owned(),
+        );
+    }
+    if !source.contains("${{ matrix.shard.display }}-of-4") {
+        violations.push(
+            ".github/workflows/mutants.yml: artifacts must use the one-based shard display"
+                .to_owned(),
+        );
+    }
+    Ok(violations)
+}
+
+fn yaml_integer_values(source: &str, key: &str) -> Vec<usize> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim().strip_prefix("- ").unwrap_or(line.trim());
+            let value = trimmed.strip_prefix(key)?.strip_prefix(':')?.trim();
+            value.parse().ok()
+        })
+        .collect()
+}
+
 /// Require the user-facing error-code reference and product literals to name the same set.
 fn error_code_violations(root: &Path) -> io::Result<Vec<String>> {
     let mut code = BTreeSet::new();
@@ -76,6 +128,18 @@ fn error_code_violations(root: &Path) -> io::Result<Vec<String>> {
         "paragraph.rs",
         "pipeline.rs",
         "style.rs",
+    ] {
+        let source = fs::read_to_string(root.join("crates/jlreq-core/src").join(name))?;
+        code.extend(quoted_error_codes(&source, '"'));
+    }
+    for name in [
+        "document.rs",
+        "engine.rs",
+        "error.rs",
+        "font.rs",
+        "options.rs",
+        "result.rs",
+        "units.rs",
     ] {
         let source = fs::read_to_string(root.join("crates/jlreq/src").join(name))?;
         code.extend(quoted_error_codes(&source, '"'));
@@ -102,9 +166,17 @@ fn quoted_error_codes(source: &str, delimiter: char) -> BTreeSet<String> {
         .enumerate()
         .filter(|(index, value)| {
             index % 2 == 1
-                && ["input.", "style.", "compose.", "layout."]
-                    .iter()
-                    .any(|prefix| value.starts_with(prefix))
+                && [
+                    "input.",
+                    "style.",
+                    "compose.",
+                    "layout.",
+                    "font.",
+                    "document.",
+                    "limit.",
+                ]
+                .iter()
+                .any(|prefix| value.starts_with(prefix))
                 && value
                     .chars()
                     .all(|character| character.is_ascii_lowercase() || ".-".contains(character))
@@ -123,6 +195,7 @@ fn release_ready_state_violations(root: &Path) -> io::Result<Vec<String>> {
 
     for manifest in [
         "crates/jlreq/Cargo.toml",
+        "crates/jlreq-core/Cargo.toml",
         "crates/jlreq-conformance/Cargo.toml",
     ] {
         let source = fs::read_to_string(root.join(manifest))?;
@@ -136,12 +209,16 @@ fn release_ready_state_violations(root: &Path) -> io::Result<Vec<String>> {
         }
     }
 
-    let conformance = fs::read_to_string(root.join("crates/jlreq-conformance/Cargo.toml"))?;
-    if !conformance.contains("jlreq = { version = \"0.1.0\", path = \"../jlreq\" }") {
-        violations.push(
-            "crates/jlreq-conformance/Cargo.toml: jlreq needs version 0.1.0 plus its local path"
-                .to_owned(),
-        );
+    for manifest in [
+        "crates/jlreq/Cargo.toml",
+        "crates/jlreq-conformance/Cargo.toml",
+    ] {
+        let source = fs::read_to_string(root.join(manifest))?;
+        if !source.contains("jlreq-core = { version = \"0.1.0\", path = \"../jlreq-core\" }") {
+            violations.push(format!(
+                "{manifest}: jlreq-core needs version 0.1.0 plus its local path"
+            ));
+        }
     }
 
     let release = fs::read_to_string(root.join("release-plz.toml"))?;
@@ -156,21 +233,59 @@ fn release_ready_state_violations(root: &Path) -> io::Result<Vec<String>> {
     }
 
     let changelog = fs::read_to_string(root.join("CHANGELOG.md"))?;
-    for line in changelog.lines() {
-        if line.starts_with("## [") && line != "## [Unreleased]" {
-            violations
-                .push("CHANGELOG.md: development history remains under [Unreleased]".to_owned());
-            break;
+    let headings = changelog
+        .lines()
+        .filter(|line| line.starts_with("## ["))
+        .collect::<Vec<_>>();
+    let valid = headings.as_slice() == ["## [Unreleased]"]
+        || (headings.len() == 2
+            && headings[0] == "## [Unreleased]"
+            && is_initial_release_heading(headings[1]));
+    if !valid {
+        violations.push(
+            "CHANGELOG.md: use [Unreleased], optionally followed by one finalized 0.1.0 heading"
+                .to_owned(),
+        );
+    }
+    for required in [
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        ".github/REPOSITORY-SETTINGS.md",
+    ] {
+        if !root.join(required).is_file() {
+            violations.push(format!(
+                "{required}: required release handoff file is missing"
+            ));
         }
     }
     Ok(violations)
+}
+
+fn is_initial_release_heading(line: &str) -> bool {
+    let Some(date) = line.strip_prefix("## [0.1.0] - ") else {
+        return false;
+    };
+    let bytes = date.as_bytes();
+    bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| matches!(index, 4 | 7) || byte.is_ascii_digit())
 }
 
 fn tracked_files(root: &Path) -> io::Result<Vec<PathBuf>> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["ls-files", "-z", "--"])
+        .args([
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ])
         .output()?;
     if !output.status.success() {
         return Err(io::Error::other(format!(
@@ -282,7 +397,10 @@ fn unresolved_link(root: &Path, document: &Path, target: &str) -> Option<String>
 
 #[cfg(test)]
 mod tests {
-    use super::{Link, local_links, release_ready_state_violations, unresolved_link};
+    use super::{
+        Link, is_initial_release_heading, local_links, mutation_shard_violations,
+        release_ready_state_violations, unresolved_link, yaml_integer_values,
+    };
     use std::path::Path;
 
     #[test]
@@ -316,12 +434,28 @@ mod tests {
     }
 
     #[test]
+    fn a_finalized_initial_release_heading_has_one_exact_shape() {
+        assert!(is_initial_release_heading("## [0.1.0] - 2026-12-31"));
+        assert!(!is_initial_release_heading("## [0.1.1] - 2026-12-31"));
+        assert!(!is_initial_release_heading("## [0.1.0] - 2026-8-28"));
+        assert!(!is_initial_release_heading("## [0.1.0] 2026-08-28"));
+    }
+
+    #[test]
     fn the_workspace_is_publishable_but_external_release_actions_are_inert() -> std::io::Result<()>
     {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .expect("workspace root");
         assert_eq!(release_ready_state_violations(root)?, Vec::<String>::new());
+        assert_eq!(mutation_shard_violations(root)?, Vec::<String>::new());
         Ok(())
+    }
+
+    #[test]
+    fn mutation_shards_are_read_as_a_complete_zero_based_set() {
+        let source = "shard:\n  - index: 0\n    display: 1\n  - index: 1\n    display: 2\n  - index: 2\n    display: 3\n  - index: 3\n    display: 4\n";
+        assert_eq!(yaml_integer_values(source, "index"), [0, 1, 2, 3]);
+        assert_eq!(yaml_integer_values(source, "display"), [1, 2, 3, 4]);
     }
 }

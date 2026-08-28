@@ -14,20 +14,41 @@ test -f docs/error-codes.md
 test -f docs/mutation-ledger.toml
 test -f .github/workflows/release.yml
 test -f .github/workflows/release-check.yml
+test -f .github/REPOSITORY-SETTINGS.md
+test -f LICENSE-MIT
+test -f LICENSE-APACHE
 
 grep -F 'version = "0.1.0"' Cargo.toml >/dev/null
-grep -F 'jlreq = { version = "0.1.0", path = "../jlreq" }' \
+grep -F 'jlreq-core = { version = "0.1.0", path = "../jlreq-core" }' \
+    crates/jlreq/Cargo.toml >/dev/null
+grep -F 'jlreq-core = { version = "0.1.0", path = "../jlreq-core" }' \
     crates/jlreq-conformance/Cargo.toml >/dev/null
-if grep -F 'publish = false' crates/jlreq/Cargo.toml crates/jlreq-conformance/Cargo.toml; then
+if grep -F 'publish = false' crates/jlreq/Cargo.toml crates/jlreq-core/Cargo.toml \
+    crates/jlreq-conformance/Cargo.toml; then
     echo "release crates must be publishable" >&2
     exit 1
 fi
+
+for package in jlreq-core jlreq jlreq-conformance; do
+    test -f "target/dist/$package-0.1.0.crate" || {
+        echo "missing verified prerelease archive for $package" >&2
+        exit 1
+    }
+done
+(
+    cd target/dist
+    sha256sum --check --strict jlreq-0.1.0-crates.sha256
+)
+test -z "$(git tag --list v0.1.0)" || {
+    echo "v0.1.0 tag must not exist during prerelease preparation" >&2
+    exit 1
+}
 if grep -Eq '^git_(tag|release)_enable = true$' release-plz.toml; then
     echo "release-plz must remain externally inert during preparation" >&2
     exit 1
 fi
 
-git diff --exit-code -- crates/jlreq/src/generated data/manifest.toml \
+git diff --exit-code -- crates/jlreq-core/src/generated data/manifest.toml \
     docs/generated/conformance-summary.md
 
 echo "0.1.0 release state is internally consistent; no publication was performed"

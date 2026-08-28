@@ -47,22 +47,22 @@ belongs here rather than in an engine's README.
 
 | Reading | Question | Where it applies |
 | --- | --- | --- |
-| [ambiguous-context](ambiguous-context.md) | Which class, when Appendix A names several and nothing separates them | [`spec` / `normalize`](../../crates/jlreq/src/normalize.rs) |
-| [unlisted-code-point](unlisted-code-point.md) | Which class, when Appendix A lists the key nowhere | [`spec` / `normalize`](../../crates/jlreq/src/normalize.rs) |
-| [compatibility-ideographs](compatibility-ideographs.md) | Whether a CJK Compatibility Ideograph is cl-19, and whether it is normalized first | [`spec`](../../crates/jlreq/src/spec.rs) |
-| [grouped-numeral-qualification](grouped-numeral-qualification.md) | Whether the width or the job §A.24's Remarks cell names is what reaches cl-24 | [`spec`](../../crates/jlreq/src/spec.rs) |
-| [adjustment-preference](adjustment-preference.md) | Where the non-ladder demerit components sit in paragraph optimization | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [european-numeral-by-code-point](european-numeral-by-code-point.md) | Whether §C.2 note 11's "European numeral" is a declared role or a fact read from the occurrence's own key | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [inseparable-character-kind](inseparable-character-kind.md) | What "of different kinds" means for two adjacent inseparable characters (cl-08) in §E.2 note 4 | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [specified-character-tab-alignment](specified-character-tab-alignment.md) | Whether §3.6.2's specified-character tab kind names its occurrence by `char` or by a caller-declared item | [`paragraph` / `pipeline`](../../crates/jlreq/src/paragraph.rs) |
-| [sentence-medial-dividing-mark](sentence-medial-dividing-mark.md) | What §3.1.6's third Note leaves open about a sentence-medial cl-04 mark's quarter em: whose em it is, which coordinates it reaches, and what a line edge does to it | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [jukugo-ruby-unset-group](jukugo-ruby-unset-group.md) | What an occurrence with no declared group means for §C.2 note 8's base-and-ruby indivisibility | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [line-head-opening-bracket](line-head-opening-bracket.md) | What §3.1.5 pattern 2 and §B.2 note 17 leave open about the wrapped-line-head half em before an opening bracket: whose em it is and whether Appendix D reduces it | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [tolerance-exhaustion](tolerance-exhaustion.md) | What composition does when no complete arrangement meets its quality threshold | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [widow-threshold](widow-threshold.md) | What §3.5.4 leaves open about widow adjustment and an unsatisfiable threshold | [`paragraph` / `pipeline`](../../crates/jlreq/src/paragraph.rs) |
-| [mono-ruby-separation-split](mono-ruby-separation-split.md) | How mono-ruby overhang surplus splits and how demands at a shared boundary combine | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [group-ruby-flush-single-character](group-ruby-flush-single-character.md) | What §3.3.6's `flush` method does for a group-ruby run of exactly one ruby character | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
-| [jukugo-group-layout-distribution](jukugo-group-layout-distribution.md) | Which of §3.3.6's two methods §3.3.7¶2's `group` answer means, and whether `ruby.group_distribution` selects anything inside a jukugo compound | [`pipeline`](../../crates/jlreq/src/pipeline.rs) |
+| [ambiguous-context](ambiguous-context.md) | Which class, when Appendix A names several and nothing separates them | [`spec` / `normalize`](../../crates/jlreq-core/src/normalize.rs) |
+| [unlisted-code-point](unlisted-code-point.md) | Which class, when Appendix A lists the key nowhere | [`spec` / `normalize`](../../crates/jlreq-core/src/normalize.rs) |
+| [compatibility-ideographs](compatibility-ideographs.md) | Whether a CJK Compatibility Ideograph is cl-19, and whether it is normalized first | [`spec`](../../crates/jlreq-core/src/spec.rs) |
+| [grouped-numeral-qualification](grouped-numeral-qualification.md) | Whether the width or the job §A.24's Remarks cell names is what reaches cl-24 | [`spec`](../../crates/jlreq-core/src/spec.rs) |
+| [adjustment-preference](adjustment-preference.md) | Where the non-ladder demerit components sit in paragraph optimization | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [european-numeral-by-code-point](european-numeral-by-code-point.md) | Whether §C.2 note 11's "European numeral" is a declared role or a fact read from the occurrence's own key | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [inseparable-character-kind](inseparable-character-kind.md) | What "of different kinds" means for two adjacent inseparable characters (cl-08) in §E.2 note 4 | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [specified-character-tab-alignment](specified-character-tab-alignment.md) | Whether §3.6.2's specified-character tab kind names its occurrence by `char` or by a caller-declared item | [`paragraph` / `pipeline`](../../crates/jlreq-core/src/paragraph.rs) |
+| [sentence-medial-dividing-mark](sentence-medial-dividing-mark.md) | What §3.1.6's third Note leaves open about a sentence-medial cl-04 mark's quarter em: whose em it is, which coordinates it reaches, and what a line edge does to it | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [jukugo-ruby-unset-group](jukugo-ruby-unset-group.md) | What an occurrence with no declared group means for §C.2 note 8's base-and-ruby indivisibility | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [line-head-opening-bracket](line-head-opening-bracket.md) | What §3.1.5 pattern 2 and §B.2 note 17 leave open about the wrapped-line-head half em before an opening bracket: whose em it is and whether Appendix D reduces it | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [tolerance-exhaustion](tolerance-exhaustion.md) | What composition does when no complete arrangement meets its quality threshold | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [widow-threshold](widow-threshold.md) | What §3.5.4 leaves open about widow adjustment and an unsatisfiable threshold | [`paragraph` / `pipeline`](../../crates/jlreq-core/src/paragraph.rs) |
+| [mono-ruby-separation-split](mono-ruby-separation-split.md) | How mono-ruby overhang surplus splits and how demands at a shared boundary combine | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [group-ruby-flush-single-character](group-ruby-flush-single-character.md) | What §3.3.6's `flush` method does for a group-ruby run of exactly one ruby character | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
+| [jukugo-group-layout-distribution](jukugo-group-layout-distribution.md) | Which of §3.3.6's two methods §3.3.7¶2's `group` answer means, and whether `ruby.group_distribution` selects anything inside a jukugo compound | [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) |
 
 Promoted from the second and third engines' observations:
 
@@ -83,10 +83,10 @@ Promoted from the second and third engines' observations:
 | [jidori-inserted-space-locale-split](jidori-inserted-space-locale-split.md) | How many sides of an inserted space §3.7.3 opens, where its two renderings state opposite rules | `just census constructs` |
 
 Every reading in the second table applies to the layout round in
-[`pipeline`](../../crates/jlreq/src/pipeline.rs) — except
+[`pipeline`](../../crates/jlreq-core/src/pipeline.rs) — except
 [inexpressible-advance-remarks](inexpressible-advance-remarks.md) and
 [warichu-bracket-listing](warichu-bracket-listing.md), which apply to
-[`spec`](../../crates/jlreq/src/spec.rs) — and to the corresponding round of
+[`spec`](../../crates/jlreq-core/src/spec.rs) — and to the corresponding round of
 [`engines/ocaml/lib/`](../../engines/ocaml/lib/pipeline.ml) and of
 [`engines/racket/`](../../engines/racket/README.md). Each file names the first two by
 module; the two the third engine's convergence added name all three.
