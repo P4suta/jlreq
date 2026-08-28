@@ -175,7 +175,7 @@ fuzz-check-linux-ci:
 _fuzz-target target seconds:
     mkdir -p target/fuzz-corpus/{{target}}
     cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
-    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz -- -max_total_time={{seconds}} -timeout=10
+    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz {{ if os() == "linux" { "--target x86_64-unknown-linux-gnu" } else { "" } }} -- -max_total_time={{seconds}} -timeout=10
 
 [private]
 _fuzz-target-linux target seconds:

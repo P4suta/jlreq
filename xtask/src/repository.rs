@@ -35,6 +35,7 @@ fn run(arguments: &[String]) -> io::Result<Vec<String>> {
     let mut links = 0_usize;
     let mut violations = release_ready_state_violations(&root)?;
     violations.extend(mutation_shard_violations(&root)?);
+    violations.extend(fuzz_target_violations(&root)?);
     violations.extend(error_code_violations(&root)?);
     for file in &files {
         let bytes = fs::read(file)?;
@@ -115,6 +116,28 @@ fn yaml_integer_values(source: &str, key: &str) -> Vec<usize> {
             value.parse().ok()
         })
         .collect()
+}
+
+/// ASan cannot fuzz a statically linked musl target. `cargo-fuzz` distributed by
+/// cargo-binstall is itself a musl binary and otherwise mistakes that build triple for the
+/// target, so every Linux path through the aggregate `just ci` gate must pin the GNU host.
+fn fuzz_target_violations(root: &Path) -> io::Result<Vec<String>> {
+    let source = fs::read_to_string(root.join("Justfile"))?;
+    let Some((_, rest)) = source.split_once("_fuzz-target target seconds:\n") else {
+        return Ok(vec![
+            "Justfile: missing the generic _fuzz-target recipe".to_owned(),
+        ]);
+    };
+    let recipe = rest.split("\n[private]\n").next().unwrap_or(rest);
+    if recipe.contains(r#"if os() == "linux" { "--target x86_64-unknown-linux-gnu" } else { "" }"#)
+    {
+        Ok(Vec::new())
+    } else {
+        Ok(vec![
+            "Justfile: generic Linux fuzzing must explicitly target x86_64-unknown-linux-gnu"
+                .to_owned(),
+        ])
+    }
 }
 
 /// Require the user-facing error-code reference and product literals to name the same set.
@@ -398,8 +421,9 @@ fn unresolved_link(root: &Path, document: &Path, target: &str) -> Option<String>
 #[cfg(test)]
 mod tests {
     use super::{
-        Link, is_initial_release_heading, local_links, mutation_shard_violations,
-        release_ready_state_violations, unresolved_link, yaml_integer_values,
+        Link, fuzz_target_violations, is_initial_release_heading, local_links,
+        mutation_shard_violations, release_ready_state_violations, unresolved_link,
+        yaml_integer_values,
     };
     use std::path::Path;
 
@@ -449,6 +473,7 @@ mod tests {
             .expect("workspace root");
         assert_eq!(release_ready_state_violations(root)?, Vec::<String>::new());
         assert_eq!(mutation_shard_violations(root)?, Vec::<String>::new());
+        assert_eq!(fuzz_target_violations(root)?, Vec::<String>::new());
         Ok(())
     }
 
