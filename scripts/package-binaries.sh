@@ -61,12 +61,15 @@ esac
 
 case $candidate in
     *.zip)
-        listing=$(7z l -ba "$candidate")
-        printf '%s\n' "$listing" | grep -F "$name/jlreq-conformance$suffix" >/dev/null
-        printf '%s\n' "$listing" | grep -F "$name/jlreq-sample-engine$suffix" >/dev/null
-        printf '%s\n' "$listing" | grep -F "$name/README.md" >/dev/null
-        printf '%s\n' "$listing" | grep -F "$name/LICENSE-MIT" >/dev/null
-        printf '%s\n' "$listing" | grep -F "$name/LICENSE-APACHE" >/dev/null
+        # Native 7-Zip prints backslash-separated entries on Windows. Normalize its
+        # listing so the archive contract is identical on every runner shell.
+        listing=$(7z l -ba "$candidate" | tr '\134' '/')
+        for required in "jlreq-conformance$suffix" "jlreq-sample-engine$suffix" README.md LICENSE-MIT LICENSE-APACHE; do
+            printf '%s\n' "$listing" | grep -F "$name/$required" >/dev/null || {
+                echo "$candidate is missing $name/$required" >&2
+                exit 1
+            }
+        done
         ;;
     *)
         for required in jlreq-conformance jlreq-sample-engine README.md LICENSE-MIT LICENSE-APACHE; do
