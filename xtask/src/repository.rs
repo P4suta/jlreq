@@ -118,7 +118,7 @@ fn yaml_integer_values(source: &str, key: &str) -> Vec<usize> {
         .collect()
 }
 
-/// ASan cannot fuzz a statically linked musl target. `cargo-fuzz` distributed by
+/// `ASan` cannot fuzz a statically linked musl target. `cargo-fuzz` distributed by
 /// cargo-binstall is itself a musl binary and otherwise mistakes that build triple for the
 /// target, so every Linux path through the aggregate `just ci` gate must pin the GNU host.
 fn fuzz_target_violations(root: &Path) -> io::Result<Vec<String>> {
