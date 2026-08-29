@@ -77,7 +77,7 @@ impl Default for FontStyle {
 }
 
 /// Font bytes retained by a completed layout for renderer use.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct FontResource {
     pub(crate) id: FontId,
@@ -85,7 +85,20 @@ pub struct FontResource {
     pub(crate) face_index: u32,
     pub(crate) family: String,
     pub(crate) style: FontStyle,
+    pub(crate) shaper_data: Arc<harfrust::ShaperData>,
 }
+
+impl PartialEq for FontResource {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.face_index == other.face_index
+            && self.bytes == other.bytes
+            && self.family == other.family
+            && self.style == other.style
+    }
+}
+
+impl Eq for FontResource {}
 
 impl fmt::Debug for FontResource {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -96,7 +109,7 @@ impl fmt::Debug for FontResource {
             .field("face_index", &self.face_index)
             .field("family", &self.family)
             .field("style", &self.style)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -192,9 +205,9 @@ impl FontLibrary {
         let bytes = bytes.into();
         let font = harfrust::FontRef::from_index(&bytes, face_index)
             .map_err(|_| LayoutError::invalid_font(face_index))?;
-        // Constructing the cache touches the shaping-critical directory and metrics tables.
-        // It is intentionally discarded here; LayoutEngine owns reusable copies.
-        let _ = harfrust::ShaperData::new(&font);
+        // Parse shaping-critical tables exactly once. Layout engines retain this immutable
+        // cache through the resource instead of reconstructing it on first use.
+        let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
 
         let ordinal = u32::try_from(self.fonts.len())
             .map_err(|_| LayoutError::invalid_document("font.too-many-ids", None))?;
@@ -205,6 +218,7 @@ impl FontLibrary {
             face_index,
             family: family.into(),
             style,
+            shaper_data,
         });
         self.fallback_order.push(id);
         if self.primary.is_none() {
@@ -365,12 +379,16 @@ mod tests {
     use super::*;
 
     fn resource(id: u32, face_index: u32, family: &str, style: FontStyle) -> FontResource {
+        let bytes = Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF);
+        let font = harfrust::FontRef::from_index(&bytes, 0).unwrap();
+        let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
         FontResource {
             id: FontId(id),
-            bytes: Arc::from(vec![1_u8, 2, 3]),
+            bytes,
             face_index,
             family: family.to_owned(),
             style,
+            shaper_data,
         }
     }
 
@@ -399,7 +417,7 @@ mod tests {
         );
         assert_eq!(font.id().get(), 42);
         assert_eq!(font.face_index(), 7);
-        assert_eq!(font.bytes(), [1, 2, 3]);
+        assert_eq!(font.bytes(), font_test_data::NOTO_SANS_JP_CFF);
         assert_eq!(font.family(), "Distinct Family");
         let rendered = format!("{font:?}");
         assert!(rendered.contains("FontResource"));

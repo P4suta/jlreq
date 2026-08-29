@@ -297,17 +297,24 @@ impl DocumentBuilder {
         style: SpanStyle,
     ) -> Result<&mut Self, LayoutError> {
         self.validate_non_empty_range(&range, "document.invalid-span-range")?;
-        if self
+        let insertion = self
             .spans
-            .iter()
-            .any(|(other, _)| ranges_overlap(other, &range))
-        {
+            .partition_point(|(other, _)| other.start < range.start);
+        let overlaps_previous = insertion
+            .checked_sub(1)
+            .and_then(|index| self.spans.get(index))
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        let overlaps_next = self
+            .spans
+            .get(insertion)
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        if overlaps_previous || overlaps_next {
             return Err(LayoutError::invalid_document(
                 "document.overlapping-spans",
                 Some(range),
             ));
         }
-        self.spans.push((range, style));
+        self.spans.insert(insertion, (range, style));
         Ok(self)
     }
 

@@ -38,6 +38,28 @@ it fails, fix the cause rather than narrowing the gate.
 composition/arithmetic, and protocol parsing. Curated inputs live under `fuzz/seeds/`;
 runtime corpora live under `target/fuzz-corpus/` and never dirty the source tree.
 
+## Performance measurements
+
+Run the checked-in median benchmark in release mode and compare runs on the same machine:
+
+```sh
+JLREQ_BENCH_SAMPLES=9 cargo run -p jlreq --release --example benchmark
+```
+
+The sample count may be replaced with any odd positive integer. The runner warms every case,
+then reports medians for one-shot and reused high-level layout, fallback and bidi text, many
+spans, vertical constructs and tabs, result queries, core-only composition, and indexed static
+constructs. CI does not compare wall-clock values: unit tests instead pin exact search-transition
+charging and the number of shaping calls needed by repeated fallback graphemes.
+
+Conformance process throughput is measured separately after a release build so process startup
+is visible rather than mixed into layout timing:
+
+```sh
+cargo build --release -p jlreq-conformance
+target/release/jlreq-conformance run target/release/jlreq-sample-engine
+```
+
 Full mutation runs cover both handwritten products. Only generated table files and exact
 mutants proven equivalent in [docs/mutation-ledger.toml](docs/mutation-ledger.toml) may be
 excluded. `just mutation-ledger` binds every such entry to its source SHA-256 and rejects an

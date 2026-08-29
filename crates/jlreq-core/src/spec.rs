@@ -31,8 +31,6 @@ pub(crate) struct RawTerm {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RawSpacingCell {
-    pub(crate) before: u8,
-    pub(crate) after: u8,
     pub(crate) prohibited: bool,
     pub(crate) hang: RawHang,
     pub(crate) rule: &'static str,
@@ -41,8 +39,6 @@ pub(crate) struct RawSpacingCell {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RawBreakCell {
-    pub(crate) before: u8,
-    pub(crate) after: u8,
     pub(crate) prohibited: bool,
     pub(crate) levels: u8,
     pub(crate) rule: &'static str,
@@ -50,8 +46,6 @@ pub(crate) struct RawBreakCell {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RawRangedCell {
-    pub(crate) before: u8,
-    pub(crate) after: u8,
     pub(crate) limit: Option<i32>,
     pub(crate) two_valued: bool,
     pub(crate) residual: bool,
@@ -151,10 +145,7 @@ pub(crate) fn table_one_space_components(
     before_solid: bool,
     after_solid: bool,
 ) -> [i32; 2] {
-    let Some(cell) = crate::generated::table1::CELLS
-        .iter()
-        .find(|cell| cell.before == before && cell.after == after)
-    else {
+    let Some(cell) = crate::generated::table1::cell(before, after) else {
         return [0, 0];
     };
     let mut components = [0_i32; 2];
@@ -174,10 +165,7 @@ pub(crate) fn table_one_space_components(
 }
 
 pub(crate) fn table_two_cell(before: u8, after: u8) -> Option<RawBreakCell> {
-    crate::generated::table2::CELLS
-        .iter()
-        .copied()
-        .find(|cell| cell.before == before && cell.after == after)
+    crate::generated::table2::cell(before, after).copied()
 }
 
 const fn class_bit(class: u8) -> u32 {

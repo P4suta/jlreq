@@ -578,6 +578,18 @@ fn cross_paragraph_grapheme_and_mono_ruby_fail_atomically() -> Result<(), Box<dy
         "document.construct-crosses-paragraph"
     );
 
+    let mut nested_crossing = DocumentBuilder::new("A\r\nB");
+    nested_crossing.group_ruby(1..4, "outer")?;
+    nested_crossing.tate_chu_yoko(2..3)?;
+    let nested_crossing = nested_crossing.build()?;
+    let nested_error = expected_layout_error(jlreq::layout_document(
+        &nested_crossing,
+        &fonts,
+        LayoutOptions::try_new(200.0, 16.0)?,
+    ))?;
+    assert_eq!(nested_error.code(), "document.construct-crosses-paragraph");
+    assert_eq!(nested_error.range(), Some(1..4));
+
     let mut split = DocumentBuilder::new("e\u{301}");
     split.span(0..1, SpanStyle::default())?;
     let split = split.build()?;

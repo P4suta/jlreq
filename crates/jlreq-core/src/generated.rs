@@ -131,12 +131,6 @@ const fn ranged_cells_valid(tables: &[&[crate::spec::RawRangedCell]]) -> bool {
         let mut index = 0_usize;
         while index < cells.len() {
             let cell = &cells[index];
-            if cell.before > CLASS_COUNT || cell.after > CLASS_COUNT {
-                return false;
-            }
-            if cell.before == 17 || cell.before == 18 || cell.after == 17 || cell.after == 18 {
-                return false;
-            }
             if let Some(limit) = cell.limit {
                 if limit < 0 || limit > 720 {
                     return false;
@@ -159,15 +153,6 @@ const fn break_cells_valid(cells: &[crate::spec::RawBreakCell]) -> bool {
     let mut index = 0_usize;
     while index < cells.len() {
         let cell = &cells[index];
-        if cell.before < 1 || cell.before > CLASS_COUNT {
-            return false;
-        }
-        if cell.after < 1 || cell.after > CLASS_COUNT {
-            return false;
-        }
-        if cell.before == 17 || cell.before == 18 || cell.after == 17 || cell.after == 18 {
-            return false;
-        }
         if cell.levels > 0b1111 {
             return false;
         }
@@ -182,12 +167,6 @@ const fn spacing_cells_valid(cells: &[crate::spec::RawSpacingCell]) -> bool {
     let mut index = 0_usize;
     while index < cells.len() {
         let cell = &cells[index];
-        if cell.before > CLASS_COUNT || cell.after > CLASS_COUNT {
-            return false;
-        }
-        if cell.before == 17 || cell.before == 18 || cell.after == 17 || cell.after == 18 {
-            return false;
-        }
         if cell.terms.len() > 2 {
             return false;
         }
@@ -385,8 +364,6 @@ mod tests {
 
     fn valid_ranged_cell() -> RawRangedCell {
         RawRangedCell {
-            before: CLASS_COUNT,
-            after: CLASS_COUNT,
             limit: Some(720),
             two_valued: true,
             residual: true,
@@ -401,8 +378,6 @@ mod tests {
 
     fn valid_break_cell() -> RawBreakCell {
         RawBreakCell {
-            before: 1,
-            after: CLASS_COUNT,
             prohibited: false,
             levels: 0b1111,
             rule: "test",
@@ -415,8 +390,6 @@ mod tests {
 
     fn valid_spacing_cell(terms: &'static [RawTerm]) -> RawSpacingCell {
         RawSpacingCell {
-            before: 0,
-            after: CLASS_COUNT,
             prohibited: false,
             hang: RawHang::None,
             rule: "test",
@@ -501,24 +474,6 @@ mod tests {
         assert!(ranged_cells_valid(&[&[], &[valid]]));
         for invalid in [
             RawRangedCell {
-                before: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawRangedCell {
-                after: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawRangedCell {
-                before: 17,
-                ..valid
-            },
-            RawRangedCell {
-                before: 18,
-                ..valid
-            },
-            RawRangedCell { after: 17, ..valid },
-            RawRangedCell { after: 18, ..valid },
-            RawRangedCell {
                 limit: Some(-1),
                 ..valid
             },
@@ -536,34 +491,10 @@ mod tests {
     fn break_cell_validation_checks_all_boundaries() {
         let valid = valid_break_cell();
         assert!(break_cells_valid(&[valid]));
-        for invalid in [
-            RawBreakCell { before: 0, ..valid },
-            RawBreakCell {
-                before: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawBreakCell {
-                before: 17,
-                ..valid
-            },
-            RawBreakCell {
-                before: 18,
-                ..valid
-            },
-            RawBreakCell { after: 0, ..valid },
-            RawBreakCell {
-                after: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawBreakCell { after: 17, ..valid },
-            RawBreakCell { after: 18, ..valid },
-            RawBreakCell {
-                levels: 0b1_0000,
-                ..valid
-            },
-        ] {
-            assert_break_cell_rejected(invalid);
-        }
+        assert_break_cell_rejected(RawBreakCell {
+            levels: 0b1_0000,
+            ..valid
+        });
     }
 
     #[test]
@@ -571,29 +502,29 @@ mod tests {
         let valid = valid_spacing_cell(&VALID_TERMS);
         assert!(spacing_cells_valid(&[valid]));
         for invalid in [
-            RawSpacingCell {
-                before: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawSpacingCell {
-                after: CLASS_COUNT.saturating_add(1),
-                ..valid
-            },
-            RawSpacingCell {
-                before: 17,
-                ..valid
-            },
-            RawSpacingCell {
-                before: 18,
-                ..valid
-            },
-            RawSpacingCell { after: 17, ..valid },
-            RawSpacingCell { after: 18, ..valid },
             valid_spacing_cell(&TOO_MANY_TERMS),
             valid_spacing_cell(&NEGATIVE_TERM),
             valid_spacing_cell(&OVERSIZED_TERM),
         ] {
             assert_spacing_cell_rejected(invalid);
+        }
+    }
+
+    #[test]
+    fn generated_matrix_accessors_cover_exactly_the_transcribed_axes() {
+        for before in 0_u8..=31 {
+            for after in 0_u8..=31 {
+                let class =
+                    |value: u8| (1..=CLASS_COUNT).contains(&value) && value != 17 && value != 18;
+                let with_edge = (before == 0 || class(before)) && (after == 0 || class(after));
+                let without_edge = class(before) && class(after);
+                assert_eq!(table1::cell(before, after).is_some(), with_edge);
+                assert_eq!(table2::cell(before, after).is_some(), without_edge);
+                assert_eq!(table3::cell(before, after).is_some(), with_edge);
+                assert_eq!(table4::cell(before, after).is_some(), with_edge);
+                assert_eq!(table5::cell(before, after).is_some(), with_edge);
+                assert_eq!(table6::cell(before, after).is_some(), without_edge);
+            }
         }
     }
 

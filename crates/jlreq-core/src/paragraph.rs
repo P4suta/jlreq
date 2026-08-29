@@ -7,6 +7,93 @@ use alloc::{vec, vec::Vec};
 use crate::construct::{Construct, ConstructKind, is_math_token};
 use crate::model::{InputError, ShapedText, WritingMode};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConstructIndex {
+    parents: Vec<Option<usize>>,
+    innermost: Vec<Option<usize>>,
+    starts: Vec<usize>,
+    by_start: Vec<usize>,
+}
+
+impl ConstructIndex {
+    fn new(text: &ShapedText, constructs: &[Construct]) -> Self {
+        if constructs.is_empty() {
+            return Self {
+                parents: Vec::new(),
+                innermost: Vec::new(),
+                starts: Vec::new(),
+                by_start: Vec::new(),
+            };
+        }
+        let mut ranges: Vec<_> = constructs
+            .iter()
+            .enumerate()
+            .filter_map(|(ordinal, construct)| {
+                let range = construct.range();
+                Some((
+                    text.cluster_ordinal(range.start)?,
+                    text.cluster_ordinal(range.end)?,
+                    ordinal,
+                ))
+            })
+            .collect();
+        ranges.sort_by(|left, right| {
+            left.0
+                .cmp(&right.0)
+                .then_with(|| right.1.cmp(&left.1))
+                .then_with(|| left.2.cmp(&right.2))
+        });
+
+        let mut ends = vec![0_usize; constructs.len()];
+        for &(_, end, ordinal) in &ranges {
+            if let Some(value) = ends.get_mut(ordinal) {
+                *value = end;
+            }
+        }
+        let mut parents = vec![None; constructs.len()];
+        let mut stack = Vec::new();
+        for &(start, _, ordinal) in &ranges {
+            while stack
+                .last()
+                .is_some_and(|parent| ends.get(*parent).is_none_or(|end| *end <= start))
+            {
+                stack.pop();
+            }
+            if let Some(parent) = stack.last().copied() {
+                if let Some(slot) = parents.get_mut(ordinal) {
+                    *slot = Some(parent);
+                }
+            }
+            stack.push(ordinal);
+        }
+
+        let mut innermost = vec![None; text.clusters().len()];
+        stack.clear();
+        let mut next = 0_usize;
+        for (cluster, innermost) in innermost.iter_mut().enumerate() {
+            while stack
+                .last()
+                .is_some_and(|active| ends.get(*active).is_none_or(|end| *end <= cluster))
+            {
+                stack.pop();
+            }
+            while ranges.get(next).is_some_and(|range| range.0 == cluster) {
+                stack.push(ranges[next].2);
+                next = next.saturating_add(1);
+            }
+            *innermost = stack.last().copied();
+        }
+        let starts = ranges.iter().map(|range| range.0).collect();
+        let by_start = ranges.iter().map(|range| range.2).collect();
+        Self {
+            parents,
+            innermost,
+            starts,
+            by_start,
+        }
+    }
+}
+
 /// The semantic kind of a caller-supplied line-break opportunity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum BreakKind {
@@ -155,6 +242,7 @@ pub struct Paragraph {
     pub(crate) line_extent: i32,
     pub(crate) breaks: Vec<Break>,
     pub(crate) constructs: Vec<Construct>,
+    pub(crate) construct_index: ConstructIndex,
     pub(crate) tab_stops: Vec<TabStop>,
     pub(crate) line_tabs: Vec<bool>,
     pub(crate) first_line_indent: i32,
@@ -202,6 +290,90 @@ impl Paragraph {
     #[must_use]
     pub fn constructs(&self) -> &[Construct] {
         &self.constructs
+    }
+
+    pub(crate) fn find_construct_containing(
+        &self,
+        cluster: usize,
+        mut matches: impl FnMut(&Construct) -> bool,
+    ) -> Option<(usize, &Construct)> {
+        let mut current = self
+            .construct_index
+            .innermost
+            .get(cluster)
+            .copied()
+            .flatten();
+        let mut selected = None;
+        while let Some(ordinal) = current {
+            if self.constructs.get(ordinal).is_some_and(&mut matches)
+                && selected.is_none_or(|previous| ordinal < previous)
+            {
+                selected = Some(ordinal);
+            }
+            current = self.construct_index.parents.get(ordinal).copied().flatten();
+        }
+        selected.and_then(|ordinal| {
+            self.constructs
+                .get(ordinal)
+                .map(|construct| (ordinal, construct))
+        })
+    }
+
+    pub(crate) fn visit_constructs_containing(
+        &self,
+        cluster: usize,
+        mut visit: impl FnMut(usize, &Construct),
+    ) {
+        let mut current = self
+            .construct_index
+            .innermost
+            .get(cluster)
+            .copied()
+            .flatten();
+        while let Some(ordinal) = current {
+            if let Some(construct) = self.constructs.get(ordinal) {
+                visit(ordinal, construct);
+            }
+            current = self.construct_index.parents.get(ordinal).copied().flatten();
+        }
+    }
+
+    pub(crate) fn visit_constructs_overlapping(
+        &self,
+        start: usize,
+        end: usize,
+        mut visit: impl FnMut(usize, &Construct),
+    ) {
+        if start >= end {
+            return;
+        }
+        self.visit_constructs_containing(start, &mut visit);
+        let first = self
+            .construct_index
+            .starts
+            .partition_point(|construct_start| *construct_start <= start);
+        let last = self
+            .construct_index
+            .starts
+            .partition_point(|construct_start| *construct_start < end);
+        for index in first..last {
+            if let Some(ordinal) = self.construct_index.by_start.get(index).copied() {
+                if let Some(construct) = self.constructs.get(ordinal) {
+                    visit(ordinal, construct);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn collect_constructs_overlapping(
+        &self,
+        start: usize,
+        end: usize,
+        ordinals: &mut Vec<usize>,
+    ) {
+        ordinals.clear();
+        self.visit_constructs_overlapping(start, end, |ordinal, _| ordinals.push(ordinal));
+        ordinals.sort_unstable();
     }
 
     /// Validated, increasing tab stops.
@@ -338,11 +510,13 @@ impl ParagraphBuilder {
             &mut self.tab_stops,
         )?;
 
+        let construct_index = ConstructIndex::new(&self.text, &self.constructs);
         Ok(Paragraph {
             text: self.text,
             line_extent: self.line_extent,
             breaks: self.breaks,
             constructs: self.constructs,
+            construct_index,
             tab_stops: self.tab_stops,
             line_tabs,
             first_line_indent: self.first_line_indent,
@@ -896,6 +1070,22 @@ mod tests {
             .build()
             .expect_err("crossing constructs");
         assert_eq!(crossing.code(), "input.crossing-constructs");
+
+        let indexed = Paragraph::builder(text("abcde"), 5_000)
+            .constructs([
+                Construct::emphasis_dots(1..4, '・'),
+                Construct::reference_mark(2..3, text("※")),
+                Construct::script(4..5, text("x")),
+            ])
+            .build()
+            .expect("nested and adjacent indexed constructs");
+        let mut ordinals = Vec::new();
+        indexed.collect_constructs_overlapping(2, 3, &mut ordinals);
+        assert_eq!(ordinals, [0, 1]);
+        indexed.collect_constructs_overlapping(3, 5, &mut ordinals);
+        assert_eq!(ordinals, [0, 2]);
+        indexed.collect_constructs_overlapping(0, 1, &mut ordinals);
+        assert!(ordinals.is_empty());
     }
 
     #[test]

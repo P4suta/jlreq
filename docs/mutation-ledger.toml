@@ -61,42 +61,42 @@ reason = "Generated kana-script ranges; just generate-check and just attest veri
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table1.rs"
-sha256 = "54f879f69b2b47cb816ada14c721a503894e307e7d43c61e796d4fa149933c3a"
+sha256 = "c62cc781e23364563767253ef8773667defb939cb324d3221ec5c304c5ebc1d6"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 1 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table2.rs"
-sha256 = "76e6e4d3f22f8cbe8b7243e3c1672e787db9c62a0940ac691ed6abc540efa753"
+sha256 = "6dd6d8b662bd599519cce318ff0159701012a997d2fcfd9f54776aacb13506e5"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 2 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table3.rs"
-sha256 = "d02226e7728d275b4ca60eb641e58bade4dd1a8be6e40b5b7aec864f7476a30c"
+sha256 = "c83b045a37e79d955368aa6ba5d56f1794dde21622962a633204d5d834dd276a"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 3 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table4.rs"
-sha256 = "3b373bc7dda9b017d9a5e5f927e2fb281ef273e52cee4dea3f9676242bfc8a11"
+sha256 = "6947ac7f5e65f0118502b6933c917650562313fec7e9381d645611b9c35f3f33"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 4 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table5.rs"
-sha256 = "594f6e4c0d1645c4e5ad1d5e38ea46fc1d2739704eb998c52c28b4f7700c8d2d"
+sha256 = "143c233046c4f4298614d57613d2e7484e28c1b439919e5ec752c292b892ad06"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 5 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table6.rs"
-sha256 = "e1ec1925685b6a71dc621cba2056f956d450a9c6e21888d294b360469be4fde1"
+sha256 = "427eb11a74775b95524a244f6ca80811154561ace2694d90c0793ad4c5051c9c"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 6 cells; just generate-check and just attest verify them byte-for-byte."
@@ -108,29 +108,29 @@ reason = "Generated JLReq Table 6 cells; just generate-check and just attest ver
 [[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:35:5: replace | with ^"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:35:5: replace [|] with \^$'
-source_sha256 = "d4621a5ba23aa7a94090267395d431a5e6f5817e65539aca3fe2d026a84aedb8"
+source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"
 proof = "FRAME_FULL_EM is bit 0 and FRAME_HALF_EM is bit 1, so the accumulated operand and the added bit are disjoint; OR and XOR are identical."
 
 [[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:36:5: replace | with ^"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:36:5: replace [|] with \^$'
-source_sha256 = "d4621a5ba23aa7a94090267395d431a5e6f5817e65539aca3fe2d026a84aedb8"
+source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"
 proof = "FRAME_THIRD_EM is bit 2 and does not overlap the accumulated bits 0-1; OR and XOR are identical."
 
 [[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:37:5: replace | with ^"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:37:5: replace [|] with \^$'
-source_sha256 = "d4621a5ba23aa7a94090267395d431a5e6f5817e65539aca3fe2d026a84aedb8"
+source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"
 proof = "FRAME_QUARTER_EM is bit 3 and does not overlap the accumulated bits 0-2; OR and XOR are identical."
 
 [[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:38:5: replace | with ^"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:38:5: replace [|] with \^$'
-source_sha256 = "d4621a5ba23aa7a94090267395d431a5e6f5817e65539aca3fe2d026a84aedb8"
+source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"
 proof = "FRAME_PROPORTIONAL is bit 4 and does not overlap the accumulated bits 0-3; OR and XOR are identical."
 
 [[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:55:41: replace < with <= in ascends"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:55:41: replace < with <= in ascends$'
-source_sha256 = "d4621a5ba23aa7a94090267395d431a5e6f5817e65539aca3fe2d026a84aedb8"
+source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"
 proof = "This return is dominated by before.key[position] != after.key[position]; for unequal integers, < and <= have the same truth value."

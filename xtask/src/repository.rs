@@ -167,6 +167,12 @@ fn error_code_violations(root: &Path) -> io::Result<Vec<String>> {
         let source = fs::read_to_string(root.join("crates/jlreq/src").join(name))?;
         code.extend(quoted_error_codes(&source, '"'));
     }
+    for directory in ["crates/jlreq-core/src/pipeline", "crates/jlreq/src/engine"] {
+        for path in shared::rust_sources(&root.join(directory))? {
+            let source = fs::read_to_string(path)?;
+            code.extend(quoted_error_codes(&source, '"'));
+        }
+    }
     let reference = fs::read_to_string(root.join("docs/error-codes.md"))?;
     let documented = quoted_error_codes(&reference, '`');
     let mut violations = Vec::new();
@@ -421,8 +427,8 @@ fn unresolved_link(root: &Path, document: &Path, target: &str) -> Option<String>
 #[cfg(test)]
 mod tests {
     use super::{
-        Link, fuzz_target_violations, is_initial_release_heading, local_links,
-        mutation_shard_violations, release_ready_state_violations, unresolved_link,
+        Link, error_code_violations, fuzz_target_violations, is_initial_release_heading,
+        local_links, mutation_shard_violations, release_ready_state_violations, unresolved_link,
         yaml_integer_values,
     };
     use std::path::Path;
@@ -474,6 +480,7 @@ mod tests {
         assert_eq!(release_ready_state_violations(root)?, Vec::<String>::new());
         assert_eq!(mutation_shard_violations(root)?, Vec::<String>::new());
         assert_eq!(fuzz_target_violations(root)?, Vec::<String>::new());
+        assert_eq!(error_code_violations(root)?, Vec::<String>::new());
         Ok(())
     }
 
