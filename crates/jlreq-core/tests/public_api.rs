@@ -1,0 +1,2906 @@
+// SPDX-FileCopyrightText: 2026 jlreq contributors
+//
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+//! Black-box acceptance tests for the intentionally small public API.
+
+use jlreq_core::{
+    Alignment, Break, Cluster, ClusterRole, Composer, CompositionLimits, CompositionResource,
+    Construct, CoordinateTransform, Frame, Paragraph, Ruby, RubyKind, RubyRun, ShapedText, Size,
+    Style, TabAlignment, TabStop, Widow, WritingMode,
+    style::{
+        AdjustmentPreference, AmbiguousContext, ExpansionOrder, GroupRubyDistribution,
+        GroupedNumeralBeforeWestern, GroupedNumeralQualification, HangingPunctuation,
+        IterationMarkAtLineHead, JapaneseLatinExpansionCeiling, JukugoRubyLayout, KinsokuLevel,
+        LineEndFullStopComma, LineEndPunctuation, LineHeadOpeningBracket, ReductionTable,
+        RelaxationMechanism, Remainder, RubyAlignment, RubyOverhangIndent, RubyOverhangKana,
+        SentenceMedialDividingMark, UnlistedCodePoint,
+    },
+};
+
+macro_rules! compose_ok {
+    ($paragraph:expr, $style:expr) => {
+        jlreq_core::compose($paragraph, $style).expect("fixture stays within composition limits")
+    };
+}
+
+fn shaped(source: &str, frame: Frame, advance: i32) -> Result<ShapedText, jlreq_core::InputError> {
+    let clusters = source.char_indices().map(|(start, character)| {
+        Cluster::new(start..start.saturating_add(character.len_utf8()), advance)
+    });
+    ShapedText::new(source, Size::square(1_000)?, frame, clusters)
+}
+
+#[test]
+fn every_one_of_the_twenty_two_settings_accepts_a_non_default_choice() {
+    macro_rules! builds {
+        ($builder:expr) => {
+            assert!($builder.build().is_ok());
+        };
+    }
+
+    builds!(
+        Style::builder()
+            .kinsoku_level(KinsokuLevel::VeryStrict)
+            .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+            .relaxation_mechanism(RelaxationMechanism::Matrix)
+    );
+    builds!(Style::builder().reduction_table(ReductionTable::Table4));
+    builds!(Style::builder().line_end_punctuation(LineEndPunctuation::Solid));
+    builds!(Style::builder().line_end_full_stop_comma(LineEndFullStopComma::Jis));
+    builds!(Style::builder().line_head_opening_bracket(LineHeadOpeningBracket::Pattern2));
+    builds!(Style::builder().ruby_overhang_kana(RubyOverhangKana::None));
+    builds!(Style::builder().ruby_overhang_indent(RubyOverhangIndent::Prohibited));
+    builds!(Style::builder().ruby_alignment(RubyAlignment::Katatsuki));
+    builds!(Style::builder().group_ruby_distribution(GroupRubyDistribution::Flush));
+    builds!(Style::builder().jukugo_ruby_layout(JukugoRubyLayout::Phonetic));
+    builds!(Style::builder().iteration_mark_at_line_head(IterationMarkAtLineHead::Replaced));
+    builds!(Style::builder().hanging_punctuation(HangingPunctuation::Hanging));
+    builds!(
+        Style::builder().grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+    );
+    builds!(Style::builder().sentence_medial_dividing_mark(SentenceMedialDividingMark::QuarterEm));
+    builds!(
+        Style::builder().japanese_latin_expansion_ceiling(JapaneseLatinExpansionCeiling::Rigid)
+    );
+    builds!(Style::builder().expansion_order(ExpansionOrder::Implementation));
+    builds!(Style::builder().adjustment_preference(AdjustmentPreference::EvenTexture));
+    builds!(Style::builder().remainder(Remainder::Trailing));
+    builds!(Style::builder().unlisted_code_point(UnlistedCodePoint::Ideographic));
+    builds!(Style::builder().ambiguous_context(AmbiguousContext::HighestClass));
+    builds!(Style::builder().grouped_numeral_qualification(GroupedNumeralQualification::ByRole));
+    builds!(Style::builder().relaxation_mechanism(RelaxationMechanism::Matrix));
+}
+
+#[test]
+fn contradictory_style_combinations_have_stable_codes() {
+    let grouped = Style::builder()
+        .kinsoku_level(KinsokuLevel::VeryStrict)
+        .relaxation_mechanism(RelaxationMechanism::Matrix)
+        .build()
+        .expect_err("default breakable grouped numerals conflict");
+    assert_eq!(grouped.code(), "style.very-strict-grouped-numeral");
+
+    let relaxation = Style::builder()
+        .kinsoku_level(KinsokuLevel::VeryStrict)
+        .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+        .build()
+        .expect_err("default reclassification conflicts");
+    assert_eq!(relaxation.code(), "style.very-strict-relaxation");
+}
+
+#[test]
+fn default_is_permanently_the_dated_jlreq_profile() {
+    assert_eq!(Style::default(), Style::jlreq_2020());
+    assert_ne!(Style::book_2020(), Style::jlreq_2020());
+    assert_ne!(Style::magazine_2020(), Style::newspaper_2020());
+    assert_ne!(Style::jis_reading_2020(), Style::jlreq_2020());
+}
+
+#[test]
+fn all_nine_constructs_compose_in_both_writing_modes() {
+    let annotation = shaped("に", Frame::FullEm, 500).expect("valid annotation");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..3,
+        annotation.clone(),
+        [RubyRun::new(0..3, 0..3)],
+    )
+    .expect("valid group ruby");
+    let constructs = [
+        Construct::ruby(ruby),
+        Construct::tate_chu_yoko(0..3),
+        Construct::emphasis_dots(0..3, '・'),
+        Construct::warichu(0..3),
+        Construct::furawake(0..3, 1, 0),
+        Construct::jidori(0..3, 2),
+        Construct::reference_mark(0..3, annotation.clone()),
+        Construct::script(0..3, annotation),
+        Construct::formula(0..3),
+    ];
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        for construct in &constructs {
+            let text = shaped("日", Frame::FullEm, 1_000).expect("valid base");
+            let paragraph = Paragraph::builder(text, 2_000)
+                .constructs([construct.clone()])
+                .writing_mode(mode)
+                .build()
+                .expect("valid construct paragraph");
+            let layout = compose_ok!(&paragraph, &Style::default());
+            assert_eq!(layout.lines().len(), 1);
+            assert_eq!(layout.lines()[0].clusters().len(), 1);
+        }
+    }
+}
+
+#[test]
+fn jidori_fills_declared_cells_and_keeps_its_outer_boundary_separate() {
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let text = shaped("日本語", Frame::FullEm, 1_000).expect("valid jidori fixture");
+        let paragraph = Paragraph::builder(text, 5_000)
+            .constructs([Construct::jidori(0..6, 4)])
+            .writing_mode(mode)
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid jidori paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            [0, 3_000, 4_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::advance)
+                .collect::<Vec<_>>(),
+            [3_000, 1_000, 1_000]
+        );
+        assert_eq!(line.inline_extent(), 5_000);
+    }
+}
+
+#[test]
+fn jidori_leaves_trailing_space_when_no_internal_boundary_can_expand() {
+    for source in ["日", "——"] {
+        let text = shaped(source, Frame::FullEm, 1_000).expect("valid closed jidori fixture");
+        let end = source.len();
+        let paragraph = Paragraph::builder(text, 4_000)
+            .constructs([Construct::jidori(0..end, 4)])
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid closed jidori paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 4_000);
+        assert_eq!(line.clusters()[0].inline(), 0);
+        assert_eq!(
+            line.clusters().last().expect("non-empty line").advance(),
+            if source == "日" { 4_000 } else { 3_000 }
+        );
+    }
+}
+
+#[test]
+fn vertical_western_text_exposes_upright_rotated_and_tate_chu_yoko_methods() {
+    let upright = Paragraph::builder(
+        shaped("Ａ", Frame::FullEm, 1_000).expect("valid upright fixture"),
+        1_000,
+    )
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid upright paragraph");
+    let upright_layout = compose_ok!(&upright, &Style::default());
+    let upright_cluster = &upright_layout.lines()[0].clusters()[0];
+    assert_eq!(upright_cluster.writing_mode(), WritingMode::VerticalRl);
+    assert_eq!(upright_cluster.transform(), CoordinateTransform::Identity);
+
+    let rotated = Paragraph::builder(
+        shaped("AB", Frame::Proportional, 500).expect("valid rotated fixture"),
+        1_000,
+    )
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid rotated paragraph");
+    let rotated_layout = compose_ok!(&rotated, &Style::default());
+    assert!(rotated_layout.lines()[0].clusters().iter().all(|cluster| {
+        cluster.writing_mode() == WritingMode::VerticalRl
+            && cluster.transform() == CoordinateTransform::RotateClockwise
+    }));
+
+    let tate_chu_yoko = Paragraph::builder(
+        shaped("12", Frame::Proportional, 500).expect("valid tate-chu-yoko fixture"),
+        1_000,
+    )
+    .constructs([Construct::tate_chu_yoko(0..2)])
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid tate-chu-yoko paragraph");
+    let tate_chu_yoko_layout = compose_ok!(&tate_chu_yoko, &Style::default());
+    assert!(
+        tate_chu_yoko_layout.lines()[0]
+            .clusters()
+            .iter()
+            .all(|cluster| {
+                cluster.writing_mode() == WritingMode::HorizontalTb
+                    && cluster.transform() == CoordinateTransform::TateChuYoko
+            })
+    );
+}
+
+#[test]
+fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
+    let text = ShapedText::new(
+        "日123本語",
+        Size::square(1_000).expect("positive base size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..4, 400).with_frame(Frame::Proportional),
+            Cluster::new(4..5, 400).with_frame(Frame::Proportional),
+            Cluster::new(5..6, 400).with_frame(Frame::Proportional),
+            Cluster::new(6..9, 1_000),
+            Cluster::new(9..12, 1_000),
+        ],
+    )
+    .expect("valid mixed vertical fixture");
+    let paragraph = Paragraph::builder(text, 4_000)
+        .breaks([Break::mandatory(9)])
+        .constructs([Construct::tate_chu_yoko(3..6)])
+        .alignment(Alignment::Justify)
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid tate-chu-yoko paragraph");
+
+    let layout = compose_ok!(&paragraph, &Style::default());
+    let first = &layout.lines()[0];
+    assert_eq!(first.inline_extent(), 4_000);
+    assert_eq!(first.block_extent(), 1_200);
+    assert_eq!(first.clusters()[0].inline(), 0);
+    assert_eq!(first.clusters()[4].inline(), 3_000);
+
+    let digits = &first.clusters()[1..4];
+    assert_eq!(digits[0].inline(), 1_500);
+    assert_eq!(digits[1].inline(), 1_500);
+    assert_eq!(digits[2].inline(), 1_500);
+    assert_eq!(digits[0].block(), -600);
+    assert_eq!(digits[1].block(), -200);
+    assert_eq!(digits[2].block(), 200);
+    assert!(digits.iter().all(|cluster| {
+        cluster.writing_mode() == WritingMode::HorizontalTb
+            && cluster.transform() == CoordinateTransform::TateChuYoko
+    }));
+
+    assert_eq!(layout.lines()[1].block_origin(), -1_200);
+}
+
+#[test]
+fn tate_chu_yoko_punctuation_boundaries_follow_the_directional_half_em_rules() {
+    let cases = [
+        ("）12", 1_500, None, 2_500),
+        ("。12", 1_500, None, 2_500),
+        ("、12", 1_500, None, 2_500),
+        ("「12", 1_000, None, 2_000),
+        ("12（", 0, Some(1_500), 2_500),
+        ("12）", 0, Some(1_000), 2_500),
+        ("12。", 0, Some(1_000), 2_500),
+        ("12、", 0, Some(1_000), 2_500),
+    ];
+
+    for (source, expected_digits, expected_following, expected_extent) in cases {
+        let digit_start = source.find('1').expect("fixture contains a digit run");
+        let clusters = source.char_indices().map(|(start, character)| {
+            let cluster = Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character.is_ascii_digit() {
+                    500
+                } else {
+                    1_000
+                },
+            );
+            if character.is_ascii_digit() {
+                cluster.with_frame(Frame::Proportional)
+            } else {
+                cluster
+            }
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive punctuation fixture size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid punctuation fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .constructs([Construct::tate_chu_yoko(
+                digit_start..digit_start.saturating_add(2),
+            )])
+            .writing_mode(WritingMode::VerticalRl)
+            .build()
+            .expect("valid punctuation paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        let first_digit = line
+            .clusters()
+            .iter()
+            .find(|cluster| cluster.range().start == digit_start)
+            .expect("placed first digit");
+        assert_eq!(first_digit.inline(), expected_digits, "source {source}");
+        if let Some(expected) = expected_following {
+            assert_eq!(
+                line.clusters()
+                    .last()
+                    .expect("following punctuation")
+                    .inline(),
+                expected,
+                "source {source}"
+            );
+        }
+        assert_eq!(line.inline_extent(), expected_extent, "source {source}");
+    }
+
+    let text = ShapedText::new(
+        "。12",
+        Size::square(1_000).expect("positive line-end fixture size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..4, 500).with_frame(Frame::Proportional),
+            Cluster::new(4..5, 500).with_frame(Frame::Proportional),
+        ],
+    )
+    .expect("valid line-end fixture");
+    let paragraph = Paragraph::builder(text, 2_000)
+        .breaks([Break::mandatory(3)])
+        .constructs([Construct::tate_chu_yoko(3..5)])
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid line-end paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines()[0].inline_extent(), 1_500);
+    assert_eq!(layout.lines()[0].clusters()[0].advance(), 1_500);
+
+    let text = ShapedText::new(
+        "。x12",
+        Size::square(1_000).expect("positive multi-key fixture size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..4, 1_500),
+            Cluster::new(4..5, 500),
+            Cluster::new(5..6, 500),
+        ],
+    )
+    .expect("valid indivisible proportional fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .constructs([Construct::tate_chu_yoko(4..6)])
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid multi-key paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0].clusters()[1].inline(),
+        1_500,
+        "a multi-code-point shaping cluster is not classified by its first character alone"
+    );
+}
+
+#[test]
+fn appendix_a_opening_brackets_are_not_limited_to_a_handwritten_subset() {
+    let text = shaped("日⦅日", Frame::FullEm, 1_000).expect("valid Appendix A fixture");
+    let paragraph = Paragraph::builder(text, 4_000)
+        .build()
+        .expect("valid Appendix A paragraph");
+
+    let layout = compose_ok!(&paragraph, &Style::default());
+    let line = &layout.lines()[0];
+    assert_eq!(
+        line.clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        vec![0, 1_500, 2_500]
+    );
+    assert_eq!(line.inline_extent(), 3_500);
+}
+
+#[test]
+fn sentence_medial_dividing_mark_choice_requires_the_declared_role() {
+    let compose_with = |choice, role| {
+        let text = ShapedText::new(
+            "日？日",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 1_000).with_role(role),
+                Cluster::new(6..9, 1_000),
+            ],
+        )
+        .expect("valid dividing-mark fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .build()
+            .expect("valid dividing-mark paragraph");
+        let style = Style::builder()
+            .sentence_medial_dividing_mark(choice)
+            .build()
+            .expect("consistent dividing-mark style");
+        compose_ok!(&paragraph, &style).lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::Solid,
+            ClusterRole::SentenceMedial,
+        ),
+        [0, 1_000, 2_000]
+    );
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::QuarterEm,
+            ClusterRole::SentenceMedial,
+        ),
+        [0, 1_250, 2_500]
+    );
+    assert_eq!(
+        compose_with(
+            SentenceMedialDividingMark::QuarterEm,
+            ClusterRole::SentenceTerminator,
+        ),
+        [0, 1_000, 3_000],
+        "the medial alternative is not guessed; the independent sentence-final rule inserts one em"
+    );
+}
+
+#[test]
+fn sentence_terminator_space_is_inserted_and_withdrawn_at_a_wrap() {
+    let text = ShapedText::new(
+        "日？日",
+        Size::square(1_000).expect("positive size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..6, 1_000).with_role(ClusterRole::SentenceTerminator),
+            Cluster::new(6..9, 1_000),
+        ],
+    )
+    .expect("valid sentence-final dividing-mark fixture");
+
+    let one_line = Paragraph::builder(text.clone(), 4_000)
+        .build()
+        .expect("valid one-line paragraph");
+    let layout = compose_ok!(&one_line, &Style::default());
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 4_000);
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 3_000],
+        "a sentence-final dividing mark carries a fixed one-em following space"
+    );
+
+    let wrapped = Paragraph::builder(text, 3_000)
+        .breaks([Break::allowed(6)])
+        .build()
+        .expect("valid wrapping paragraph");
+    let layout = compose_ok!(&wrapped, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+    assert_eq!(layout.lines()[1].clusters()[0].inline(), 0);
+}
+
+#[test]
+fn classification_choices_change_black_box_spacing_and_breaks() {
+    let unlisted = |choice| {
+        let text = ShapedText::new(
+            "🦀日",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..4, 700)
+                    .with_size(Size::square(700).expect("positive emoji size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(4..7, 1_000),
+            ],
+        )
+        .expect("valid unlisted fixture");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .build()
+            .expect("valid unlisted paragraph");
+        let style = Style::builder()
+            .unlisted_code_point(choice)
+            .build()
+            .expect("consistent unlisted style");
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[1].inline()
+    };
+    assert_eq!(unlisted(UnlistedCodePoint::ByFrame), 950);
+    assert_eq!(unlisted(UnlistedCodePoint::Ideographic), 700);
+
+    let ambiguous = |choice| {
+        let text = ShapedText::new(
+            "↔A",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..4, 400)
+                    .with_size(Size::square(400).expect("positive Latin size"))
+                    .with_frame(Frame::Proportional),
+            ],
+        )
+        .expect("valid ambiguous fixture");
+        let paragraph = Paragraph::builder(text, 2_000)
+            .build()
+            .expect("valid ambiguous paragraph");
+        let style = Style::builder()
+            .ambiguous_context(choice)
+            .build()
+            .expect("consistent ambiguity style");
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[1].inline()
+    };
+    assert_eq!(ambiguous(AmbiguousContext::LowestClass), 1_000);
+    assert_eq!(ambiguous(AmbiguousContext::HighestClass), 1_250);
+
+    let grouped = |choice| {
+        let text = ShapedText::new(
+            "1A末",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..1, 500).with_frame(Frame::HalfEm),
+                Cluster::new(1..2, 500)
+                    .with_size(Size::square(500).expect("positive Latin size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(2..5, 1_000),
+            ],
+        )
+        .expect("valid grouped-numeral fixture");
+        let paragraph = Paragraph::builder(text, 1_750)
+            .breaks([Break::allowed(1)])
+            .build()
+            .expect("valid grouped-numeral paragraph");
+        let style = Style::builder()
+            .grouped_numeral_qualification(choice)
+            .build()
+            .expect("consistent grouped-numeral style");
+        compose_ok!(&paragraph, &style).lines().len()
+    };
+    assert_eq!(grouped(GroupedNumeralQualification::ByWidth), 2);
+    assert_eq!(grouped(GroupedNumeralQualification::ByRole), 1);
+}
+
+#[test]
+fn table_one_spaces_japanese_and_western_text_by_the_referents_em() {
+    fn positions(source: &str) -> (Vec<i32>, i32) {
+        let clusters = source.char_indices().map(|(start, character)| {
+            let cluster = Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character.is_ascii() { 400 } else { 1_000 },
+            );
+            if character.is_ascii() {
+                cluster
+                    .with_frame(Frame::Proportional)
+                    .with_size(Size::square(400).expect("positive Western size"))
+            } else {
+                cluster
+            }
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive Japanese size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid mixed-size text");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .build()
+            .expect("valid mixed-size paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        (
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect(),
+            line.inline_extent(),
+        )
+    }
+
+    assert_eq!(positions("日A"), (vec![0, 1_250], 1_650));
+    assert_eq!(positions("A日"), (vec![0, 650], 1_650));
+}
+
+#[test]
+fn contextual_decimal_punctuation_withdraws_its_ordinary_space() {
+    fn positions(
+        source: &str,
+        role: Option<(usize, ClusterRole)>,
+        mode: WritingMode,
+    ) -> (Vec<i32>, i32) {
+        let clusters = source
+            .char_indices()
+            .enumerate()
+            .map(|(ordinal, (start, character))| {
+                let cluster =
+                    Cluster::new(start..start.saturating_add(character.len_utf8()), 1_000);
+                if role.is_some_and(|(target, _)| target == ordinal) {
+                    cluster.with_role(role.expect("role was present").1)
+                } else {
+                    cluster
+                }
+            });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive punctuation size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid punctuation text");
+        let paragraph = Paragraph::builder(text, 5_000)
+            .writing_mode(mode)
+            .build()
+            .expect("valid punctuation paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        (
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect(),
+            line.inline_extent(),
+        )
+    }
+
+    assert_eq!(
+        positions("一、二", None, WritingMode::VerticalRl),
+        (vec![0, 1_000, 2_500], 3_500),
+        "an ordinary ideographic comma retains its following half em"
+    );
+    assert_eq!(
+        positions(
+            "一、二",
+            Some((1, ClusterRole::DigitGroupSeparator)),
+            WritingMode::VerticalRl,
+        ),
+        (vec![0, 1_000, 2_000], 3_000),
+        "a vertical digit-group separator is solid"
+    );
+    assert_eq!(
+        positions("一・五", None, WritingMode::VerticalRl),
+        (vec![0, 1_250, 2_500], 3_500),
+        "an ordinary middle dot retains both quarter em spaces"
+    );
+    assert_eq!(
+        positions(
+            "一・五",
+            Some((1, ClusterRole::DecimalPoint)),
+            WritingMode::VerticalRl,
+        ),
+        (vec![0, 1_000, 2_000], 3_000),
+        "a vertical decimal point is solid"
+    );
+    assert_eq!(
+        positions(
+            "一・五",
+            Some((1, ClusterRole::DecimalPoint)),
+            WritingMode::HorizontalTb,
+        ),
+        (vec![0, 1_250, 2_500], 3_500),
+        "the main decimal exception remains vertical-only"
+    );
+    for role in [
+        ClusterRole::GroupedNumeral,
+        ClusterRole::UnitSymbol,
+        ClusterRole::Formula,
+    ] {
+        assert_eq!(
+            positions("A・B", Some((1, role)), WritingMode::HorizontalTb),
+            (vec![0, 1_000, 2_000], 3_000),
+            "the closing Note's construct roles are solid in the locale union"
+        );
+    }
+}
+
+#[test]
+fn western_word_space_collapses_only_at_true_line_edges() {
+    fn compose_ascii(
+        source: &str,
+        breaks: impl IntoIterator<Item = Break>,
+        alignment: Alignment,
+        line_extent: i32,
+    ) -> jlreq_core::Layout {
+        let clusters = source.char_indices().map(|(start, character)| {
+            Cluster::new(
+                start..start.saturating_add(character.len_utf8()),
+                if character == ' ' { 333 } else { 500 },
+            )
+        });
+        let text = ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive word-space size"),
+            Frame::Proportional,
+            clusters,
+        )
+        .expect("valid word-space text");
+        let paragraph = Paragraph::builder(text, line_extent)
+            .breaks(breaks)
+            .alignment(alignment)
+            .build()
+            .expect("valid word-space paragraph");
+        compose_ok!(&paragraph, &Style::default())
+    }
+
+    let edged = compose_ascii(" AB ", [], Alignment::Start, 2_000);
+    assert_eq!(
+        edged.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 0), (0, 500), (500, 500), (1_000, 0)]
+    );
+    assert_eq!(edged.lines()[0].inline_extent(), 1_000);
+
+    let interior = compose_ascii("A B", [], Alignment::Start, 2_000);
+    assert_eq!(
+        interior.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 500), (500, 333), (833, 500)],
+        "the caller-supplied width is restored away from an edge"
+    );
+
+    let moved_to_edge = compose_ascii("A B", [Break::mandatory(2)], Alignment::Start, 2_000);
+    assert_eq!(moved_to_edge.lines()[0].inline_extent(), 500);
+    assert_eq!(moved_to_edge.lines()[0].clusters()[1].advance(), 0);
+    assert_eq!(moved_to_edge.lines()[1].clusters()[0].inline(), 0);
+
+    let justified = compose_ascii(" A B", [Break::mandatory(3)], Alignment::Justify, 2_000);
+    assert_eq!(justified.lines()[0].inline_extent(), 500);
+    assert_eq!(
+        justified.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![(0, 0), (0, 500), (500, 0)],
+        "line adjustment does not reopen either suppressed edge space"
+    );
+}
+
+#[test]
+fn warichu_builds_two_balanced_sublines_and_can_straddle_main_lines() {
+    fn note_text(source: &str) -> ShapedText {
+        let last = source.chars().count().saturating_sub(1);
+        let clusters = source
+            .char_indices()
+            .enumerate()
+            .map(|(ordinal, (start, character))| {
+                let is_bracket = matches!(character, '(' | ')');
+                let cluster = Cluster::new(
+                    start..start.saturating_add(character.len_utf8()),
+                    if is_bracket { 1_000 } else { 500 },
+                )
+                .with_size(
+                    Size::square(if is_bracket { 1_000 } else { 500 })
+                        .expect("positive warichu cluster size"),
+                );
+                if is_bracket && (ordinal == 0 || ordinal == last) {
+                    cluster.with_role(ClusterRole::WarichuBracket)
+                } else {
+                    cluster
+                }
+            });
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive main-text size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid warichu text")
+    }
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let paragraph = Paragraph::builder(note_text("(abcd)"), 3_000)
+            .breaks([Break::allowed(2), Break::allowed(3), Break::allowed(4)])
+            .constructs([Construct::warichu(0..6)])
+            .writing_mode(mode)
+            .build()
+            .expect("valid balanced warichu paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 3_000);
+        assert_eq!(line.block_extent(), 1_000);
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            vec![0, 1_000, 1_500, 1_000, 1_500, 2_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::block)
+                .collect::<Vec<_>>(),
+            if mode == WritingMode::HorizontalTb {
+                vec![0, 0, 0, 500, 500, 0]
+            } else {
+                vec![0, 0, 0, -500, -500, 0]
+            }
+        );
+    }
+
+    let source = " A B ";
+    let clusters = source.char_indices().map(|(start, character)| {
+        Cluster::new(
+            start..start.saturating_add(character.len_utf8()),
+            if character == ' ' { 167 } else { 250 },
+        )
+        .with_size(Size::square(500).expect("positive small-note size"))
+    });
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive main-text size"),
+        Frame::Proportional,
+        clusters,
+    )
+    .expect("valid word-space warichu text");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(3)])
+        .constructs([Construct::warichu(0..5)])
+        .build()
+        .expect("word-space breaks are valid inside warichu");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 250);
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 0, 0),
+            (0, 0, 250),
+            (250, 0, 0),
+            (0, 500, 250),
+            (250, 500, 0)
+        ]
+    );
+
+    let paragraph = Paragraph::builder(note_text("(abcdefgh)"), 3_000)
+        .breaks((2..9).map(Break::allowed))
+        .constructs([Construct::warichu(0..10)])
+        .build()
+        .expect("valid straddling warichu paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].range(), 0..5);
+    assert_eq!(layout.lines()[1].range(), 5..10);
+    assert_eq!(
+        layout
+            .lines()
+            .iter()
+            .flat_map(jlreq_core::Line::clusters)
+            .map(jlreq_core::ClusterPlacement::range)
+            .collect::<Vec<_>>(),
+        (0..10).map(|start| start..start + 1).collect::<Vec<_>>()
+    );
+}
+
+/// §3.8.3's ladder stops where the line stops: at the block a warichu makes.
+///
+/// `※〈〉あ※`, a three-member half-em note between two full-em characters. §3.4.2's
+/// balance divides the note two and one, so `〈〉` share the first subline and `あ` has
+/// the second, and Table 1 states exactly two nonzero amounts on the line — both 250
+/// units, half of the note's own half em. One of them, `cl-19`→`cl-01`, stands before the
+/// block and is on the line. The other, `cl-02`→`cl-15`, falls on the *seam* where the
+/// note's two sublines meet: the character that ends a subline reports its body alone, so
+/// nothing of that amount was ever placed.
+///
+/// The line's natural width is 3,250. At a 3,000 measure §3.8.3 has 250 units to give
+/// back and exactly one boundary to give them back at. Offering it the seam as well — the
+/// two are the same `1/2-0 stage 5` cell of Table 3 — halves what the line recovers and
+/// leaves it overfull by the other half, which is the defect issue #26 records and
+/// `docs/decisions/stacked-structure-geometry.md` settles.
+#[test]
+fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
+    fn note() -> ShapedText {
+        let clusters =
+            "※〈〉あ※"
+                .char_indices()
+                .enumerate()
+                .map(|(ordinal, (start, character))| {
+                    let inside = (1..=3).contains(&ordinal);
+                    let advance = if inside { 500 } else { 1_000 };
+                    let cluster =
+                        Cluster::new(start..start.saturating_add(character.len_utf8()), advance);
+                    if inside {
+                        cluster.with_size(Size::square(500).expect("positive note size"))
+                    } else {
+                        cluster
+                    }
+                });
+        ShapedText::new(
+            "※〈〉あ※",
+            Size::square(1_000).expect("positive main-text size"),
+            Frame::FullEm,
+            clusters,
+        )
+        .expect("valid seam fixture")
+    }
+
+    fn compose_at(measure: i32) -> jlreq_core::Layout {
+        let paragraph = Paragraph::builder(note(), measure)
+            .constructs([Construct::warichu(3..12)])
+            .build()
+            .expect("valid seam paragraph");
+        compose_ok!(&paragraph, &Style::default())
+    }
+
+    let natural = compose_at(16_000);
+    assert_eq!(natural.lines()[0].inline_extent(), 3_250);
+    assert_eq!(
+        natural.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        vec![0, 1_250, 1_750, 1_250, 2_250],
+        "the seam's own amount stands nowhere on the line even where nothing adjusts"
+    );
+
+    let reduced = compose_at(3_000);
+    assert_eq!(reduced.lines().len(), 1);
+    let line = &reduced.lines()[0];
+    assert_eq!(
+        line.inline_extent(),
+        3_000,
+        "the whole 250 units come off the one boundary the line was composed from"
+    );
+    assert_eq!(line.block_extent(), 1_000);
+    assert_eq!(
+        line.clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 0, 1_250),
+            (1_000, 0, 500),
+            (1_500, 0, 500),
+            (1_000, 500, 500),
+            (2_000, 0, 1_000)
+        ]
+    );
+    assert!(
+        reduced.diagnostics().is_empty(),
+        "a line that gave back everything it needed is not overfull"
+    );
+
+    let halfway = compose_at(3_125);
+    assert_eq!(halfway.lines()[0].inline_extent(), 3_125);
+    assert!(halfway.diagnostics().is_empty());
+}
+
+#[test]
+fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let text = shaped("甲乙丙", Frame::FullEm, 1_000).expect("valid furiwake fixture");
+        let paragraph = Paragraph::builder(text, 3_000)
+            .breaks([Break::mandatory(3)])
+            .constructs([Construct::furawake(0..9, 2, 200)])
+            .writing_mode(mode)
+            .build()
+            .expect("one declared split builds two furiwake lines");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        assert_eq!(line.inline_extent(), 2_000);
+        assert_eq!(line.block_extent(), 2_200);
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            vec![0, 0, 1_000]
+        );
+        assert_eq!(
+            line.clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::block)
+                .collect::<Vec<_>>(),
+            if mode == WritingMode::HorizontalTb {
+                vec![-600, 600, 600]
+            } else {
+                vec![600, -600, -600]
+            }
+        );
+    }
+
+    let text = shaped("甲乙丙", Frame::FullEm, 1_000).expect("valid split-count fixture");
+    let error = Paragraph::builder(text, 3_000)
+        .constructs([Construct::furawake(0..9, 2, 0)])
+        .build()
+        .expect_err("two furiwake lines require one declared split");
+    assert_eq!(error.code(), "input.furawake-split-count");
+}
+
+#[test]
+fn formula_spacing_width_and_breaks_follow_math_token_context() {
+    let source = "文x=y文";
+    let clusters = [
+        Cluster::new(0..3, 1_000),
+        Cluster::new(3..4, 500)
+            .with_frame(Frame::Proportional)
+            .with_role(ClusterRole::Formula),
+        Cluster::new(4..5, 400).with_role(ClusterRole::Formula),
+        Cluster::new(5..6, 500)
+            .with_frame(Frame::Proportional)
+            .with_role(ClusterRole::Formula),
+        Cluster::new(6..9, 1_000),
+    ];
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive formula size"),
+        Frame::FullEm,
+        clusters,
+    )
+    .expect("valid inline formula");
+    let paragraph = Paragraph::builder(text, 5_000)
+        .constructs([Construct::formula(3..6)])
+        .build()
+        .expect("valid inline formula paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.advance()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 1_250),
+            (1_250, 500),
+            (1_750, 1_000),
+            (2_750, 750),
+            (3_500, 1_000)
+        ]
+    );
+    assert_eq!(layout.lines()[0].inline_extent(), 4_500);
+
+    let text = shaped("a=b+c", Frame::Proportional, 500).expect("valid display formula");
+    let paragraph = Paragraph::builder(text, 5_000)
+        .constructs([Construct::formula(0..5)])
+        .build()
+        .expect("valid display formula paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::advance)
+            .collect::<Vec<_>>(),
+        vec![750, 1_250, 500, 1_000, 500],
+        "display equations have quarter-em equality spacing and solid operators"
+    );
+
+    let text = shaped("a=b", Frame::Proportional, 500).expect("valid formula break fixture");
+    let paragraph = Paragraph::builder(text, 2_000)
+        .breaks([Break::mandatory(1), Break::allowed(2)])
+        .constructs([Construct::formula(0..3)])
+        .build()
+        .expect("either side of an equality token is a valid caller-declared break");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].inline_extent(), 500);
+    assert_eq!(layout.lines()[1].inline_extent(), 1_750);
+
+    let text =
+        shaped("ab=cd+ef", Frame::Proportional, 500).expect("valid formula priority fixture");
+    let paragraph = Paragraph::builder(text, 4_500)
+        .breaks([Break::allowed(2), Break::allowed(5)])
+        .constructs([Construct::formula(0..8)])
+        .build()
+        .expect("valid independent formula alternatives");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(
+        layout
+            .lines()
+            .iter()
+            .map(jlreq_core::Line::range)
+            .collect::<Vec<_>>(),
+        vec![0..2, 2..8],
+        "a feasible break before an equality symbol precedes one before an operator"
+    );
+
+    let text = shaped("abc", Frame::Proportional, 500).expect("valid solid formula fixture");
+    let error = Paragraph::builder(text, 2_000)
+        .breaks([Break::allowed(1)])
+        .constructs([Construct::formula(0..3)])
+        .build()
+        .expect_err("formula letters remain indivisible away from a math token");
+    assert_eq!(error.code(), "input.break-inside-construct");
+}
+
+#[test]
+fn emphasis_dots_are_half_sized_centered_and_reserve_their_side() {
+    let source = "日本";
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive base size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000),
+            Cluster::new(3..6, 600).with_size(Size::square(600).expect("positive mixed size")),
+        ],
+    )
+    .expect("valid emphasis fixture");
+
+    for (mode, expected_blocks) in [
+        (WritingMode::HorizontalTb, [-500, -300]),
+        (WritingMode::VerticalRl, [500, 300]),
+    ] {
+        let paragraph = Paragraph::builder(text.clone(), 2_000)
+            .constructs([Construct::emphasis_dots(0..6, '•')])
+            .writing_mode(mode)
+            .build()
+            .expect("valid emphasis paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.block_extent(), 1_500);
+        assert_eq!(line.attachments().len(), 2);
+
+        let first = &line.attachments()[0];
+        assert_eq!(first.inline(), 250);
+        assert_eq!(first.block(), expected_blocks[0]);
+        assert_eq!(first.advance(), 0);
+        assert_eq!(first.size().inline(), 500);
+        assert_eq!(first.size().block(), 500);
+        assert_eq!(first.symbol(), Some('•'));
+
+        let second = &line.attachments()[1];
+        assert_eq!(second.inline(), 1_150);
+        assert_eq!(second.block(), expected_blocks[1]);
+        assert_eq!(second.advance(), 0);
+        assert_eq!(second.size().inline(), 300);
+        assert_eq!(second.size().block(), 300);
+        assert_eq!(second.symbol(), Some('•'));
+    }
+
+    let paragraph = Paragraph::builder(text, 2_000)
+        .constructs([
+            Construct::emphasis_dots(0..3, '•'),
+            Construct::emphasis_dots(3..6, '•'),
+        ])
+        .build()
+        .expect("two disjoint emphasis runs are valid");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines()[0].attachments().len(), 2);
+    assert_eq!(
+        layout.lines()[0].block_extent(),
+        1_500,
+        "disjoint emphasis runs share one side rather than stacking"
+    );
+}
+
+#[test]
+fn ruby_is_on_block_start_and_reserves_the_largest_annotation_size() {
+    let annotation = ShapedText::new(
+        "にほ",
+        Size::square(500).expect("positive ruby size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 500),
+            Cluster::new(3..6, 500).with_size(Size::square(700).expect("positive mixed ruby size")),
+        ],
+    )
+    .expect("valid mixed-size ruby annotation");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..6)],
+    )
+    .expect("valid group ruby");
+
+    for (mode, expected_blocks) in [
+        (WritingMode::HorizontalTb, [-500, -700]),
+        (WritingMode::VerticalRl, [500, 700]),
+    ] {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid ruby base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .writing_mode(mode)
+        .build()
+        .expect("valid ruby paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        let line = &layout.lines()[0];
+        assert_eq!(line.block_extent(), 1_700);
+        assert_eq!(line.attachments().len(), 2);
+        assert_eq!(line.attachments()[0].inline(), 250);
+        assert_eq!(line.attachments()[0].block(), expected_blocks[0]);
+        assert_eq!(line.attachments()[1].inline(), 1_250);
+        assert_eq!(line.attachments()[1].block(), expected_blocks[1]);
+    }
+}
+
+#[test]
+fn group_ruby_distribution_changes_leading_and_interior_shares() {
+    let annotation = shaped("にほん", Frame::FullEm, 300).expect("valid group reading");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..9,
+        annotation,
+        [RubyRun::new(0..9, 0..9)],
+    )
+    .expect("valid group ruby");
+    let compose_with = |distribution| {
+        let paragraph = Paragraph::builder(
+            shaped("日本語", Frame::FullEm, 400).expect("valid group base"),
+            1_200,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .build()
+        .expect("valid group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("consistent group-ruby style");
+        compose_ok!(&paragraph, &style).lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        compose_with(GroupRubyDistribution::Jis),
+        [50, 450, 850],
+        "JIS divides surplus with 1:2:2:1 edge/interior weights"
+    );
+    assert_eq!(
+        compose_with(GroupRubyDistribution::Flush),
+        [0, 450, 900],
+        "flush aligns both run ends and divides only the interior gaps"
+    );
+}
+
+#[test]
+fn single_character_group_ruby_flush_stays_at_the_base_start() {
+    let annotation = shaped("に", Frame::FullEm, 300).expect("valid one-character reading");
+    let ruby = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..3)],
+    )
+    .expect("valid one-character group ruby");
+    let compose_with = |distribution| {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid group base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby.clone())])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("consistent group-ruby style");
+        compose_ok!(&paragraph, &style).lines()[0].attachments()[0].inline()
+    };
+
+    assert_eq!(compose_with(GroupRubyDistribution::Jis), 850);
+    assert_eq!(compose_with(GroupRubyDistribution::Flush), 0);
+}
+
+#[test]
+fn group_ruby_longer_than_base_distributes_the_base_by_the_selected_method() {
+    let compose_with = |distribution| {
+        let annotation = shaped("にほんごかな", Frame::FullEm, 500).expect("valid long reading");
+        let annotation_end = annotation.source().len();
+        let ruby = Ruby::new(
+            RubyKind::Group,
+            0..6,
+            annotation,
+            [RubyRun::new(0..6, 0..annotation_end)],
+        )
+        .expect("valid long group ruby");
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid group-ruby base"),
+            3_000,
+        )
+        .constructs([Construct::ruby(ruby)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid long group-ruby paragraph");
+        let style = Style::builder()
+            .group_ruby_distribution(distribution)
+            .build()
+            .expect("valid group-ruby style");
+        compose_ok!(&paragraph, &style)
+    };
+
+    let jis = compose_with(GroupRubyDistribution::Jis);
+    assert_eq!(
+        jis.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [250, 1_750],
+        "JIS distributes the surplus at a 1:2:1 leading/interior/trailing ratio"
+    );
+    assert_eq!(
+        jis.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000, 2_500]
+    );
+
+    let flush = compose_with(GroupRubyDistribution::Flush);
+    assert_eq!(
+        flush.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 2_000],
+        "flush aligns both ends and puts the whole surplus between base characters"
+    );
+    assert_eq!(
+        flush.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000, 2_500]
+    );
+}
+
+#[test]
+fn ruby_kinds_preserve_base_associations_and_break_semantics() {
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid ruby reading");
+    let runs = [RubyRun::new(0..3, 0..3), RubyRun::new(3..6, 3..9)];
+    let mono =
+        Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
+    let jukugo =
+        Ruby::new(RubyKind::Jukugo, 0..6, annotation.clone(), runs).expect("valid jukugo ruby");
+    let group = Ruby::new(
+        RubyKind::Group,
+        0..6,
+        annotation,
+        [RubyRun::new(0..6, 0..9)],
+    )
+    .expect("valid group ruby");
+
+    let compose_kind = |ruby| {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid ruby base"),
+            2_000,
+        )
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect("valid ruby paragraph");
+        compose_ok!(&paragraph, &Style::default())
+    };
+
+    let mono_layout = compose_kind(mono.clone());
+    let mono_inline: Vec<_> = mono_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(jlreq_core::Attachment::inline)
+        .collect();
+    assert_eq!(mono_inline, [250, 1_000, 1_500]);
+
+    let jukugo_layout = compose_kind(jukugo.clone());
+    let jukugo_inline: Vec<_> = jukugo_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(jlreq_core::Attachment::inline)
+        .collect();
+    assert_eq!(jukugo_inline, mono_inline);
+
+    let group_layout = compose_kind(group.clone());
+    let group_inline: Vec<_> = group_layout.lines()[0]
+        .attachments()
+        .iter()
+        .map(jlreq_core::Attachment::inline)
+        .collect();
+    assert_eq!(group_inline, [84, 751, 1_417]);
+
+    for (ruby, expected_second_base) in [
+        (mono.clone(), 2_000),
+        (jukugo.clone(), 1_000),
+        (group.clone(), 1_000),
+    ] {
+        let paragraph = Paragraph::builder(
+            shaped("日本語", Frame::FullEm, 1_000).expect("valid adjusted ruby base"),
+            3_000,
+        )
+        .breaks([Break::mandatory(6)])
+        .constructs([Construct::ruby(ruby)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid adjusted ruby paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        assert_eq!(
+            layout.lines()[0].clusters()[1].inline(),
+            expected_second_base,
+            "only mono ruby exposes its internal base boundary to line adjustment"
+        );
+    }
+
+    for ruby in [mono, jukugo] {
+        let paragraph = Paragraph::builder(
+            shaped("日本", Frame::FullEm, 1_000).expect("valid split ruby base"),
+            1_000,
+        )
+        .breaks([Break::mandatory(3)])
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect("mono and jukugo may split at a declared run boundary");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        assert_eq!(layout.lines().len(), 2);
+        assert_eq!(layout.lines()[0].attachments().len(), 1);
+        assert_eq!(layout.lines()[0].attachments()[0].range(), 0..3);
+        assert_eq!(layout.lines()[1].attachments().len(), 2);
+        assert_eq!(layout.lines()[1].attachments()[0].range(), 3..6);
+        assert_eq!(layout.lines()[1].attachments()[1].range(), 6..9);
+    }
+
+    let error = Paragraph::builder(
+        shaped("日本", Frame::FullEm, 1_000).expect("valid group ruby base"),
+        1_000,
+    )
+    .breaks([Break::allowed(3)])
+    .constructs([Construct::ruby(group)])
+    .build()
+    .expect_err("group ruby is indivisible");
+    assert_eq!(error.code(), "input.break-inside-construct");
+}
+
+#[test]
+fn phonetic_jukugo_follows_runs_before_expanding_eligible_base_gaps() {
+    fn jukugo(
+        base: core::ops::Range<usize>,
+        reading: &str,
+        runs: impl IntoIterator<Item = RubyRun>,
+    ) -> Construct {
+        let annotation = shaped(reading, Frame::FullEm, 500).expect("valid jukugo reading");
+        Construct::ruby(
+            Ruby::new(RubyKind::Jukugo, base, annotation, runs).expect("valid jukugo ruby"),
+        )
+    }
+
+    let phonetic = Style::builder()
+        .jukugo_ruby_layout(JukugoRubyLayout::Phonetic)
+        .ruby_alignment(RubyAlignment::Katatsuki)
+        .build()
+        .expect("valid phonetic jukugo style");
+    let compose =
+        |source: &str, construct: Construct, extent: i32, end: usize, mode: WritingMode| {
+            let paragraph = Paragraph::builder(
+                shaped(source, Frame::FullEm, 1_000).expect("valid jukugo base"),
+                extent,
+            )
+            .constructs([construct])
+            .breaks([Break::mandatory(end)])
+            .alignment(Alignment::Start)
+            .writing_mode(mode)
+            .build()
+            .expect("valid phonetic jukugo paragraph");
+            compose_ok!(&paragraph, &phonetic)
+        };
+
+    let forward = compose(
+        "前日本あ末",
+        jukugo(
+            3..9,
+            "にほんかな",
+            [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+        ),
+        4_000,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        forward.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_000, 3_000],
+        "F.2 prefers overhanging the following base and then the following kana"
+    );
+    assert_eq!(
+        forward.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let backward = compose(
+        "あ日本後末",
+        jukugo(
+            3..9,
+            "にほんかな",
+            [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+        ),
+        4_000,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        backward.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_000, 3_000],
+        "F.2 falls back to the preceding permitted character when the following one forbids overhang"
+    );
+    assert_eq!(
+        backward.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [500, 1_000, 1_500, 2_000, 2_500]
+    );
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let expanded = compose(
+            "前日本後末",
+            jukugo(
+                3..9,
+                "にほんかな",
+                [RubyRun::new(3..6, 0..9), RubyRun::new(6..9, 9..15)],
+            ),
+            4_500,
+            12,
+            mode,
+        );
+        assert_eq!(
+            expanded.lines()[0]
+                .clusters()
+                .iter()
+                .map(jlreq_core::ClusterPlacement::inline)
+                .collect::<Vec<_>>(),
+            [0, 1_250, 2_500, 3_500],
+            "F.3 splits the remaining ruby-character width around the run with three ruby characters"
+        );
+        assert_eq!(
+            expanded.lines()[0]
+                .attachments()
+                .iter()
+                .map(jlreq_core::Attachment::inline)
+                .collect::<Vec<_>>(),
+            [1_000, 1_500, 2_000, 2_500, 3_000]
+        );
+        assert_eq!(expanded.lines()[0].inline_extent(), 4_500);
+    }
+
+    let four_ruby = compose(
+        "前居候後末",
+        jukugo(
+            3..9,
+            "いそうろう",
+            [RubyRun::new(3..6, 0..3), RubyRun::new(6..9, 3..15)],
+        ),
+        4_500,
+        12,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        four_ruby.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_250, 3_500],
+        "F.4's four-ruby example assigns one ruby-character width around only the eligible base"
+    );
+    assert_eq!(
+        four_ruby.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let line_head = compose(
+        "日本後末",
+        jukugo(
+            0..6,
+            "にほんかな",
+            [RubyRun::new(0..3, 0..9), RubyRun::new(3..6, 9..15)],
+        ),
+        3_500,
+        9,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        line_head.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_500, 2_500],
+        "F.3 keeps both starts flush at line head and puts the whole assigned space after the first base"
+    );
+    assert_eq!(
+        line_head.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [0, 500, 1_000, 1_500, 2_000]
+    );
+
+    let line_end = compose(
+        "前居候末",
+        jukugo(
+            3..9,
+            "いそうろう",
+            [RubyRun::new(3..6, 0..3), RubyRun::new(6..9, 3..15)],
+        ),
+        3_500,
+        9,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        line_end.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000, 2_500],
+        "F.3 keeps both ends flush at line end and puts the whole assigned space before the final base"
+    );
+    assert_eq!(
+        line_end.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000]
+    );
+
+    let proportional = compose(
+        "前日本語後末",
+        jukugo(
+            3..12,
+            "にほんごくみはんじ",
+            [
+                RubyRun::new(3..6, 0..9),
+                RubyRun::new(6..9, 9..21),
+                RubyRun::new(9..12, 21..27),
+            ],
+        ),
+        6_500,
+        15,
+        WritingMode::HorizontalTb,
+    );
+    assert_eq!(
+        proportional.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_322, 3_072, 4_500, 5_500],
+        "F.3 apportions the total expansion in the 3:4 solid-reading-length ratio and sends the integer remainder leading"
+    );
+    assert_eq!(
+        proportional.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [
+            1_000, 1_500, 2_000, 2_500, 3_000, 3_500, 4_000, 4_500, 5_000
+        ]
+    );
+}
+
+#[test]
+fn long_ruby_respects_neighbor_and_indent_overhang_budgets() {
+    fn group_ruby(base: core::ops::Range<usize>, reading: &str) -> Ruby {
+        let annotation = shaped(reading, Frame::FullEm, 500).expect("valid long ruby reading");
+        let annotation_end = annotation.source().len();
+        Ruby::new(
+            RubyKind::Group,
+            base.clone(),
+            annotation,
+            [RubyRun::new(base, 0..annotation_end)],
+        )
+        .expect("valid long group ruby")
+    }
+
+    let paragraph = Paragraph::builder(
+        shaped("前日本後末", Frame::FullEm, 1_000).expect("valid long-ruby base"),
+        5_000,
+    )
+    .constructs([Construct::ruby(group_ruby(3..9, "にほんごかな"))])
+    .breaks([Break::mandatory(12)])
+    .alignment(Alignment::Start)
+    .build()
+    .expect("valid long-ruby paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(
+        layout.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_250, 2_750, 4_000],
+        "a long group ruby distributes the base at the JIS 1:2:1 ratio"
+    );
+    assert_eq!(layout.lines()[0].inline_extent(), 5_000);
+    assert_eq!(
+        layout.lines()[0]
+            .attachments()
+            .iter()
+            .map(jlreq_core::Attachment::inline)
+            .collect::<Vec<_>>(),
+        [1_000, 1_500, 2_000, 2_500, 3_000, 3_500]
+    );
+
+    let compose_preceding = |preceding: char, style: Style| {
+        let source = format!("{preceding}日後末");
+        let paragraph = Paragraph::builder(
+            shaped(&source, Frame::FullEm, 1_000).expect("valid overhang-neighbor base"),
+            3_500,
+        )
+        .constructs([Construct::ruby(group_ruby(3..6, "にほん"))])
+        .breaks([Break::mandatory(9)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid overhang-neighbor paragraph");
+        compose_ok!(&paragraph, &style)
+    };
+    let ideograph = compose_preceding('前', Style::default());
+    let opening = compose_preceding('「', Style::default());
+    let ideographic_space = compose_preceding('　', Style::default());
+    assert_eq!(ideograph.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(ideograph.lines()[0].attachments()[0].inline(), 1_000);
+    for permitted in [&opening, &ideographic_space] {
+        assert_eq!(permitted.lines()[0].clusters()[1].inline(), 1_000);
+        assert_eq!(permitted.lines()[0].attachments()[0].inline(), 750);
+        assert_eq!(permitted.lines()[0].clusters()[2].inline(), 2_250);
+    }
+
+    let jis_katakana = compose_preceding('ア', Style::jis_reading_2020());
+    let preferred_katakana = compose_preceding('ア', Style::default());
+    let any_ideograph = compose_preceding(
+        '前',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::Any)
+            .build()
+            .expect("valid any-neighbor ruby style"),
+    );
+    let any_fullwidth_latin = compose_preceding(
+        'Ａ',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::Any)
+            .build()
+            .expect("valid any-neighbor ruby style"),
+    );
+    let no_hiragana = compose_preceding(
+        'あ',
+        Style::builder()
+            .ruby_overhang_kana(RubyOverhangKana::None)
+            .build()
+            .expect("valid no-neighbor ruby style"),
+    );
+    assert_eq!(preferred_katakana.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(jis_katakana.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(any_ideograph.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(
+        any_fullwidth_latin.lines()[0].clusters()[1].inline(),
+        1_000,
+        "the Any alternative means every neighboring character, not only Japanese scripts"
+    );
+    assert_eq!(no_hiragana.lines()[0].clusters()[1].inline(), 1_250);
+    let katatsuki_ideograph = compose_preceding(
+        '前',
+        Style::builder()
+            .ruby_alignment(RubyAlignment::Katatsuki)
+            .build()
+            .expect("valid katatsuki ruby style"),
+    );
+    assert_eq!(katatsuki_ideograph.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(
+        katatsuki_ideograph.lines()[0].attachments()[0].inline(),
+        1_000,
+        "katatsuki falls back to the centered method when adjacent cl-19 forbids overhang"
+    );
+
+    let compose_indent = |style: Style| {
+        let paragraph = Paragraph::builder(
+            shaped("日後末", Frame::FullEm, 1_000).expect("valid ruby-indent base"),
+            3_500,
+        )
+        .constructs([Construct::ruby(group_ruby(0..3, "にほん"))])
+        .breaks([Break::mandatory(6)])
+        .first_line_indent(1_000)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid ruby-indent paragraph");
+        compose_ok!(&paragraph, &style)
+    };
+    let permitted = compose_indent(Style::default());
+    let prohibited = compose_indent(
+        Style::builder()
+            .ruby_overhang_indent(RubyOverhangIndent::Prohibited)
+            .build()
+            .expect("valid prohibited-indent style"),
+    );
+    assert_eq!(permitted.lines()[0].clusters()[0].inline(), 1_000);
+    assert_eq!(permitted.lines()[0].attachments()[0].inline(), 750);
+    assert_eq!(permitted.lines()[0].inline_extent(), 3_250);
+    assert_eq!(prohibited.lines()[0].clusters()[0].inline(), 1_250);
+    assert_eq!(prohibited.lines()[0].attachments()[0].inline(), 1_000);
+    assert_eq!(prohibited.lines()[0].inline_extent(), 3_500);
+
+    let fixpoint = Paragraph::builder(
+        shaped("前日後末", Frame::FullEm, 1_000).expect("valid overhang-fixpoint base"),
+        2_000,
+    )
+    .constructs([Construct::ruby(group_ruby(3..6, "にほんご"))])
+    .breaks([Break::allowed(3), Break::allowed(6), Break::allowed(9)])
+    .alignment(Alignment::Start)
+    .build()
+    .expect("valid overhang-fixpoint paragraph");
+    let fixpoint = compose_ok!(&fixpoint, &Style::default());
+    assert_eq!(
+        fixpoint
+            .lines()
+            .iter()
+            .map(jlreq_core::Line::range)
+            .collect::<Vec<_>>(),
+        [0..3, 3..6, 6..12],
+        "break search remeasures the ruby after each candidate changes its neighbors"
+    );
+    assert!(
+        fixpoint
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.code() != "layout.overfull")
+    );
+}
+
+#[test]
+fn construct_run_boundaries_expand_at_third_order_but_not_inside_one_run() {
+    fn positions(
+        constructs: impl IntoIterator<Item = Construct>,
+        mode: WritingMode,
+        inline_extent: i32,
+    ) -> Vec<i32> {
+        let paragraph = Paragraph::builder(
+            shaped("日本語文", Frame::FullEm, 1_000).expect("valid construct-run fixture"),
+            inline_extent,
+        )
+        .constructs(constructs)
+        .breaks([Break::mandatory(9)])
+        .alignment(Alignment::Justify)
+        .writing_mode(mode)
+        .build()
+        .expect("valid construct-run paragraph");
+        compose_ok!(&paragraph, &Style::default()).lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect()
+    }
+
+    let mark = shaped("注", Frame::FullEm, 500).expect("valid script annotation");
+    assert_eq!(
+        positions(
+            [
+                Construct::script(0..3, mark.clone()),
+                Construct::script(3..6, mark.clone()),
+            ],
+            WritingMode::HorizontalTb,
+            3_750,
+        ),
+        [0, 1_250, 2_750],
+        "the outer second-order site is exhausted before the distinct complexes' third-order site"
+    );
+    assert_eq!(
+        positions(
+            [Construct::script(0..6, mark)],
+            WritingMode::HorizontalTb,
+            3_500,
+        ),
+        [0, 1_000, 2_500],
+        "the same ornamented complex stays solid internally"
+    );
+
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid ruby annotation");
+    let runs = [RubyRun::new(0..3, 0..3), RubyRun::new(3..6, 3..9)];
+    let mono =
+        Ruby::new(RubyKind::Mono, 0..6, annotation.clone(), runs.clone()).expect("valid mono ruby");
+    assert_eq!(
+        positions([Construct::ruby(mono)], WritingMode::HorizontalTb, 3_250),
+        [0, 1_125, 2_250],
+        "the two third-order simple-ruby boundaries expand in equal size proportion"
+    );
+
+    let jukugo = Ruby::new(RubyKind::Jukugo, 0..6, annotation, runs).expect("valid jukugo ruby");
+    assert_eq!(
+        positions([Construct::ruby(jukugo)], WritingMode::HorizontalTb, 3_250,),
+        [0, 1_000, 2_250],
+        "one jukugo-ruby compound has no internal expansion opportunity"
+    );
+
+    assert_eq!(
+        positions(
+            [
+                Construct::tate_chu_yoko(0..3),
+                Construct::tate_chu_yoko(3..6),
+            ],
+            WritingMode::VerticalRl,
+            3_250,
+        ),
+        [0, 1_125, 2_250],
+        "the two third-order tate-chu-yoko boundaries expand in equal size proportion"
+    );
+
+    let same_tcy = Paragraph::builder(
+        shaped("日本語文", Frame::FullEm, 1_000).expect("valid tate-chu-yoko fixture"),
+        2_250,
+    )
+    .constructs([Construct::tate_chu_yoko(0..6)])
+    .breaks([Break::mandatory(9)])
+    .alignment(Alignment::Justify)
+    .writing_mode(WritingMode::VerticalRl)
+    .build()
+    .expect("valid single tate-chu-yoko run");
+    let same_tcy = compose_ok!(&same_tcy, &Style::default());
+    assert_eq!(
+        same_tcy.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 0, 1_250],
+        "members of one tate-chu-yoko run share an inline item and cannot expand internally"
+    );
+
+    let mixed = ShapedText::new(
+        "日本語文末",
+        Size::square(1_000).expect("positive mixed-size default"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..3, 1_000)
+                .with_size(Size::square(800).expect("positive small complex size")),
+            Cluster::new(3..6, 1_000)
+                .with_size(Size::square(1_200).expect("positive large complex size")),
+            Cluster::new(6..9, 1_000),
+            Cluster::new(9..12, 1_000),
+            Cluster::new(12..15, 1_000),
+        ],
+    )
+    .expect("valid mixed-size complex fixture");
+    let mark = shaped("注", Frame::FullEm, 500).expect("valid mixed-size annotation");
+    let mixed = Paragraph::builder(mixed, 4_750)
+        .constructs([
+            Construct::script(0..3, mark.clone()),
+            Construct::script(3..6, mark.clone()),
+            Construct::script(6..9, mark),
+        ])
+        .breaks([Break::mandatory(12)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid mixed-size complex paragraph");
+    let mixed = compose_ok!(&mixed, &Style::default());
+    assert_eq!(
+        mixed.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_100, 2_250, 3_750],
+        "the outer second-order site takes 250 first, then third-order shares split the remaining 250 as 100 and 150"
+    );
+}
+
+#[test]
+fn appendix_pair_is_normalized_across_shaping_clusters() {
+    let source = "\u{31f7}\u{309a}";
+    let first_end = '\u{31f7}'.len_utf8();
+    let text = ShapedText::new(
+        source,
+        Size::square(1_000).expect("positive size"),
+        Frame::FullEm,
+        [
+            Cluster::new(0..first_end, 500),
+            Cluster::new(first_end..source.len(), 0),
+        ],
+    )
+    .expect("the normalizer accepts split shaping clusters");
+    let error = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(first_end)])
+        .build()
+        .expect_err("a break may not split one Appendix A key");
+    assert_eq!(error.code(), "input.break-splits-cluster");
+}
+
+#[test]
+fn non_latin_cluster_cannot_hide_two_appendix_keys() {
+    let error = ShapedText::new(
+        "日本",
+        Size::square(1_000).expect("positive size"),
+        Frame::FullEm,
+        [Cluster::new(0..6, 2_000)],
+    )
+    .expect_err("two Japanese keys cannot be one shaped cluster");
+    assert_eq!(error.code(), "input.cluster-covers-multiple-keys");
+
+    assert!(
+        ShapedText::new(
+            "ffi",
+            Size::square(1_000).expect("positive size"),
+            Frame::Proportional,
+            [Cluster::new(0..3, 1_500)],
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn invalid_utf8_crossing_ranges_and_construct_internal_breaks_are_rejected() {
+    let utf8 = ShapedText::new(
+        "日",
+        Size::square(1_000).expect("positive size"),
+        Frame::FullEm,
+        [Cluster::new(0..1, 1_000)],
+    )
+    .expect_err("byte one is inside a code point");
+    assert_eq!(utf8.code(), "input.invalid-utf8-boundary");
+
+    let text = shaped("日本語", Frame::FullEm, 1_000).expect("valid crossing fixture");
+    let crossing = Paragraph::builder(text, 4_000)
+        .constructs([
+            Construct::emphasis_dots(0..6, '・'),
+            Construct::formula(3..9),
+        ])
+        .build()
+        .expect_err("constructs cross");
+    assert_eq!(crossing.code(), "input.crossing-constructs");
+
+    let text = shaped("abc", Frame::Proportional, 1_000).expect("valid formula fixture");
+    let internal = Paragraph::builder(text, 4_000)
+        .constructs([Construct::formula(0..3)])
+        .breaks([Break::allowed(1)])
+        .build()
+        .expect_err("formula is indivisible away from a math token");
+    assert_eq!(internal.code(), "input.break-inside-construct");
+}
+
+#[test]
+fn complex_break_rules_distinguish_internal_and_run_boundaries() {
+    let annotation = shaped("注", Frame::FullEm, 500).expect("valid script annotation");
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid script base");
+    let internal = Paragraph::builder(text.clone(), 2_000)
+        .breaks([Break::allowed(3)])
+        .constructs([Construct::script(0..6, annotation.clone())])
+        .build()
+        .expect_err("one ornamented complex is indivisible");
+    assert_eq!(internal.code(), "input.break-inside-construct");
+
+    let separate = Paragraph::builder(text, 1_000)
+        .breaks([Break::mandatory(3)])
+        .constructs([
+            Construct::script(0..3, annotation.clone()),
+            Construct::script(3..6, annotation),
+        ])
+        .build()
+        .expect("the boundary between distinct ornamented complexes is breakable");
+    assert_eq!(compose_ok!(&separate, &Style::default()).lines().len(), 2);
+}
+
+#[test]
+fn mono_ruby_requires_one_run_for_each_base_cluster() {
+    let annotation = shaped("にほん", Frame::FullEm, 500).expect("valid annotation");
+    let ruby = Ruby::new(RubyKind::Mono, 0..6, annotation, [RubyRun::new(0..6, 0..9)])
+        .expect("run partitions are locally valid until base shaping is known");
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid base");
+    let error = Paragraph::builder(text, 4_000)
+        .constructs([Construct::ruby(ruby)])
+        .build()
+        .expect_err("mono ruby cannot associate one run with two base clusters");
+    assert_eq!(error.code(), "input.mono-ruby-run-shape");
+}
+
+#[test]
+fn mandatory_discretionary_widow_and_tabs_share_the_paragraph_pipeline() {
+    let source = "A\tB";
+    let stop = TabStop::new(3_000, TabAlignment::Start).expect("valid tab stop");
+    let text = shaped(source, Frame::Proportional, 500).expect("valid tab fixture");
+    let tabbed = Paragraph::builder(text, 5_000)
+        .tab_stops([stop])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid tab paragraph");
+    let layout = compose_ok!(&tabbed, &Style::default());
+    assert_eq!(layout.lines()[0].clusters()[2].inline(), 3_000);
+
+    let source = "日本語";
+    let text = shaped(source, Frame::FullEm, 1_000).expect("valid break fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .breaks([Break::discretionary(3), Break::mandatory(6)])
+        .widow(Widow::MinimumClusters(2))
+        .build()
+        .expect("valid mixed-break paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].range(), 0..6);
+}
+
+#[test]
+fn tab_characters_require_declared_stops() {
+    let text = shaped("A\tB", Frame::Proportional, 500).expect("valid tab fixture");
+    let error = Paragraph::builder(text, 5_000)
+        .build()
+        .expect_err("a tab without a corresponding stop is incomplete input");
+    assert_eq!(error.code(), "input.insufficient-tab-stops");
+
+    let text = shaped("A\tBC\tD", Frame::Proportional, 500).expect("valid two-line tab fixture");
+    Paragraph::builder(text, 5_000)
+        .breaks([Break::mandatory(3)])
+        .tab_stops([TabStop::new(3_000, TabAlignment::Start).expect("valid reusable stop")])
+        .build()
+        .expect("the same tab-stop declaration is reusable on each mandatory-delimited line");
+}
+
+#[test]
+fn tabs_set_off_the_line_do_not_consume_or_require_stops() {
+    let cases = [
+        (
+            Construct::tate_chu_yoko(1..2),
+            WritingMode::VerticalRl,
+            "vertical tate-chu-yoko",
+        ),
+        (
+            Construct::warichu(1..2),
+            WritingMode::HorizontalTb,
+            "warichu",
+        ),
+        (
+            Construct::furawake(1..2, 1, 0),
+            WritingMode::HorizontalTb,
+            "furawake",
+        ),
+    ];
+    for (construct, mode, label) in cases {
+        let paragraph = Paragraph::builder(
+            shaped("A\tB", Frame::Proportional, 500).expect("valid tab fixture"),
+            4_000,
+        )
+        .constructs([construct])
+        .writing_mode(mode)
+        .build()
+        .unwrap_or_else(|error| panic!("{label} rejected its internal tab: {error}"));
+        assert!(paragraph.tab_stops().is_empty());
+        compose_ok!(&paragraph, &Style::default());
+    }
+
+    let horizontal = Paragraph::builder(
+        shaped("A\tB", Frame::Proportional, 500).expect("valid horizontal fixture"),
+        4_000,
+    )
+    .constructs([Construct::tate_chu_yoko(1..2)])
+    .writing_mode(WritingMode::HorizontalTb)
+    .build()
+    .expect_err("horizontal tate-chu-yoko is ordinary inline text");
+    assert_eq!(horizontal.code(), "input.insufficient-tab-stops");
+}
+
+#[test]
+fn tab_alignments_are_direction_independent() {
+    let cases = [
+        (TabAlignment::Start, [3_000, 3_500]),
+        (TabAlignment::Center, [2_500, 3_000]),
+        (TabAlignment::End, [2_000, 2_500]),
+        (TabAlignment::Character('C'), [2_500, 3_000]),
+    ];
+    for writing_mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        for (alignment, expected) in cases {
+            let text = shaped("A\tBC", Frame::Proportional, 500).expect("valid tab fixture");
+            let stop = TabStop::new(3_000, alignment).expect("valid tab stop");
+            let paragraph = Paragraph::builder(text, 5_000)
+                .tab_stops([stop])
+                .alignment(Alignment::Start)
+                .writing_mode(writing_mode)
+                .build()
+                .expect("valid tab paragraph");
+            let layout = compose_ok!(&paragraph, &Style::default());
+            assert_eq!(
+                [
+                    layout.lines()[0].clusters()[2].inline(),
+                    layout.lines()[0].clusters()[3].inline(),
+                ],
+                expected
+            );
+        }
+    }
+}
+
+#[test]
+fn exhausted_tab_positions_continue_on_the_next_line() {
+    let text = shaped("AAAA\tB", Frame::Proportional, 500).expect("valid overflowing tab fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .tab_stops([TabStop::new(1_000, TabAlignment::Start).expect("valid tab stop")])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid overflowing tab paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+
+    assert_eq!(layout.lines().len(), 2);
+    assert_eq!(layout.lines()[0].range(), 0..4);
+    assert_eq!(layout.lines()[1].range(), 4..6);
+    assert_eq!(layout.lines()[1].clusters()[1].inline(), 1_000);
+}
+
+/// A tab sign that opens a tate-chu-yoko run is a member of the run, not a sign of the
+/// line: it takes no stop, and §3.6.3's cut is never chosen there
+/// (`docs/decisions/tab-line-correspondence.md`).
+///
+/// `A⇥B` in a three-em measure, the run over `⇥B`, one stop at 500 the line has already
+/// gone past. `A` takes its em from the line head, the run stands at 1000 and takes one
+/// em of the line because that is the block size its members are set at, and the two
+/// members are set across the line from -1000 — half the 2000 units they take across it.
+/// The whole content is two ems wide in a three-em measure, so nothing is cut.
+#[test]
+fn a_tab_sign_that_opens_a_tate_chu_yoko_run_is_set_in_the_run() {
+    let text = shaped("A\tB", Frame::FullEm, 1_000).expect("valid tate-chu-yoko tab fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .constructs([Construct::tate_chu_yoko(1..3)])
+        .tab_stops([TabStop::new(500, TabAlignment::Start).expect("valid tab stop")])
+        .alignment(Alignment::Start)
+        .writing_mode(WritingMode::VerticalRl)
+        .build()
+        .expect("valid tate-chu-yoko tab paragraph");
+    let layout = compose_ok!(&paragraph, &Style::default());
+
+    assert_eq!(layout.lines().len(), 1);
+    let line = &layout.lines()[0];
+    assert_eq!(line.inline_extent(), 2_000);
+    assert_eq!(line.block_extent(), 2_000);
+    let geometry: Vec<_> = line
+        .clusters()
+        .iter()
+        .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+        .collect();
+    assert_eq!(
+        geometry,
+        [(0, 0, 1_000), (1_000, -1_000, 1_000), (1_000, 0, 1_000)]
+    );
+    assert_eq!(
+        layout.lines()[0].clusters()[1].transform(),
+        CoordinateTransform::TateChuYoko
+    );
+}
+
+/// A tab sign inside a warichu takes no stop either, and the stop of the *next* sign is
+/// measured from the line's own walk, where the whole block is one step
+/// (`docs/decisions/tab-line-correspondence.md`).
+///
+/// `A⇥B⇥C`, all proportional at half an em, the first three characters inside a warichu
+/// that divides before `B`, a four-em measure. The block sets `A⇥` on its first subline
+/// and `B` on its second, so it is 1000 wide and the line steps by 1000 once. The inner
+/// sign keeps the advance it was shaped with; the outer sign is the line's first sign
+/// and takes the first stop ahead of 1000.
+#[test]
+fn a_tab_sign_inside_a_warichu_takes_no_stop_and_steps_no_cursor() {
+    for (stops, expected) in [
+        ([1_200, 3_000], [200, 1_200, 1_700]),
+        ([2_000, 2_500], [1_000, 2_000, 2_500]),
+    ] {
+        let text = shaped("A\tB\tC", Frame::Proportional, 500).expect("valid warichu tab fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .breaks([Break::allowed(2)])
+            .constructs([Construct::warichu(0..3)])
+            .tab_stops(stops.map(|position| {
+                TabStop::new(position, TabAlignment::Start).expect("valid tab stop")
+            }))
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid warichu tab paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+
+        assert_eq!(layout.lines().len(), 1);
+        let line = &layout.lines()[0];
+        let geometry: Vec<_> = line
+            .clusters()
+            .iter()
+            .map(|cluster| (cluster.inline(), cluster.block(), cluster.advance()))
+            .collect();
+        assert_eq!(
+            geometry,
+            [
+                (0, -500, 500),
+                (500, -500, 500),
+                (0, 500, 500),
+                (1_000, 0, expected[0]),
+                (expected[1], 0, 500),
+            ]
+        );
+        // The width the line is measured at and the width it is set at are the same
+        // number, so a line that fits is not reduced.
+        assert_eq!(line.inline_extent(), expected[2]);
+        assert_eq!(line.block_extent(), 1_000);
+    }
+}
+
+#[test]
+fn segmenter_offsets_can_include_paragraph_boundaries_verbatim() {
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid segmenter fixture");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(0), Break::allowed(3), Break::allowed(6)])
+        .build()
+        .expect("segmenter offsets include zero and source length");
+    assert_eq!(paragraph.breaks().len(), 2);
+    assert_eq!(paragraph.breaks()[0].offset(), 3);
+    assert!(paragraph.breaks()[1].is_mandatory());
+    assert_eq!(compose_ok!(&paragraph, &Style::default()).lines().len(), 2);
+}
+
+#[test]
+fn table_two_prohibits_a_closing_bracket_at_every_kinsoku_level() {
+    let text = shaped("日）日", Frame::FullEm, 1_000).expect("valid kinsoku fixture");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(3), Break::allowed(6)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid break opportunities");
+
+    let layout = compose_ok!(&paragraph, &Style::newspaper_2020());
+    assert_eq!(layout.lines()[0].range(), 0..6);
+}
+
+fn lines_at_only_boundary(text: ShapedText, offset: usize, style: &Style) -> Option<usize> {
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(offset)])
+        .alignment(Alignment::Start)
+        .build()
+        .ok()?;
+    Some(compose_ok!(&paragraph, style).lines().len())
+}
+
+#[test]
+fn table_two_note_five_only_keeps_the_five_named_pairs_together() {
+    let same = shaped("——", Frame::FullEm, 1_000).expect("valid em-dash pair");
+    assert_eq!(lines_at_only_boundary(same, 3, &Style::default()), Some(1));
+
+    let different = shaped("—…", Frame::FullEm, 1_000).expect("valid mixed marks");
+    assert_eq!(
+        lines_at_only_boundary(different, 3, &Style::default()),
+        Some(2)
+    );
+
+    let kunojiten = shaped("〳〵", Frame::FullEm, 1_000).expect("valid kunojiten pair");
+    assert_eq!(
+        lines_at_only_boundary(kunojiten, 3, &Style::default()),
+        Some(1)
+    );
+}
+
+#[test]
+fn table_two_note_ten_reads_the_grouped_numeral_choice() {
+    let make_text = || {
+        ShapedText::new(
+            "1A",
+            Size::square(1_000).expect("positive size"),
+            Frame::Proportional,
+            [
+                Cluster::new(0..1, 1_000)
+                    .with_frame(Frame::HalfEm)
+                    .with_role(ClusterRole::GroupedNumeral),
+                Cluster::new(1..2, 1_000),
+            ],
+        )
+        .expect("valid grouped numeral fixture")
+    };
+
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 1, &Style::default()),
+        Some(2)
+    );
+    let unbreakable = Style::builder()
+        .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+        .build()
+        .expect("consistent grouped-numeral style");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 1, &unbreakable),
+        Some(1)
+    );
+}
+
+#[test]
+fn table_two_note_eleven_distinguishes_text_quantity_symbols_and_digits() {
+    let with_first = |source: &str, role: Option<ClusterRole>| {
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                role.map_or_else(
+                    || Cluster::new(0..1, 1_000).with_frame(Frame::Proportional),
+                    |role| {
+                        Cluster::new(0..1, 1_000)
+                            .with_frame(Frame::Proportional)
+                            .with_role(role)
+                    },
+                ),
+                Cluster::new(1..4, 1_000),
+            ],
+        )
+        .expect("valid postfixed-abbreviation fixture")
+    };
+
+    assert_eq!(
+        lines_at_only_boundary(with_first("A％", None), 1, &Style::default()),
+        Some(2)
+    );
+    assert_eq!(
+        lines_at_only_boundary(
+            with_first("A％", Some(ClusterRole::QuantitySymbol)),
+            1,
+            &Style::default(),
+        ),
+        Some(1)
+    );
+    assert_eq!(
+        lines_at_only_boundary(with_first("5％", None), 1, &Style::default()),
+        Some(1)
+    );
+}
+
+#[test]
+fn c_three_relaxes_only_the_boundaries_named_at_each_level() {
+    let before_hyphen = shaped("日‐", Frame::FullEm, 1_000).expect("valid hyphen fixture");
+    assert_eq!(
+        lines_at_only_boundary(before_hyphen, 3, &Style::newspaper_2020()),
+        Some(2)
+    );
+
+    let before_middle_dot = shaped("日・", Frame::FullEm, 1_000).expect("valid middle-dot fixture");
+    assert_eq!(
+        lines_at_only_boundary(before_middle_dot.clone(), 3, &Style::magazine_2020()),
+        Some(2)
+    );
+    assert_eq!(
+        lines_at_only_boundary(before_middle_dot, 3, &Style::jlreq_2020()),
+        Some(1)
+    );
+}
+
+#[test]
+fn both_relaxation_mechanisms_allow_kana_but_very_strict_does_not() {
+    let make_text = || shaped("日ー", Frame::FullEm, 1_000).expect("valid prolonged-mark fixture");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 3, &Style::jlreq_2020()),
+        Some(2)
+    );
+    let matrix = Style::builder()
+        .relaxation_mechanism(RelaxationMechanism::Matrix)
+        .build()
+        .expect("consistent matrix style");
+    assert_eq!(lines_at_only_boundary(make_text(), 3, &matrix), Some(2));
+
+    let very_strict = Style::builder()
+        .kinsoku_level(KinsokuLevel::VeryStrict)
+        .grouped_numeral_before_western(GroupedNumeralBeforeWestern::Unbreakable)
+        .relaxation_mechanism(RelaxationMechanism::Matrix)
+        .build()
+        .expect("consistent very-strict style");
+    assert_eq!(
+        lines_at_only_boundary(make_text(), 3, &very_strict),
+        Some(1)
+    );
+}
+
+#[test]
+fn reduction_tables_apply_their_distinct_floor_to_an_overfull_boundary() {
+    let compose_with = |table| {
+        let text = shaped("、日", Frame::FullEm, 1_000).expect("valid reduction fixture");
+        let paragraph = Paragraph::builder(text, 2_000)
+            .alignment(Alignment::Start)
+            .build()
+            .expect("valid overfull paragraph");
+        let style = Style::builder()
+            .reduction_table(table)
+            .build()
+            .expect("consistent reduction style");
+        compose_ok!(&paragraph, &style)
+    };
+
+    for table in [ReductionTable::Table3, ReductionTable::Table4] {
+        let layout = compose_with(table);
+        assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
+        assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+    }
+
+    let book = compose_with(ReductionTable::Table5);
+    assert_eq!(book.lines()[0].clusters()[1].inline(), 1_250);
+    assert_eq!(book.lines()[0].inline_extent(), 2_250);
+}
+
+#[test]
+fn reduction_uses_lower_priority_stages_only_after_earlier_ones() {
+    let text = shaped("・日、日", Frame::FullEm, 1_000).expect("valid staged fixture");
+    let paragraph = Paragraph::builder(text, 4_400)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid staged paragraph");
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
+    let positions: Vec<_> = layout.lines()[0]
+        .clusters()
+        .iter()
+        .map(jlreq_core::ClusterPlacement::inline)
+        .collect();
+
+    assert_eq!(positions, [0, 1_000, 2_000, 3_400]);
+    assert_eq!(layout.lines()[0].inline_extent(), 4_400);
+}
+
+#[test]
+fn western_word_space_reduces_first_and_keeps_a_quarter_em() {
+    let text = ShapedText::new(
+        "A B",
+        Size::square(1_000).expect("positive size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..1, 1_000),
+            Cluster::new(1..2, 500),
+            Cluster::new(2..3, 1_000),
+        ],
+    )
+    .expect("valid Western-space fixture");
+    let paragraph = Paragraph::builder(text, 2_250)
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid Western-space paragraph");
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_250);
+    assert_eq!(layout.lines()[0].inline_extent(), 2_250);
+}
+
+#[test]
+fn generated_reduction_tables_include_the_line_end_axis() {
+    let compose_with = |table| {
+        let text = ShapedText::new(
+            "亜。",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 500).with_frame(Frame::HalfEm),
+            ],
+        )
+        .expect("valid line-end reduction fixture");
+        let paragraph = Paragraph::builder(text, 1_700)
+            .build()
+            .expect("valid line-end reduction paragraph");
+        let style = Style::builder()
+            .reduction_table(table)
+            .build()
+            .expect("consistent reduction style");
+        compose_ok!(&paragraph, &style)
+    };
+
+    assert_eq!(
+        compose_with(ReductionTable::Table3).lines()[0].inline_extent(),
+        1_500,
+        "Table 3 drains the full stop's discrete trailing half em"
+    );
+    assert_eq!(
+        compose_with(ReductionTable::Table4).lines()[0].inline_extent(),
+        2_000,
+        "Table 4 leaves this line-end cell rigid"
+    );
+    assert_eq!(
+        compose_with(ReductionTable::Table5).lines()[0].inline_extent(),
+        1_500,
+        "Table 5 carries the same discrete line-end reduction as Table 3"
+    );
+}
+
+#[test]
+fn opening_bracket_line_head_patterns_cover_first_and_wrapped_lines() {
+    let compose_first = |pattern| {
+        let text = shaped("「日", Frame::FullEm, 1_000).expect("valid first-line fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .first_line_indent(1_000)
+            .build()
+            .expect("valid indented paragraph");
+        let style = Style::builder()
+            .line_head_opening_bracket(pattern)
+            .build()
+            .expect("consistent line-head style");
+        compose_ok!(&paragraph, &style).lines()[0].clusters()[0].inline()
+    };
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern1), 1_000);
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern2), 1_500);
+    assert_eq!(compose_first(LineHeadOpeningBracket::Pattern3), 500);
+
+    let compose_wrapped = |pattern| {
+        let text = shaped("日「日", Frame::FullEm, 1_000).expect("valid wrapped fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .breaks([Break::mandatory(3)])
+            .build()
+            .expect("valid wrapped paragraph");
+        let style = Style::builder()
+            .line_head_opening_bracket(pattern)
+            .build()
+            .expect("consistent line-head style");
+        compose_ok!(&paragraph, &style).lines()[1].clusters()[0].inline()
+    };
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern1), 0);
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern2), 500);
+    assert_eq!(compose_wrapped(LineHeadOpeningBracket::Pattern3), 0);
+}
+
+#[test]
+fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
+    let compose_with = |hanging| {
+        let text = ShapedText::new(
+            "亜。",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..6, 500).with_frame(Frame::HalfEm),
+            ],
+        )
+        .expect("valid hanging fixture");
+        let paragraph = Paragraph::builder(text, 1_300)
+            .build()
+            .expect("valid hanging paragraph");
+        let style = Style::builder()
+            .hanging_punctuation(hanging)
+            .build()
+            .expect("consistent hanging style");
+        compose_ok!(&paragraph, &style)
+    };
+
+    let none = compose_with(HangingPunctuation::None);
+    assert_eq!(none.lines()[0].inline_extent(), 1_500);
+    assert_eq!(none.diagnostics()[0].code(), "layout.overfull");
+
+    let hanging = compose_with(HangingPunctuation::Hanging);
+    assert_eq!(
+        hanging.lines()[0]
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .collect::<Vec<_>>(),
+        [0, 1_000],
+        "hanging changes line accounting, not the shaped placements"
+    );
+    assert_eq!(hanging.lines()[0].inline_extent(), 1_300);
+    assert!(hanging.diagnostics().is_empty());
+}
+
+#[test]
+fn optimal_search_counts_reducible_space_before_choosing_a_break() {
+    let text = shaped("、日本", Frame::FullEm, 1_000).expect("valid reducible search fixture");
+    let paragraph = Paragraph::builder(text, 3_000)
+        .breaks([Break::allowed(3)])
+        .alignment(Alignment::Start)
+        .build()
+        .expect("valid reducible search paragraph");
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines().len(), 1);
+    assert_eq!(layout.lines()[0].inline_extent(), 3_000);
+}
+
+#[test]
+fn table_six_does_not_expand_a_boundary_it_marks_closed() {
+    let text = shaped("「日末", Frame::FullEm, 1_000).expect("valid closed-expansion fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .breaks([Break::mandatory(6)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid closed-expansion paragraph");
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].inline_extent(), 2_000);
+}
+
+#[test]
+fn japanese_latin_expansion_ceiling_changes_the_stage_distribution() {
+    let compose_with = |ceiling| {
+        let text = ShapedText::new(
+            "日A日日末",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [
+                Cluster::new(0..3, 1_000),
+                Cluster::new(3..4, 400)
+                    .with_size(Size::square(400).expect("positive Western size"))
+                    .with_frame(Frame::Proportional),
+                Cluster::new(4..7, 1_000),
+                Cluster::new(7..10, 1_000),
+                Cluster::new(10..13, 1_000),
+            ],
+        )
+        .expect("valid mixed-size expansion fixture");
+        let paragraph = Paragraph::builder(text, 4_100)
+            .breaks([Break::mandatory(10)])
+            .alignment(Alignment::Justify)
+            .build()
+            .expect("valid mixed-size expansion paragraph");
+        let style = Style::builder()
+            .japanese_latin_expansion_ceiling(ceiling)
+            .build()
+            .expect("consistent expansion style");
+        compose_ok!(&paragraph, &style)
+    };
+
+    let half = compose_with(JapaneseLatinExpansionCeiling::HalfEm);
+    assert_eq!(half.lines()[0].clusters()[1].inline(), 1_350);
+
+    let third = compose_with(JapaneseLatinExpansionCeiling::ThirdEm);
+    assert_eq!(third.lines()[0].clusters()[1].inline(), 1_334);
+
+    let rigid = compose_with(JapaneseLatinExpansionCeiling::Rigid);
+    assert_eq!(rigid.lines()[0].clusters()[1].inline(), 1_250);
+}
+
+#[test]
+fn western_word_space_expands_to_half_an_em_at_the_first_stage() {
+    let text = ShapedText::new(
+        "A B末",
+        Size::square(1_000).expect("positive size"),
+        Frame::Proportional,
+        [
+            Cluster::new(0..1, 1_000),
+            Cluster::new(1..2, 333),
+            Cluster::new(2..3, 1_000),
+            Cluster::new(3..6, 1_000).with_frame(Frame::FullEm),
+        ],
+    )
+    .expect("valid Western expansion fixture");
+    let paragraph = Paragraph::builder(text, 2_500)
+        .breaks([Break::mandatory(3)])
+        .alignment(Alignment::Justify)
+        .build()
+        .expect("valid Western expansion paragraph");
+    let layout = compose_ok!(&paragraph, &Style::jlreq_2020());
+
+    assert_eq!(layout.lines()[0].clusters()[1].inline(), 1_000);
+    assert_eq!(layout.lines()[0].clusters()[2].inline(), 1_500);
+}
+
+#[test]
+fn composer_reuses_scratch_without_borrowing_the_returned_layout() {
+    let text = shaped("日本", Frame::FullEm, 1_000).expect("valid reuse fixture");
+    let paragraph = Paragraph::builder(text, 1_000)
+        .breaks([Break::allowed(3)])
+        .build()
+        .expect("valid paragraph");
+    let mut composer = jlreq_core::Composer::new();
+    let first = composer
+        .compose(&paragraph, &Style::default())
+        .expect("composition succeeds");
+    let second = composer
+        .compose(&paragraph, &Style::book_2020())
+        .expect("composition succeeds");
+    assert_eq!(first.lines().len(), 2);
+    assert_eq!(second.lines().len(), 2);
+}
+
+#[test]
+fn composition_limits_are_typed_atomic_and_reusable() {
+    fn assert_error<T: core::error::Error>() {}
+    assert_error::<jlreq_core::InputError>();
+    assert_error::<jlreq_core::style::StyleError>();
+    assert_error::<jlreq_core::ComposeError>();
+
+    let defaults = CompositionLimits::default();
+    assert_eq!(defaults.max_clusters(), 65_536);
+    assert_eq!(defaults.max_break_candidates(), 65_536);
+    assert_eq!(defaults.max_constructs(), 4_096);
+    assert_eq!(defaults.max_tab_stops(), 4_096);
+    assert_eq!(defaults.max_search_transitions(), 8_000_000);
+
+    let paragraph = Paragraph::builder(
+        shaped("日本語", Frame::FullEm, 0).expect("valid zero-width fixture"),
+        1_000,
+    )
+    .breaks([Break::allowed(3), Break::allowed(6)])
+    .build()
+    .expect("valid pathological paragraph");
+    let limits = defaults.with_max_search_transitions(1);
+    let mut composer = Composer::with_limits(limits);
+    assert_eq!(composer.limits(), limits);
+    let error = composer
+        .compose(&paragraph, &Style::default())
+        .expect_err("the exact search must stop at its declared budget");
+    assert_eq!(error.code(), "compose.transition-limit");
+    assert_eq!(error.resource(), CompositionResource::SearchTransitions);
+    assert_eq!(error.limit(), 1);
+    assert_eq!(error.observed(), 2);
+
+    composer.set_limits(defaults);
+    let recovered = composer
+        .compose(&paragraph, &Style::default())
+        .expect("the composer is reusable after an error");
+    assert!(!recovered.lines().is_empty());
+
+    let static_error = Composer::with_limits(defaults.with_max_clusters(2))
+        .compose(&paragraph, &Style::default())
+        .expect_err("three clusters exceed the configured limit");
+    assert_eq!(static_error.code(), "compose.cluster-limit");
+    assert_eq!(static_error.resource(), CompositionResource::Clusters);
+    assert_eq!(static_error.limit(), 2);
+    assert_eq!(static_error.observed(), 3);
+
+    let empty = Paragraph::builder(
+        ShapedText::new(
+            "",
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            [],
+        )
+        .expect("valid empty text"),
+        1_000,
+    )
+    .build()
+    .expect("valid empty paragraph");
+    let zero = CompositionLimits::default()
+        .with_max_clusters(0)
+        .with_max_break_candidates(0)
+        .with_max_constructs(0)
+        .with_max_tab_stops(0)
+        .with_max_search_transitions(0);
+    let layout = Composer::with_limits(zero)
+        .compose(&empty, &Style::default())
+        .expect("an empty paragraph always succeeds");
+    assert!(layout.lines().is_empty());
+}
+
+#[test]
+fn line_extent_is_occupied_width_not_the_shifted_end_coordinate() {
+    for (alignment, origin) in [
+        (Alignment::Start, 0),
+        (Alignment::Center, 1_500),
+        (Alignment::End, 3_000),
+    ] {
+        let text = shaped("日", Frame::FullEm, 1_000).expect("valid alignment fixture");
+        let paragraph = Paragraph::builder(text, 4_000)
+            .alignment(alignment)
+            .build()
+            .expect("valid aligned paragraph");
+        let layout = compose_ok!(&paragraph, &Style::default());
+        assert_eq!(layout.lines()[0].inline_origin(), origin);
+        assert_eq!(layout.lines()[0].inline_extent(), 1_000);
+    }
+}

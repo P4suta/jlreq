@@ -10,7 +10,7 @@
 # Source: spec/snapshot/ucd/PropList.txt
 # Source SHA-256: 130dcddcaadaf071008bdfce1e7743e04fdfbc910886f017d9f9ac931d8c64dd
 # Reader: xtask/src/classes.rs, xtask/src/derive.rs
-# Reader SHA-256: 673b41ade1f0288a4217fb6569825225aeae5ce15032aa613602083e3d223982
+# Reader SHA-256: aa04cdfeac9951ff411834cab798953c48116aeabdfee532265b930dbbc57f1b
 
 first	last
 3400	4DBF

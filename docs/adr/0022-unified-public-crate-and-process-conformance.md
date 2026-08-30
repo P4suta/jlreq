@@ -1,6 +1,6 @@
 # ADR-0022: one public Rust crate and one process conformance contract
 
-- Status: accepted
+- Status: superseded by [ADR 0025](0025-three-product-layers.md)
 - Date: 2026-08-14
 - Supersedes the crate topology in [ADR 0015](0015-the-crate-graph-and-the-inline-line-seam.md)
   and its seam-carrier amendment in

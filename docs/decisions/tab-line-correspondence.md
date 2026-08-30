@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: what §3.6.3 corresponds a line's tab signs with, and what a sign with no stop does
 
 - Applies to: the tab round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs) and
-  [`paragraph`](../../crates/jlreq/src/paragraph.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs) and
+  [`paragraph`](../../crates/jlreq-core/src/paragraph.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml) and
   [`engines/racket/compose.rkt`](../../engines/racket/compose.rkt)
 - Standing: `Unstated`
@@ -220,5 +220,5 @@ the Racket engine reached the reading published here
 ([#19](https://github.com/P4suta/jlreq/issues/19)); until then they were deliberately left
 out, because a census is a gate and a gate that is red is not one.
 `engines/ocaml/test/test_pipeline.ml`,
-[`crates/jlreq/tests/public_api.rs`](../../crates/jlreq/tests/public_api.rs) and
+[`crates/jlreq-core/tests/public_api.rs`](../../crates/jlreq-core/tests/public_api.rs) and
 `engines/racket/tests/test-compose.rkt` pin the individual shapes as well.

@@ -178,8 +178,8 @@ reasoning locally, so the contract is amended in exactly one place.
 
 **May not be read into a reference engine** — the Rust implementation:
 
-- the layout logic under `crates/jlreq/src/` (`pipeline.rs` above all);
-- `crates/jlreq/src/generated/`, and the xtask code generators that write it.
+- the layout logic under `crates/jlreq-core/src/` (`pipeline.rs` above all);
+- `crates/jlreq-core/src/generated/`, and the xtask code generators that write it.
 
 A reference engine builds its tables from `spec/derived/*.tsv` and `spec/captured/*.tsv`
 directly; it does not read the Rust-generated modules those files also produce. The property

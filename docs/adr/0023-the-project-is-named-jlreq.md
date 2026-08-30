@@ -3,8 +3,9 @@
 - Status: accepted
 - Date: 2026-08-23
 - Amends the naming in
-  [ADR 0022](0022-unified-public-crate-and-process-conformance.md); its crate topology —
-  one public library, one binary-only conformance package — is unchanged.
+  [ADR 0022](0022-unified-public-crate-and-process-conformance.md). Its original topology
+  was later superseded by [ADR 0025](0025-three-product-layers.md), while the names and
+  protocol identifier chosen here remain current.
 
 ## Context
 
@@ -85,7 +86,7 @@ this decision. The workspace stays `publish = false` until a release decision is
 Every generated artifact changes, by design. `xtask/src/generate.rs` writes an SPDX header
 into each generated module, and `data/manifest.toml` records the SHA-256 of every generated
 file *and of the xtask sources that generated it*, while each `spec/derived/*.tsv` carries
-its reader's digest and each `crates/jlreq/src/generated/*.rs` carries its generator's. One
+its reader's digest and each `crates/jlreq-core/src/generated/*.rs` carries its generator's. One
 changed word in one copyright line therefore propagates through the whole digest ledger.
 That is the ledger working: a byte that decides an output is not allowed to change
 silently. All ten derived files, all ten generated modules, and the manifest were rewritten

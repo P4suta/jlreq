@@ -4,15 +4,15 @@
 # These files are emitted from attested specification data. `just generate-check` and
 # `just attest` validate them byte-for-byte; mutation testing covers the adjacent,
 # handwritten `generated.rs` integrity checks.
-exclude_globs = ["crates/jlreq/src/generated/**"]
+exclude_globs = ["crates/jlreq-core/src/generated/**"]
 
 # Each proven-equivalent mutant is pinned to the source hash and justified individually
 # in docs/mutation-ledger.toml. Anchoring the full cargo-mutants name prevents a broad
 # expression class from being hidden by accident.
 exclude_re = [
-  '^crates/jlreq/src/generated[.]rs:35:5: replace [|] with \^$',
-  '^crates/jlreq/src/generated[.]rs:36:5: replace [|] with \^$',
-  '^crates/jlreq/src/generated[.]rs:37:5: replace [|] with \^$',
-  '^crates/jlreq/src/generated[.]rs:38:5: replace [|] with \^$',
-  '^crates/jlreq/src/generated[.]rs:55:41: replace < with <= in ascends$',
+  '^crates/jlreq-core/src/generated[.]rs:35:5: replace [|] with \^$',
+  '^crates/jlreq-core/src/generated[.]rs:36:5: replace [|] with \^$',
+  '^crates/jlreq-core/src/generated[.]rs:37:5: replace [|] with \^$',
+  '^crates/jlreq-core/src/generated[.]rs:38:5: replace [|] with \^$',
+  '^crates/jlreq-core/src/generated[.]rs:55:41: replace < with <= in ascends$',
 ]

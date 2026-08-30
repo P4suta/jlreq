@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: what a request that states no `alignment` asks for
 
 - Applies to: the line-adjustment round in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same round in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same round in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.8.1, §3.5.3

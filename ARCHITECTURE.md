@@ -1,159 +1,176 @@
 # Architecture
 
-This document describes the 0.1.0 implementation and its mechanically enforced invariants.
+This document describes the prepared 0.1.0 implementation and the boundaries enforced by
+the repository gates.
 
-## Boundary in the text stack
-
-```text
-font I/O + shaping + UAX #14 + bidi              renderer / PDF / game engine
-                 │                                           ▲
-                 └── shaped clusters + break opportunities ──┤
-                                                             │
-                         jlreq ───── placements + diagnostics
-```
-
-`jlreq` never loads a font, shapes a glyph, discovers a Unicode break opportunity,
-resolves paragraph bidi, or draws. The caller supplies those answers. The library owns
-Japanese normalization, spacing, construct behavior, line choice, and physical placement.
-
-## Product boundary
-
-There are two public contracts:
-
-1. `jlreq`, a dependency-free Edition 2024 library with MSRV 1.85 and `#![no_std]` plus
-   `alloc`;
-2. `jlreq-conformance`, a binary-only product that communicates with any engine through
-   the versioned NDJSON protocol.
-
-`xtask` is repository tooling and is not a product crate. `engines/` — independent
-reference implementations of the protocol, starting with `engines/ocaml/` — is tooling in
-the same sense: neither a Cargo workspace member nor a product, and out of scope for every
-gate whose scope is the Cargo graph (`purity`, `api`, `direction`, `derive`, `generate`,
-`deny`, `shear`, `msrv`). See
-[docs/design/conformance.md](docs/design/conformance.md#independent-reference-engines) and
-[ADR 0024](docs/adr/0024-independent-reference-engines.md).
-
-## Logical pipeline
-
-The implementation is one directional pipeline:
+## Three product layers
 
 ```text
-model/style/limits → spec → normalize/rules → construct → compose → place → pipeline → API
+UTF-8 + explicit font bytes
+            │
+            ▼
+ jlreq (MSRV 1.88)
+ graphemes · fallback · bidi · shaping · line opportunities
+            │ validated pre-shaped clusters and constructs
+            ▼
+ jlreq-core (MSRV 1.85, no_std + alloc, no dependencies)
+ JLReq classification · kinsoku · spacing · adjustment · composition
+            │
+            ▼
+ TextLayout: visual-order glyphs + owned fonts + diagnostics
+            │
+            ▼
+ caller renderer / PDF writer / game engine
+
+ jlreq-conformance ── protocol-v1 black-box validation of any engine
 ```
 
-The present source groups some adjacent stages into files, but ownership follows this
-direction:
+The layers have different users and different compatibility surfaces:
 
-- `model` owns caller-unit sizes, frames, writing modes, shaped clusters, and input errors;
-- `style` owns the 22 typed decisions and dated profiles;
-- `limits` owns deterministic composition resource bounds and their typed failure;
-- `generated` contains reproducible tables, while `spec` gives them private queries;
-- `normalize` validates shaped text and joins Appendix A two-code-point keys without losing original cluster
-  attribution;
-- `construct` owns the nine opaque document structures;
-- `paragraph` jointly validates breaks, constructs, tabs, and paragraph policy;
-- `layout` owns renderer-facing read-only result views;
-- `pipeline` performs private classification, spacing, construct lowering, optimal
-  composition, and placement;
-- `lib` is the only API layer and re-exports exactly `docs/public-api.toml`.
+1. `jlreq` is the high-level facade. It accepts text and font resources, hides Fontique,
+   HarfRust, ICU4X, and unicode-bidi types, and returns renderer-independent physical glyph
+   placement.
+2. `jlreq-core` is the deterministic composition engine for callers that already own
+   shaping and Unicode preprocessing. Its former public items and result model remain
+   available under their new crate path and through `jlreq::core`.
+3. `jlreq-conformance` is binary-only. It validates implementations through the existing
+   `jlreq.conformance/1` NDJSON protocol and never becomes an in-process dependency of
+   either library.
 
-No classification, seam, adjustment stage, feasibility score, ladder, badness, or rule ID is
-public. A caller builds `ShapedText`, validates a `Paragraph`, calls `compose`, and draws the
-returned views; it never wires internal stages together.
+`xtask`, `fuzz/`, and the independent implementations under `engines/` are repository
+tooling rather than products.
 
-## Input invariants
+## High-level processing order
 
-All public scalar geometry is bounded `i32` in the caller's unit. Intermediate sums and
-costs use checked or saturating `i64`; floating point is rejected by the purity gate. The
-private specification unit remains 1/720 em where specification fractions are needed.
+The facade performs these steps in a fixed order:
 
-Every public source coordinate is a UTF-8 byte offset or range. `ShapedText::new` verifies:
+1. Split paragraphs while preserving every original UTF-8 byte range, including CRLF and
+   Unicode paragraph separators.
+2. Itemize extended graphemes and script, then choose the first fallback face that covers
+   the whole grapheme or variation sequence.
+3. Resolve paragraph bidi with UAX #9.
+4. Shape font/script/direction runs with HarfRust and map glyph clusters back to source
+   ranges.
+5. Merge UAX #14 opportunities, mandatory breaks, tabs, and explicitly prohibited breaks.
+6. Lower typed inline structures and ask `jlreq-core` to apply kinsoku, punctuation
+   spacing, line adjustment, and exact composition.
+7. Reorder each completed line visually and convert logical placement into horizontal or
+   vertical physical coordinates.
 
-- exact, ordered, non-overlapping source coverage;
-- UTF-8 boundaries;
-- non-negative shaped advances;
-- valid per-cluster sizes and explicit metric frames; and
-- the distinction between a proportional ligature and a non-Latin cluster hiding multiple
-  Appendix A keys.
+Automatic semantic classification is deliberately conservative: obvious decimal points,
+digit separators, and sentence punctuation may be classified, but units, quantities,
+formulae, ruby, and other authored meaning require `DocumentBuilder`.
 
-Appendix A two-code-point keys may arrive split across shaping clusters. Normalization makes
-the internal key indivisible while placements still point back to the original shaped
-clusters. Breaks and constructs cannot split such a key.
+`layout` constructs a fresh engine for one call. `LayoutEngine` reuses parsed fonts,
+shaper state, Unicode services, and core scratch allocation. Cache state is never part of
+an answer, so the two paths are bit-identical and an engine remains reusable after a typed
+failure.
 
-`ParagraphBuilder` jointly validates the line extent, indent, break kinds, nested/disjoint
-construct ranges, ruby runs, line-tab stops, widow policy, alignment, and writing mode.
-`compose` returns a complete exact layout or a typed resource error. Unsatisfied fit and
-quality constraints are represented by placements plus stable diagnostics; exhausting a
-caller-visible resource limit is atomic and returns no partial layout.
+## Font and shaping boundary
 
-## Composition and placement
+`FontLibrary` owns immutable font bytes and registers a TTF/OTF face or an indexed TTC
+face with family and style metadata. Its primary face is both the first candidate and the
+source of `.notdef`; an explicit fallback order controls all later candidates. Fallback is
+performed on a complete extended grapheme. If no face covers it, the grapheme and source
+range remain present, a primary `.notdef` is shaped, and a positioned
+`font.missing-glyph` diagnostic is returned.
 
-The only search policy is exact whole-paragraph optimization. A prepared paragraph caches
-cluster ordinals, construct ownership, legal breaks, mandatory partitions, widths, and
-adjustment capacities. Mandatory breaks partition dynamic programming; prefix/range
-queries make ordinary edges constant-time, while tabs and annotation structures charge
-work proportional to the special elements they touch. Integer lower bounds prune only
-provably dominated edges. There is no approximate or first-fit fallback.
+Fontique-backed OS discovery is behind the disabled-by-default `system-fonts` feature.
+Layout is cross-platform deterministic when the same explicit bytes, face indices, text,
+and options are supplied. An OS collection may change or choose a different face and is
+therefore outside that guarantee. System queries receive requested weight, width, and
+slant. The selected face's variable-axis settings and required synthetic emboldening/skew
+are copied into `FontResource`, so the completed layout remains sufficient to reproduce
+that selection without consulting Fontique again.
 
-`CompositionLimits` bounds clusters, break candidates, constructs, tab stops, and charged
-search transitions. Defaults are 65,536 clusters and break candidates, 4,096 constructs
-and tab stops, and 8,000,000 transitions. These bounds make memory and CPU refusal
-deterministic for hostile input while leaving ordinary 10,000-cluster paragraphs well
-inside the transition budget.
+OpenType feature tags and variation coordinates are facade values. No upstream crate type
+crosses the public API. Variation coordinates are quantized 26.6 values with `Eq` and
+`Hash`. Global settings, system-selected defaults, and span settings are overlaid by tag in
+that order, with later values winning; the same resolved shared slice drives HarfRust and
+is exposed on each glyph.
 
-Tabs take part in measurement and placement rather than being a second line API. Their
-alignment is expressed on the logical inline axis, so the same stops work in horizontal and
-vertical writing.
+## Documents and results
 
-`Layout`, `Line`, `ClusterPlacement`, and `Attachment` have private fields and read-only
-accessors. A placement identifies the original cluster or construct ordinal, byte range,
-logical inline/block coordinates, advance, size, frame, local writing mode, and transform.
-This is sufficient to draw vertical proportional glyphs and tate-chu-yoko without
-reshaping.
+`DocumentBuilder` validates UTF-8 ranges, non-overlapping spans, explicit break controls,
+and nine typed inline structures: ruby (mono, group, and jukugo), tate-chu-yoko, emphasis
+dots, warichu, furawake, jidori, reference marks, scripts, and formulae. Annotation strings
+are shaped by the same font, fallback, and bidi machinery as body text.
 
-## Style compatibility
+`TextLayout` owns its source, lines, diagnostics, and every `FontResource` used by its
+glyphs. Each `GlyphPlacement` has visual draw order, font and glyph IDs, original UTF-8
+range, physical draw origin, advance, offset, resolved size and variations, cell bounds,
+transform, and bidi level. `TextLayout::font` resolves retained resources by ID even when
+the retained ID set is sparse. Glyph, line, and layout bounds are physical cell bounds,
+including whitespace and annotations, not rasterized ink bounds.
 
-Every alternative in `spec/derived/questions.tsv` maps one-to-one to a dedicated
-`#[non_exhaustive]` enum in `jlreq::style`. `StyleBuilder::build` rejects contradictory
-combinations. Generic string settings, public `Question`/`Choice` values, and internal rule
-IDs are excluded.
+`hit_test`, affinity-required `caret_rect`, and `selection_rects` use that same geometry
+for horizontal, vertical, and mixed-direction text. Hit testing chooses the nearest line
+region before the nearest glyph and maps empty lines to their own source position.
+Selections are emitted per visually contiguous selected run, so a bidi selection never
+fills an intervening unselected run. Paragraph block progression is derived from actual
+line cells plus one configured line gap rather than from the global font size.
 
-`Style::default()` is permanently `Style::jlreq_2020()`. A future JLReq revision adds a new
-dated profile; it does not alter an existing profile. `docs/public-api.toml` maps all 22 enum
-names and counts back to generated specification data, and the API gate compares that
-mapping in both directions.
+The facade does not rasterize, draw, allocate GPU resources, or serialize a document.
 
-## Diagnostics and conformance
+## Numeric and resource invariants
 
-An `InputError` means the caller supplied an invalid representation. A `Diagnostic` means a
-validated paragraph was placed but a stable observable condition should be reported. Only
-the diagnostic code, severity, input range, and JLReq reference are contracted; private
-rule sequences and adjustment steps are not.
+Floating-point input is accepted only at public convenience boundaries. NaN, infinity,
+negative values where forbidden, and values outside the representable range are rejected.
+Valid values are immediately rounded to signed 26.6 fixed point. All shaping, composition,
+result comparison, and physical conversion use those quantized values.
 
-The process protocol deliberately describes only inputs and observable outputs. It never
-asks an external implementation to expose classes, internal seams, or algorithm stages.
-The protocol and specification identifiers are mandatory on every message so an old engine
-cannot accidentally be judged against a new suite.
+`ResourceLimits` independently bounds input bytes, font count, total font bytes,
+paragraphs, shaping runs, glyphs, constructs, and core operations. The core additionally
+bounds clusters, break candidates, constructs, tab stops, and charged exact-search
+transitions. A limit or validation failure returns no partial layout and mutates no
+caller-owned object. Scratch and cache state remain valid for the next engine call.
+
+## Core module direction
+
+The dependency-free core retains its one-way implementation pipeline:
+
+```text
+model/style/limits → spec → normalize/rules → construct
+                   → paragraph → compose/place → layout → public API
+```
+
+All core source coordinates are UTF-8 byte offsets or ranges; geometry is bounded integer
+caller units. `ShapedText` validates ordered complete source coverage, cluster boundaries,
+advances, sizes, and metric frames. `ParagraphBuilder` jointly validates line extent,
+breaks, nested/disjoint constructs, ruby associations, tab stops, widow policy, alignment,
+and writing mode. Composition returns a complete exact `Layout` or a typed error. It
+never switches to approximate first-fit behavior.
+
+The 22 JLReq 2020 policy choices remain dedicated enums under
+`jlreq_core::style` (also `jlreq::core::style`). `Style::default()` remains identical
+to `Style::jlreq_2020()`; a future specification revision adds a dated profile instead of
+changing an existing one.
+
+## Conformance and specification identity
+
+The process protocol describes only observable input and output, not internal classes or
+algorithm stages. Every message carries `jlreq.conformance/1` and
+`jlreq-2020-08-11+unicode-17.0.0`. Moving the Rust core did not change either identifier.
+The conformance inventory remains 100 covered rules out of 106, with the other six
+explicitly classified in the ledger.
 
 ## Mechanical enforcement
 
-- `purity`: no `std`, I/O, font dependency, floating point, or undeclared dependency edge
-  in the core;
-- `api`: 0.1.0 exports and the 22 typed Style mappings;
-- `direction`: the private module graph follows the declared one-way layers;
-- `placeholder`: no unwritten body or lint suppression in core code;
-- `derive`, `generate`, `attest`: reproducible specification derivation and transcription
-  provenance;
-- `conform`: every observable inventoried rule has a protocol-v1 black-box case, and every
-  excluded rule has an evidence-backed editorial/non-observable classification;
-- `repository`: packages remain publishable at `0.1.0` while external release actions stay
-  disabled, stable code documentation matches product literals, tracked UTF-8 files use
-  LF, and every local Markdown link resolves;
-- `coverage`: handwritten product code stays above 90% line and 85% region coverage;
-- `mutants`: generated artifacts are ledgered out and no handwritten mutant is missed or
-  times out;
-- normal Rust tests: invalid input, all style choices, all constructs in both directions,
-  paragraph search, placement, and protocol behavior.
+- `purity`: `jlreq-core` has no dependencies, `std`, I/O, fonts, or floating point;
+  facade and conformance dependencies are explicit and closed.
+- `api` and `semver`: the facade and core 0.1.x exports match
+  `docs/public-api.toml`; later patches compare both public libraries to the registry.
+- `direction` and `placeholder`: core modules follow the declared graph and contain no
+  unfinished body or lint suppression.
+- `derive`, `generate`, and `attest`: specification data and generated core tables are
+  reproducible and provenance-bound.
+- `conform`: protocol schema, cases, inventory, and specification identifiers agree.
+- `coverage`, `mutants`, and fuzzing: all handwritten products are exercised; generated
+  exclusions and equivalent mutations are individually ledgered.
+- `package`: all three archives are extracted into isolated Cargo homes after a locked
+  fetch, then built, tested, documented, and installed offline.
+- `repository`, REUSE, deny, CodeQL, actionlint, and zizmor hold publication state,
+  licensing, dependency policy, links, workflow pinning, and security hygiene.
 
-The gate rejects additions and removals from the public surface unless
-`docs/public-api.toml` changes deliberately.
+No gate uploads a crate, writes a tag, creates a GitHub Release, chooses a date, or stores a
+credential.

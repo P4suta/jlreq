@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: where a stacked structure divides, and what its own edges carry
 
 - Applies to: the warichu and furawake rounds in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same rounds in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same rounds in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.4.2, §3.4.3, §3.7.2, §B.2#13, §C.3

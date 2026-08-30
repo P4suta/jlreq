@@ -8,11 +8,11 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 export RUSTDOCFLAGS := "-D warnings"
 
 # The layout core must stay free of std, I/O, and font access (docs/adr/0001).
-core_crates := "-p jlreq"
+core_crates := "-p jlreq-core"
 
-# Mutation testing covers both handwritten Rust products. Generated tables and repository
+# Mutation testing covers all three handwritten Rust products. Generated tables and repository
 # tooling have independent generation/attestation gates.
-mutant_crates := "-p jlreq -p jlreq-conformance"
+mutant_crates := "-p jlreq -p jlreq-core -p jlreq-conformance"
 
 # A developer must be able to inspect an archive before committing; CI packages a clean
 # checkout and therefore deliberately omits Cargo's dirty-tree escape hatch.
@@ -74,6 +74,11 @@ census_summary := "docs/generated/conformance-summary.md"
 default:
     @just --list
 
+# Convert the completed Unreleased notes into a dated release only after maintainers choose
+# the real publication date. This edits CHANGELOG.md but never uploads, tags, or releases.
+finalize-release date:
+    sh scripts/finalize-release.sh {{ quote(date) }}
+
 # Format the workspace.
 fmt:
     cargo fmt --all
@@ -96,16 +101,16 @@ lint:
 # which nextest currently executes.
 test:
     cargo nextest run --workspace --all-features
-    cargo test -p jlreq --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
-    cargo test --release -p jlreq --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo nextest run -p jlreq-core --lib -- --ignored --exact pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget
+    cargo nextest run --release -p jlreq-core --lib -- --ignored --exact pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget
     cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
 # Run the complete test suite with the non-fail-fast CI profile.
 test-ci:
     cargo nextest run --profile ci --workspace --all-features
-    cargo test -p jlreq --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
-    cargo test --release -p jlreq --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo nextest run -p jlreq-core --lib -- --ignored --exact pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget
+    cargo nextest run --release -p jlreq-core --lib -- --ignored --exact pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget
     cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
@@ -113,19 +118,22 @@ test-ci:
 doc:
     cargo doc --workspace --all-features --no-deps
 
-# Build and verify both public crate archives. The temporary crates.io patch lets Cargo verify
-# the exact-version inter-crate dependency before jlreq has actually been uploaded.
+# Build and verify all three public crate archives. Temporary crates.io patches validate the
+# exact-version core dependency before the initial release reaches the registry.
 package:
-    cargo package -p jlreq --locked {{package_dirty}}
-    cargo package -p jlreq-conformance --locked {{package_dirty}} --offline --config 'patch.crates-io.jlreq.path="crates/jlreq"'
+    cargo fetch --locked
+    cargo package -p jlreq-core --locked {{package_dirty}}
+    cargo package -p jlreq --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
+    cargo package -p jlreq-conformance --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
     sh scripts/verify-crates.sh
 
 # Ask Cargo to execute its complete crates.io publication preflight while retaining the
-# upload locally. The patch validates jlreq-conformance before the first jlreq release has
-# appeared in the index; published metadata still carries only version 0.1.0.
+# upload locally. The patch validates jlreq and jlreq-conformance before their first
+# dependencies have appeared in the index; published metadata still carries only version 0.1.0.
 publish-dry-run:
-    cargo publish --dry-run --locked {{package_dirty}} -p jlreq
-    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-conformance --config 'patch.crates-io.jlreq.path="crates/jlreq"'
+    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-core
+    cargo publish --dry-run --locked {{package_dirty}} -p jlreq --config .cargo/initial-release-patch.toml
+    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-conformance --config .cargo/initial-release-patch.toml
 
 # Compile no-default, every individual feature, and representative feature pairs.
 feature-matrix:
@@ -150,6 +158,7 @@ fuzz-check:
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target input_validation 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target composition 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target protocol_parser 30" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target high_level_layout 30" } }}
 
 # The install-action cargo-fuzz binary is itself built for musl. cargo-fuzz 0.13.2
 # otherwise mistakes that build triple for the fuzz target, but ASan requires the
@@ -158,6 +167,7 @@ fuzz-check-linux-ci:
     just _fuzz-target-linux input_validation 30
     just _fuzz-target-linux composition 30
     just _fuzz-target-linux protocol_parser 30
+    just _fuzz-target-linux high_level_layout 30
 
 # A single bounded fuzz target. Runtime corpora are disposable target/ state; only
 # fuzz/seeds is reviewed and committed.
@@ -165,27 +175,27 @@ fuzz-check-linux-ci:
 _fuzz-target target seconds:
     mkdir -p target/fuzz-corpus/{{target}}
     cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
-    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz -- -max_total_time={{seconds}} -timeout=10
+    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz {{ if os() == "linux" { "--target x86_64-unknown-linux-gnu" } else { "" } }} -- -max_total_time={{seconds}} -timeout=10
 
 [private]
 _fuzz-target-linux target seconds:
-    mkdir -p target/fuzz-corpus/{{target}}
-    cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
-    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz --target x86_64-unknown-linux-gnu -- -max_total_time={{seconds}} -timeout=10
+    just _fuzz-target {{target}} {{seconds}}
 
 # Scheduled sanitizer budget: fifteen minutes for each independent failure domain.
 fuzz-scheduled:
     just _fuzz-target-linux input_validation 900
     just _fuzz-target-linux composition 900
     just _fuzz-target-linux protocol_parser 900
+    just _fuzz-target-linux high_level_layout 900
 
 # Each handwritten product must independently stay above both release thresholds. Generated
 # tables, test fixtures, xtask, and independent engines are covered by their own gates. The
 # transport regression deliberately kills its stalled synthetic engine, so LLVM may see that
 # one incomplete profile; `all` still rejects a run in which no valid profile can be merged.
 coverage:
-    cargo llvm-cov -p jlreq --all-features --ignore-filename-regex '(/src/generated/|/tests/)' --fail-under-lines 90 --fail-under-regions 85 --summary-only
-    cargo llvm-cov -p jlreq-conformance --all-features --exclude-from-report jlreq --ignore-filename-regex '(/tests/)' --failure-mode all --fail-under-lines 90 --fail-under-regions 85 --summary-only
+    cargo llvm-cov -p jlreq-core --all-features --ignore-filename-regex '(/src/generated/|/tests/)' --fail-under-lines 90 --fail-under-regions 85 --summary-only
+    cargo llvm-cov -p jlreq --all-features --exclude-from-report jlreq-core --ignore-filename-regex '(/tests/)' --fail-under-lines 90 --fail-under-regions 85 --summary-only
+    cargo llvm-cov -p jlreq-conformance --all-features --exclude-from-report jlreq-core --ignore-filename-regex '(/tests/)' --failure-mode all --fail-under-lines 90 --fail-under-regions 85 --summary-only
 
 # Reject std, I/O, and font dependencies in the layout core (docs/adr/0001).
 purity:
@@ -195,13 +205,13 @@ purity:
 placeholder:
     cargo run --quiet -p xtask -- placeholder
 
-# Hold jlreq to the exact 0.1.0 export surface and all 22 typed Style mappings.
+# Hold jlreq and jlreq-core to the exact 0.1.0 export surface and all typed Style mappings.
 api:
     cargo run --quiet -p xtask -- api
 
 # Before the initial release, hold the local 0.1.0 control in both directions. For every
-# later 0.1.x candidate, additionally compare the complete rustdoc API with the latest
-# published jlreq release and reject patch-incompatible changes.
+# later 0.1.x candidate, additionally compare both public libraries' complete rustdoc APIs
+# with their latest published releases and reject patch-incompatible changes.
 semver:
     sh scripts/check-semver.sh
 
@@ -277,13 +287,14 @@ shellcheck:
 zizmor:
     zizmor --offline --persona regular --min-severity high .
 
-# Verify every workspace crate at the shared declared MSRV.
+# Verify each workspace crate at its own declared MSRV (facade 1.88, core 1.85).
 msrv:
     cargo msrv verify --path crates/jlreq
+    cargo msrv verify --path crates/jlreq-core
     cargo msrv verify --path crates/jlreq-conformance
     cargo msrv verify --path xtask
 
-# Mutation-test both handwritten products, or one package/shard when supplied. Generated
+# Mutation-test all handwritten products, or one package/shard when supplied. Generated
 # table and exact equivalent-mutant exclusions are pinned in docs/mutation-ledger.toml. Any
 # missed or timed-out mutant makes cargo-mutants, and therefore this gate, fail.
 #
@@ -298,19 +309,19 @@ msrv:
 # `::std::iter::empty()`) that do not type-check against this crate's domain types or its
 # `no_std` boundary — see the milestone report for the per-crate rate.
 mutants crate="" shard="":
-    sh scripts/verify-mutation-ledger.sh
-    cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} {{ if shard == "" { "" } else { "--shard " + shard } }} --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
+    cargo run --quiet -p xtask -- mutation-ledger
+    cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} {{ if shard == "" { "" } else { "--shard " + shard } }} --all-features --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
 
 # Pull requests exercise only mutations in the changed Rust surface; weekly and release
 # workflows run the complete sharded gate above.
-mutants-smoke base:
-    sh scripts/verify-mutation-ledger.sh
-    sh scripts/run-mutation-smoke.sh {{ quote(base) }}
+mutants-smoke base shard="":
+    cargo run --quiet -p xtask -- mutation-ledger
+    sh scripts/run-mutation-smoke.sh {{ quote(base) }} {{ if shard == "" { "" } else { quote(shard) } }}
 
 # Hold generated and equivalent-mutant exclusions to their individual source hashes and
 # require every cargo-mutants regex to have one proof in the reviewable ledger.
 mutation-ledger:
-    sh scripts/verify-mutation-ledger.sh
+    cargo run --quiet -p xtask -- mutation-ledger
 
 # Build the independent OCaml reference engine (engines/ocaml/README.md). The engines are
 # outside the Cargo workspace and no Rust gate reads them, so the recipes below are the
@@ -531,5 +542,6 @@ release-check:
     just publish-dry-run
     just census-all
     just mutants jlreq
+    just mutants jlreq-core
     just mutants jlreq-conformance
     sh scripts/verify-release-state.sh

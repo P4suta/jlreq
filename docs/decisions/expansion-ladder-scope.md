@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Reading: which coordinates §3.8.4's ladder asks its ceiling at, and which its fourth step re-levels
 
 - Applies to: the expansion ladder in
-  [`pipeline`](../../crates/jlreq/src/pipeline.rs), and the same ladder in
+  [`pipeline`](../../crates/jlreq-core/src/pipeline.rs), and the same ladder in
   [`engines/ocaml/lib/pipeline.ml`](../../engines/ocaml/lib/pipeline.ml)
 - Standing: `Unstated`
 - JLReq: §3.8.4, §E.1, §E.2, ADR-0021

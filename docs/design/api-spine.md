@@ -1,151 +1,126 @@
 # The 0.1.0 API spine
 
-This is the human-readable contract for the only public Rust library, `jlreq`. The exact
-directly exported names and the 22 Style mappings are machine-readable in
+This is the human-readable contract for the two public Rust libraries. The exact facade and
+core exports, together with all 22 core Style mappings, are frozen in
 [`docs/public-api.toml`](../public-api.toml) and checked in both directions by `xtask api`.
 
-This document describes the 0.1.0 contract. It is both a mechanical design control and the
-compatibility floor for 0.1.x. The old multi-crate API is not carried forward and has no
-compatibility facade.
+## Facade: text and fonts in, drawable glyphs out
 
-Before the first publication, `just semver` enforces the local export and Style mapping in
-`docs/public-api.toml`; there is no registry baseline to compare yet. For every later 0.1.x
-candidate the same required gate uses `cargo-semver-checks` in patch mode against the latest
-normal, non-yanked jlreq release. This rolling baseline protects APIs added by intermediate
-0.1.x releases as well as the original 0.1.0 surface.
+The normal path is intentionally one call:
 
-## Principles
+```rust,no_run
+# fn layout(font_bytes: Vec<u8>) -> Result<(), jlreq::LayoutError> {
+let mut fonts = jlreq::FontLibrary::new();
+fonts.register_font(font_bytes)?;
+let options = jlreq::LayoutOptions::try_new(240.0, 16.0)?;
+let layout = jlreq::layout("日本語組版", &fonts, options)?;
 
-- All positions and ranges in input text are UTF-8 byte coordinates.
-- All public geometry is a bounded `i32` in the caller's unit.
-- Inputs are already shaped. Font I/O, shaping, UAX #14, bidi, and rendering are out of
-  scope.
-- `ParagraphBuilder::build` is the representation-validation boundary. Composition of a
-  validated paragraph returns either a complete exact layout or a typed resource error.
-- Classification, spacing records, lowering seams, feasibility, ladders, badness, and rule
-  IDs are private.
-- Public result types are read-only views with private fields.
-- Every public type is `#[non_exhaustive]`; new detail may be added without changing an
-  existing outcome.
-
-## Normal path
-
-```rust
-let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters)?;
-let paragraph = Paragraph::builder(text, 20_000)
-    .breaks(break_offsets.map(Break::allowed))
-    .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020())?;
-
-for line in layout.lines() {
-    for placement in line.clusters() {
-        // Pass `placement` to the caller's renderer.
-        let _ = placement;
+for glyph in layout.glyphs() {
+    if let Some(font) = layout.font(glyph.font_id()) {
+        let _draw = (
+            font.bytes(),
+            font.face_index(),
+            glyph.glyph_id(),
+            glyph.draw_origin(),
+            glyph.font_size_26_6(),
+            glyph.variations(),
+            font.synthesis(),
+            glyph.transform(),
+        );
     }
 }
+# Ok(())
+# }
 ```
 
-`Composer::compose` is the same operation with reusable search scratch space. The root
-function is for one-off composition.
+`LayoutOptions::try_new(line_extent, font_size)` validates and quantizes its two required
+values. Builder methods set writing mode, alignment, core `Style`, language, base
+direction, line gap, tab width, OpenType features and variations, and `ResourceLimits`.
+`LayoutEngine` exposes the same plain-text and typed-document calls with reusable
+internals.
 
-## Model
+`FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
+primary face, and ordered fallback. The optional `system-fonts` feature is the only OS
+discovery surface. It matches weight, width, and slant and records selected default axes
+plus synthetic bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi
+types are private.
 
-`Size` carries positive inline and block em lengths. `Frame` is an explicit `FullEm`,
-`HalfEm`, or `Proportional` metrics interpretation. `WritingMode` is `HorizontalTb` or
-`VerticalRl`.
+## Typed authored content
 
-`Cluster::new(range, advance)` requires only an original-source byte range and shaped inline
-advance. Builder methods may override size, frame, and `ClusterRole` for an occurrence.
-`ShapedText::new(source, size, frame, clusters)` owns and validates the complete stream.
+`DocumentBuilder` adds non-overlapping `SpanStyle` ranges, mandatory and prohibited
+breaks, and all nine inline structure families. Ruby can be mono, group, or jukugo, with
+automatic or explicit `RubyRun` association. The builder shapes annotation strings for
+ruby, emphasis, reference marks, and scripts; callers never manufacture low-level
+annotation clusters.
 
-Normalization may join an Appendix A two-code-point key across multiple shaped clusters,
-but it preserves attribution to those clusters. A non-proportional cluster may not hide
-multiple keys; proportional Latin ligatures remain valid.
+The builder validates byte boundaries and cross-field relationships before producing an
+immutable `Document`. `layout_document` then returns a complete result or a typed error.
 
-## Paragraph
+## Renderer-facing results
 
-`Paragraph::builder(text, line_extent)` accepts:
+`TextLayout` owns:
 
-- ordinary, mandatory, and discretionary `Break` values;
-- first-line indent and logical `Alignment`;
-- `Widow` control;
-- `TabStop` values with logical `TabAlignment`;
-- `WritingMode`; and
-- a sequence of opaque `Construct` values.
+- the original UTF-8 source;
+- physical `TextLine` values in reading order;
+- `GlyphPlacement` values in visual draw order;
+- every referenced `FontResource`; and
+- positioned, stable-code diagnostics.
 
-The builder rejects invalid UTF-8/cluster boundaries, uncovered or overlapping clusters,
-duplicate breaks and tab positions, crossing construct ranges, illegal breaks inside an
-indivisible construct, invalid sizes, and invalid construct-specific counts.
+A glyph exposes font ID, glyph ID, source byte range, optional annotation attribution,
+draw origin, advances, offsets, resolved size and variation axes, cell bounds, 26.6
+geometry, transform, and bidi level. A line exposes source range, physical origin and
+extents, writing mode, cell bounds, and its visual glyph slice. `TextLayout::font` is the
+required ID lookup because retained font identifiers may be sparse.
 
-The paragraph end is an implicit mandatory break. The only search exposed by composition is
-whole-paragraph optimization.
+`hit_test`, `caret_rect`, and `selection_rects` are defined over the same physical
+geometry and support both writing modes and bidi. They never require the renderer to infer
+logical ordering from glyph order. `caret_rect` requires `Affinity`; hit-test results can
+therefore round-trip exactly at wraps, paragraph breaks, and bidi boundaries. Selection
+rectangles are split at visually unselected runs.
 
-## Inline structures
+`cell_bounds` and line/layout `bounds` are layout-cell boundaries, not outline ink
+boundaries. They preserve whitespace and annotation cells. Renderers derive ink bounds
+from font outlines when needed.
 
-`Construct` is opaque and has nine named constructors:
+## Errors, diagnostics, and atomicity
 
-| Constructor | Structure |
-| --- | --- |
-| `ruby` | mono, group, or jukugo ruby |
-| `tate_chu_yoko` | upright horizontal span in vertical writing |
-| `emphasis_dots` | repeated emphasis marks |
-| `warichu` | inline cutting note |
-| `furawake` | distribution at declared breaks into an explicit number of sublines and line gap |
-| `jidori` | fit into an explicit number of full-em cells |
-| `reference_mark` | shaped reference mark attached to a base |
-| `script` | shaped subscript/superscript complex |
-| `formula` | shaped formula span with math-token break opportunities |
+`LayoutError` distinguishes invalid font data or TTC index, missing fonts, invalid
+options, invalid typed document data, resource exhaustion, core input failure, and core
+composition failure. Its `code()` and optional source range are stable; display prose may
+improve.
 
-Ruby alone has public supporting types: `Ruby`, `RubyKind`, and `RubyRun`. The annotation is
-another `ShapedText`; runs map base ranges to annotation ranges. Internal runs,
-contributions, seams, and placement strategies are not public.
+Invalid fonts, options, ranges, and resource limits return no `TextLayout`. Missing glyphs
+and overfull or widow conditions that still permit a complete answer are diagnostics.
+Failures do not poison `LayoutEngine`; the next call is independent.
 
-## Style
+All public float values are checked for finiteness and range and quantized to 26.6 fixed
+point before processing. Equivalent quantized inputs are intentionally equivalent.
+`FontVariation` consequently implements `Eq` and `Hash`; global, system, and span values
+are overlaid per tag with the span layer last.
 
-`Style` is complete and immutable. `StyleBuilder` has one typed setter for each choice and
-rejects contradictions at `build()`. Profiles are:
+## Core: pre-shaped exact composition
 
-- `jlreq_2020` and the permanently equivalent `default`;
-- `book_2020`;
-- `magazine_2020`;
-- `newspaper_2020`; and
-- `jis_reading_2020` (the alternatives JLReq records, not complete JIS X 4051 conformance).
+`jlreq-core` is reachable directly and as `jlreq::core`. It accepts caller-shaped UTF-8
+clusters, integer advances, break opportunities, paragraph policy, and typed constructs.
+Its `ShapedText`, `ParagraphBuilder`, `Style`, `CompositionLimits`, `Composer`,
+`Layout`, placements, diagnostics, and typed errors retain the existing public behavior
+under the new crate path.
 
-The `jlreq::style` namespace contains the 22 dedicated choice enums. Their complete names
-and specification paths live in `docs/public-api.toml`; generic `Question`, `Choice`, and
-string-setting types are intentionally absent.
+The core is dependency-free, `no_std + alloc`, MSRV 1.85, and contains no font I/O,
+Unicode line segmenter, bidi implementation, rasterizer, or drawing backend. Its result
+uses logical integer geometry; the facade maps that result to physical 26.6 glyph geometry.
 
-## Results
+## Compatibility
 
-`Layout::lines()` and `Layout::diagnostics()` return borrowed slices. A `Line` provides its
-source range, logical origins, occupied inline extent, block demand, cluster placements,
-and attachments.
+Both libraries begin at 0.1.0. Within 0.1.x:
 
-Each `ClusterPlacement` provides:
+- directly exported names in `docs/public-api.toml` are preserved;
+- `Style::default()` retains the JLReq 2020 reading;
+- stable error and diagnostic codes retain their meanings;
+- explicit font bytes and options retain deterministic output;
+- the core keeps MSRV 1.85 and the facade keeps MSRV 1.88; and
+- protocol v1 and the specification identifier remain separate compatibility contracts.
 
-- `PlacementOrigin` (source cluster or construct ordinal);
-- original byte range;
-- logical inline and block coordinates;
-- placed advance, local size, and frame; and
-- local writing mode and `CoordinateTransform`.
-
-This is enough for a renderer to draw proportional text in vertical writing and
-tate-chu-yoko without reshaping. `Attachment` provides the equivalent geometry and
-attribution for ruby, emphasis marks, reference marks, and script annotations.
-
-`Diagnostic` is opaque. Only its stable code, `Severity`, optional input range, and JLReq
-reference string are contractual. It exposes no internal rule sequence.
-
-## Errors and compatibility
-
-`InputError` means no valid paragraph could be built; its stable code and optional range are
-for programs, while its message may improve. `StyleError` similarly exposes a stable
-conflict code. `ComposeError` exposes a stable code, resource, limit, and observed count;
-it never carries a partial layout.
-
-`Style::default()` never changes meaning. A new specification revision adds a dated profile
-and a new specification identifier. The process protocol is versioned separately.
-
-The 0.1.0 design has no compatibility layer for the former experimental API. After 0.1.0,
-compatible 0.1.x releases preserve this surface and its stable codes; incompatible changes
-require a semver-minor release while the major version is zero.
+Before first publication the semver gate is network-free. Later 0.1.x candidates run
+`cargo-semver-checks` in patch mode for both `jlreq-core` and `jlreq` against the latest
+normal non-yanked registry release.

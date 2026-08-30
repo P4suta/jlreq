@@ -1,153 +1,204 @@
 # jlreq
 
-`jlreq` is a Japanese line-composition engine for already-shaped text. It accepts UTF-8
-source text, caller-unit cluster advances, break opportunities, and document structures;
-it returns lines, placements, attachments, and stable diagnostics.
+`jlreq` lays out Japanese and mixed-script UTF-8 text from in-memory fonts. Give it text,
+font bytes, a font size, and a line extent; it returns visual-order glyphs with physical
+coordinates, source ranges, transforms, bidi levels, and the font resources needed to draw
+them.
 
-The public surface is deliberately limited to:
+The 0.1.0 workspace has three deliberately separate products:
 
-- the dependency-free `jlreq` Rust library (`no_std + alloc`), and
-- the language-independent `jlreq-conformance` process protocol.
+| Product | Shortest path for |
+| --- | --- |
+| `jlreq` | applications that want shaping, fallback, bidi, line breaking, and composition in one call |
+| `jlreq-core` | engines that already have shaped clusters and require dependency-free `no_std + alloc` composition |
+| `jlreq-conformance` | implementations validating protocol-v1 behavior against the black-box suite |
 
-Font loading, shaping, UAX #14 segmentation, bidi resolution, rasterization, and drawing
-remain the caller's responsibility.
-
-This tree is prepared as version 0.1.0: both crate archives, binaries, release metadata,
-and verification workflows can be produced without publishing. No crate upload, tag, or
-GitHub Release is performed by the preparation gates. Within 0.1.x, the public Rust surface
-recorded in `docs/public-api.toml`, protocol v1, stable error codes, and MSRV 1.85 are
-compatibility contracts.
+This tree is prepared up to the last reversible step before publication. It creates and
+verifies three crate archives, six target-specific conformance binary archives, checksums,
+SBOMs, and attestations in CI, but it does not upload a crate, choose the release date,
+create `v0.1.0`, or create a GitHub Release.
 
 ## Quick start
 
-```rust
-use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+This same example is the `jlreq` crate's compiled doctest:
 
-let source = "日本語組版";
-let clusters = source.char_indices().map(|(start, ch)| {
-    Cluster::new(start..start + ch.len_utf8(), 1_000)
-});
-let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters)?;
-let paragraph = Paragraph::builder(text, 4_000)
-    .breaks(source.char_indices().skip(1).map(|(at, _)| Break::allowed(at)))
-    .build()?;
-let layout = jlreq::compose(&paragraph, &Style::book_2020())
-    .expect("this small paragraph is within the default resource limits");
-assert_eq!(layout.lines().len(), 2);
-# Ok::<(), jlreq::InputError>(())
+```rust,no_run
+# fn quick_start(font_bytes: Vec<u8>) -> Result<(), jlreq::LayoutError> {
+use jlreq::{FontLibrary, LayoutOptions};
+
+let mut fonts = FontLibrary::new();
+fonts.register_font(font_bytes)?;
+
+let options = LayoutOptions::try_new(240.0, 16.0)?;
+let layout = jlreq::layout("日本語組版 — draw-ready glyphs", &fonts, options)?;
+
+for glyph in layout.glyphs() {
+    if let Some(font) = layout.font(glyph.font_id()) {
+        renderer_draw(
+            font.bytes(),
+            font.face_index(),
+            glyph.glyph_id(),
+            glyph.draw_origin(),
+            glyph.font_size_26_6(),
+            glyph.variations(),
+            font.synthesis(),
+            glyph.transform(),
+        );
+    }
+}
+# fn renderer_draw(
+#     _: &[u8],
+#     _: u32,
+#     _: u32,
+#     _: jlreq::Point,
+#     _: i32,
+#     _: &[jlreq::FontVariation],
+#     _: jlreq::FontSynthesis,
+#     _: jlreq::GlyphTransform,
+# ) {}
+# Ok(())
+# }
 ```
 
-All input ranges are UTF-8 byte ranges. `ShapedText` owns the source and clusters;
-`ParagraphBuilder` validates ranges, breaks, tabs, writing mode, widow control, and inline
-constructs once. Composition returns a complete exact `Layout` or a typed `ComposeError`.
-It never returns a partial layout, approximates a placement, or silently falls back to
-first-fit. Fit conditions that remain valid but cannot be improved, such as an overfull
-line, still produce a complete layout with a stable diagnostic.
+`TextLayout` owns every `FontResource` referenced by its glyphs. Retained IDs can be sparse,
+so renderers resolve them with `TextLayout::font`, not slice indexing. Draw `glyph_id` at
+`draw_origin`, instantiate it with the returned size and effective variations, apply the
+font's synthetic emboldening/skew and then `GlyphTransform`. Rasterization, GPU upload, PDF
+encoding, and drawing are intentionally outside the crate.
 
-Use `Composer` instead of the root `compose` function when composing repeatedly; it reuses
-its search scratch space without lending it to the returned `Layout`, supports explicit
-`CompositionLimits`, and remains reusable after a resource error. See the executable
-[`minimal`](crates/jlreq/examples/minimal.rs),
-[`Composer`](crates/jlreq/examples/composer.rs), and
-[`vertical`](crates/jlreq/examples/vertical.rs) examples. The
-[`reference_integration`](crates/jlreq-conformance/tests/reference_integration.rs) test
-connects ICU4X byte break offsets and HarfRust glyph clusters at the intended caller seam.
+`GlyphPlacement::cell_bounds`, `TextLine::bounds`, and `TextLayout::bounds` are physical
+layout-cell boundaries. They deliberately retain whitespace and annotation cells. They are
+not glyph ink bounds; a rasterizer must derive ink bounds from the selected outline and
+variation instance when clipping or painting decorations.
 
-## Scope
+Use `LayoutEngine` instead of `jlreq::layout` for batches. It reuses parsed fonts, shaping
+data, Unicode services, and core-composer scratch space, remains reusable after an error,
+and produces bit-identical results to the one-shot call.
 
-The library implements one paragraph pipeline:
+## Fonts, fallback, vertical text, and bidi
 
-```text
-normalize → classify/space → lower constructs → optimize breaks → place
+`FontLibrary::register_face` records a TTF/OTF or a TTC face with family and style metadata.
+The primary face supplies `.notdef`; `set_fallback_order` sets an explicit priority. The
+first font that covers an entire extended grapheme (including a variation sequence) wins.
+If none does, the source range is retained, the primary `.notdef` is emitted, and
+`font.missing-glyph` is reported as a diagnostic.
+
+```rust,no_run
+# fn configure(japanese: Vec<u8>, latin: Vec<u8>) -> Result<(), jlreq::LayoutError> {
+use jlreq::{BaseDirection, FontLibrary, LayoutOptions, WritingMode};
+
+let mut fonts = FontLibrary::new();
+let jp = fonts.register_font(japanese)?;
+let latin = fonts.register_font(latin)?;
+fonts.set_primary(jp)?;
+fonts.set_fallback_order([jp, latin])?;
+
+let options = LayoutOptions::try_new(320.0, 16.0)?
+    .writing_mode(WritingMode::VerticalRl)
+    .base_direction(BaseDirection::Auto);
+let layout = jlreq::layout("日本語 Latin العربية", &fonts, options)?;
+assert!(layout.glyphs().all(|glyph| !glyph.source_range().is_empty()));
+# Ok(())
+# }
 ```
 
-It accepts nine named inline constructs: ruby, tate-chu-yoko, emphasis dots, warichu,
-furawake, jidori, reference marks, script complexes, and formulae. Ruby has explicit mono,
-group, and jukugo runs. Horizontal and vertical paragraphs share the same logical inline
-model; placements include the local writing mode and transform needed by a renderer.
+Horizontal and vertical results use physical coordinates. Latin rotation, upright CJK,
+tate-chu-yoko, per-line UAX #9 visual reordering, hit testing, caret rectangles, and
+selection rectangles therefore require no logical-to-physical conversion in the caller.
+OpenType features and variable-font axes can be set globally or per span. The optional
+`system-fonts` feature adds Fontique-backed OS discovery, passes weight/width/slant to the
+matcher, and records its default axes and synthetic styling in `FontResource`. Global,
+system-selected, and span variation values are merged by tag in that order, with the last
+value winning. Only explicit bytes carry the cross-platform determinism guarantee; once a
+system face is registered, its copied bytes and recorded rendering state are stable for that
+layout, but repeating discovery against a changed OS collection may select another face.
 
-The 22 alternative points derived from JLReq 2020 are dedicated enums in
-`jlreq::style`. There is no public generic question/choice vocabulary and no public rule
-identifier. `Style::default()` is permanently equal to `Style::jlreq_2020()`; dated book,
-magazine, newspaper, and JIS-reading profiles are also available.
+## Typed documents and all nine inline constructs
 
-The specification identifier is
-`jlreq-2020-08-11+unicode-17.0.0`. This includes the alternatives JLReq records from JIS X
-4051; it is not a claim of complete JIS X 4051 conformance.
+`DocumentBuilder` accepts UTF-8 byte ranges. It also controls span family/style/language,
+mandatory and prohibited breaks, and nine JLReq structures. Ruby, emphasis marks,
+reference marks, and script annotations are ordinary strings and are shaped automatically.
 
-## Language-independent conformance
-
-`jlreq-conformance` speaks NDJSON with an external engine process. Every message carries:
-
-```json
-{"protocol":"jlreq.conformance/1","spec":"jlreq-2020-08-11+unicode-17.0.0","id":"..."}
-```
-
-The fixed commands and exit codes are:
-
-```text
-jlreq-conformance list [SUITE.ndjson]
-jlreq-conformance validate [SUITE.ndjson|-]
-jlreq-conformance run ENGINE [SUITE.ndjson]
-
-0  all cases conform / input validates
-1  one or more result differences
-2  input, protocol, or engine error
-```
-
-All commands accept `--help`, `--version`, `--verbose`, `--timeout-seconds`,
-`--max-message-bytes`, `--max-suite-bytes`, and `--max-cases`. Defaults are 30 seconds
-without communication, 1 MiB per message, 256 MiB per suite, and 200,000 cases. Requests
-and responses stream concurrently; responses may arrive in any order and are matched by a
-unique `id`. Duplicate, unknown, missing, or extra responses are protocol errors.
-
-The package contains no library target. Its committed JSON Schema, built-in suite, and
-`jlreq-sample-engine` executable form an end-to-end protocol example. See
-[`docs/design/conformance.md`](docs/design/conformance.md).
-
-[`crates/jlreq-conformance/tests/reference_integration.rs`](crates/jlreq-conformance/tests/reference_integration.rs)
-keeps direct ICU4X line-break-byte-offset and HarfRust glyph-cluster adapters compiling and
-running. Both dependencies are test-only; neither is a `jlreq` dependency or feature.
-
-## Repository layout
-
-| Path | Role |
+| Structure | Builder method |
 | --- | --- |
-| `crates/jlreq` | the only public Rust library |
-| `crates/jlreq-conformance` | binary-only black-box runner and sample engine |
-| `xtask` | specification generation and architectural gates |
-| `spec/`, `data/` | vendored specification inputs, derived data, and provenance |
-| `engines/` | independent, non-product reference engines that speak protocol v1 |
+| mono/group/jukugo ruby | `mono_ruby`, `group_ruby`, `jukugo_ruby`, or explicit `ruby` runs |
+| 縦中横 | `tate_chu_yoko` |
+| 圏点 | `emphasis_dots` |
+| 割注 | `warichu` |
+| 振分け | `furawake` |
+| 字取り | `jidori` |
+| 合印 | `reference_mark` |
+| 添字 | `script` |
+| 数式 | `formula` |
 
-## Independent reference engines
+```rust,no_run
+# fn document(font_bytes: Vec<u8>) -> Result<(), jlreq::LayoutError> {
+use jlreq::{DocumentBuilder, FontLibrary, LayoutOptions, ScriptPosition};
 
-Protocol independence is only a claim until a second implementation tests it.
-[`engines/ocaml/`](engines/ocaml/README.md) is a from-scratch OCaml implementation of
-protocol v1, built directly from `spec/` and barred from reading `crates/jlreq/src/`;
-`engines/racket/` follows the same rule. Neither is a Cargo workspace member or a product;
-see [`docs/design/conformance.md`](docs/design/conformance.md#independent-reference-engines)
-and [ADR 0024](docs/adr/0024-independent-reference-engines.md).
+let text = "漢字12 注記 割注 振分 字取 * H2O x+y";
+let mut doc = DocumentBuilder::new(text);
+doc.group_ruby(0..6, "かんじ")?;
+doc.tate_chu_yoko(6..8)?;
+doc.emphasis_dots(9..15, '・')?;
+doc.warichu(16..22)?;
+doc.furawake(23..29, 2, 1.0)?;
+doc.jidori(30..36, 4)?;
+doc.reference_mark(37..38, "※")?;
+doc.script(39..42, "2", ScriptPosition::Subscript)?;
+doc.formula(43..46)?;
 
-## Development
+let mut fonts = FontLibrary::new();
+fonts.register_font(font_bytes)?;
+let layout = jlreq::layout_document(
+    &doc.build()?,
+    &fonts,
+    LayoutOptions::try_new(240.0, 16.0)?,
+)?;
+assert!(layout.glyphs().count() > 0);
+# Ok(())
+# }
+```
 
-Development is test-first: write the observable failure, verify Red, implement the smallest
-coherent behavior, verify Green, then refactor under the gates.
+The example ranges are illustrative; production code should derive ranges from the actual
+string. Building is atomic: invalid relationships yield `LayoutError`, and layout either
+returns a complete `TextLayout` or no result.
+
+## Low-level composition
+
+Applications that already shape text can depend on `jlreq-core` directly, or reach the
+same API through `jlreq::core`. It preserves the pre-0.1.0 composition model: callers
+provide UTF-8 cluster ranges, integer advances, break opportunities, and typed constructs;
+the core applies JLReq classification, kinsoku, spacing, adjustment, exact line search, and
+placement. It has no dependencies, no I/O, no font parser, and supports `no_std + alloc`
+on MSRV 1.85. The facade uses MSRV 1.88.
+
+See the executable [`minimal`](crates/jlreq-core/examples/minimal.rs),
+[`Composer`](crates/jlreq-core/examples/composer.rs), and
+[`vertical`](crates/jlreq-core/examples/vertical.rs) examples for that layer.
+
+## Conformance and development
+
+`jlreq-conformance` is a binary-only NDJSON runner. Protocol messages retain
+`jlreq.conformance/1` and specification identifier
+`jlreq-2020-08-11+unicode-17.0.0`. The committed suite and independent OCaml/Racket engines
+keep the current 100/106 conformance-rule ledger and generated 122,199-case censuses.
+See [the protocol design](docs/design/conformance.md).
 
 ```sh
 just check          # formatting, lint, architecture, provenance, and repository hygiene
-just test           # workspace tests plus doctests
-just ci             # all practical CI checks, including no_std and WASM
-cargo run -p jlreq-conformance -- list
+just test           # workspace tests and doctests
+just package        # isolated offline verification of all three .crate files
+just release-check  # every reversible acceptance gate; never publishes
 ```
 
-The 0.1.0 names and release-line contract are tracked in
-[`docs/public-api.toml`](docs/public-api.toml). The network-free API gate checks missing and
-extra exports plus all 22 typed Style mappings. Starting with the next 0.1.x candidate, the
-required semver job also compares the complete rustdoc API with the latest published jlreq
-release. Stable error and diagnostic codes are listed in
-[`docs/error-codes.md`](docs/error-codes.md).
+The exact 0.1.x public API is frozen in
+[`docs/public-api.toml`](docs/public-api.toml); stable failures and diagnostics are in
+[`docs/error-codes.md`](docs/error-codes.md). Architecture, resource bounds, and the release
+handoff are documented in [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md),
+and [docs/RELEASING.md](docs/RELEASING.md). A Japanese usage guide is available at
+[`docs/guide.ja.md`](docs/guide.ja.md).
 
 ## License
 
-Dual-licensed under [MIT](LICENSES/MIT.txt) or [Apache-2.0](LICENSES/Apache-2.0.txt), at
-your option. The repository is [REUSE](https://reuse.software/)-compliant.
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option. The
+repository is [REUSE](https://reuse.software/)-compliant.

@@ -29,6 +29,8 @@ Nd = "Nd" # General_Category=Nd, the decimal digits
 [default.extend-identifiers]
 # The 7-Zip bare-output switch used when auditing Windows release archives.
 ba = "ba"
+# Registered OpenType variation axis tag (width).
+wdth = "wdth"
 
 [files]
 extend-exclude = [

@@ -28,6 +28,8 @@ use std::process::ExitCode;
 /// spells it, and an entry naming something that is no longer a member is an error rather
 /// than a no-op, so this list cannot rot unnoticed.
 const NON_CORE_MEMBERS: &[&str] = &[
+    // The std facade owns fonts, shaping, segmentation, and renderer-ready coordinates.
+    "crates/jlreq",
     // The language-independent protocol runner launches external processes and parses JSON.
     "crates/jlreq-conformance",
     // The repository's own tooling, which is this program.
@@ -634,8 +636,8 @@ mod tests {
         let core = core_crates().expect("the workspace manifest is readable");
         let names: Vec<&str> = core.iter().map(|each| each.name.as_str()).collect();
         assert!(
-            names.contains(&"jlreq"),
-            "the unified no_std library is core: {names:?}"
+            names.contains(&"jlreq-core"),
+            "the dependency-free no_std library is core: {names:?}"
         );
         assert!(
             !names.contains(&"jlreq-conformance"),

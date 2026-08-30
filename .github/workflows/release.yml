@@ -67,7 +67,7 @@ jobs:
           ref: ${{ inputs.commit }}
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+      - uses: taiki-e/install-action@b6ff580856c41316412a0b9b60540fbc6f8c82cc # v2.86.7
         with:
           tool: just@1.50.0
       - name: verify candidate identity and finalized notes
@@ -95,10 +95,35 @@ jobs:
           done
           just package
           just publish-dry-run
+          for package in jlreq-core jlreq jlreq-conformance; do
+            cmp "target/release-artifacts/$package-$VERSION.crate" \
+              "target/package/$package-$VERSION.crate"
+          done
       - name: obtain Trusted Publishing token
         if: inputs.authentication == 'trusted-publishing'
         id: crates_io_auth
         uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1
+      - name: publish jlreq-core with first-release token
+        if: inputs.authentication == 'initial-token'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked -p jlreq-core
+      - name: publish jlreq-core with Trusted Publishing
+        if: inputs.authentication == 'trusted-publishing'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        run: cargo publish --locked -p jlreq-core
+      - name: wait for jlreq-core in the crates.io index
+        run: |-
+          for attempt in $(seq 1 30); do
+            if cargo info "jlreq-core@$VERSION" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "jlreq-core $VERSION is not visible yet (attempt $attempt/30)"
+            sleep 10
+          done
+          echo "jlreq-core $VERSION was uploaded but did not become visible; inspect crates.io before retrying" >&2
+          exit 1
       - name: publish jlreq with first-release token
         if: inputs.authentication == 'initial-token'
         env:
@@ -130,7 +155,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
         run: cargo publish --locked -p jlreq-conformance
-      - name: create tag and GitHub Release after both uploads
+      - name: create tag and GitHub Release after all three uploads
         run: |-
           awk -v version="$VERSION" '
             $0 ~ "^## \\[" version "\\]" { capture = 1; next }
@@ -143,8 +168,6 @@ jobs:
           git push origin "v$VERSION"
           gh release create "v$VERSION" \
             target/release-artifacts/* \
-            target/package/jlreq-"$VERSION".crate \
-            target/package/jlreq-conformance-"$VERSION".crate \
             --target "$CANDIDATE_COMMIT" \
             --title "jlreq $VERSION" \
             --notes-file target/release-notes.md

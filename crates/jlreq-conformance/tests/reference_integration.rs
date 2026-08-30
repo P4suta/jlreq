@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use harfrust::GlyphBuffer;
 use icu_segmenter::{LineSegmenter, options::LineBreakOptions};
-use jlreq::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
+use jlreq_core::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
 fn clusters_from_harfrust(
     source: &str,
@@ -84,7 +84,7 @@ fn icu4x_byte_offsets_feed_breaks_without_conversion() {
         .build()
         .expect("ICU4X offsets are accepted verbatim");
     assert_eq!(
-        jlreq::compose(&paragraph, &Style::default())
+        jlreq_core::compose(&paragraph, &Style::default())
             .expect("composition succeeds")
             .lines()
             .len(),

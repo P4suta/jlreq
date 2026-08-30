@@ -4,12 +4,14 @@
 
 //! Reference implementation of the language-independent conformance protocol.
 
+mod transport;
+
 use std::{
     io::{self, BufRead, Write},
     process::ExitCode,
 };
 
-use jlreq::{
+use jlreq_core::{
     Alignment, Break, Cluster, ClusterRole, Construct, CoordinateTransform, Frame, Paragraph, Ruby,
     RubyKind, RubyRun, ShapedText, Size, Style, TabAlignment, TabStop, Widow, WritingMode,
     style::{
@@ -22,9 +24,10 @@ use jlreq::{
     },
 };
 use serde_json::{Map, Value, json};
+use transport::read_limited_line;
 
 const PROTOCOL: &str = "jlreq.conformance/1";
-const SPEC: &str = jlreq::SPECIFICATION;
+const SPEC: &str = jlreq_core::SPECIFICATION;
 const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 const MAX_STREAM_BYTES: usize = 256 * 1024 * 1024;
 const MAX_MESSAGES: usize = 200_000;
@@ -53,15 +56,21 @@ fn run_stream(
     max_messages: usize,
 ) -> Result<(), String> {
     let mut total_bytes = 0_usize;
+    let mut line = Vec::new();
     let mut line_number = 0_usize;
     let mut message_count = 0_usize;
     loop {
         let previous_total = total_bytes;
-        let Some(line) =
-            read_limited_line(input, &mut total_bytes, MAX_MESSAGE_BYTES, MAX_STREAM_BYTES)?
-        else {
+        if !read_limited_line(
+            input,
+            &mut line,
+            MAX_MESSAGE_BYTES,
+            MAX_STREAM_BYTES,
+            &mut total_bytes,
+            "input",
+        )? {
             break;
-        };
+        }
         if total_bytes == previous_total {
             return Err("input reader made no progress".to_owned());
         }
@@ -85,7 +94,7 @@ fn run_stream(
             .get("request")
             .ok_or_else(|| "request is required".to_owned())?;
         let (paragraph, style) = parse_request(request)?;
-        let layout = jlreq::compose(&paragraph, &style)
+        let layout = jlreq_core::compose(&paragraph, &style)
             .map_err(|error| format!("{}: {}", error.code(), error))?;
         serde_json::to_writer(
             &mut *output,
@@ -103,46 +112,6 @@ fn run_stream(
             .map_err(|error| format!("could not write response {id:?}: {error}"))?;
     }
     Ok(())
-}
-
-fn read_limited_line(
-    reader: &mut dyn BufRead,
-    total_bytes: &mut usize,
-    max_message_bytes: usize,
-    max_stream_bytes: usize,
-) -> Result<Option<Vec<u8>>, String> {
-    let mut line = Vec::new();
-    loop {
-        let available = reader
-            .fill_buf()
-            .map_err(|error| format!("could not read input: {error}"))?;
-        if available.is_empty() {
-            return if line.is_empty() {
-                Ok(None)
-            } else {
-                Ok(Some(line))
-            };
-        }
-        let newline = available.iter().position(|byte| *byte == b'\n');
-        let content = newline.unwrap_or(available.len());
-        let consumed = content.saturating_add(usize::from(newline.is_some()));
-        *total_bytes = total_bytes.saturating_add(consumed);
-        if *total_bytes > max_stream_bytes {
-            return Err(format!(
-                "input exceeds the {max_stream_bytes} byte total limit"
-            ));
-        }
-        if line.len().saturating_add(content) > max_message_bytes {
-            return Err(format!(
-                "input message exceeds the {max_message_bytes} byte line limit"
-            ));
-        }
-        line.extend_from_slice(&available[..content]);
-        reader.consume(consumed);
-        if newline.is_some() {
-            return Ok(Some(line));
-        }
-    }
 }
 
 fn parse_request(value: &Value) -> Result<(Paragraph, Style), String> {
@@ -592,7 +561,7 @@ fn choice<T: Copy>(name: &str, value: &str, choices: &[(&str, T)]) -> Result<T, 
         .ok_or_else(|| format!("unknown value {value:?} for style setting {name:?}"))
 }
 
-fn layout_json(layout: &jlreq::Layout) -> Value {
+fn layout_json(layout: &jlreq_core::Layout) -> Value {
     json!({
         "lines": layout.lines().iter().map(|line| json!({
             "range": [line.range().start, line.range().end],
@@ -602,8 +571,8 @@ fn layout_json(layout: &jlreq::Layout) -> Value {
             "block_extent": line.block_extent(),
             "clusters": line.clusters().iter().map(|placement| json!({
                 "origin": match placement.origin() {
-                    jlreq::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
-                    jlreq::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
+                    jlreq_core::PlacementOrigin::Cluster(ordinal) => json!({"cluster": ordinal}),
+                    jlreq_core::PlacementOrigin::Construct(ordinal) => json!({"construct": ordinal}),
                     _ => json!({"unknown": true}),
                 },
                 "range": [placement.range().start, placement.range().end],
@@ -630,9 +599,9 @@ fn layout_json(layout: &jlreq::Layout) -> Value {
         "diagnostics": layout.diagnostics().iter().map(|diagnostic| json!({
             "code": diagnostic.code(),
             "severity": match diagnostic.severity() {
-                jlreq::Severity::Info => "info",
-                jlreq::Severity::Warning => "warning",
-                jlreq::Severity::Error => "error",
+                jlreq_core::Severity::Info => "info",
+                jlreq_core::Severity::Warning => "warning",
+                jlreq_core::Severity::Error => "error",
                 _ => "unknown",
             },
             "range": diagnostic.range().map(|range| [range.start, range.end]),
@@ -677,11 +646,11 @@ fn parse_size(value: &Value) -> Result<Size, String> {
         .map_err(|error| render_input_error(&error))
 }
 
-fn render_input_error(error: &jlreq::InputError) -> String {
+fn render_input_error(error: &jlreq_core::InputError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 
-fn render_style_error(error: jlreq::style::StyleError) -> String {
+fn render_style_error(error: jlreq_core::style::StyleError) -> String {
     format!("{}: {}", error.code(), error.message())
 }
 
@@ -818,20 +787,24 @@ mod tests {
         assert_eq!(MAX_STREAM_BYTES, 268_435_456);
 
         let mut total = 0;
+        let mut line = Vec::new();
         let mut input = Cursor::new(b"abc\n".as_slice());
         assert_eq!(
-            read_limited_line(&mut input, &mut total, 3, 4),
-            Ok(Some(b"abc".to_vec()))
+            read_limited_line(&mut input, &mut line, 3, 4, &mut total, "input"),
+            Ok(true)
         );
+        assert_eq!(line, b"abc");
         assert_eq!(total, 4);
 
         let mut total = 0;
+        let mut line = Vec::new();
         let mut input = Cursor::new(b"abc\n".as_slice());
-        assert!(read_limited_line(&mut input, &mut total, 2, 4).is_err());
+        assert!(read_limited_line(&mut input, &mut line, 2, 4, &mut total, "input").is_err());
 
         let mut total = 0;
+        let mut line = Vec::new();
         let mut input = Cursor::new(b"abc\n".as_slice());
-        assert!(read_limited_line(&mut input, &mut total, 3, 3).is_err());
+        assert!(read_limited_line(&mut input, &mut line, 3, 3, &mut total, "input").is_err());
     }
 
     #[test]

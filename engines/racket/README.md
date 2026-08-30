@@ -208,8 +208,8 @@ OCaml one is already finished and green on all eighty-nine cases.
 
 **May not be read into this tree:**
 
-- the layout logic under `crates/jlreq/src/` (`pipeline.rs` above all), and
-  `crates/jlreq/src/generated/`;
+- the layout logic under `crates/jlreq-core/src/` (`pipeline.rs` above all), and
+  `crates/jlreq-core/src/generated/`;
 - **the bodies of `engines/ocaml/lib/`**, `pipeline.ml` and `spec.ml` above all. A
   line-by-line translation of a finished engine is not an independent
   implementation: it would agree with the OCaml engine exactly where the OCaml

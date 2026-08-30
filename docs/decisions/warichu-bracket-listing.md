@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Reading: which keys the `warichu-bracket` role reaches cl-28 and cl-29 with
 
-- Applies to: the classification round in [`spec`](../../crates/jlreq/src/spec.rs), and the
+- Applies to: the classification round in [`spec`](../../crates/jlreq-core/src/spec.rs), and the
   same round in [`engines/ocaml/lib/spec.ml`](../../engines/ocaml/lib/spec.ml) and
   [`engines/racket/classes.rkt`](../../engines/racket/classes.rkt)
 - Standing: `Unstated`

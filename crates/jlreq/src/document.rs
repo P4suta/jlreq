@@ -1,0 +1,737 @@
+// SPDX-FileCopyrightText: 2026 jlreq contributors
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+use std::ops::Range;
+
+use crate::units::{non_negative, positive};
+use crate::{FontStyle, FontVariation, LayoutError, OpenTypeFeature, OptionKind};
+
+/// Conservative semantic classification that cannot always be inferred from text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum TextRole {
+    /// Ordinary prose.
+    #[default]
+    Text,
+    /// A numeral treated as one grouped Japanese numeral.
+    GroupedNumeral,
+    /// A unit-symbol character.
+    UnitSymbol,
+    /// A quantity symbol.
+    QuantitySymbol,
+    /// Mathematical or chemical notation.
+    Formula,
+    /// A bracket delimiting warichu.
+    WarichuBracket,
+}
+
+impl TextRole {
+    pub(crate) const fn core(self) -> jlreq_core::ClusterRole {
+        match self {
+            Self::Text => jlreq_core::ClusterRole::Text,
+            Self::GroupedNumeral => jlreq_core::ClusterRole::GroupedNumeral,
+            Self::UnitSymbol => jlreq_core::ClusterRole::UnitSymbol,
+            Self::QuantitySymbol => jlreq_core::ClusterRole::QuantitySymbol,
+            Self::Formula => jlreq_core::ClusterRole::Formula,
+            Self::WarichuBracket => jlreq_core::ClusterRole::WarichuBracket,
+        }
+    }
+}
+
+/// Typed style applied to a UTF-8 byte range.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct SpanStyle {
+    pub(crate) families: Vec<String>,
+    pub(crate) font_style: FontStyle,
+    pub(crate) font_size: Option<i32>,
+    pub(crate) language: Option<String>,
+    pub(crate) features: Vec<OpenTypeFeature>,
+    pub(crate) variations: Vec<FontVariation>,
+    pub(crate) role: TextRole,
+}
+
+impl SpanStyle {
+    /// Default span, inheriting size/language and using library fallback order.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            families: Vec::new(),
+            font_style: FontStyle::new(400, 100, crate::FontSlant::Normal),
+            font_size: None,
+            language: None,
+            features: Vec::new(),
+            variations: Vec::new(),
+            role: TextRole::Text,
+        }
+    }
+
+    /// Add a preferred family ahead of normal fallback.
+    #[must_use]
+    pub fn family(mut self, family: impl Into<String>) -> Self {
+        self.families.push(family.into());
+        self
+    }
+
+    /// Set requested family matching attributes.
+    #[must_use]
+    pub const fn font_style(mut self, style: FontStyle) -> Self {
+        self.font_style = style;
+        self
+    }
+
+    /// Override the main font size for this span.
+    pub fn font_size(mut self, value: f32) -> Result<Self, LayoutError> {
+        self.font_size = Some(positive(value, OptionKind::SpanFontSize)?);
+        Ok(self)
+    }
+
+    /// Override shaping language for this span.
+    pub fn language(mut self, value: impl Into<String>) -> Result<Self, LayoutError> {
+        let value = value.into();
+        if value.is_empty()
+            || value.len() > 63
+            || !value
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        {
+            return Err(LayoutError::invalid_option(
+                OptionKind::Language,
+                "language must be a non-empty ASCII language tag of at most 63 bytes",
+            ));
+        }
+        self.language = Some(value);
+        Ok(self)
+    }
+
+    /// Add a span-specific OpenType feature.
+    #[must_use]
+    pub fn feature(mut self, value: OpenTypeFeature) -> Self {
+        self.features.push(value);
+        self
+    }
+
+    /// Add a span-specific variable-font axis value.
+    #[must_use]
+    pub fn variation(mut self, value: FontVariation) -> Self {
+        self.variations.push(value);
+        self
+    }
+
+    /// Assert a semantic classification instead of relying on conservative inference.
+    #[must_use]
+    pub const fn role(mut self, value: TextRole) -> Self {
+        self.role = value;
+        self
+    }
+}
+
+impl Default for SpanStyle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Relationship between ruby base and annotation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum RubyKind {
+    /// Each base cluster receives an associated reading run.
+    Mono,
+    /// One reading belongs to the full base.
+    Group,
+    /// Reading runs form a compound word.
+    Jukugo,
+}
+
+impl RubyKind {
+    pub(crate) const fn core(self) -> jlreq_core::RubyKind {
+        match self {
+            Self::Mono => jlreq_core::RubyKind::Mono,
+            Self::Group => jlreq_core::RubyKind::Group,
+            Self::Jukugo => jlreq_core::RubyKind::Jukugo,
+        }
+    }
+}
+
+/// Explicit association inside mono or jukugo ruby.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RubyRun {
+    base: Range<usize>,
+    annotation: Range<usize>,
+}
+
+impl RubyRun {
+    /// Associate a document base range with a range in the annotation string.
+    #[must_use]
+    pub const fn new(base: Range<usize>, annotation: Range<usize>) -> Self {
+        Self { base, annotation }
+    }
+
+    /// Document base range.
+    #[must_use]
+    pub fn base(&self) -> Range<usize> {
+        self.base.clone()
+    }
+
+    /// Annotation-local range.
+    #[must_use]
+    pub fn annotation(&self) -> Range<usize> {
+        self.annotation.clone()
+    }
+}
+
+/// Placement side for an automatically shaped script annotation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ScriptPosition {
+    /// Superscript-side placement.
+    Superscript,
+    /// Subscript-side placement.
+    Subscript,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum DocumentConstruct {
+    Ruby {
+        kind: RubyKind,
+        base: Range<usize>,
+        annotation: String,
+        runs: Vec<RubyRun>,
+    },
+    TateChuYoko(Range<usize>),
+    Emphasis {
+        range: Range<usize>,
+        mark: char,
+    },
+    Warichu(Range<usize>),
+    Furawake {
+        range: Range<usize>,
+        columns: u16,
+        line_gap: i32,
+    },
+    Jidori {
+        range: Range<usize>,
+        cells: u16,
+    },
+    ReferenceMark {
+        range: Range<usize>,
+        mark: String,
+    },
+    Script {
+        range: Range<usize>,
+        annotation: String,
+        position: ScriptPosition,
+    },
+    Formula(Range<usize>),
+}
+
+impl DocumentConstruct {
+    pub(crate) fn range(&self) -> Range<usize> {
+        match self {
+            Self::Ruby { base, .. } => base.clone(),
+            Self::TateChuYoko(range)
+            | Self::Warichu(range)
+            | Self::Formula(range)
+            | Self::Emphasis { range, .. }
+            | Self::Furawake { range, .. }
+            | Self::Jidori { range, .. }
+            | Self::ReferenceMark { range, .. }
+            | Self::Script { range, .. } => range.clone(),
+        }
+    }
+}
+
+/// Validated styled text and typed inline constructs.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct Document {
+    pub(crate) text: String,
+    pub(crate) spans: Vec<(Range<usize>, SpanStyle)>,
+    pub(crate) constructs: Vec<DocumentConstruct>,
+    pub(crate) mandatory_breaks: Vec<usize>,
+    pub(crate) prohibited_breaks: Vec<usize>,
+}
+
+impl Document {
+    /// Original UTF-8 source.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Number of typed inline constructs.
+    #[must_use]
+    pub const fn construct_count(&self) -> usize {
+        self.constructs.len()
+    }
+}
+
+/// Incrementally builds a [`Document`] while preserving UTF-8 ranges.
+#[derive(Debug, Clone)]
+pub struct DocumentBuilder {
+    text: String,
+    spans: Vec<(Range<usize>, SpanStyle)>,
+    constructs: Vec<DocumentConstruct>,
+    mandatory_breaks: Vec<usize>,
+    prohibited_breaks: Vec<usize>,
+}
+
+impl DocumentBuilder {
+    /// Start a document around owned UTF-8 text.
+    #[must_use]
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            spans: Vec::new(),
+            constructs: Vec::new(),
+            mandatory_breaks: Vec::new(),
+            prohibited_breaks: Vec::new(),
+        }
+    }
+
+    /// Add a non-overlapping span style.
+    pub fn span(
+        &mut self,
+        range: Range<usize>,
+        style: SpanStyle,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-span-range")?;
+        let insertion = span_insertion_point(&self.spans, range.start);
+        let overlaps_previous = insertion
+            .checked_sub(1)
+            .and_then(|index| self.spans.get(index))
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        let overlaps_next = self
+            .spans
+            .get(insertion)
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        if overlaps_previous || overlaps_next {
+            return Err(LayoutError::invalid_document(
+                "document.overlapping-spans",
+                Some(range),
+            ));
+        }
+        self.spans.insert(insertion, (range, style));
+        Ok(self)
+    }
+
+    /// Require a break at a UTF-8 boundary inside a paragraph.
+    pub fn mandatory_break(&mut self, offset: usize) -> Result<&mut Self, LayoutError> {
+        self.validate_offset(offset, "document.invalid-break")?;
+        self.mandatory_breaks.push(offset);
+        Ok(self)
+    }
+
+    /// Remove an otherwise automatic UAX #14 opportunity.
+    pub fn prohibit_break(&mut self, offset: usize) -> Result<&mut Self, LayoutError> {
+        self.validate_offset(offset, "document.invalid-break")?;
+        self.prohibited_breaks.push(offset);
+        Ok(self)
+    }
+
+    /// Add ruby with explicit or automatically derived associations.
+    pub fn ruby<I>(
+        &mut self,
+        kind: RubyKind,
+        base: Range<usize>,
+        annotation: impl Into<String>,
+        runs: I,
+    ) -> Result<&mut Self, LayoutError>
+    where
+        I: IntoIterator<Item = RubyRun>,
+    {
+        self.validate_non_empty_range(&base, "document.invalid-construct-range")?;
+        let annotation = annotation.into();
+        if annotation.is_empty() {
+            return Err(LayoutError::invalid_document(
+                "document.empty-ruby-annotation",
+                Some(base),
+            ));
+        }
+        self.constructs.push(DocumentConstruct::Ruby {
+            kind,
+            base,
+            annotation,
+            runs: runs.into_iter().collect(),
+        });
+        Ok(self)
+    }
+
+    /// Add automatically associated group ruby.
+    pub fn group_ruby(
+        &mut self,
+        base: Range<usize>,
+        annotation: impl Into<String>,
+    ) -> Result<&mut Self, LayoutError> {
+        self.ruby(RubyKind::Group, base, annotation, [])
+    }
+
+    /// Add automatically partitioned mono ruby.
+    pub fn mono_ruby(
+        &mut self,
+        base: Range<usize>,
+        annotation: impl Into<String>,
+    ) -> Result<&mut Self, LayoutError> {
+        self.ruby(RubyKind::Mono, base, annotation, [])
+    }
+
+    /// Add automatically associated jukugo ruby.
+    pub fn jukugo_ruby(
+        &mut self,
+        base: Range<usize>,
+        annotation: impl Into<String>,
+    ) -> Result<&mut Self, LayoutError> {
+        self.ruby(RubyKind::Jukugo, base, annotation, [])
+    }
+
+    /// Keep a range horizontal in vertical text.
+    pub fn tate_chu_yoko(&mut self, range: Range<usize>) -> Result<&mut Self, LayoutError> {
+        self.push_range_construct(range, DocumentConstruct::TateChuYoko)
+    }
+
+    /// Repeat an emphasis mark alongside every base cluster.
+    pub fn emphasis_dots(
+        &mut self,
+        range: Range<usize>,
+        mark: char,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.constructs
+            .push(DocumentConstruct::Emphasis { range, mark });
+        Ok(self)
+    }
+
+    /// Add an inline cutting note (割注).
+    pub fn warichu(&mut self, range: Range<usize>) -> Result<&mut Self, LayoutError> {
+        self.push_range_construct(range, DocumentConstruct::Warichu)
+    }
+
+    /// Distribute a range over aligned sublines (振分け).
+    pub fn furawake(
+        &mut self,
+        range: Range<usize>,
+        columns: u16,
+        line_gap: f32,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        if columns < 2 {
+            return Err(LayoutError::invalid_document(
+                "document.invalid-furawake-columns",
+                Some(range),
+            ));
+        }
+        self.constructs.push(DocumentConstruct::Furawake {
+            range,
+            columns,
+            line_gap: non_negative(line_gap, OptionKind::ConstructGeometry)?,
+        });
+        Ok(self)
+    }
+
+    /// Fit a range in a fixed number of full-em cells (字取り).
+    pub fn jidori(&mut self, range: Range<usize>, cells: u16) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        if cells == 0 {
+            return Err(LayoutError::invalid_document(
+                "document.invalid-jidori-cells",
+                Some(range),
+            ));
+        }
+        self.constructs
+            .push(DocumentConstruct::Jidori { range, cells });
+        Ok(self)
+    }
+
+    /// Attach an automatically shaped reference mark (合印).
+    pub fn reference_mark(
+        &mut self,
+        range: Range<usize>,
+        mark: impl Into<String>,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        let mark = mark.into();
+        if mark.is_empty() {
+            return Err(LayoutError::invalid_document(
+                "document.empty-reference-mark",
+                Some(range),
+            ));
+        }
+        self.constructs
+            .push(DocumentConstruct::ReferenceMark { range, mark });
+        Ok(self)
+    }
+
+    /// Attach automatically shaped superscript or subscript text.
+    pub fn script(
+        &mut self,
+        range: Range<usize>,
+        annotation: impl Into<String>,
+        position: ScriptPosition,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        let annotation = annotation.into();
+        if annotation.is_empty() {
+            return Err(LayoutError::invalid_document(
+                "document.empty-script-annotation",
+                Some(range),
+            ));
+        }
+        self.constructs.push(DocumentConstruct::Script {
+            range,
+            annotation,
+            position,
+        });
+        Ok(self)
+    }
+
+    /// Mark a pre-existing range as mathematical content.
+    pub fn formula(&mut self, range: Range<usize>) -> Result<&mut Self, LayoutError> {
+        self.push_range_construct(range, DocumentConstruct::Formula)
+    }
+
+    /// Validate cross-field relationships and finish the document atomically.
+    pub fn build(mut self) -> Result<Document, LayoutError> {
+        self.spans.sort_by_key(|(range, _)| range.start);
+        self.constructs.sort_by_key(|construct| {
+            let range = construct.range();
+            (range.start, range.end)
+        });
+        self.mandatory_breaks.sort_unstable();
+        self.mandatory_breaks.dedup();
+        self.prohibited_breaks.sort_unstable();
+        self.prohibited_breaks.dedup();
+        if let Some(offset) = self
+            .mandatory_breaks
+            .iter()
+            .find(|offset| self.prohibited_breaks.binary_search(offset).is_ok())
+        {
+            return Err(LayoutError::invalid_document(
+                "document.conflicting-break",
+                Some(*offset..*offset),
+            ));
+        }
+        for construct in &self.constructs {
+            if let DocumentConstruct::Ruby {
+                kind,
+                base,
+                annotation,
+                runs,
+            } = construct
+            {
+                validate_ruby_runs(&self.text, *kind, base, annotation, runs)?;
+            }
+        }
+        Ok(Document {
+            text: self.text,
+            spans: self.spans,
+            constructs: self.constructs,
+            mandatory_breaks: self.mandatory_breaks,
+            prohibited_breaks: self.prohibited_breaks,
+        })
+    }
+
+    fn validate_non_empty_range(
+        &self,
+        range: &Range<usize>,
+        code: &'static str,
+    ) -> Result<(), LayoutError> {
+        if range.start >= range.end
+            || range.end > self.text.len()
+            || !self.text.is_char_boundary(range.start)
+            || !self.text.is_char_boundary(range.end)
+        {
+            return Err(LayoutError::invalid_document(code, Some(range.clone())));
+        }
+        Ok(())
+    }
+
+    fn validate_offset(&self, offset: usize, code: &'static str) -> Result<(), LayoutError> {
+        if offset == 0 || offset >= self.text.len() || !self.text.is_char_boundary(offset) {
+            return Err(LayoutError::invalid_document(code, Some(offset..offset)));
+        }
+        Ok(())
+    }
+
+    fn push_range_construct(
+        &mut self,
+        range: Range<usize>,
+        constructor: fn(Range<usize>) -> DocumentConstruct,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.constructs.push(constructor(range));
+        Ok(self)
+    }
+}
+
+fn span_insertion_point(spans: &[(Range<usize>, SpanStyle)], start: usize) -> usize {
+    spans.partition_point(|(other, _)| other.start < start)
+}
+
+fn validate_ruby_runs(
+    text: &str,
+    kind: RubyKind,
+    base: &Range<usize>,
+    annotation: &str,
+    runs: &[RubyRun],
+) -> Result<(), LayoutError> {
+    if runs.is_empty() {
+        return Ok(());
+    }
+    if kind == RubyKind::Group && runs.len() != 1 {
+        return Err(LayoutError::invalid_document(
+            "document.group-ruby-run-count",
+            Some(base.clone()),
+        ));
+    }
+    let mut base_cursor = base.start;
+    let mut annotation_cursor = 0;
+    for run in runs {
+        if run.base.start != base_cursor
+            || run.base.end > base.end
+            || run.base.start >= run.base.end
+            || !text.is_char_boundary(run.base.start)
+            || !text.is_char_boundary(run.base.end)
+            || run.annotation.start != annotation_cursor
+            || run.annotation.end > annotation.len()
+            || run.annotation.start >= run.annotation.end
+            || !annotation.is_char_boundary(run.annotation.start)
+            || !annotation.is_char_boundary(run.annotation.end)
+        {
+            return Err(LayoutError::invalid_document(
+                "document.invalid-ruby-run",
+                Some(run.base.clone()),
+            ));
+        }
+        base_cursor = run.base.end;
+        annotation_cursor = run.annotation.end;
+    }
+    if base_cursor != base.end || annotation_cursor != annotation.len() {
+        return Err(LayoutError::invalid_document(
+            "document.incomplete-ruby-runs",
+            Some(base.clone()),
+        ));
+    }
+    Ok(())
+}
+
+fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {
+    left.start < right.end && right.start < left.end
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FontSlant, OpenTypeTag};
+
+    fn ruby_error(
+        text: &str,
+        kind: RubyKind,
+        base: Range<usize>,
+        annotation: &str,
+        runs: &[RubyRun],
+    ) -> &'static str {
+        validate_ruby_runs(text, kind, &base, annotation, runs)
+            .expect_err("the run must be rejected")
+            .code()
+    }
+
+    #[test]
+    fn span_style_builders_preserve_every_supplied_value_and_language_boundary() {
+        let feature = OpenTypeFeature::new(OpenTypeTag::try_new("liga").unwrap(), 0);
+        let variation =
+            FontVariation::try_new(OpenTypeTag::try_new("wght").unwrap(), 525.0).unwrap();
+        let font_style = FontStyle::new(525, 90, FontSlant::Italic);
+        let style = SpanStyle::new()
+            .family("first")
+            .family("second")
+            .font_style(font_style)
+            .font_size(17.25)
+            .unwrap()
+            .language("ja-Latn-JP")
+            .unwrap()
+            .feature(feature)
+            .variation(variation)
+            .role(TextRole::Formula);
+
+        assert_eq!(style.families, ["first", "second"]);
+        assert_eq!(style.font_style, font_style);
+        assert_eq!(style.font_size, Some(17 * 64 + 16));
+        assert_eq!(style.language.as_deref(), Some("ja-Latn-JP"));
+        assert_eq!(style.features, [feature]);
+        assert_eq!(style.variations, [variation]);
+        assert_eq!(style.role, TextRole::Formula);
+
+        assert!(SpanStyle::new().language("a".repeat(63)).is_ok());
+        assert!(SpanStyle::new().language("a".repeat(64)).is_err());
+        assert!(SpanStyle::new().language("a".repeat(65)).is_err());
+        assert!(SpanStyle::new().language("").is_err());
+        assert!(SpanStyle::new().language("ja_JP").is_err());
+    }
+
+    #[test]
+    fn ruby_run_validation_reports_each_malformed_component() {
+        let complete = vec![RubyRun::new(0..2, 0..2), RubyRun::new(2..4, 2..4)];
+        assert!(validate_ruby_runs("abcd", RubyKind::Mono, &(0..4), "wxyz", &complete).is_ok());
+        assert_eq!(
+            ruby_error("abcd", RubyKind::Group, 0..4, "wxyz", &complete),
+            "document.group-ruby-run-count"
+        );
+
+        let invalid_cases = [
+            ("abc", 0..2, "x", RubyRun::new(1..2, 0..1)),
+            ("abc", 0..2, "x", RubyRun::new(0..3, 0..1)),
+            ("abc", 0..2, "xy", RubyRun::new(0..0, 0..1)),
+            ("éA", 1..3, "x", RubyRun::new(1..3, 0..1)),
+            ("éA", 0..1, "x", RubyRun::new(0..1, 0..1)),
+            ("ab", 0..2, "xy", RubyRun::new(0..2, 1..2)),
+            ("ab", 0..2, "xy", RubyRun::new(0..2, 0..3)),
+            ("ab", 0..2, "xy", RubyRun::new(0..2, 0..0)),
+            ("ab", 0..2, "éA", RubyRun::new(0..2, 1..3)),
+            ("ab", 0..2, "éA", RubyRun::new(0..2, 0..1)),
+        ];
+        for (text, base, annotation, run) in invalid_cases {
+            assert_eq!(
+                ruby_error(text, RubyKind::Mono, base, annotation, &[run]),
+                "document.invalid-ruby-run"
+            );
+        }
+
+        assert_eq!(
+            ruby_error(
+                "abcd",
+                RubyKind::Mono,
+                0..4,
+                "x",
+                &[RubyRun::new(0..2, 0..1)],
+            ),
+            "document.incomplete-ruby-runs"
+        );
+        assert_eq!(
+            ruby_error(
+                "ab",
+                RubyKind::Mono,
+                0..2,
+                "xy",
+                &[RubyRun::new(0..2, 0..1)],
+            ),
+            "document.incomplete-ruby-runs"
+        );
+    }
+
+    #[test]
+    fn overlap_uses_half_open_range_edges() {
+        assert!(ranges_overlap(&(0..2), &(1..3)));
+        assert!(!ranges_overlap(&(0..1), &(1..2)));
+        assert!(!ranges_overlap(&(1..2), &(0..1)));
+    }
+
+    #[test]
+    fn span_insertion_uses_the_lower_bound_for_every_ordering_case() {
+        let spans = [(1..2, SpanStyle::default()), (3..4, SpanStyle::default())];
+        assert_eq!(span_insertion_point(&spans, 0), 0);
+        assert_eq!(span_insertion_point(&spans, 2), 1);
+        assert_eq!(span_insertion_point(&spans, 3), 1);
+        assert_eq!(span_insertion_point(&spans, 5), 2);
+    }
+}

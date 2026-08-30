@@ -7,10 +7,61 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 # Stable error and diagnostic codes
 
 The code is the compatibility key; prose messages may become clearer in patch releases.
-`InputError` reports invalid caller data, `StyleError` reports contradictory settings,
-`ComposeError` reports an atomic resource refusal, and `Diagnostic` describes a complete
-layout that was necessarily degraded. `just repository` compares this table with every
-literal in the handwritten product source in both directions.
+`LayoutError` and facade diagnostics cover automatic text/font processing.
+`jlreq_core::InputError`, `StyleError`, `ComposeError`, and core `Diagnostic` cover
+pre-shaped composition. `just repository` compares this table with every literal in both
+handwritten public-library sources in both directions.
+
+## High-level font and option errors
+
+| Code | Meaning |
+| --- | --- |
+| `font.invalid` | Font bytes or the selected TTC face index are invalid. |
+| `font.none-registered` | Layout was requested without a registered face. |
+| `font.unknown-id` | Primary or fallback configuration names an unregistered font ID. |
+| `font.too-many-ids` | Registered faces cannot be represented by a public font ID. |
+| `font.system-family-not-found` | Opt-in system discovery found no face for the requested family. |
+| `layout.invalid-option` | A numeric, tag, language, tab, feature, or variation option violates its invariant. |
+
+OpenType tags use this single option code when they are not exactly four bytes in
+`0x20..=0x7e`, contain a leading/interior space, or use non-space data after trailing
+padding. Invalid hit-test coordinates are also option failures; an invalid UTF-8 caret or
+selection boundary instead returns `None` or an empty rectangle list because result
+queries do not mutate layout state.
+
+## High-level document errors
+
+| Code | Meaning |
+| --- | --- |
+| `document.invalid-span-range` | A span range is empty, out of bounds, or not on UTF-8 boundaries. |
+| `document.overlapping-spans` | Two span styles overlap. |
+| `document.invalid-break` | An authored break offset is out of bounds or splits UTF-8. |
+| `document.conflicting-break` | The same offset is both mandatory and prohibited. |
+| `document.invalid-construct-range` | A typed structure has an invalid source range. |
+| `document.empty-ruby-annotation` | Ruby annotation text is empty. |
+| `document.invalid-ruby-run` | An explicit ruby association has an invalid range. |
+| `document.group-ruby-run-count` | Explicit group ruby does not contain exactly one association. |
+| `document.incomplete-ruby-runs` | Explicit ruby associations do not cover both base and annotation. |
+| `document.empty-reference-mark` | A reference-mark annotation is empty. |
+| `document.empty-script-annotation` | A subscript or superscript annotation is empty. |
+| `document.invalid-furawake-columns` | Furawake requests fewer than two columns. |
+| `document.invalid-jidori-cells` | Jidori requests zero cells. |
+| `document.construct-crosses-paragraph` | One structure crosses a mandatory paragraph boundary. |
+| `document.span-splits-grapheme` | A styled span endpoint splits an extended grapheme. |
+| `document.mono-ruby-cluster-count` | Automatic mono ruby cannot map its base and annotation clusters one-to-one. |
+
+## High-level resource errors
+
+| Code | Meaning |
+| --- | --- |
+| `limit.input-bytes` | UTF-8 input exceeds the configured byte maximum. |
+| `limit.fonts` | Registered faces exceed the configured count. |
+| `limit.font-bytes` | Total registered font data exceeds the configured byte maximum. |
+| `limit.paragraphs` | The input contains too many paragraphs. |
+| `limit.runs` | Itemization would create too many shaping runs. |
+| `limit.glyphs` | Shaping would produce too many glyphs. |
+| `limit.constructs` | The typed document has too many inline structures. |
+| `limit.core-operations` | Core composition exceeds the facade's operation budget. |
 
 ## Input errors
 
@@ -70,5 +121,6 @@ literal in the handwritten product source in both directions.
 
 | Code | Meaning |
 | --- | --- |
+| `font.missing-glyph` | No registered face covers a complete grapheme; the primary `.notdef` preserves its range. |
 | `layout.overfull` | A complete line remains wider than its measure after permitted adjustment. |
 | `layout.widow` | The complete layout cannot meet the requested final-line cluster minimum. |

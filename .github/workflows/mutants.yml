@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 jlreq contributors
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# Weekly/manual runs cover both handwritten products in four shards. Pull-request smoke
+# Weekly/manual runs cover all three handwritten Rust products in four shards. Pull-request smoke
 # mutation belongs to CI so its result feeds the single required aggregation gate there.
 # Generated tables and five exact, proof-backed equivalent mutants are the only configured
 # exclusions and are pinned in docs/mutation-ledger.toml; a missed or timed-out mutant fails
@@ -22,26 +22,34 @@ concurrency:
 
 jobs:
   full:
-    name: full (${{ matrix.crate }}, ${{ matrix.shard }})
+    name: full (${{ matrix.crate }}, shard ${{ matrix.shard.display }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        crate: [jlreq, jlreq-conformance]
-        shard: [1, 2, 3, 4]
+        crate: [jlreq, jlreq-core, jlreq-conformance]
+        shard:
+          - index: 0
+            display: 1
+          - index: 1
+            display: 2
+          - index: 2
+            display: 3
+          - index: 3
+            display: 4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-      - uses: taiki-e/install-action@ba47c86ac325773530516bb756137ac718732518 # v2.86.5
+      - uses: taiki-e/install-action@b6ff580856c41316412a0b9b60540fbc6f8c82cc # v2.86.7
         with:
           tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: just mutants '${{ matrix.crate }}' '${{ matrix.shard }}/4'
+      - run: just mutants '${{ matrix.crate }}' '${{ matrix.shard.index }}/4'
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: mutants-${{ matrix.crate }}-${{ matrix.shard }}-of-4
+          name: mutants-${{ matrix.crate }}-${{ matrix.shard.display }}-of-4
           path: mutants.out/
           if-no-files-found: error
           retention-days: 14

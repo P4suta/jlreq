@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Stage 2 generation for the unified engine: the six captured matrices of Appendices B
-//! through E, turned into private `static` arrays under `crates/jlreq/src/generated/`.
+//! through E, turned into private `static` arrays under `crates/jlreq-core/src/generated/`.
 //!
 //! `spec/captured/table<N>.en.tsv` is the input for each unit. The Japanese rendering,
 //! `table<N>.ja.tsv`, is not: `generate`'s own `Unit` reads one file, and the control that
@@ -46,11 +46,11 @@ pub(crate) const TABLE1: Unit = Unit {
     emit: emit_table1,
 };
 
-/// Table 1 behind the sole public library's dependency-free private boundary.
+/// Table 1 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE1: Unit = Unit {
     input: "spec/captured/table1.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table1.rs",
+    output: "crates/jlreq-core/src/generated/table1.rs",
     summary: "Table 1, \"Spacing between Characters\" (Appendix B).",
     emit: emit_unified_table1,
 };
@@ -64,11 +64,11 @@ pub(crate) const TABLE2: Unit = Unit {
     emit: emit_table2,
 };
 
-/// Table 2 behind the sole public library's dependency-free private boundary.
+/// Table 2 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE2: Unit = Unit {
     input: "spec/captured/table2.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table2.rs",
+    output: "crates/jlreq-core/src/generated/table2.rs",
     summary: "Table 2, \"Possibilities for Line-breaking between Characters\" (Appendix C).",
     emit: emit_unified_table2,
 };
@@ -82,11 +82,11 @@ pub(crate) const TABLE3: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 3 behind the sole public library's dependency-free private boundary.
+/// Table 3 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE3: Unit = Unit {
     input: "spec/captured/table3.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table3.rs",
+    output: "crates/jlreq-core/src/generated/table3.rs",
     summary: "Table 3, JLReq's own reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -100,11 +100,11 @@ pub(crate) const TABLE4: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 4 behind the sole public library's dependency-free private boundary.
+/// Table 4 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE4: Unit = Unit {
     input: "spec/captured/table4.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table4.rs",
+    output: "crates/jlreq-core/src/generated/table4.rs",
     summary: "Table 4, the JIS X 4051 reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -118,11 +118,11 @@ pub(crate) const TABLE5: Unit = Unit {
     emit: |table| emit_ranged(table, RangedTable::Reduction, "LEGEND_OF_TABLES_3_4_AND_5"),
 };
 
-/// Table 5 behind the sole public library's dependency-free private boundary.
+/// Table 5 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE5: Unit = Unit {
     input: "spec/captured/table5.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table5.rs",
+    output: "crates/jlreq-core/src/generated/table5.rs",
     summary: "Table 5, the book-practice reduction-priority reading (Appendix D).",
     emit: |table| emit_unified_ranged(table, RangedTable::Reduction, "D.1"),
 };
@@ -142,11 +142,11 @@ pub(crate) const TABLE6: Unit = Unit {
     },
 };
 
-/// Table 6 behind the sole public library's dependency-free private boundary.
+/// Table 6 behind the public core library's dependency-free private boundary.
 pub(crate) const UNIFIED_TABLE6: Unit = Unit {
     input: "spec/captured/table6.en.tsv",
     generator: &["xtask/src/spacing.rs"],
-    output: "crates/jlreq/src/generated/table6.rs",
+    output: "crates/jlreq-core/src/generated/table6.rs",
     summary: "Table 6, \"Opportunities for Inter-character Space Expansion\" (Appendix E).",
     emit: |table| emit_unified_ranged(table, RangedTable::Expansion, "E"),
 };
@@ -209,6 +209,116 @@ fn axis(label: &str) -> Result<u8, String> {
         .ok()
         .filter(|number| (1..=30).contains(number))
         .ok_or_else(|| format!("`{label}` is not cl-01 through cl-30"))
+}
+
+/// Render the row/column maps that turn JLReq class ordinals into one matrix offset.
+///
+/// The captured tables are required to be complete row-major matrices. Keeping that proof
+/// in the generator lets the runtime cell omit an 841-entry linear search without making
+/// the handwritten evaluator duplicate the transcription's axis order.
+fn render_matrix_accessor(rows: &[Row<'_>], cell: &str) -> Result<String, String> {
+    let mut before_labels = Vec::new();
+    let mut after_labels = Vec::new();
+    for row in rows {
+        if !before_labels.contains(&row.before) {
+            before_labels.push(row.before);
+        }
+        if !after_labels.contains(&row.after) {
+            after_labels.push(row.after);
+        }
+    }
+    if before_labels.is_empty() || after_labels.is_empty() {
+        return Err("a generated matrix has no axes".to_owned());
+    }
+    let expected = before_labels.len().saturating_mul(after_labels.len());
+    if rows.len() != expected {
+        return Err(format!(
+            "a generated matrix has {} rows, expected {expected}",
+            rows.len()
+        ));
+    }
+    for (position, row) in rows.iter().enumerate() {
+        let before_index = position
+            .checked_div(after_labels.len())
+            .ok_or_else(|| "a generated matrix has no columns".to_owned())?;
+        let after_index = position
+            .checked_rem(after_labels.len())
+            .ok_or_else(|| "a generated matrix has no columns".to_owned())?;
+        let before = before_labels
+            .get(before_index)
+            .copied()
+            .ok_or_else(|| "a generated matrix row is outside its axis".to_owned())?;
+        let after = after_labels
+            .get(after_index)
+            .copied()
+            .ok_or_else(|| "a generated matrix column is outside its axis".to_owned())?;
+        if row.before != before || row.after != after {
+            return Err(format!(
+                "line {} is not in complete row-major matrix order",
+                row.line
+            ));
+        }
+    }
+
+    let index = |labels: &[&str]| -> Result<[u8; 31], String> {
+        let mut result = [u8::MAX; 31];
+        for (position, label) in labels.iter().enumerate() {
+            let class = usize::from(axis(label)?);
+            let ordinal = u8::try_from(position)
+                .map_err(|_| "a generated matrix axis is too large".to_owned())?;
+            if result[class] != u8::MAX {
+                return Err(format!("matrix axis {label:?} is repeated"));
+            }
+            result[class] = ordinal;
+        }
+        Ok(result)
+    };
+    let rows_index = index(&before_labels)?;
+    let columns_index = index(&after_labels)?;
+    let render_index = |values: &[u8; 31]| {
+        let mut rendered = "[\n    ".to_owned();
+        let mut column = 4_usize;
+        for value in values {
+            let token = format!("{value},");
+            let separator = usize::from(column > 4);
+            if column.saturating_add(separator).saturating_add(token.len()) >= 100 {
+                rendered.push_str("\n    ");
+                column = 4;
+            } else if separator != 0 {
+                rendered.push(' ');
+                column = column.saturating_add(1);
+            }
+            rendered.push_str(&token);
+            column = column.saturating_add(token.len());
+        }
+        rendered.push_str("\n]");
+        rendered
+    };
+    let rows_index = render_index(&rows_index);
+    let columns_index = render_index(&columns_index);
+    Ok(format!(
+        concat!(
+            "\nconst ROW_INDEX: [u8; 31] = {rows_index};\n",
+            "const COLUMN_INDEX: [u8; 31] = {columns_index};\n",
+            "const COLUMN_COUNT: usize = {column_count};\n\n",
+            "/// Look up one cell directly from its class or line-edge coordinates.\n",
+            "pub(crate) fn cell(before: u8, after: u8) -> Option<&'static {cell}> {{\n",
+            "    let row = *ROW_INDEX.get(usize::from(before))?;\n",
+            "    let column = *COLUMN_INDEX.get(usize::from(after))?;\n",
+            "    if row == u8::MAX || column == u8::MAX {{\n",
+            "        return None;\n",
+            "    }}\n",
+            "    let index = usize::from(row)\n",
+            "        .checked_mul(COLUMN_COUNT)?\n",
+            "        .checked_add(usize::from(column))?;\n",
+            "    CELLS.get(index)\n",
+            "}}\n",
+        ),
+        rows_index = rows_index,
+        columns_index = columns_index,
+        column_count = after_labels.len(),
+        cell = cell,
+    ))
 }
 
 /// Read a fraction (`1/4`, `1/2`, `1`, `0`) into units of 1/720 em (ADR-0007), exactly —
@@ -342,21 +452,20 @@ fn emit_table1(table: &Table) -> Result<Emission, String> {
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let (prohibited, hang, terms) = spacing_cell(row)
             .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = rule_constant(row.note, "SPACING_BETWEEN_CHARACTERS")?;
         let _ = write!(
             items,
-            "    RawSpacingCell {{\n        before: {before},\n        after: {after},\n        \
-             prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule},\n        \
+            "    RawSpacingCell {{\n        prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule},\n        \
              {terms_field}    }},\n",
             terms_field = render_terms(&terms),
         );
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawSpacingCell")?);
     Ok(Emission { items, entries })
 }
 
@@ -372,21 +481,20 @@ fn emit_unified_table1(table: &Table) -> Result<Emission, String> {
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let (prohibited, hang, terms) = spacing_cell(row)
             .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = if row.note.is_empty() { "B.1" } else { row.note };
         let _ = write!(
             items,
-            "    RawSpacingCell {{\n        before: {before},\n        after: {after},\n        \
-             prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule:?},\n        \
+            "    RawSpacingCell {{\n        prohibited: {prohibited},\n        hang: {hang},\n        rule: {rule:?},\n        \
              {terms_field}    }},\n",
             terms_field = render_terms(&terms),
         );
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawSpacingCell")?);
     Ok(Emission { items, entries })
 }
 
@@ -438,8 +546,7 @@ fn emit_table2(table: &Table) -> Result<Emission, String> {
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let (prohibited, levels) =
             break_cell(row).map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = rule_constant(
@@ -448,12 +555,12 @@ fn emit_table2(table: &Table) -> Result<Emission, String> {
         )?;
         let _ = write!(
             items,
-            "    RawBreakCell {{\n        before: {before},\n        after: {after},\n        \
-             prohibited: {prohibited},\n        levels: 0b{levels:04b},\n        rule: {rule},\n    }},\n"
+            "    RawBreakCell {{\n        prohibited: {prohibited},\n        levels: 0b{levels:04b},\n        rule: {rule},\n    }},\n"
         );
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawBreakCell")?);
     Ok(Emission { items, entries })
 }
 
@@ -469,19 +576,18 @@ fn emit_unified_table2(table: &Table) -> Result<Emission, String> {
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let (prohibited, levels) =
             break_cell(row).map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = if row.note.is_empty() { "C" } else { row.note };
         let _ = write!(
             items,
-            "    RawBreakCell {{\n        before: {before},\n        after: {after},\n        \
-             prohibited: {prohibited},\n        levels: 0b{levels:04b},\n        rule: {rule:?},\n    }},\n"
+            "    RawBreakCell {{\n        prohibited: {prohibited},\n        levels: 0b{levels:04b},\n        rule: {rule:?},\n    }},\n"
         );
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawBreakCell")?);
     Ok(Emission { items, entries })
 }
 
@@ -583,8 +689,7 @@ fn emit_ranged(table: &Table, which: RangedTable, fallback: &str) -> Result<Emis
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let token = ranged_cell(row.token)
             .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = rule_constant(row.note, fallback)?;
@@ -594,8 +699,7 @@ fn emit_ranged(table: &Table, which: RangedTable, fallback: &str) -> Result<Emis
         let stage_text = token.stage.unwrap_or(0);
         let _ = write!(
             items,
-            "    RawRangedCell {{\n        before: {before},\n        after: {after},\n        \
-             limit: {limit_text},\n        two_valued: {two_valued},\n        residual: {residual},\n        \
+            "    RawRangedCell {{\n        limit: {limit_text},\n        two_valued: {two_valued},\n        residual: {residual},\n        \
              stage: {stage_text},\n        rule: {rule},\n    }},\n",
             two_valued = token.two_valued,
             residual = token.residual,
@@ -603,6 +707,7 @@ fn emit_ranged(table: &Table, which: RangedTable, fallback: &str) -> Result<Emis
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawRangedCell")?);
     Ok(Emission { items, entries })
 }
 
@@ -626,8 +731,7 @@ fn emit_unified_ranged(
     );
     let mut entries = 0usize;
     for row in &rows {
-        let before = axis(row.before)?;
-        let after = axis(row.after)?;
+        let _ = (axis(row.before)?, axis(row.after)?);
         let token = ranged_cell(row.token)
             .map_err(|reason| format!("{}:{}: {reason}", table.source, row.line))?;
         let rule = if row.note.is_empty() {
@@ -641,8 +745,7 @@ fn emit_unified_ranged(
         let stage_text = token.stage.unwrap_or(0);
         let _ = write!(
             items,
-            "    RawRangedCell {{\n        before: {before},\n        after: {after},\n        \
-             limit: {limit_text},\n        two_valued: {two_valued},\n        residual: {residual},\n        \
+            "    RawRangedCell {{\n        limit: {limit_text},\n        two_valued: {two_valued},\n        residual: {residual},\n        \
              stage: {stage_text},\n        rule: {rule:?},\n    }},\n",
             two_valued = token.two_valued,
             residual = token.residual,
@@ -650,6 +753,7 @@ fn emit_unified_ranged(
         entries = entries.saturating_add(1);
     }
     items.push_str("];\n");
+    items.push_str(&render_matrix_accessor(&rows, "RawRangedCell")?);
     Ok(Emission { items, entries })
 }
 
