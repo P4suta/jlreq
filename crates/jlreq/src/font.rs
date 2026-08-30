@@ -633,6 +633,22 @@ mod tests {
         assert_eq!(synthesis.skew_26_6(), Some(14 * 64));
         assert!(!synthesis.is_empty());
         assert!(FontSynthesis::default().is_empty());
+
+        let embolden_only = FontSynthesis {
+            embolden: true,
+            skew: 0,
+        };
+        assert!(embolden_only.embolden());
+        assert!(!embolden_only.is_empty());
+        assert_eq!(embolden_only.skew_26_6(), None);
+
+        let skew_only = FontSynthesis {
+            embolden: false,
+            skew: 14 * 64,
+        };
+        assert!(!skew_only.embolden());
+        assert!(!skew_only.is_empty());
+        assert_eq!(skew_only.skew_26_6(), Some(14 * 64));
     }
 
     #[cfg(feature = "system-fonts")]

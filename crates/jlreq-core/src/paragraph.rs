@@ -305,10 +305,8 @@ impl Paragraph {
             .flatten();
         let mut selected = None;
         while let Some(ordinal) = current {
-            if self.constructs.get(ordinal).is_some_and(&mut matches)
-                && selected.is_none_or(|previous| ordinal < previous)
-            {
-                selected = Some(ordinal);
+            if self.constructs.get(ordinal).is_some_and(&mut matches) {
+                selected = Some(selected.map_or(ordinal, |previous: usize| previous.min(ordinal)));
             }
             current = self.construct_index.parents.get(ordinal).copied().flatten();
         }
@@ -1086,6 +1084,18 @@ mod tests {
         assert_eq!(ordinals, [0, 2]);
         indexed.collect_constructs_overlapping(0, 1, &mut ordinals);
         assert!(ordinals.is_empty());
+
+        let (first, _) = indexed
+            .find_construct_containing(2, |_| true)
+            .expect("both nested constructs contain the cluster");
+        assert_eq!(first, 0);
+        let (inner, _) = indexed
+            .find_construct_containing(2, |construct| {
+                matches!(construct.kind(), ConstructKind::ReferenceMark { .. })
+            })
+            .expect("the inner reference mark contains the cluster");
+        assert_eq!(inner, 1);
+        assert!(indexed.find_construct_containing(0, |_| true).is_none());
     }
 
     #[test]

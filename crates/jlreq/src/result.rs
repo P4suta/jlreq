@@ -474,18 +474,11 @@ impl TextLine {
                 self.inline_extent,
             ),
         };
-        let base = self.hit_bounds.map_or(base, |bounds| base.union(bounds));
-        self.glyphs
-            .iter()
-            .map(GlyphPlacement::cell_bounds)
-            .fold(base, Rect::union)
+        self.hit_bounds.map_or(base, |bounds| base.union(bounds))
     }
 
     pub(crate) fn hit_bounds_for(glyphs: &[GlyphPlacement]) -> Option<Rect> {
-        let mut bounds = glyphs
-            .iter()
-            .filter(|glyph| glyph.annotation.is_none())
-            .map(GlyphPlacement::cell_bounds);
+        let mut bounds = glyphs.iter().map(GlyphPlacement::cell_bounds);
         let first = bounds.next()?;
         let mut min_x = first.x;
         let mut min_y = first.y;
