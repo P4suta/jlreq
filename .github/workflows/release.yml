@@ -134,6 +134,17 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
         run: cargo publish --locked -p jlreq
+      - name: wait for jlreq in the crates.io index
+        run: |-
+          for attempt in $(seq 1 30); do
+            if cargo info "jlreq@$VERSION" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "jlreq $VERSION is not visible yet (attempt $attempt/30)"
+            sleep 10
+          done
+          echo "jlreq $VERSION was uploaded but did not become visible; inspect crates.io before retrying" >&2
+          exit 1
       - name: publish jlreq-conformance with first-release token
         if: inputs.authentication == 'initial-token'
         env:

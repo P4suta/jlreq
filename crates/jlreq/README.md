@@ -71,6 +71,7 @@ document.tate_chu_yoko(6..8)?;
 document.emphasis_dots(9..15, '・')?;
 document.warichu(16..22)?;
 document.furawake(23..29, 2, 1.0)?;
+document.mandatory_break(26)?;
 document.jidori(30..36, 4)?;
 document.reference_mark(37..38, "※")?;
 document.script(39..42, "2", ScriptPosition::Subscript)?;

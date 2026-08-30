@@ -128,6 +128,7 @@ fn is_japanese(character: char) -> bool {
             | 0x3400..=0x4dbf
             | 0x4e00..=0x9fff
             | 0xf900..=0xfaff
+            | 0xff01..=0xff60
             | 0x20000..=0x323af
     )
 }

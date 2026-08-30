@@ -274,6 +274,9 @@ mod tests {
         changed.level = Level::rtl();
         assert!(!base.same_run(&changed));
         changed = grapheme(first);
+        changed.level = Level::new(2).expect("valid nested LTR level");
+        assert!(!base.same_run(&changed));
+        changed = grapheme(first);
         changed.script = ScriptClass::Japanese;
         assert!(!base.same_run(&changed));
         changed = grapheme(first);
@@ -429,6 +432,9 @@ mod tests {
     fn frames_roles_scripts_and_shape_directions_cover_the_closed_tables() {
         assert_eq!(frame_for("日"), jlreq_core::Frame::FullEm);
         assert_eq!(frame_for("😀"), jlreq_core::Frame::FullEm);
+        assert_eq!(frame_for("！"), jlreq_core::Frame::FullEm);
+        assert_eq!(frame_for("｠"), jlreq_core::Frame::FullEm);
+        assert_eq!(frame_for("｡"), jlreq_core::Frame::Proportional);
         assert_eq!(frame_for("A"), jlreq_core::Frame::Proportional);
         assert_eq!(frame_for("日本"), jlreq_core::Frame::Proportional);
 
@@ -474,6 +480,9 @@ mod tests {
         assert_eq!(script_class("é"), ScriptClass::Latin);
         assert_eq!(script_class("\u{0301}"), ScriptClass::Other);
         assert!(is_japanese('日'));
+        assert!(is_japanese('！'));
+        assert!(is_japanese('｠'));
+        assert!(!is_japanese('｡'));
         assert!(!is_japanese('A'));
         assert!(is_emoji('😀'));
         assert!(!is_emoji('A'));

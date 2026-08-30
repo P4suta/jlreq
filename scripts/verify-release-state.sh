@@ -37,7 +37,17 @@ for package in jlreq-core jlreq jlreq-conformance; do
 done
 (
     cd target/dist
-    sha256sum --check --strict jlreq-0.1.0-crates.sha256
+    manifest=jlreq-0.1.0-crates.sha256
+    expected=$(printf '%s\n' \
+        jlreq-core-0.1.0.crate \
+        jlreq-0.1.0.crate \
+        jlreq-conformance-0.1.0.crate | sort)
+    actual=$(awk 'NF { name = $2; sub(/^\*/, "", name); print name }' "$manifest" | sort)
+    if [ "$actual" != "$expected" ]; then
+        echo "$manifest must contain exactly one entry for each release crate and no others" >&2
+        exit 1
+    fi
+    sha256sum --check --strict "$manifest"
 )
 test -z "$(git tag --list v0.1.0)" || {
     echo "v0.1.0 tag must not exist during prerelease preparation" >&2

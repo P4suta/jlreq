@@ -217,6 +217,11 @@ fn choose_warichu_split(paragraph: &Paragraph, interior: Range<usize>) -> usize 
     let mut best = None;
     for require_declared in [true, false] {
         for split in interior.start.saturating_add(1)..interior.end {
+            if tate_chu_yoko_cluster_range(paragraph, split)
+                .is_some_and(|group| group.start < split)
+            {
+                continue;
+            }
             let offset = paragraph.text.clusters()[split].range().start;
             let declared = paragraph
                 .breaks
@@ -482,4 +487,3 @@ fn is_comma(character: char) -> bool {
 fn is_middle_dot(character: char) -> bool {
     crate::spec::single_has_class(character, crate::spec::MIDDLE_DOT)
 }
-

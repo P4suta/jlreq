@@ -2265,6 +2265,20 @@ mod tests {
             .expect("valid automatic warichu split");
         assert_eq!(super::choose_warichu_split(&automatic, 1..5), 4);
 
+        let nested_tate_chu_yoko = Paragraph::builder(text("abcd"), 10_000)
+            .writing_mode(WritingMode::VerticalRl)
+            .constructs([Construct::warichu(0..4), Construct::tate_chu_yoko(1..3)])
+            .build()
+            .expect("valid tate-chu-yoko nested in warichu");
+        assert_eq!(
+            super::choose_warichu_split(&nested_tate_chu_yoko, 0..4),
+            3,
+            "a boundary inside tate-chu-yoko is not a legal lane split"
+        );
+        let nested_segment = super::warichu_segment(&nested_tate_chu_yoko, 0..4, 0, 4);
+        assert_eq!(nested_segment.first_lane, 0..3);
+        assert_eq!(nested_segment.second_lane, 3..4);
+
         let tied_text = mapped_text("abc", Frame::Proportional, |ordinal, cluster| {
             if ordinal == 1 {
                 Cluster::new(cluster.range(), 0)

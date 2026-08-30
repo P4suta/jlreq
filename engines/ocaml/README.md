@@ -234,7 +234,7 @@ This is the point of the exercise, so it is worth stating precisely.
 
 **May not be read into this tree** — the Rust implementation:
 
-- the layout logic in `crates/jlreq/src/` (`pipeline.rs` above all);
+- the layout logic in `crates/jlreq-core/src/` (`pipeline.rs` above all);
 - `crates/jlreq-core/src/generated/`, and the xtask code generators that write it.
 
 Where the two engines disagree, the disagreement is settled by returning to JLReq

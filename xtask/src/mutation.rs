@@ -29,6 +29,7 @@ struct Exclusion {
     kind: String,
     provenance: String,
     reason: String,
+    assigned: BTreeSet<String>,
 }
 
 impl Exclusion {
@@ -47,6 +48,7 @@ struct Equivalent {
     exclude_re: String,
     source_sha256: String,
     proof: String,
+    assigned: BTreeSet<String>,
 }
 
 impl Equivalent {
@@ -110,6 +112,7 @@ fn parse_ledger(source: &str) -> Ledger {
             continue;
         };
         let key = key.trim();
+        let mut findings = Vec::new();
         match &mut open {
             OpenTable::Exclusion(value) => {
                 let Some(parsed) = quoted_value(raw_value) else {
@@ -119,15 +122,54 @@ fn parse_ledger(source: &str) -> Ledger {
                     continue;
                 };
                 match key {
-                    "path" => value.path = parsed,
-                    "sha256" => value.sha256 = parsed,
-                    "kind" => value.kind = parsed,
-                    "provenance" => value.provenance = parsed,
-                    "reason" => value.reason = parsed,
-                    "glob" => ledger.violations.push(format!(
+                    "path" => assign_once(
+                        &mut value.path,
+                        &mut value.assigned,
+                        &parsed,
+                        key,
+                        line_number,
+                        &mut findings,
+                    ),
+                    "sha256" => {
+                        assign_once(
+                            &mut value.sha256,
+                            &mut value.assigned,
+                            &parsed,
+                            key,
+                            line_number,
+                            &mut findings,
+                        );
+                    },
+                    "kind" => assign_once(
+                        &mut value.kind,
+                        &mut value.assigned,
+                        &parsed,
+                        key,
+                        line_number,
+                        &mut findings,
+                    ),
+                    "provenance" => assign_once(
+                        &mut value.provenance,
+                        &mut value.assigned,
+                        &parsed,
+                        key,
+                        line_number,
+                        &mut findings,
+                    ),
+                    "reason" => {
+                        assign_once(
+                            &mut value.reason,
+                            &mut value.assigned,
+                            &parsed,
+                            key,
+                            line_number,
+                            &mut findings,
+                        );
+                    },
+                    "glob" => findings.push(format!(
                         "{LEDGER}:{line_number}: generated exclusions must name individual paths, not a broad glob"
                     )),
-                    _ => ledger.violations.push(format!(
+                    _ => findings.push(format!(
                         "{LEDGER}:{line_number}: unknown exclusion field `{key}`"
                     )),
                 }
@@ -140,17 +182,50 @@ fn parse_ledger(source: &str) -> Ledger {
                     continue;
                 };
                 match key {
-                    "mutant" => value.mutant = parsed,
-                    "exclude_re" => value.exclude_re = parsed,
-                    "source_sha256" => value.source_sha256 = parsed,
-                    "proof" => value.proof = parsed,
-                    _ => ledger.violations.push(format!(
+                    "mutant" => {
+                        assign_once(
+                            &mut value.mutant,
+                            &mut value.assigned,
+                            &parsed,
+                            key,
+                            line_number,
+                            &mut findings,
+                        );
+                    },
+                    "exclude_re" => assign_once(
+                        &mut value.exclude_re,
+                        &mut value.assigned,
+                        &parsed,
+                        key,
+                        line_number,
+                        &mut findings,
+                    ),
+                    "source_sha256" => assign_once(
+                        &mut value.source_sha256,
+                        &mut value.assigned,
+                        &parsed,
+                        key,
+                        line_number,
+                        &mut findings,
+                    ),
+                    "proof" => {
+                        assign_once(
+                            &mut value.proof,
+                            &mut value.assigned,
+                            &parsed,
+                            key,
+                            line_number,
+                            &mut findings,
+                        );
+                    },
+                    _ => findings.push(format!(
                         "{LEDGER}:{line_number}: unknown equivalent field `{key}`"
                     )),
                 }
             },
             OpenTable::Other => {},
         }
+        ledger.violations.extend(findings);
     }
     finish_table(
         &mut open,
@@ -186,6 +261,23 @@ fn quoted_value(raw: &str) -> Option<String> {
         .strip_prefix('\'')
         .and_then(|rest| rest.strip_suffix('\''))
         .map(str::to_owned)
+}
+
+fn assign_once(
+    field: &mut String,
+    assigned: &mut BTreeSet<String>,
+    parsed: &str,
+    key: &str,
+    line_number: usize,
+    findings: &mut Vec<String>,
+) {
+    if assigned.insert(key.to_owned()) {
+        field.push_str(parsed);
+    } else {
+        findings.push(format!(
+            "{LEDGER}:{line_number}: `{key}` is stated more than once in one table"
+        ));
+    }
 }
 
 fn validate_exclusions(
@@ -253,17 +345,34 @@ fn validate_config(
     equivalents: &[Equivalent],
     violations: &mut Vec<String>,
 ) -> io::Result<()> {
-    let exact_glob = "exclude_globs = [\"crates/jlreq-core/src/generated/**\"]";
-    if !config.lines().any(|line| line == exact_glob) {
+    let generated_glob = "crates/jlreq-core/src/generated/**";
+    let configured_globs = match config_string_array(config, "exclude_globs") {
+        Ok(values) => values,
+        Err(finding) => {
+            violations.push(format!("{CONFIG}: {finding}"));
+            Vec::new()
+        },
+    };
+    if configured_globs != [generated_glob] {
         violations.push(format!(
             "{CONFIG} must exclude the generated table directory exactly"
         ));
     }
-    if config.contains("\"crates/jlreq-core/src/generated.rs\"") {
+    if configured_globs
+        .iter()
+        .any(|glob| glob == "crates/jlreq-core/src/generated.rs")
+    {
         violations.push(format!(
             "{CONFIG} excludes the handwritten generated.rs integrity checks"
         ));
     }
+    let configured_regexes = match config_string_array(config, "exclude_re") {
+        Ok(values) => values,
+        Err(finding) => {
+            violations.push(format!("{CONFIG}: {finding}"));
+            Vec::new()
+        },
+    };
     report_duplicates(
         equivalents.iter().map(|item| item.mutant.as_str()),
         "equivalent mutant",
@@ -272,6 +381,11 @@ fn validate_config(
     report_duplicates(
         equivalents.iter().map(|item| item.exclude_re.as_str()),
         "equivalent-mutant regex",
+        violations,
+    );
+    report_duplicates(
+        configured_regexes.iter().map(String::as_str),
+        "configured equivalent-mutant regex",
         violations,
     );
 
@@ -290,25 +404,134 @@ fn validate_config(
             "equivalent mutant",
             violations,
         )?;
-        let configured = format!("  '{}',", equivalent.exclude_re);
-        if !config.lines().any(|line| line == configured) {
+        if !configured_regexes.contains(&equivalent.exclude_re) {
             violations.push(format!(
                 "{} has no exact regex in {CONFIG}",
                 equivalent.mutant
             ));
         }
     }
-    let configured = config
-        .lines()
-        .filter(|line| line.starts_with("  '") && line.ends_with("',"))
-        .count();
-    if configured != equivalents.len() {
+    let documented: BTreeSet<_> = equivalents
+        .iter()
+        .map(|item| item.exclude_re.as_str())
+        .collect();
+    for unexpected in configured_regexes
+        .iter()
+        .map(String::as_str)
+        .filter(|regex| !documented.contains(regex))
+    {
         violations.push(format!(
-            "{CONFIG} has {configured} equivalent regex(es), but {LEDGER} documents {}",
+            "{CONFIG} has undocumented equivalent-mutant regex `{unexpected}`"
+        ));
+    }
+    if configured_regexes.len() != equivalents.len() {
+        violations.push(format!(
+            "{CONFIG} has {} equivalent regex(es), but {LEDGER} documents {}",
+            configured_regexes.len(),
             equivalents.len()
         ));
     }
     Ok(())
+}
+
+fn config_string_array(config: &str, key: &str) -> Result<Vec<String>, String> {
+    let mut offsets = Vec::new();
+    let mut line_start = 0_usize;
+    for line in config.split_inclusive('\n') {
+        let content = line.strip_suffix('\n').unwrap_or(line);
+        let visible = before_comment(content);
+        match (visible.split_once('='), content.find('=')) {
+            (Some((candidate, _)), Some(equals)) if candidate.trim() == key => {
+                offsets.push(line_start.saturating_add(equals).saturating_add(1));
+            },
+            _ => {},
+        }
+        line_start = line_start.saturating_add(line.len());
+    }
+    match offsets.as_slice() {
+        [] => Err(format!("missing `{key}` string array")),
+        [offset] => parse_toml_string_array(&config[*offset..])
+            .map_err(|finding| format!("invalid `{key}` string array: {finding}")),
+        _ => Err(format!("`{key}` is assigned more than once")),
+    }
+}
+
+fn parse_toml_string_array(source: &str) -> Result<Vec<String>, String> {
+    let characters: Vec<char> = source.chars().collect();
+    let mut cursor = 0_usize;
+    skip_toml_trivia(&characters, &mut cursor);
+    if characters.get(cursor) != Some(&'[') {
+        return Err("value is not an array".to_owned());
+    }
+    cursor = cursor.saturating_add(1);
+    let mut values = Vec::new();
+    loop {
+        skip_toml_trivia(&characters, &mut cursor);
+        if characters.get(cursor) == Some(&']') {
+            return Ok(values);
+        }
+        let quote = characters
+            .get(cursor)
+            .copied()
+            .filter(|quote| matches!(quote, '\'' | '"'))
+            .ok_or_else(|| "array element is not a quoted string".to_owned())?;
+        cursor = cursor.saturating_add(1);
+        let mut value = String::new();
+        loop {
+            let character = characters
+                .get(cursor)
+                .copied()
+                .ok_or_else(|| "quoted string is not terminated".to_owned())?;
+            cursor = cursor.saturating_add(1);
+            if character == quote {
+                break;
+            }
+            if quote == '"' && character == '\\' {
+                let escaped = characters
+                    .get(cursor)
+                    .copied()
+                    .ok_or_else(|| "basic string escape is not terminated".to_owned())?;
+                cursor = cursor.saturating_add(1);
+                value.push(match escaped {
+                    'b' => '\u{0008}',
+                    't' => '\t',
+                    'n' => '\n',
+                    'f' => '\u{000c}',
+                    'r' => '\r',
+                    '"' => '"',
+                    '\\' => '\\',
+                    _ => return Err(format!("unsupported basic string escape `\\{escaped}`")),
+                });
+            } else {
+                value.push(character);
+            }
+        }
+        values.push(value);
+        skip_toml_trivia(&characters, &mut cursor);
+        match characters.get(cursor) {
+            Some(',') => cursor = cursor.saturating_add(1),
+            Some(']') => return Ok(values),
+            Some(_) => return Err("array elements are not comma-separated".to_owned()),
+            None => return Err("array is not terminated".to_owned()),
+        }
+    }
+}
+
+fn skip_toml_trivia(characters: &[char], cursor: &mut usize) {
+    loop {
+        while characters
+            .get(*cursor)
+            .is_some_and(|value| value.is_whitespace())
+        {
+            *cursor = cursor.saturating_add(1);
+        }
+        if characters.get(*cursor) != Some(&'#') {
+            return;
+        }
+        while characters.get(*cursor).is_some_and(|value| *value != '\n') {
+            *cursor = cursor.saturating_add(1);
+        }
+    }
 }
 
 fn mutant_source(mutant: &str) -> Option<String> {
@@ -410,6 +633,115 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn repeated_ledger_fields_are_findings_and_keep_the_first_value() {
+        let parsed = parse_ledger(
+            "[[exclusion]]\npath = \"first.rs\"\npath = \"second.rs\"\nsha256 = \"00\"\nkind = \"generated\"\nprovenance = \"data/manifest.toml\"\nreason = \"why\"\n\n[[equivalent]]\nmutant = \"first.rs:1\"\nexclude_re = '^first$'\nexclude_re = '^second$'\nsource_sha256 = \"11\"\nproof = \"same\"\n",
+        );
+        assert_eq!(
+            parsed
+                .violations
+                .iter()
+                .filter(|finding| finding.contains("stated more than once"))
+                .count(),
+            2
+        );
+        assert_eq!(parsed.exclusions[0].path, "first.rs");
+        assert_eq!(parsed.equivalents[0].exclude_re, "^first$");
+    }
+
+    #[test]
+    fn repeated_ledger_fields_are_findings_after_an_empty_first_value() {
+        let parsed = parse_ledger(
+            "[[exclusion]]\npath = \"\"\npath = \"replacement.rs\"\nsha256 = \"00\"\nkind = \"generated\"\nprovenance = \"data/manifest.toml\"\nreason = \"why\"\n",
+        );
+        assert!(
+            parsed
+                .violations
+                .iter()
+                .any(|finding| finding.contains("`path` is stated more than once"))
+        );
+        assert!(
+            parsed
+                .violations
+                .iter()
+                .any(|finding| finding.contains("incomplete [[exclusion]]"))
+        );
+        assert!(parsed.exclusions.is_empty());
+    }
+
+    #[test]
+    fn config_arrays_ignore_formatting_and_reject_undocumented_regexes() {
+        let expanded = "exclude_globs = [\n  \"crates/jlreq-core/src/generated/**\", # generated tables\n]\nexclude_re = [\n]\n";
+        let mut valid = Vec::new();
+        validate_config(Path::new("."), expanded, &[], &mut valid).unwrap();
+        assert!(valid.is_empty(), "{valid:?}");
+
+        let mismatched =
+            "exclude_globs = [\"crates/jlreq-core/src/generated/**\"]\nexclude_re = ['^extra$']\n";
+        let mut invalid = Vec::new();
+        validate_config(Path::new("."), mismatched, &[], &mut invalid).unwrap();
+        assert!(
+            invalid
+                .iter()
+                .any(|finding| finding.contains("undocumented equivalent-mutant regex"))
+        );
+        assert!(
+            invalid
+                .iter()
+                .any(|finding| finding.contains("has 1 equivalent regex"))
+        );
+    }
+
+    #[test]
+    fn digest_validation_rejects_every_unbound_state() {
+        let root =
+            std::env::temp_dir().join(format!("jlreq-xtask-mutation-{}", std::process::id()));
+        fs::create_dir(&root).expect("create isolated digest fixture");
+
+        let cases = [
+            ("bad".to_owned(), "malformed SHA-256"),
+            ("A".repeat(64), "non-lowercase SHA-256"),
+        ];
+        for (digest, expected) in cases {
+            let mut findings = Vec::new();
+            validate_digest(&root, "fixture.rs", &digest, "fixture", &mut findings).unwrap();
+            assert!(
+                findings.iter().any(|finding| finding.contains(expected)),
+                "{findings:?}"
+            );
+        }
+
+        let mut missing = Vec::new();
+        validate_digest(
+            &root,
+            "missing.rs",
+            &"0".repeat(64),
+            "fixture",
+            &mut missing,
+        )
+        .unwrap();
+        assert!(
+            missing
+                .iter()
+                .any(|finding| finding.contains("does not exist"))
+        );
+
+        fs::write(root.join("fixture.rs"), b"actual").expect("write digest fixture");
+        let mut mismatch = Vec::new();
+        validate_digest(
+            &root,
+            "fixture.rs",
+            &"0".repeat(64),
+            "fixture",
+            &mut mismatch,
+        )
+        .unwrap();
+        assert!(mismatch.iter().any(|finding| finding.contains("changed")));
+
+        fs::remove_dir_all(root).expect("remove isolated digest fixture");
     }
 
     #[test]

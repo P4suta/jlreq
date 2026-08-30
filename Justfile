@@ -101,16 +101,16 @@ lint:
 # which nextest currently executes.
 test:
     cargo nextest run --workspace --all-features
-    cargo test -p jlreq-core --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
-    cargo test --release -p jlreq-core --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo nextest run -p jlreq-core --lib -- --ignored --exact pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget
+    cargo nextest run --release -p jlreq-core --lib -- --ignored --exact pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget
     cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
 # Run the complete test suite with the non-fail-fast CI profile.
 test-ci:
     cargo nextest run --profile ci --workspace --all-features
-    cargo test -p jlreq-core --lib pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget -- --ignored --exact
-    cargo test --release -p jlreq-core --lib pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget -- --ignored --exact
+    cargo nextest run -p jlreq-core --lib -- --ignored --exact pipeline::tests::ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget
+    cargo nextest run --release -p jlreq-core --lib -- --ignored --exact pipeline::tests::zero_width_pathological_paragraph_stops_at_the_default_search_budget
     cargo test -p jlreq-conformance --test transport --all-features
     cargo test --workspace --doc --all-features
 
@@ -128,8 +128,8 @@ package:
     sh scripts/verify-crates.sh
 
 # Ask Cargo to execute its complete crates.io publication preflight while retaining the
-# upload locally. The patch validates jlreq-conformance before the first jlreq release has
-# appeared in the index; published metadata still carries only version 0.1.0.
+# upload locally. The patch validates jlreq and jlreq-conformance before their first
+# dependencies have appeared in the index; published metadata still carries only version 0.1.0.
 publish-dry-run:
     cargo publish --dry-run --locked {{package_dirty}} -p jlreq-core
     cargo publish --dry-run --locked {{package_dirty}} -p jlreq --config .cargo/initial-release-patch.toml
@@ -179,9 +179,7 @@ _fuzz-target target seconds:
 
 [private]
 _fuzz-target-linux target seconds:
-    mkdir -p target/fuzz-corpus/{{target}}
-    cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
-    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz --target x86_64-unknown-linux-gnu -- -max_total_time={{seconds}} -timeout=10
+    just _fuzz-target {{target}} {{seconds}}
 
 # Scheduled sanitizer budget: fifteen minutes for each independent failure domain.
 fuzz-scheduled:
@@ -282,7 +280,7 @@ actionlint:
 # Validate every repository-owned POSIX shell entry point, including release packaging and
 # the three-engine census driver.
 shellcheck:
-    shellcheck engines/census-all.sh scripts/check-semver.sh scripts/finalize-release.sh scripts/package-binaries.sh scripts/run-mutation-smoke.sh scripts/verify-crates.sh scripts/verify-release-state.sh
+    shellcheck engines/census-all.sh scripts/*.sh
 
 # Reject high-severity GitHub Actions and Dependabot security findings without
 # granting the auditor network or repository credentials.

@@ -183,7 +183,7 @@ sha256 = "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
 
 [[file]]
 path = "xtask/src/api.rs"
-sha256 = "0b0abd4208a79e9c41d1812bc84205919627af023d6d5aa01a126dc614d4b939"
+sha256 = "cb1d30b9241ef6a93b953d36299b48d061e15bf905b0415efbabcc87578b5afe"
 
 [[file]]
 path = "xtask/src/attest.rs"

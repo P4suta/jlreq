@@ -320,28 +320,11 @@ fn check_allowed_items(allowed: &AllowedModule, source: &str) -> Vec<String> {
 fn check_zero_one_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> io::Result<()> {
     let modules = allowed_modules(root)?;
     for module in &modules {
-        let (crate_directory, relative) = match module.path.as_str() {
-            "jlreq" => ("jlreq", "lib.rs".to_owned()),
-            path if path.starts_with("jlreq::") => (
-                "jlreq",
-                format!(
-                    "{}.rs",
-                    path.trim_start_matches("jlreq::").replace("::", "/")
-                ),
-            ),
-            "jlreq_core" => ("jlreq-core", "lib.rs".to_owned()),
-            path if path.starts_with("jlreq_core::") => (
-                "jlreq-core",
-                format!(
-                    "{}.rs",
-                    path.trim_start_matches("jlreq_core::").replace("::", "/")
-                ),
-            ),
-            path => {
-                return Err(malformed(format!(
-                    "docs/public-api.toml names `{path}`; public Rust crates are `jlreq` and `jlreq_core`"
-                )));
-            },
+        let Some((crate_directory, relative)) = public_module_source(&module.path) else {
+            return Err(malformed(format!(
+                "docs/public-api.toml names `{path}`; public Rust crates are `jlreq` and `jlreq_core`",
+                path = module.path
+            )));
         };
         let source_path = root
             .join("crates")
@@ -360,6 +343,17 @@ fn check_zero_one_zero_allowlist(root: &Path, violations: &mut Vec<String>) -> i
         modules = modules.len()
     );
     Ok(())
+}
+
+fn public_module_source(path: &str) -> Option<(&'static str, String)> {
+    const CRATES: [(&str, &str); 2] = [("jlreq", "jlreq"), ("jlreq_core", "jlreq-core")];
+    CRATES.iter().find_map(|(rust_path, directory)| {
+        if path == *rust_path {
+            return Some((*directory, "lib.rs".to_owned()));
+        }
+        let relative = path.strip_prefix(*rust_path)?.strip_prefix("::")?;
+        (!relative.is_empty()).then(|| (*directory, format!("{}.rs", relative.replace("::", "/"))))
+    })
 }
 
 // -------------------------------------------------------------------------------------
@@ -2781,7 +2775,8 @@ mod tests {
         answers_a_closed_set, check_allowed_items, check_closed_choices, check_construction,
         check_exhaustiveness, check_forbidden_names, check_forbidden_signatures, check_projections,
         check_readability, check_style_choice_mappings, code_only, declarations_of, entries_of,
-        obtainable_types, parse_signature_spec, reexported_names, results_in, tokenize,
+        obtainable_types, parse_signature_spec, public_module_source, reexported_names, results_in,
+        tokenize,
     };
     use std::collections::BTreeSet;
 
@@ -2894,6 +2889,23 @@ mod tests {
     #[test]
     fn the_gate_takes_no_arguments() {
         assert!(super::run(&["--check".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn public_module_paths_remove_exactly_one_crate_prefix() {
+        assert_eq!(
+            public_module_source("jlreq"),
+            Some(("jlreq", "lib.rs".to_owned()))
+        );
+        assert_eq!(
+            public_module_source("jlreq_core::style"),
+            Some(("jlreq-core", "style.rs".to_owned()))
+        );
+        assert_eq!(
+            public_module_source("jlreq::jlreq::style"),
+            Some(("jlreq", "jlreq/style.rs".to_owned()))
+        );
+        assert_eq!(public_module_source("other::style"), None);
     }
 
     #[test]

@@ -46,7 +46,7 @@ fuzz_target!(|data: &[u8]| {
         })
         .limits(
             ResourceLimits::default()
-                .with_max_input_bytes(MAX_TEXT_BYTES)
+                .with_max_input_bytes(text.len().max(MAX_TEXT_BYTES))
                 .with_max_fonts(4)
                 .with_max_font_bytes(2 * 1024 * 1024)
                 .with_max_paragraphs(512)

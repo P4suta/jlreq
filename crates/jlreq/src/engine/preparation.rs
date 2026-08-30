@@ -201,7 +201,7 @@ struct GraphemeItem {
 impl GraphemeItem {
     fn same_run(&self, other: &Self) -> bool {
         self.font_id == other.font_id
-            && self.level.is_rtl() == other.level.is_rtl()
+            && self.level == other.level
             && self.script == other.script
             && self.direction == other.direction
             && (Arc::ptr_eq(&self.effective, &other.effective) || self.effective == other.effective)
