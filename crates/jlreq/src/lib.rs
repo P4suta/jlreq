@@ -19,7 +19,7 @@ pub use document::{
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};
-pub use font::{FontId, FontLibrary, FontResource, FontSlant, FontStyle};
+pub use font::{FontId, FontLibrary, FontResource, FontSlant, FontStyle, FontSynthesis};
 pub use options::{
     Alignment, BaseDirection, FontVariation, LayoutOptions, OpenTypeFeature, OpenTypeTag,
     ResourceLimits, WritingMode,

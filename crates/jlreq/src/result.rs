@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use std::ops::Range;
+use std::sync::Arc;
 
 use crate::units::{finite, quantize, to_f32};
 use crate::{FontId, FontResource, LayoutError, OptionKind, WritingMode};
@@ -108,6 +109,25 @@ impl Rect {
             && point.x <= self.x.saturating_add(self.width)
             && point.y <= self.y.saturating_add(self.height)
     }
+
+    fn union(self, other: Self) -> Self {
+        let min_x = self.x.min(other.x);
+        let min_y = self.y.min(other.y);
+        let max_x = self
+            .x
+            .saturating_add(self.width)
+            .max(other.x.saturating_add(other.width));
+        let max_y = self
+            .y
+            .saturating_add(self.height)
+            .max(other.y.saturating_add(other.height));
+        Self::from_fixed(
+            min_x,
+            min_y,
+            max_x.saturating_sub(min_x),
+            max_y.saturating_sub(min_y),
+        )
+    }
 }
 
 /// Local transform a renderer applies around a glyph origin.
@@ -164,6 +184,7 @@ pub struct GlyphPlacement {
     pub(crate) offset_x: i32,
     pub(crate) offset_y: i32,
     pub(crate) font_size: i32,
+    pub(crate) variations: Arc<[crate::FontVariation]>,
     pub(crate) transform: GlyphTransform,
     pub(crate) bidi_level: u8,
     pub(crate) writing_mode: WritingMode,
@@ -206,6 +227,19 @@ impl GlyphPlacement {
         Point::from_fixed(self.x, self.y)
     }
 
+    /// Physical draw origin after applying the shaper's glyph offset.
+    ///
+    /// Renderers should place the glyph outline at this point, then apply
+    /// [`Self::transform`]. [`Self::origin`] remains the unoffset advance-cell
+    /// origin.
+    #[must_use]
+    pub const fn draw_origin(&self) -> Point {
+        Point::from_fixed(
+            self.x.saturating_add(self.offset_x),
+            self.y.saturating_add(self.offset_y),
+        )
+    }
+
     /// Physical horizontal origin.
     #[must_use]
     pub fn x(&self) -> f32 {
@@ -242,6 +276,26 @@ impl GlyphPlacement {
         to_f32(self.offset_y)
     }
 
+    /// Resolved font size used to shape this glyph.
+    #[must_use]
+    pub fn font_size(&self) -> f32 {
+        to_f32(self.font_size)
+    }
+
+    /// Resolved font size in signed 26.6 fixed point.
+    #[must_use]
+    pub const fn font_size_26_6(&self) -> i32 {
+        self.font_size
+    }
+
+    /// Effective variable-font settings used for shaping.
+    ///
+    /// The backing slice is shared by glyphs with the same resolved style.
+    #[must_use]
+    pub fn variations(&self) -> &[crate::FontVariation] {
+        &self.variations
+    }
+
     /// `(x, y, advance_x, advance_y, offset_x, offset_y)` in raw 26.6 units.
     #[must_use]
     pub const fn geometry_26_6(&self) -> (i32, i32, i32, i32, i32, i32) {
@@ -267,9 +321,13 @@ impl GlyphPlacement {
         self.bidi_level
     }
 
-    fn bounds(&self) -> Rect {
-        match self.writing_mode {
-            WritingMode::HorizontalTb => {
+    /// Physical layout-cell bounds, including advance space but not glyph ink.
+    ///
+    /// Rasterizer outline bounds may be smaller or may overhang this rectangle.
+    #[must_use]
+    pub fn cell_bounds(&self) -> Rect {
+        match (self.writing_mode, self.transform) {
+            (WritingMode::HorizontalTb, _) | (_, GlyphTransform::TateChuYoko) => {
                 let width = self.advance_x.abs().max(1);
                 Rect::from_fixed(
                     self.x,
@@ -278,7 +336,7 @@ impl GlyphPlacement {
                     self.font_size,
                 )
             },
-            WritingMode::VerticalRl => {
+            (WritingMode::VerticalRl, _) => {
                 let height = self.advance_y.abs().max(1);
                 Rect::from_fixed(
                     self.x.saturating_sub(self.font_size),
@@ -396,11 +454,38 @@ impl TextLine {
         self.writing_mode
     }
 
+    /// Physical layout-cell bounds for the line.
+    ///
+    /// These are not ink bounds. They retain whitespace and include the cell
+    /// bounds of ruby and other automatically positioned annotations.
+    #[must_use]
+    pub fn bounds(&self) -> Rect {
+        let base = match self.writing_mode {
+            WritingMode::HorizontalTb => Rect::from_fixed(
+                self.origin.x,
+                self.origin.y,
+                self.inline_extent,
+                self.block_extent,
+            ),
+            WritingMode::VerticalRl => Rect::from_fixed(
+                self.origin.x.saturating_sub(self.block_extent),
+                self.origin.y,
+                self.block_extent,
+                self.inline_extent,
+            ),
+        };
+        let base = self.hit_bounds.map_or(base, |bounds| base.union(bounds));
+        self.glyphs
+            .iter()
+            .map(GlyphPlacement::cell_bounds)
+            .fold(base, Rect::union)
+    }
+
     pub(crate) fn hit_bounds_for(glyphs: &[GlyphPlacement]) -> Option<Rect> {
         let mut bounds = glyphs
             .iter()
             .filter(|glyph| glyph.annotation.is_none())
-            .map(GlyphPlacement::bounds);
+            .map(GlyphPlacement::cell_bounds);
         let first = bounds.next()?;
         let mut min_x = first.x;
         let mut min_y = first.y;
@@ -489,6 +574,29 @@ impl TextLayout {
         &self.fonts
     }
 
+    /// Look up a retained font by its library identifier.
+    ///
+    /// Retained resources can have non-contiguous identifiers because a
+    /// layout owns only the faces used by its glyphs.
+    #[must_use]
+    pub fn font(&self, id: FontId) -> Option<&FontResource> {
+        self.fonts
+            .binary_search_by_key(&id, FontResource::id)
+            .ok()
+            .and_then(|index| self.fonts.get(index))
+    }
+
+    /// Union of all physical line-cell bounds, or `None` for an empty layout.
+    ///
+    /// This is a layout-cell boundary rather than an ink boundary: whitespace
+    /// and annotation cells are included.
+    #[must_use]
+    pub fn bounds(&self) -> Option<Rect> {
+        let mut lines = self.lines.iter().map(TextLine::bounds);
+        let first = lines.next()?;
+        Some(lines.fold(first, Rect::union))
+    }
+
     /// Recoverable issues in source order.
     #[must_use]
     pub fn diagnostics(&self) -> &[Diagnostic] {
@@ -503,44 +611,44 @@ impl TextLayout {
     /// Map a physical point to the nearest logical UTF-8 boundary.
     #[must_use]
     pub fn hit_test(&self, point: Point) -> HitTest {
-        let mut best: Option<(&GlyphPlacement, i64, bool)> = None;
+        let mut nearest_line: Option<(&TextLine, i64)> = None;
         for line in &self.lines {
-            let Some(line_bounds) = line.hit_bounds else {
-                continue;
-            };
-            let left_or_right = axis_distance(point.x, line_bounds.x, line_bounds.width);
-            let above_or_below = axis_distance(point.y, line_bounds.y, line_bounds.height);
-            let lower_bound = left_or_right
-                .saturating_mul(left_or_right)
-                .saturating_add(above_or_below.saturating_mul(above_or_below));
-            if best.is_some_and(|(_, distance, inside)| inside || lower_bound >= distance) {
-                continue;
-            }
-            for glyph in line
-                .glyphs
-                .iter()
-                .filter(|glyph| glyph.annotation.is_none())
-            {
-                let bounds = glyph.bounds();
-                let inside = bounds.contains(point);
-                let dx = axis_distance(point.x, bounds.x, bounds.width);
-                let dy = axis_distance(point.y, bounds.y, bounds.height);
-                let distance = dx.saturating_mul(dx).saturating_add(dy.saturating_mul(dy));
-                if best.is_none_or(|(_, old, old_inside)| {
-                    better_hit(inside, distance, old_inside, old)
-                }) {
-                    best = Some((glyph, distance, inside));
-                }
+            let bounds = line.bounds();
+            let distance = rect_distance(point, bounds);
+            if nearest_line.is_none_or(|(_, old)| distance < old) {
+                nearest_line = Some((line, distance));
             }
         }
-        let Some((glyph, _, inside)) = best else {
+        let Some((line, _)) = nearest_line else {
             return HitTest {
                 byte_offset: 0,
                 affinity: Affinity::Downstream,
                 inside: false,
             };
         };
-        let bounds = glyph.bounds();
+
+        let mut best: Option<(&GlyphPlacement, i64, bool)> = None;
+        for glyph in line
+            .glyphs
+            .iter()
+            .filter(|glyph| glyph.annotation.is_none())
+        {
+            let bounds = glyph.cell_bounds();
+            let inside = bounds.contains(point);
+            let distance = rect_distance(point, bounds);
+            if best.is_none_or(|(_, old, old_inside)| better_hit(inside, distance, old_inside, old))
+            {
+                best = Some((glyph, distance, inside));
+            }
+        }
+        let Some((glyph, _, inside)) = best else {
+            return HitTest {
+                byte_offset: line.range.start,
+                affinity: Affinity::Downstream,
+                inside: line.bounds().contains(point),
+            };
+        };
+        let bounds = glyph.cell_bounds();
         let after_visual_midpoint = is_after_visual_midpoint(point, bounds, glyph.writing_mode);
         let logical_after = is_logically_after(after_visual_midpoint, glyph.bidi_level);
         HitTest {
@@ -563,72 +671,41 @@ impl TextLayout {
         Ok(self.hit_test(Point::try_new(x, y)?))
     }
 
-    /// Return a one-subpixel caret at the closest rendered edge of a UTF-8 boundary.
+    /// Return a one-subpixel caret for one logical side of a UTF-8 boundary.
+    ///
+    /// Affinity disambiguates wrapping, paragraph breaks, and bidirectional
+    /// boundaries. Passing back both fields of [`HitTest`] reproduces the same
+    /// visual edge.
     #[must_use]
-    pub fn caret_rect(&self, byte_offset: usize) -> Option<Rect> {
+    pub fn caret_rect(&self, byte_offset: usize, affinity: Affinity) -> Option<Rect> {
         if !is_valid_caret_offset(&self.source, byte_offset) {
             return None;
         }
-        let first_line = self
-            .lines
-            .partition_point(|line| line.range.end < byte_offset);
-        for line in &self.lines[first_line..] {
-            if line.range.start > byte_offset {
-                break;
-            }
+        for line in &self.lines {
             let mut candidates = line
                 .glyphs
                 .iter()
                 .filter(|glyph| glyph.annotation.is_none())
-                .filter(|glyph| glyph_touches_boundary(&glyph.source_range, byte_offset));
-            if let Some(glyph) = candidates.next() {
-                let bounds = glyph.bounds();
-                let at_start = glyph.source_range.start == byte_offset;
-                let visual_end = is_visual_end(at_start, glyph.bidi_level);
-                return Some(match glyph.writing_mode {
-                    WritingMode::HorizontalTb => Rect::from_fixed(
-                        if visual_end {
-                            bounds.x.saturating_add(bounds.width)
-                        } else {
-                            bounds.x
-                        },
-                        bounds.y,
-                        1,
-                        bounds.height,
-                    ),
-                    WritingMode::VerticalRl => Rect::from_fixed(
-                        bounds.x,
-                        if visual_end {
-                            bounds.y.saturating_add(bounds.height)
-                        } else {
-                            bounds.y
-                        },
-                        bounds.width,
-                        1,
-                    ),
+                .filter(|glyph| match affinity {
+                    Affinity::Upstream => glyph.source_range.start == byte_offset,
+                    Affinity::Downstream => glyph.source_range.end == byte_offset,
                 });
+            if let Some(first) = candidates.next() {
+                let bounds = candidates.fold(first.cell_bounds(), |bounds, glyph| {
+                    bounds.union(glyph.cell_bounds())
+                });
+                let visual_end = is_visual_end(affinity == Affinity::Upstream, first.bidi_level);
+                return Some(caret_for_bounds(bounds, visual_end, first.writing_mode));
             }
-            if line.range.start == byte_offset && line.glyphs.is_empty() {
-                return Some(match line.writing_mode {
-                    WritingMode::HorizontalTb => Rect::from_fixed(
-                        line.origin.x,
-                        line.origin.y.saturating_sub(line.block_extent),
-                        1,
-                        line.block_extent,
-                    ),
-                    WritingMode::VerticalRl => Rect::from_fixed(
-                        line.origin.x.saturating_sub(line.block_extent),
-                        line.origin.y,
-                        line.block_extent,
-                        1,
-                    ),
-                });
+            let has_main_glyph = line.glyphs.iter().any(|glyph| glyph.annotation.is_none());
+            if line.range.start == byte_offset && !has_main_glyph {
+                return Some(empty_line_caret(line));
             }
         }
         None
     }
 
-    /// Return one merged selection rectangle per touched line.
+    /// Return one rectangle per visually contiguous selected run on each line.
     #[must_use]
     pub fn selection_rects(&self, range: Range<usize>) -> Vec<Rect> {
         if !is_valid_selection_range(&self.source, &range) {
@@ -642,31 +719,22 @@ impl TextLayout {
             if line.range.start >= range.end {
                 break;
             }
-            let mut boxes = line
+            let mut current = None;
+            for glyph in line
                 .glyphs
                 .iter()
                 .filter(|glyph| glyph.annotation.is_none())
-                .filter(|glyph| ranges_overlap(&glyph.source_range, &range))
-                .map(GlyphPlacement::bounds);
-            let Some(first) = boxes.next() else {
-                continue;
-            };
-            let mut min_x = first.x;
-            let mut min_y = first.y;
-            let mut max_x = first.x.saturating_add(first.width);
-            let mut max_y = first.y.saturating_add(first.height);
-            for rect in boxes {
-                min_x = min_x.min(rect.x);
-                min_y = min_y.min(rect.y);
-                max_x = max_x.max(rect.x.saturating_add(rect.width));
-                max_y = max_y.max(rect.y.saturating_add(rect.height));
+            {
+                if ranges_overlap(&glyph.source_range, &range) {
+                    let bounds = glyph.cell_bounds();
+                    current = Some(current.map_or(bounds, |rect: Rect| rect.union(bounds)));
+                } else if let Some(bounds) = current.take() {
+                    result.push(bounds);
+                }
             }
-            result.push(Rect::from_fixed(
-                min_x,
-                min_y,
-                max_x.saturating_sub(min_x),
-                max_y.saturating_sub(min_y),
-            ));
+            if let Some(bounds) = current {
+                result.push(bounds);
+            }
         }
         result
     }
@@ -677,6 +745,12 @@ fn axis_distance(value: i32, start: i32, extent: i32) -> i64 {
     let before = start.saturating_sub(value).max(0);
     let after = value.saturating_sub(end).max(0);
     i64::from(before.max(after))
+}
+
+fn rect_distance(point: Point, bounds: Rect) -> i64 {
+    let dx = axis_distance(point.x, bounds.x, bounds.width);
+    let dy = axis_distance(point.y, bounds.y, bounds.height);
+    dx.saturating_mul(dx).saturating_add(dy.saturating_mul(dy))
 }
 
 fn better_hit(inside: bool, distance: i64, old_inside: bool, old_distance: i64) -> bool {
@@ -698,12 +772,41 @@ fn is_valid_caret_offset(source: &str, offset: usize) -> bool {
     offset <= source.len() && source.is_char_boundary(offset)
 }
 
-fn glyph_touches_boundary(range: &Range<usize>, offset: usize) -> bool {
-    range.start == offset || range.end == offset
-}
-
 fn is_visual_end(at_start: bool, bidi_level: u8) -> bool {
     at_start == (bidi_level % 2 == 1)
+}
+
+fn caret_for_bounds(bounds: Rect, visual_end: bool, mode: WritingMode) -> Rect {
+    match mode {
+        WritingMode::HorizontalTb => Rect::from_fixed(
+            if visual_end {
+                bounds.x.saturating_add(bounds.width)
+            } else {
+                bounds.x
+            },
+            bounds.y,
+            1,
+            bounds.height,
+        ),
+        WritingMode::VerticalRl => Rect::from_fixed(
+            bounds.x,
+            if visual_end {
+                bounds.y.saturating_add(bounds.height)
+            } else {
+                bounds.y
+            },
+            bounds.width,
+            1,
+        ),
+    }
+}
+
+fn empty_line_caret(line: &TextLine) -> Rect {
+    let bounds = line.bounds();
+    match line.writing_mode {
+        WritingMode::HorizontalTb => Rect::from_fixed(line.origin.x, bounds.y, 1, bounds.height),
+        WritingMode::VerticalRl => Rect::from_fixed(bounds.x, line.origin.y, bounds.width, 1),
+    }
 }
 
 fn is_valid_selection_range(source: &str, range: &Range<usize>) -> bool {
@@ -749,6 +852,11 @@ mod tests {
             offset_x: 96,
             offset_y: -128,
             font_size: 192,
+            variations: Arc::from([crate::FontVariation::try_new(
+                crate::OpenTypeTag::try_new("wght").unwrap(),
+                650.0,
+            )
+            .unwrap()]),
             transform: GlyphTransform::RotateClockwise,
             bidi_level: 2,
             writing_mode: mode,
@@ -756,14 +864,24 @@ mod tests {
     }
 
     fn linear_hit_test(layout: &TextLayout, point: Point) -> HitTest {
-        let mut best: Option<(&GlyphPlacement, i64, bool)> = None;
-        for glyph in layout
+        let Some(line) = layout
             .lines
             .iter()
-            .flat_map(|line| &line.glyphs)
+            .min_by_key(|line| rect_distance(point, line.bounds()))
+        else {
+            return HitTest {
+                byte_offset: 0,
+                affinity: Affinity::Downstream,
+                inside: false,
+            };
+        };
+        let mut best: Option<(&GlyphPlacement, i64, bool)> = None;
+        for glyph in line
+            .glyphs
+            .iter()
             .filter(|glyph| glyph.annotation.is_none())
         {
-            let bounds = glyph.bounds();
+            let bounds = glyph.cell_bounds();
             let inside = bounds.contains(point);
             let dx = axis_distance(point.x, bounds.x, bounds.width);
             let dy = axis_distance(point.y, bounds.y, bounds.height);
@@ -775,12 +893,12 @@ mod tests {
         }
         let Some((glyph, _, inside)) = best else {
             return HitTest {
-                byte_offset: 0,
+                byte_offset: line.range.start,
                 affinity: Affinity::Downstream,
-                inside: false,
+                inside: line.bounds().contains(point),
             };
         };
-        let bounds = glyph.bounds();
+        let bounds = glyph.cell_bounds();
         let after_visual_midpoint = is_after_visual_midpoint(point, bounds, glyph.writing_mode);
         let logical_after = is_logically_after(after_visual_midpoint, glyph.bidi_level);
         HitTest {
@@ -798,7 +916,11 @@ mod tests {
         }
     }
 
-    fn linear_caret_rect(layout: &TextLayout, byte_offset: usize) -> Option<Rect> {
+    fn linear_caret_rect(
+        layout: &TextLayout,
+        byte_offset: usize,
+        affinity: Affinity,
+    ) -> Option<Rect> {
         if !is_valid_caret_offset(&layout.source, byte_offset) {
             return None;
         }
@@ -807,10 +929,13 @@ mod tests {
                 .glyphs
                 .iter()
                 .filter(|glyph| glyph.annotation.is_none())
-                .filter(|glyph| glyph_touches_boundary(&glyph.source_range, byte_offset));
+                .filter(|glyph| match affinity {
+                    Affinity::Upstream => glyph.source_range.start == byte_offset,
+                    Affinity::Downstream => glyph.source_range.end == byte_offset,
+                });
             if let Some(glyph) = candidates.next() {
-                let bounds = glyph.bounds();
-                let at_start = glyph.source_range.start == byte_offset;
+                let bounds = glyph.cell_bounds();
+                let at_start = affinity == Affinity::Upstream;
                 let visual_end = is_visual_end(at_start, glyph.bidi_level);
                 return Some(match glyph.writing_mode {
                     WritingMode::HorizontalTb => Rect::from_fixed(
@@ -835,21 +960,10 @@ mod tests {
                     ),
                 });
             }
-            if line.range.start == byte_offset && line.glyphs.is_empty() {
-                return Some(match line.writing_mode {
-                    WritingMode::HorizontalTb => Rect::from_fixed(
-                        line.origin.x,
-                        line.origin.y.saturating_sub(line.block_extent),
-                        1,
-                        line.block_extent,
-                    ),
-                    WritingMode::VerticalRl => Rect::from_fixed(
-                        line.origin.x.saturating_sub(line.block_extent),
-                        line.origin.y,
-                        line.block_extent,
-                        1,
-                    ),
-                });
+            if line.range.start == byte_offset
+                && !line.glyphs.iter().any(|glyph| glyph.annotation.is_none())
+            {
+                return Some(empty_line_caret(line));
             }
         }
         None
@@ -861,31 +975,22 @@ mod tests {
         }
         let mut result = Vec::new();
         for line in &layout.lines {
-            let mut boxes = line
+            let mut current = None;
+            for glyph in line
                 .glyphs
                 .iter()
                 .filter(|glyph| glyph.annotation.is_none())
-                .filter(|glyph| ranges_overlap(&glyph.source_range, &range))
-                .map(GlyphPlacement::bounds);
-            let Some(first) = boxes.next() else {
-                continue;
-            };
-            let mut min_x = first.x;
-            let mut min_y = first.y;
-            let mut max_x = first.x.saturating_add(first.width);
-            let mut max_y = first.y.saturating_add(first.height);
-            for rect in boxes {
-                min_x = min_x.min(rect.x);
-                min_y = min_y.min(rect.y);
-                max_x = max_x.max(rect.x.saturating_add(rect.width));
-                max_y = max_y.max(rect.y.saturating_add(rect.height));
+            {
+                if ranges_overlap(&glyph.source_range, &range) {
+                    let bounds = glyph.cell_bounds();
+                    current = Some(current.map_or(bounds, |rect: Rect| rect.union(bounds)));
+                } else if let Some(bounds) = current.take() {
+                    result.push(bounds);
+                }
             }
-            result.push(Rect::from_fixed(
-                min_x,
-                min_y,
-                max_x.saturating_sub(min_x),
-                max_y.saturating_sub(min_y),
-            ));
+            if let Some(bounds) = current {
+                result.push(bounds);
+            }
         }
         result
     }
@@ -957,9 +1062,6 @@ mod tests {
         assert!(is_valid_caret_offset(source, 2));
         assert!(is_valid_caret_offset(source, source.len()));
         assert!(!is_valid_caret_offset(source, source.len() + 1));
-        assert!(glyph_touches_boundary(&(2..5), 2));
-        assert!(glyph_touches_boundary(&(2..5), 5));
-        assert!(!glyph_touches_boundary(&(2..5), 3));
         assert!(!is_visual_end(true, 0));
         assert!(is_visual_end(false, 0));
         assert!(is_visual_end(true, 1));
@@ -987,19 +1089,27 @@ mod tests {
         assert_eq!(annotation.range(), 7..11);
         assert_eq!(horizontal.origin().x_26_6(), 128);
         assert_eq!(horizontal.origin().y_26_6(), 320);
+        assert_eq!(horizontal.draw_origin().x_26_6(), 224);
+        assert_eq!(horizontal.draw_origin().y_26_6(), 192);
         assert_float(horizontal.x(), 2.0);
         assert_float(horizontal.y(), 5.0);
         assert_float(horizontal.advance_x(), 4.0);
         assert_float(horizontal.advance_y(), -6.0);
         assert_float(horizontal.offset_x(), 1.5);
         assert_float(horizontal.offset_y(), -2.0);
+        assert_float(horizontal.font_size(), 3.0);
+        assert_eq!(horizontal.font_size_26_6(), 192);
+        assert_eq!(horizontal.variations()[0].value_26_6(), 650 * 64);
         assert_eq!(horizontal.geometry_26_6(), (128, 320, 256, -384, 96, -128));
         assert_eq!(horizontal.transform(), GlyphTransform::RotateClockwise);
         assert_eq!(horizontal.bidi_level(), 2);
-        assert_eq!(horizontal.bounds().as_26_6(), (128, 128, 256, 192));
+        assert_eq!(horizontal.cell_bounds().as_26_6(), (128, 128, 256, 192));
 
         let vertical = glyph(WritingMode::VerticalRl);
-        assert_eq!(vertical.bounds().as_26_6(), (-64, 320, 192, 384));
+        assert_eq!(vertical.cell_bounds().as_26_6(), (-64, 320, 192, 384));
+        let mut tate_chu_yoko = vertical;
+        tate_chu_yoko.transform = GlyphTransform::TateChuYoko;
+        assert_eq!(tate_chu_yoko.cell_bounds().as_26_6(), (128, 128, 256, 192));
     }
 
     #[test]
@@ -1037,6 +1147,7 @@ mod tests {
         assert_float(line.block_extent(), 3.0);
         assert_eq!(line.writing_mode(), WritingMode::HorizontalTb);
         assert_eq!(line.glyphs().len(), 1);
+        assert_eq!(line.bounds().as_26_6(), (32, 64, 448, 256));
 
         let layout = TextLayout {
             source: "abXYZq".to_owned(),
@@ -1045,6 +1156,7 @@ mod tests {
             diagnostics: vec![diagnostic],
             writing_mode: WritingMode::HorizontalTb,
         };
+        assert_eq!(layout.bounds().unwrap().as_26_6(), (32, 64, 448, 256));
         let before = layout.hit_test(Point::from_fixed(160, 200));
         assert_eq!(before.byte_offset(), 2);
         assert_eq!(before.affinity(), Affinity::Upstream);
@@ -1053,8 +1165,17 @@ mod tests {
         assert_eq!(after.byte_offset(), 5);
         assert_eq!(after.affinity(), Affinity::Downstream);
         assert!(after.is_inside());
-        assert_eq!(layout.caret_rect(2).unwrap().as_26_6(), (128, 128, 1, 192));
-        assert_eq!(layout.caret_rect(5).unwrap().as_26_6(), (384, 128, 1, 192));
+        assert_eq!(
+            layout.caret_rect(2, Affinity::Upstream).unwrap().as_26_6(),
+            (128, 128, 1, 192)
+        );
+        assert_eq!(
+            layout
+                .caret_rect(5, Affinity::Downstream)
+                .unwrap()
+                .as_26_6(),
+            (384, 128, 1, 192)
+        );
         assert_eq!(
             layout.selection_rects(2..5)[0].as_26_6(),
             (128, 128, 256, 192)
@@ -1064,8 +1185,14 @@ mod tests {
 
         let mut rtl = layout.clone();
         rtl.lines[0].glyphs[0].bidi_level = 1;
-        assert_eq!(rtl.caret_rect(2).unwrap().as_26_6(), (384, 128, 1, 192));
-        assert_eq!(rtl.caret_rect(5).unwrap().as_26_6(), (128, 128, 1, 192));
+        assert_eq!(
+            rtl.caret_rect(2, Affinity::Upstream).unwrap().as_26_6(),
+            (384, 128, 1, 192)
+        );
+        assert_eq!(
+            rtl.caret_rect(5, Affinity::Downstream).unwrap().as_26_6(),
+            (128, 128, 1, 192)
+        );
 
         let empty_horizontal = TextLayout {
             source: "A".into(),
@@ -1083,15 +1210,211 @@ mod tests {
             writing_mode: WritingMode::HorizontalTb,
         };
         assert_eq!(
-            empty_horizontal.caret_rect(0).unwrap().as_26_6(),
-            (320, 448, 1, 192)
+            empty_horizontal
+                .caret_rect(0, Affinity::Downstream)
+                .unwrap()
+                .as_26_6(),
+            (320, 640, 1, 192)
         );
-        assert!(empty_horizontal.caret_rect(1).is_none());
+        assert!(
+            empty_horizontal
+                .caret_rect(1, Affinity::Downstream)
+                .is_none()
+        );
         let mut empty_vertical = empty_horizontal;
         empty_vertical.lines[0].writing_mode = WritingMode::VerticalRl;
         assert_eq!(
-            empty_vertical.caret_rect(0).unwrap().as_26_6(),
+            empty_vertical
+                .caret_rect(0, Affinity::Downstream)
+                .unwrap()
+                .as_26_6(),
             (128, 640, 192, 1)
+        );
+    }
+
+    #[test]
+    fn affinity_round_trips_wrapped_and_bidi_visual_edges_and_empty_lines() {
+        let mut top = glyph(WritingMode::HorizontalTb);
+        top.annotation = None;
+        top.source_range = 0..1;
+        top.x = 0;
+        top.y = 64;
+        top.advance_x = 64;
+        top.font_size = 64;
+        top.bidi_level = 0;
+        let mut bottom = top.clone();
+        bottom.source_range = 1..2;
+        bottom.y = 192;
+        let top_glyphs = vec![top];
+        let bottom_glyphs = vec![bottom];
+        let layout = TextLayout {
+            source: "ab\n".into(),
+            lines: vec![
+                TextLine {
+                    range: 0..1,
+                    origin: Point::from_fixed(0, 0),
+                    inline_extent: 64,
+                    block_extent: 64,
+                    writing_mode: WritingMode::HorizontalTb,
+                    hit_bounds: TextLine::hit_bounds_for(&top_glyphs),
+                    glyphs: top_glyphs,
+                },
+                TextLine {
+                    range: 1..2,
+                    origin: Point::from_fixed(0, 128),
+                    inline_extent: 64,
+                    block_extent: 64,
+                    writing_mode: WritingMode::HorizontalTb,
+                    hit_bounds: TextLine::hit_bounds_for(&bottom_glyphs),
+                    glyphs: bottom_glyphs,
+                },
+                TextLine {
+                    range: 3..3,
+                    origin: Point::from_fixed(0, 256),
+                    inline_extent: 0,
+                    block_extent: 64,
+                    writing_mode: WritingMode::HorizontalTb,
+                    hit_bounds: None,
+                    glyphs: Vec::new(),
+                },
+            ],
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::HorizontalTb,
+        };
+
+        let wrapped_end = layout.hit_test(Point::from_fixed(48, 32));
+        assert_eq!(
+            (wrapped_end.byte_offset(), wrapped_end.affinity()),
+            (1, Affinity::Downstream)
+        );
+        assert_eq!(
+            layout
+                .caret_rect(wrapped_end.byte_offset(), wrapped_end.affinity())
+                .unwrap()
+                .as_26_6(),
+            (64, 0, 1, 64)
+        );
+        let wrapped_start = layout.hit_test(Point::from_fixed(16, 160));
+        assert_eq!(
+            (wrapped_start.byte_offset(), wrapped_start.affinity()),
+            (1, Affinity::Upstream)
+        );
+        assert_eq!(
+            layout
+                .caret_rect(wrapped_start.byte_offset(), wrapped_start.affinity())
+                .unwrap()
+                .as_26_6(),
+            (0, 128, 1, 64)
+        );
+        let empty = layout.hit_test(Point::from_fixed(0, 280));
+        assert_eq!(empty.byte_offset(), 3);
+        assert_eq!(empty.affinity(), Affinity::Downstream);
+        assert_eq!(
+            layout
+                .caret_rect(empty.byte_offset(), empty.affinity())
+                .unwrap()
+                .as_26_6(),
+            (0, 256, 1, 64)
+        );
+
+        let mut visual = Vec::new();
+        for (position, (range, level)) in [(0..1, 0), (3..4, 1), (2..3, 1), (1..2, 1), (4..5, 0)]
+            .into_iter()
+            .enumerate()
+        {
+            let mut placed = glyph(WritingMode::HorizontalTb);
+            placed.annotation = None;
+            placed.source_range = range;
+            placed.x = i32::try_from(position).unwrap().saturating_mul(64);
+            placed.y = 64;
+            placed.advance_x = 64;
+            placed.font_size = 64;
+            placed.bidi_level = level;
+            visual.push(placed);
+        }
+        let bidi_line = TextLine {
+            range: 0..5,
+            origin: Point::from_fixed(0, 0),
+            inline_extent: 320,
+            block_extent: 64,
+            writing_mode: WritingMode::HorizontalTb,
+            hit_bounds: TextLine::hit_bounds_for(&visual),
+            glyphs: visual,
+        };
+        let bidi = TextLayout {
+            source: "abcde".into(),
+            lines: vec![bidi_line],
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::HorizontalTb,
+        };
+        for glyph in bidi.glyphs() {
+            let bounds = glyph.cell_bounds();
+            for (x, expected) in [
+                (bounds.x.saturating_add(16), bounds.x),
+                (
+                    bounds.x.saturating_add(48),
+                    bounds.x.saturating_add(bounds.width),
+                ),
+            ] {
+                let hit = bidi.hit_test(Point::from_fixed(x, 32));
+                assert_eq!(
+                    bidi.caret_rect(hit.byte_offset(), hit.affinity())
+                        .unwrap()
+                        .as_26_6()
+                        .0,
+                    expected
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn bidi_selection_returns_only_visually_contiguous_runs() {
+        let mut visual = Vec::new();
+        for (position, range) in [0..1, 3..4, 2..3, 1..2, 4..5].into_iter().enumerate() {
+            let mut placed = glyph(WritingMode::HorizontalTb);
+            placed.annotation = None;
+            placed.source_range = range;
+            placed.x = i32::try_from(position).unwrap().saturating_mul(64);
+            placed.y = 64;
+            placed.advance_x = 64;
+            placed.font_size = 64;
+            visual.push(placed);
+        }
+        let line = TextLine {
+            range: 0..5,
+            origin: Point::from_fixed(0, 0),
+            inline_extent: 320,
+            block_extent: 64,
+            writing_mode: WritingMode::HorizontalTb,
+            hit_bounds: TextLine::hit_bounds_for(&visual),
+            glyphs: visual,
+        };
+        let layout = TextLayout {
+            source: "abcde".into(),
+            lines: vec![line],
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::HorizontalTb,
+        };
+
+        assert_eq!(
+            layout
+                .selection_rects(0..2)
+                .iter()
+                .map(|rect| rect.as_26_6())
+                .collect::<Vec<_>>(),
+            [(0, 0, 64, 64), (192, 0, 64, 64)]
+        );
+        assert_eq!(
+            layout.selection_rects(1..4),
+            [Rect::from_fixed(64, 0, 192, 64)]
+        );
+        assert_eq!(
+            layout.selection_rects(0..5),
+            [Rect::from_fixed(0, 0, 320, 64)]
         );
     }
 
@@ -1136,10 +1459,12 @@ mod tests {
             }
         }
         for offset in 0..=layout.source.len() {
-            assert_eq!(
-                layout.caret_rect(offset),
-                linear_caret_rect(&layout, offset)
-            );
+            for affinity in [Affinity::Upstream, Affinity::Downstream] {
+                assert_eq!(
+                    layout.caret_rect(offset, affinity),
+                    linear_caret_rect(&layout, offset, affinity)
+                );
+            }
         }
         for range in [0..1, 0..2, 1..3, 2..4, 3..6, 5..6] {
             assert_eq!(

@@ -16,8 +16,18 @@ let options = jlreq::LayoutOptions::try_new(240.0, 16.0)?;
 let layout = jlreq::layout("日本語組版", &fonts, options)?;
 
 for glyph in layout.glyphs() {
-    let font = &layout.fonts()[glyph.font_id().get() as usize];
-    let _draw = (font.bytes(), glyph.glyph_id(), glyph.origin());
+    if let Some(font) = layout.font(glyph.font_id()) {
+        let _draw = (
+            font.bytes(),
+            font.face_index(),
+            glyph.glyph_id(),
+            glyph.draw_origin(),
+            glyph.font_size_26_6(),
+            glyph.variations(),
+            font.synthesis(),
+            glyph.transform(),
+        );
+    }
 }
 # Ok(())
 # }
@@ -31,7 +41,9 @@ internals.
 
 `FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
 primary face, and ordered fallback. The optional `system-fonts` feature is the only OS
-discovery surface. HarfRust, Fontique, ICU4X, and unicode-bidi types are private.
+discovery surface. It matches weight, width, and slant and records selected default axes
+plus synthetic bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi
+types are private.
 
 ## Typed authored content
 
@@ -55,12 +67,20 @@ immutable `Document`. `layout_document` then returns a complete result or a type
 - positioned, stable-code diagnostics.
 
 A glyph exposes font ID, glyph ID, source byte range, optional annotation attribution,
-origin, advances, offsets, 26.6 geometry, transform, and bidi level. A line exposes source
-range, physical origin and extents, writing mode, and its visual glyph slice.
+draw origin, advances, offsets, resolved size and variation axes, cell bounds, 26.6
+geometry, transform, and bidi level. A line exposes source range, physical origin and
+extents, writing mode, cell bounds, and its visual glyph slice. `TextLayout::font` is the
+required ID lookup because retained font identifiers may be sparse.
 
 `hit_test`, `caret_rect`, and `selection_rects` are defined over the same physical
 geometry and support both writing modes and bidi. They never require the renderer to infer
-logical ordering from glyph order.
+logical ordering from glyph order. `caret_rect` requires `Affinity`; hit-test results can
+therefore round-trip exactly at wraps, paragraph breaks, and bidi boundaries. Selection
+rectangles are split at visually unselected runs.
+
+`cell_bounds` and line/layout `bounds` are layout-cell boundaries, not outline ink
+boundaries. They preserve whitespace and annotation cells. Renderers derive ink bounds
+from font outlines when needed.
 
 ## Errors, diagnostics, and atomicity
 
@@ -75,6 +95,8 @@ Failures do not poison `LayoutEngine`; the next call is independent.
 
 All public float values are checked for finiteness and range and quantized to 26.6 fixed
 point before processing. Equivalent quantized inputs are intentionally equivalent.
+`FontVariation` consequently implements `Eq` and `Hash`; global, system, and span values
+are overlaid per tag with the span layer last.
 
 ## Core: pre-shaped exact composition
 

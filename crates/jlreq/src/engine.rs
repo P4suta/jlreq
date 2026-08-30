@@ -72,6 +72,7 @@ mod tests {
             frame: jlreq_core::Frame::Proportional,
             role: None,
             bidi_level: level,
+            variations: Arc::from([]),
             glyphs: vec![raw(font_id)],
         }
     }
@@ -83,7 +84,8 @@ mod tests {
             size,
             language: "und".into(),
             features: Vec::new(),
-            variations: Vec::new(),
+            global_variations: Vec::new(),
+            span_variations: Vec::new(),
             role: TextRole::Text,
         }
     }
@@ -386,8 +388,41 @@ mod tests {
         assert_eq!(merged.size, 18 * 64);
         assert_eq!(merged.language, "ja");
         assert_eq!(merged.features, [feature, span_feature]);
-        assert_eq!(merged.variations, [variation, span_variation]);
+        assert_eq!(merged.global_variations, [variation]);
+        assert_eq!(merged.span_variations, [span_variation]);
         assert_eq!(merged.role, TextRole::Formula);
+    }
+
+    #[test]
+    fn variation_layers_merge_by_tag_in_global_system_span_order() {
+        let variation = |tag, value| {
+            FontVariation::try_new(crate::OpenTypeTag::try_new(tag).unwrap(), value).unwrap()
+        };
+        let options = LayoutOptions::try_new(100.0, 16.0)
+            .unwrap()
+            .variation(variation("wght", 400.0))
+            .variation(variation("wdth", 90.0))
+            .variation(variation("wght", 500.0));
+        let span = SpanStyle::new()
+            .variation(variation("wdth", 80.0))
+            .variation(variation("wght", 700.0));
+        let style = span_effective_style(&base_effective_style(&options), &span);
+        let (fonts, first, _) = fixture_fonts();
+        let mut resource = fonts.get(first).unwrap().clone();
+        resource.default_variations = vec![variation("wght", 600.0), variation("opsz", 12.0)];
+
+        let resolved = resolved_variations(&style, &resource);
+        assert_eq!(
+            resolved
+                .iter()
+                .map(|value| (value.tag().bytes(), value.value_26_6()))
+                .collect::<Vec<_>>(),
+            [
+                (*b"opsz", 12 * 64),
+                (*b"wdth", 80 * 64),
+                (*b"wght", 700 * 64),
+            ]
+        );
     }
 
     #[test]

@@ -78,10 +78,16 @@ range remain present, a primary `.notdef` is shaped, and a positioned
 Fontique-backed OS discovery is behind the disabled-by-default `system-fonts` feature.
 Layout is cross-platform deterministic when the same explicit bytes, face indices, text,
 and options are supplied. An OS collection may change or choose a different face and is
-therefore outside that guarantee.
+therefore outside that guarantee. System queries receive requested weight, width, and
+slant. The selected face's variable-axis settings and required synthetic emboldening/skew
+are copied into `FontResource`, so the completed layout remains sufficient to reproduce
+that selection without consulting Fontique again.
 
 OpenType feature tags and variation coordinates are facade values. No upstream crate type
-crosses the public API.
+crosses the public API. Variation coordinates are quantized 26.6 values with `Eq` and
+`Hash`. Global settings, system-selected defaults, and span settings are overlaid by tag in
+that order, with later values winning; the same resolved shared slice drives HarfRust and
+is exposed on each glyph.
 
 ## Documents and results
 
@@ -92,9 +98,17 @@ are shaped by the same font, fallback, and bidi machinery as body text.
 
 `TextLayout` owns its source, lines, diagnostics, and every `FontResource` used by its
 glyphs. Each `GlyphPlacement` has visual draw order, font and glyph IDs, original UTF-8
-range, physical origin, advance, offset, transform, and bidi level. `hit_test`,
-`caret_rect`, and `selection_rects` use that same geometry for horizontal, vertical,
-and mixed-direction text.
+range, physical draw origin, advance, offset, resolved size and variations, cell bounds,
+transform, and bidi level. `TextLayout::font` resolves retained resources by ID even when
+the retained ID set is sparse. Glyph, line, and layout bounds are physical cell bounds,
+including whitespace and annotations, not rasterized ink bounds.
+
+`hit_test`, affinity-required `caret_rect`, and `selection_rects` use that same geometry
+for horizontal, vertical, and mixed-direction text. Hit testing chooses the nearest line
+region before the nearest glyph and maps empty lines to their own source position.
+Selections are emitted per visually contiguous selected run, so a bidi selection never
+fills an intervening unselected run. Paragraph block progression is derived from actual
+line cells plus one configured line gap rather than from the global font size.
 
 The facade does not rasterize, draw, allocate GPU resources, or serialize a document.
 

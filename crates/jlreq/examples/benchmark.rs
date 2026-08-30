@@ -16,8 +16,8 @@ use std::{
 };
 
 use jlreq::{
-    BaseDirection, Document, DocumentBuilder, FontLibrary, FontStyle, LayoutEngine, LayoutOptions,
-    ScriptPosition, SpanStyle, WritingMode,
+    Affinity, BaseDirection, Document, DocumentBuilder, FontLibrary, FontStyle, FontVariation,
+    LayoutEngine, LayoutOptions, OpenTypeTag, ScriptPosition, SpanStyle, WritingMode,
     core::{
         Break, Cluster, Composer, CompositionLimits, Construct, Frame, Paragraph, ShapedText, Size,
         Style,
@@ -63,7 +63,36 @@ fn main() -> BenchResult<()> {
         Ok(layout.glyphs().count())
     })?;
 
+    let variable_fonts = variable_fonts()?;
+    let variable_text = "variable ".repeat(128);
+    let variable_document = variable_span_document(&variable_text)?;
+    let variable_options = LayoutOptions::try_new(640.0, 18.0)?.variation(FontVariation::try_new(
+        OpenTypeTag::try_new("wght")?,
+        500.0,
+    )?);
+    measure("layout.reused-engine.variable-runs", samples, || {
+        let layout = engine.layout_document(
+            black_box(&variable_document),
+            &variable_fonts,
+            variable_options.clone(),
+        )?;
+        Ok(layout.glyphs().map(|glyph| glyph.variations().len()).sum())
+    })?;
+
     let complex_document = complex_document(32)?;
+    let horizontal_options = LayoutOptions::try_new(320.0, 18.0)?.line_gap(3.0)?;
+    measure(
+        "layout.reused-engine.horizontal-multiparagraph",
+        samples,
+        || {
+            let layout = engine.layout_document(
+                black_box(&complex_document),
+                &fonts,
+                horizontal_options.clone(),
+            )?;
+            Ok(layout.lines().len())
+        },
+    )?;
     let vertical_options = LayoutOptions::try_new(640.0, 18.0)?
         .writing_mode(WritingMode::VerticalRl)
         .tab_width(4)?;
@@ -94,12 +123,46 @@ fn main() -> BenchResult<()> {
             observed = observed.saturating_add(hit.byte_offset());
             let boundary = cyclic_value(&boundaries, ordinal)?;
             observed = observed.saturating_add(usize::from(
-                query_layout.caret_rect(black_box(boundary)).is_some(),
+                query_layout
+                    .caret_rect(black_box(boundary), Affinity::Downstream)
+                    .is_some(),
             ));
             let next = cyclic_value(&boundaries, ordinal.saturating_add(1))?;
             let range = boundary.min(next)..boundary.max(next);
             observed =
                 observed.saturating_add(query_layout.selection_rects(black_box(range)).len());
+        }
+        Ok(observed)
+    })?;
+
+    let bidi_query_layout = engine.layout(&bidi, &fonts, bidi_options)?;
+    let bidi_points: Vec<_> = bidi_query_layout
+        .glyphs()
+        .take(256)
+        .map(jlreq::GlyphPlacement::origin)
+        .collect();
+    let bidi_boundaries: Vec<_> = bidi
+        .char_indices()
+        .map(|(offset, _)| offset)
+        .chain([bidi.len()])
+        .collect();
+    measure("result.bidi-hit-affinity-caret-selection", samples, || {
+        let mut observed = 0_usize;
+        for (ordinal, point) in bidi_points.iter().enumerate() {
+            let hit = bidi_query_layout.hit_test(black_box(*point));
+            observed = observed.saturating_add(hit.byte_offset());
+            observed = observed.saturating_add(usize::from(
+                bidi_query_layout
+                    .caret_rect(hit.byte_offset(), hit.affinity())
+                    .is_some(),
+            ));
+            let start = cyclic_value(&bidi_boundaries, ordinal)?;
+            let end = cyclic_value(&bidi_boundaries, ordinal.saturating_add(8))?;
+            observed = observed.saturating_add(
+                bidi_query_layout
+                    .selection_rects(black_box(start.min(end)..start.max(end)))
+                    .len(),
+            );
         }
         Ok(observed)
     })?;
@@ -203,6 +266,17 @@ fn fixture_fonts() -> BenchResult<FontLibrary> {
     Ok(fonts)
 }
 
+fn variable_fonts() -> BenchResult<FontLibrary> {
+    let mut fonts = FontLibrary::new();
+    let _ = fonts.register_face(
+        Arc::<[u8]>::from(font_test_data::VAZIRMATN_VAR),
+        0,
+        "Vazirmatn",
+        FontStyle::default(),
+    )?;
+    Ok(fonts)
+}
+
 fn many_span_document(text: &str) -> BenchResult<Document> {
     let mut boundaries: Vec<_> = text.char_indices().map(|(offset, _)| offset).collect();
     boundaries.push(text.len());
@@ -221,11 +295,39 @@ fn many_span_document(text: &str) -> BenchResult<Document> {
     Ok(builder.build()?)
 }
 
+fn variable_span_document(text: &str) -> BenchResult<Document> {
+    const SEGMENT_LEN: usize = "variable ".len();
+    let weight = OpenTypeTag::try_new("wght")?;
+    let light = FontVariation::try_new(weight, 350.0)?;
+    let bold = FontVariation::try_new(weight, 725.0)?;
+    let mut builder = DocumentBuilder::new(text);
+    for (ordinal, start) in (0..text.len()).step_by(SEGMENT_LEN).enumerate() {
+        let variation = if ordinal.is_multiple_of(2) {
+            light
+        } else {
+            bold
+        };
+        let _ = builder.span(
+            start..start.saturating_add(SEGMENT_LEN),
+            SpanStyle::new().variation(variation),
+        )?;
+    }
+    Ok(builder.build()?)
+}
+
 fn complex_document(repetitions: usize) -> BenchResult<Document> {
     const SEGMENT: &str = "漢12強注式\t\n";
     let mut builder = DocumentBuilder::new(SEGMENT.repeat(repetitions));
     for repetition in 0..repetitions {
         let base = repetition.saturating_mul(SEGMENT.len());
+        let _ = builder.span(
+            base..base.saturating_add(11),
+            SpanStyle::new().font_size(if repetition.is_multiple_of(2) {
+                30.0
+            } else {
+                22.0
+            })?,
+        )?;
         let _ = builder.group_ruby(base..base.saturating_add(3), "かん")?;
         let _ = builder.tate_chu_yoko(base.saturating_add(3)..base.saturating_add(5))?;
         let _ = builder.emphasis_dots(base.saturating_add(5)..base.saturating_add(8), '・')?;

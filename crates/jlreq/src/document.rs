@@ -297,9 +297,7 @@ impl DocumentBuilder {
         style: SpanStyle,
     ) -> Result<&mut Self, LayoutError> {
         self.validate_non_empty_range(&range, "document.invalid-span-range")?;
-        let insertion = self
-            .spans
-            .partition_point(|(other, _)| other.start < range.start);
+        let insertion = span_insertion_point(&self.spans, range.start);
         let overlaps_previous = insertion
             .checked_sub(1)
             .and_then(|index| self.spans.get(index))
@@ -566,6 +564,10 @@ impl DocumentBuilder {
     }
 }
 
+fn span_insertion_point(spans: &[(Range<usize>, SpanStyle)], start: usize) -> usize {
+    spans.partition_point(|(other, _)| other.start < start)
+}
+
 fn validate_ruby_runs(
     text: &str,
     kind: RubyKind,
@@ -722,5 +724,14 @@ mod tests {
         assert!(ranges_overlap(&(0..2), &(1..3)));
         assert!(!ranges_overlap(&(0..1), &(1..2)));
         assert!(!ranges_overlap(&(1..2), &(0..1)));
+    }
+
+    #[test]
+    fn span_insertion_uses_the_lower_bound_for_every_ordering_case() {
+        let spans = [(1..2, SpanStyle::default()), (3..4, SpanStyle::default())];
+        assert_eq!(span_insertion_point(&spans, 0), 0);
+        assert_eq!(span_insertion_point(&spans, 2), 1);
+        assert_eq!(span_insertion_point(&spans, 3), 1);
+        assert_eq!(span_insertion_point(&spans, 5), 2);
     }
 }

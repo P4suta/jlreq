@@ -23,9 +23,14 @@ unset. No crate upload, tag, or GitHub Release has occurred.
 - `DocumentBuilder` spans, explicit break controls, mono/group/jukugo ruby, emphasis,
   warichu, furawake, jidori, reference marks, scripts, and formulae; annotation strings are
   shaped automatically.
-- `TextLayout`, `TextLine`, and `GlyphPlacement` with owned font resources, original
-  UTF-8 ranges, 26.6 geometry, transforms and bidi levels, plus hit testing, caret
-  rectangles, and selection rectangles.
+- `TextLayout`, `TextLine`, and `GlyphPlacement` with sparse-ID-safe font lookup, original
+  UTF-8 ranges, draw origins, resolved sizes and variations, 26.6 geometry, transforms,
+  bidi levels, and whitespace/annotation-preserving cell bounds.
+- Affinity-exact hit testing and carets at wraps, paragraph breaks, bidi boundaries, and
+  empty lines, plus visually contiguous selection rectangles that do not bridge
+  unselected bidi runs.
+- `FontSynthesis` and renderer-visible system-font default axes, synthetic emboldening,
+  and skew state.
 - Typed high-level errors, positioned missing-glyph diagnostics, configurable limits for
   input/font bytes, fonts, paragraphs, runs, glyphs, constructs, and core operations, and
   atomic failure with engine reuse.
@@ -42,6 +47,12 @@ unset. No crate upload, tag, or GitHub Release has occurred.
 - Public-library responsibilities are separated from the conformance process contract.
   Fontique 0.11.1, HarfRust 0.13.3, ICU4X segmenter 2.3.0, and unicode-bidi 0.3.18 are
   facade implementation dependencies and do not enter the core.
+- Variation settings now use deterministic 26.6 equality/hashing and merge global,
+  system-selected, and span values by tag with the last layer winning. Paragraphs advance
+  by actual line/annotation cells plus one line gap, including large styled spans.
+- Mutation-ledger validation now runs through the cross-platform Rust `xtask`; pull-request
+  mutation smoke is split into four deterministic shards. Benchmarks now cover variable
+  font state, multi-paragraph annotations, and bidi editing queries.
 - Release packaging produces and offline-verifies three crate archives. Future publication
   order is `jlreq-core`, registry visibility, then `jlreq` and
   `jlreq-conformance`.

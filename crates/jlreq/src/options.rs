@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::units::{finite, non_negative, positive};
+use crate::units::{finite, non_negative, positive, quantize, to_f32};
 use crate::{LayoutError, OptionKind};
 
 /// Physical writing mode requested from the high-level pipeline.
@@ -68,16 +68,32 @@ pub enum BaseDirection {
 pub struct OpenTypeTag([u8; 4]);
 
 impl OpenTypeTag {
-    /// Validate an ASCII OpenType tag of exactly four bytes.
+    /// Validate an OpenType tag of exactly four printable ASCII bytes.
+    ///
+    /// Space padding is accepted only at the end, as required by the OpenType
+    /// specification for tags shorter than four visible characters.
     pub fn try_new(tag: &str) -> Result<Self, LayoutError> {
         let bytes = tag.as_bytes();
-        if bytes.len() != 4 || !bytes.iter().all(u8::is_ascii_graphic) {
+        let printable = bytes.iter().all(|byte| matches!(byte, 0x20..=0x7e));
+        let trailing_spaces_only =
+            bytes
+                .iter()
+                .position(|byte| *byte == b' ')
+                .is_none_or(|first_space| {
+                    first_space > 0 && bytes[first_space..].iter().all(|byte| *byte == b' ')
+                });
+        if bytes.len() != 4 || !printable || !trailing_spaces_only {
             return Err(LayoutError::invalid_option(
                 OptionKind::Feature,
-                "an OpenType tag must contain exactly four printable ASCII bytes",
+                "an OpenType tag must contain four printable ASCII bytes with spaces only as trailing padding",
             ));
         }
         Ok(Self([bytes[0], bytes[1], bytes[2], bytes[3]]))
+    }
+
+    #[cfg(feature = "system-fonts")]
+    pub(crate) const fn from_bytes(bytes: [u8; 4]) -> Self {
+        Self(bytes)
     }
 
     /// Tag bytes in network order.
@@ -115,18 +131,19 @@ impl OpenTypeFeature {
 }
 
 /// One variable-font axis value, quantized at the public boundary.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FontVariation {
     tag: OpenTypeTag,
-    value: f32,
+    value: i32,
 }
 
 impl FontVariation {
     /// Validate and quantize a variation setting.
     pub fn try_new(tag: OpenTypeTag, value: f32) -> Result<Self, LayoutError> {
+        let value = finite(value, OptionKind::Variation)?;
         Ok(Self {
             tag,
-            value: finite(value, OptionKind::Variation)?,
+            value: quantize(value),
         })
     }
 
@@ -138,7 +155,13 @@ impl FontVariation {
 
     /// Quantized user-space axis value.
     #[must_use]
-    pub const fn value(self) -> f32 {
+    pub fn value(self) -> f32 {
+        to_f32(self.value)
+    }
+
+    /// Quantized axis value in signed 26.6 fixed point.
+    #[must_use]
+    pub const fn value_26_6(self) -> i32 {
         self.value
     }
 }
@@ -465,5 +488,39 @@ mod tests {
                 .language("a".repeat(65))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn opentype_tags_accept_only_printable_bytes_and_trailing_padding() {
+        for valid in ["wght", "abc ", "a   ", "~~~~"] {
+            assert_eq!(
+                OpenTypeTag::try_new(valid).unwrap().bytes(),
+                valid.as_bytes()
+            );
+        }
+        for invalid in ["abc", "abcde", " abc", "a bc", "    ", "ab\n ", "éab"] {
+            assert!(OpenTypeTag::try_new(invalid).is_err(), "{invalid:?}");
+        }
+    }
+
+    #[test]
+    fn font_variations_are_fixed_point_equal_and_hashable() {
+        use std::hash::{Hash, Hasher};
+
+        let tag = OpenTypeTag::try_new("wght").unwrap();
+        let first = FontVariation::try_new(tag, 650.124).unwrap();
+        let same_cell = FontVariation::try_new(tag, 650.125).unwrap();
+        let different = FontVariation::try_new(tag, 650.14).unwrap();
+        assert_eq!(first.value_26_6(), 41_608);
+        assert_eq!(first.value().to_bits(), 650.125_f32.to_bits());
+        assert_eq!(first, same_cell);
+        assert_ne!(first, different);
+        let hash = |value: FontVariation| {
+            let mut state = std::collections::hash_map::DefaultHasher::new();
+            value.hash(&mut state);
+            state.finish()
+        };
+        assert_eq!(hash(first), hash(same_cell));
+        assert_ne!(hash(first), hash(different));
     }
 }

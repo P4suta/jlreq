@@ -27,6 +27,7 @@ items = [
   "FontResource",
   "FontSlant",
   "FontStyle",
+  "FontSynthesis",
   "FontVariation",
   "GlyphPlacement",
   "GlyphTransform",

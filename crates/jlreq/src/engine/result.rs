@@ -210,6 +210,7 @@ fn place_raw_glyph(
         offset_x,
         offset_y,
         font_size: cluster.size,
+        variations: Arc::clone(&cluster.variations),
         transform,
         bidi_level: cluster.bidi_level,
         writing_mode,
@@ -313,6 +314,37 @@ fn advance_block(value: i32, amount: i32, mode: WritingMode) -> i32 {
     }
 }
 
+fn next_paragraph_block_offset(
+    lines: &[TextLine],
+    current: i32,
+    options: &LayoutOptions,
+) -> i32 {
+    if lines.is_empty() {
+        return advance_block(
+            current,
+            options.font_size.saturating_add(options.line_gap),
+            options.writing_mode,
+        );
+    }
+    match options.writing_mode {
+        WritingMode::HorizontalTb => lines
+            .iter()
+            .map(|line| {
+                let (_, y, _, height) = line.bounds().as_26_6();
+                y.saturating_add(height)
+            })
+            .max()
+            .unwrap_or(current)
+            .saturating_add(options.line_gap),
+        WritingMode::VerticalRl => lines
+            .iter()
+            .map(|line| line.bounds().as_26_6().0)
+            .min()
+            .unwrap_or(current)
+            .saturating_sub(options.line_gap),
+    }
+}
+
 fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {
     left.start < right.end && right.start < left.end
 }
@@ -324,4 +356,3 @@ fn diagnostic_severity(value: jlreq_core::Severity) -> DiagnosticSeverity {
         _ => DiagnosticSeverity::Warning,
     }
 }
-

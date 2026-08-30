@@ -67,7 +67,7 @@ sha256 = "e75e3651a359f3886308b0a01867d18538d4e62423498f405c9b5e1e8c204221"
 
 [[file]]
 path = "docs/public-api.toml"
-sha256 = "543682c99a71b5e2c90bb02f655c8b47dbbde700040f28a01aee783f5451b5fa"
+sha256 = "ee6fde8f360f03405ad3e84bf505d70e26290d20582600fec6663a9b185d7301"
 
 [[file]]
 path = "spec/PROVENANCE.toml"

@@ -282,7 +282,7 @@ actionlint:
 # Validate every repository-owned POSIX shell entry point, including release packaging and
 # the three-engine census driver.
 shellcheck:
-    shellcheck engines/census-all.sh scripts/check-semver.sh scripts/finalize-release.sh scripts/package-binaries.sh scripts/run-mutation-smoke.sh scripts/verify-crates.sh scripts/verify-mutation-ledger.sh scripts/verify-release-state.sh
+    shellcheck engines/census-all.sh scripts/check-semver.sh scripts/finalize-release.sh scripts/package-binaries.sh scripts/run-mutation-smoke.sh scripts/verify-crates.sh scripts/verify-release-state.sh
 
 # Reject high-severity GitHub Actions and Dependabot security findings without
 # granting the auditor network or repository credentials.
@@ -311,19 +311,19 @@ msrv:
 # `::std::iter::empty()`) that do not type-check against this crate's domain types or its
 # `no_std` boundary — see the milestone report for the per-crate rate.
 mutants crate="" shard="":
-    sh scripts/verify-mutation-ledger.sh
+    cargo run --quiet -p xtask -- mutation-ledger
     cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} {{ if shard == "" { "" } else { "--shard " + shard } }} --all-features --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
 
 # Pull requests exercise only mutations in the changed Rust surface; weekly and release
 # workflows run the complete sharded gate above.
-mutants-smoke base:
-    sh scripts/verify-mutation-ledger.sh
-    sh scripts/run-mutation-smoke.sh {{ quote(base) }}
+mutants-smoke base shard="":
+    cargo run --quiet -p xtask -- mutation-ledger
+    sh scripts/run-mutation-smoke.sh {{ quote(base) }} {{ if shard == "" { "" } else { quote(shard) } }}
 
 # Hold generated and equivalent-mutant exclusions to their individual source hashes and
 # require every cargo-mutants regex to have one proof in the reviewable ledger.
 mutation-ledger:
-    sh scripts/verify-mutation-ledger.sh
+    cargo run --quiet -p xtask -- mutation-ledger
 
 # Build the independent OCaml reference engine (engines/ocaml/README.md). The engines are
 # outside the Cargo workspace and no Rust gate reads them, so the recipes below are the

@@ -26,6 +26,7 @@ mod derive;
 mod direction;
 mod generate;
 mod inventory;
+mod mutation;
 mod placeholder;
 mod policy;
 mod purity;
@@ -47,6 +48,7 @@ const GATES: &[Gate] = &[
     generate::GATE,
     attest::GATE,
     conform::GATE,
+    mutation::GATE,
     repository::GATE,
 ];
 

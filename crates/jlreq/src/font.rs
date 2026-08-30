@@ -4,7 +4,12 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::LayoutError;
+#[cfg(feature = "system-fonts")]
+use crate::OpenTypeTag;
+#[cfg(feature = "system-fonts")]
+use crate::units::quantize;
+use crate::units::to_f32;
+use crate::{FontVariation, LayoutError};
 
 /// Stable identifier assigned by a [`FontLibrary`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -76,6 +81,70 @@ impl Default for FontStyle {
     }
 }
 
+#[cfg(feature = "system-fonts")]
+fn system_attributes(style: FontStyle) -> fontique::Attributes {
+    let slant = match style.slant() {
+        FontSlant::Normal => fontique::FontStyle::Normal,
+        FontSlant::Italic => fontique::FontStyle::Italic,
+        FontSlant::Oblique => fontique::FontStyle::Oblique(None),
+    };
+    fontique::Attributes::new(
+        fontique::FontWidth::from_percentage(f32::from(style.width())),
+        slant,
+        fontique::FontWeight::new(f32::from(style.weight())),
+    )
+}
+
+/// Renderer-side synthetic styling requested for a selected font face.
+///
+/// Variable-axis synthesis is exposed separately through
+/// [`FontResource::default_variations`]. This value carries only operations a
+/// renderer must apply outside normal variable-font instancing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub struct FontSynthesis {
+    embolden: bool,
+    skew: i32,
+}
+
+impl FontSynthesis {
+    #[cfg(feature = "system-fonts")]
+    pub(crate) fn new(embolden: bool, skew: Option<f32>) -> Self {
+        Self {
+            embolden,
+            skew: skew.map_or(0, quantize),
+        }
+    }
+
+    /// Whether the renderer should apply synthetic emboldening.
+    #[must_use]
+    pub const fn embolden(self) -> bool {
+        self.embolden
+    }
+
+    /// Synthetic skew angle in degrees, when one is required.
+    #[must_use]
+    pub fn skew(self) -> Option<f32> {
+        (self.skew != 0).then(|| to_f32(self.skew))
+    }
+
+    /// Synthetic skew angle in signed 26.6 degrees.
+    #[must_use]
+    pub const fn skew_26_6(self) -> Option<i32> {
+        if self.skew == 0 {
+            None
+        } else {
+            Some(self.skew)
+        }
+    }
+
+    /// Whether neither emboldening nor skew is required.
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        !self.embolden && self.skew == 0
+    }
+}
+
 /// Font bytes retained by a completed layout for renderer use.
 #[derive(Clone)]
 #[non_exhaustive]
@@ -85,6 +154,8 @@ pub struct FontResource {
     pub(crate) face_index: u32,
     pub(crate) family: String,
     pub(crate) style: FontStyle,
+    pub(crate) default_variations: Vec<FontVariation>,
+    pub(crate) synthesis: FontSynthesis,
     pub(crate) shaper_data: Arc<harfrust::ShaperData>,
 }
 
@@ -95,6 +166,8 @@ impl PartialEq for FontResource {
             && self.bytes == other.bytes
             && self.family == other.family
             && self.style == other.style
+            && self.default_variations == other.default_variations
+            && self.synthesis == other.synthesis
     }
 }
 
@@ -109,6 +182,8 @@ impl fmt::Debug for FontResource {
             .field("face_index", &self.face_index)
             .field("family", &self.family)
             .field("style", &self.style)
+            .field("default_variations", &self.default_variations)
+            .field("synthesis", &self.synthesis)
             .finish_non_exhaustive()
     }
 }
@@ -142,6 +217,22 @@ impl FontResource {
     #[must_use]
     pub const fn style(&self) -> FontStyle {
         self.style
+    }
+
+    /// Variable-axis defaults selected with this face by the system matcher.
+    ///
+    /// Explicitly registered faces return an empty slice. During layout these
+    /// values override global settings with the same tag and are in turn
+    /// overridden by span-specific settings.
+    #[must_use]
+    pub fn default_variations(&self) -> &[FontVariation] {
+        &self.default_variations
+    }
+
+    /// Synthetic emboldening or skew required to reproduce the selected face.
+    #[must_use]
+    pub const fn synthesis(&self) -> FontSynthesis {
+        self.synthesis
     }
 }
 
@@ -203,12 +294,28 @@ impl FontLibrary {
         B: Into<Arc<[u8]>>,
     {
         let bytes = bytes.into();
+        self.register_face_with_rendering(
+            bytes,
+            face_index,
+            family.into(),
+            style,
+            Vec::new(),
+            FontSynthesis::default(),
+        )
+    }
+
+    fn register_face_with_rendering(
+        &mut self,
+        bytes: Arc<[u8]>,
+        face_index: u32,
+        family: String,
+        style: FontStyle,
+        default_variations: Vec<FontVariation>,
+        synthesis: FontSynthesis,
+    ) -> Result<FontId, LayoutError> {
         let font = harfrust::FontRef::from_index(&bytes, face_index)
             .map_err(|_| LayoutError::invalid_font(face_index))?;
-        // Parse shaping-critical tables exactly once. Layout engines retain this immutable
-        // cache through the resource instead of reconstructing it on first use.
         let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
-
         let ordinal = u32::try_from(self.fonts.len())
             .map_err(|_| LayoutError::invalid_document("font.too-many-ids", None))?;
         let id = FontId(ordinal);
@@ -216,8 +323,10 @@ impl FontLibrary {
             id,
             bytes,
             face_index,
-            family: family.into(),
+            family,
             style,
+            default_variations,
+            synthesis,
             shaper_data,
         });
         self.fallback_order.push(id);
@@ -326,14 +435,35 @@ impl FontLibrary {
         {
             let mut query = collection.query(&mut cache);
             query.set_families([family]);
+            query.set_attributes(system_attributes(style));
             query.matches_with(|font| {
-                selected = Some((font.blob.as_ref().to_vec(), font.index));
+                selected = Some((
+                    Arc::<[u8]>::from(font.blob.as_ref()),
+                    font.index,
+                    font.synthesis,
+                ));
                 QueryStatus::Stop
             });
         }
-        let (bytes, index) = selected
+        let (bytes, index, selected_synthesis) = selected
             .ok_or_else(|| LayoutError::invalid_document("font.system-family-not-found", None))?;
-        self.register_face(bytes, index, family, style)
+        let default_variations = selected_synthesis
+            .variation_settings()
+            .iter()
+            .map(|(tag, value)| {
+                FontVariation::try_new(OpenTypeTag::from_bytes(tag.to_be_bytes()), *value)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let synthesis =
+            FontSynthesis::new(selected_synthesis.embolden(), selected_synthesis.skew());
+        self.register_face_with_rendering(
+            bytes,
+            index,
+            family.to_owned(),
+            style,
+            default_variations,
+            synthesis,
+        )
     }
 
     pub(crate) fn ordered_candidates(
@@ -388,6 +518,8 @@ mod tests {
             face_index,
             family: family.to_owned(),
             style,
+            default_variations: Vec::new(),
+            synthesis: FontSynthesis::default(),
             shaper_data,
         }
     }
@@ -455,5 +587,65 @@ mod tests {
             library.ordered_candidates(&[], FontStyle::default()),
             [FontId(0), FontId(1), FontId(2)]
         );
+    }
+
+    #[test]
+    fn resource_equality_includes_every_rendering_field() {
+        let base = resource(0, 0, "Family", FontStyle::default());
+        let mut changed = base.clone();
+        assert_eq!(base, changed);
+
+        changed.id = FontId(1);
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.face_index = 1;
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.bytes = Arc::from(font_test_data::TINOS_SUBSET);
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.family = "Other".into();
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.style = FontStyle::new(700, 80, FontSlant::Italic);
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.default_variations.push(
+            FontVariation::try_new(crate::OpenTypeTag::try_new("wght").unwrap(), 650.0).unwrap(),
+        );
+        assert_ne!(base, changed);
+        changed = base.clone();
+        changed.synthesis = FontSynthesis {
+            embolden: true,
+            skew: 14 * 64,
+        };
+        assert_ne!(base, changed);
+    }
+
+    #[test]
+    fn synthesis_accessors_preserve_fixed_renderer_state() {
+        let synthesis = FontSynthesis {
+            embolden: true,
+            skew: 14 * 64,
+        };
+        assert!(synthesis.embolden());
+        assert_eq!(synthesis.skew(), Some(14.0));
+        assert_eq!(synthesis.skew_26_6(), Some(14 * 64));
+        assert!(!synthesis.is_empty());
+        assert!(FontSynthesis::default().is_empty());
+    }
+
+    #[cfg(feature = "system-fonts")]
+    #[test]
+    fn fontique_attributes_receive_weight_width_and_slant_without_loss() {
+        let attributes = system_attributes(FontStyle::new(625, 87, FontSlant::Oblique));
+        assert_eq!(attributes.weight.value().to_bits(), 625.0_f32.to_bits());
+        assert_eq!(attributes.width.percentage().to_bits(), 87.0_f32.to_bits());
+        assert_eq!(attributes.style, fontique::FontStyle::Oblique(None));
+
+        let italic = system_attributes(FontStyle::new(400, 100, FontSlant::Italic));
+        assert_eq!(italic.style, fontique::FontStyle::Italic);
+        let normal = system_attributes(FontStyle::default());
+        assert_eq!(normal.style, fontique::FontStyle::Normal);
     }
 }

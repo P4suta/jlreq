@@ -123,6 +123,24 @@ fn bidi_fallback_and_missing_glyphs_preserve_source_ranges() -> Result<(), Box<d
 }
 
 #[test]
+fn sparse_retained_font_ids_are_resolved_through_layout_lookup() -> Result<(), Box<dyn Error>> {
+    let (fonts, arabic, emoji) = fixture_fonts()?;
+    let layout = jlreq::layout("مرحبا", &fonts, LayoutOptions::try_new(240.0, 18.0)?)?;
+    assert_eq!(layout.fonts().len(), 1);
+    assert_eq!(layout.fonts()[0].id(), arabic);
+    assert!(layout.font(emoji).is_none());
+    for glyph in layout.glyphs() {
+        let resource = layout
+            .font(glyph.font_id())
+            .ok_or_else(|| std::io::Error::other("glyph font was not retained"))?;
+        assert_eq!(resource.id(), arabic);
+        assert_eq!(resource.bytes(), rwml_fonts::noto_sans_arabic_subset());
+        assert_eq!(resource.face_index(), 0);
+    }
+    Ok(())
+}
+
+#[test]
 fn paragraph_breaks_tabs_and_empty_input_are_defined() -> Result<(), Box<dyn Error>> {
     let (fonts, _, _) = fixture_fonts()?;
     let text = "A\r\nB\u{2028}C\tD\n";
@@ -173,6 +191,116 @@ fn ttc_variations_and_features_reach_the_shaper() -> Result<(), Box<dyn Error>> 
         .feature(liga);
     let layout = jlreq::layout("A", &variable, options)?;
     assert!(layout.glyphs().all(|glyph| glyph.glyph_id() != 0));
+    Ok(())
+}
+
+#[test]
+fn resolved_size_variations_and_draw_cells_match_shaping_runs() -> Result<(), Box<dyn Error>> {
+    let mut fonts = FontLibrary::new();
+    let id = fonts.register_face(
+        bytes(font_test_data::VAZIRMATN_VAR),
+        0,
+        "Vazirmatn",
+        FontStyle::default(),
+    )?;
+    let global = FontVariation::try_new(OpenTypeTag::try_new("wght")?, 450.0)?;
+    let span_value = FontVariation::try_new(OpenTypeTag::try_new("wght")?, 725.0)?;
+    let mut builder = DocumentBuilder::new("abc");
+    builder.span(
+        0..3,
+        SpanStyle::new().font_size(20.0)?.variation(span_value),
+    )?;
+    let layout = jlreq::layout_document(
+        &builder.build()?,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?.variation(global),
+    )?;
+    let glyphs = layout.glyphs().collect::<Vec<_>>();
+    assert!(glyphs.len() >= 2);
+    let shared_axes = glyphs[0].variations().as_ptr();
+    for glyph in glyphs {
+        assert_eq!(glyph.font_id(), id);
+        assert_eq!(glyph.font_size().to_bits(), 20.0_f32.to_bits());
+        assert_eq!(glyph.font_size_26_6(), 20 * 64);
+        assert_eq!(glyph.variations(), [span_value]);
+        assert_eq!(glyph.variations().as_ptr(), shared_axes);
+        assert_eq!(
+            glyph.draw_origin().x_26_6(),
+            glyph
+                .origin()
+                .x_26_6()
+                .saturating_add(glyph.geometry_26_6().4)
+        );
+        assert_eq!(
+            glyph.draw_origin().y_26_6(),
+            glyph
+                .origin()
+                .y_26_6()
+                .saturating_add(glyph.geometry_26_6().5)
+        );
+        let (_, _, width, height) = glyph.cell_bounds().as_26_6();
+        assert!(width > 0 && height > 0);
+    }
+    let resource = layout
+        .font(id)
+        .ok_or_else(|| std::io::Error::other("variable font was not retained"))?;
+    assert!(resource.default_variations().is_empty());
+    assert!(resource.synthesis().is_empty());
+    assert!(layout.bounds().is_some());
+    Ok(())
+}
+
+#[test]
+fn paragraph_progress_uses_actual_line_cells_and_applies_gap_once() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let gap = 3 * 64;
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let plain = jlreq::layout(
+            "A\nB",
+            &fonts,
+            LayoutOptions::try_new(240.0, 16.0)?
+                .writing_mode(mode)
+                .line_gap(3.0)?,
+        )?;
+        assert_eq!(plain.lines().len(), 2);
+        if mode == WritingMode::HorizontalTb {
+            assert_eq!(
+                plain.lines()[1]
+                    .origin()
+                    .y_26_6()
+                    .saturating_sub(plain.lines()[0].origin().y_26_6()),
+                19 * 64
+            );
+        } else {
+            assert_eq!(
+                plain.lines()[0]
+                    .origin()
+                    .x_26_6()
+                    .saturating_sub(plain.lines()[1].origin().x_26_6()),
+                19 * 64
+            );
+        }
+
+        let mut builder = DocumentBuilder::new("漢注\n字");
+        builder.span(0..6, SpanStyle::new().font_size(40.0)?)?;
+        builder.group_ruby(0..3, "かん")?;
+        builder.warichu(3..6)?;
+        let layout = jlreq::layout_document(
+            &builder.build()?,
+            &fonts,
+            LayoutOptions::try_new(240.0, 16.0)?
+                .writing_mode(mode)
+                .line_gap(3.0)?,
+        )?;
+        assert_eq!(layout.lines().len(), 2);
+        let first = layout.lines()[0].bounds().as_26_6();
+        let second = layout.lines()[1].bounds().as_26_6();
+        if mode == WritingMode::HorizontalTb {
+            assert!(second.1 >= first.1.saturating_add(first.3).saturating_add(gap));
+        } else {
+            assert!(second.0.saturating_add(second.2) <= first.0.saturating_sub(gap));
+        }
+    }
     Ok(())
 }
 
@@ -274,7 +402,11 @@ fn hit_caret_and_selection_round_trip_in_both_writing_modes() -> Result<(), Box<
             .ok_or_else(|| std::io::Error::other("fixture produced no glyph"))?;
         let hit = layout.hit_test(first.origin());
         assert!(hit.byte_offset() <= layout.source().len());
-        assert!(layout.caret_rect(hit.byte_offset()).is_some());
+        assert!(
+            layout
+                .caret_rect(hit.byte_offset(), hit.affinity())
+                .is_some()
+        );
         assert!(!layout.selection_rects(0..layout.source().len()).is_empty());
     }
     Ok(())
@@ -363,7 +495,10 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn Error>> {
     let tag = OpenTypeTag::try_new("kern")?;
     assert_eq!(tag.bytes(), *b"kern");
+    assert_eq!(OpenTypeTag::try_new("abc ")?.bytes(), *b"abc ");
     assert!(OpenTypeTag::try_new("bad").is_err());
+    assert!(OpenTypeTag::try_new("a bc").is_err());
+    assert!(OpenTypeTag::try_new(" abc").is_err());
     assert!(OpenTypeTag::try_new("a\ncd").is_err());
     let feature = OpenTypeFeature::new(tag, 7);
     assert_eq!((feature.tag(), feature.value()), (tag, 7));
@@ -760,6 +895,7 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
             line.origin(),
             line.inline_extent(),
             line.block_extent(),
+            line.bounds(),
             line.writing_mode(),
             line.glyphs().len(),
         );
@@ -774,6 +910,11 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
             glyph.advance_y(),
             glyph.offset_x(),
             glyph.offset_y(),
+            glyph.draw_origin(),
+            glyph.font_size(),
+            glyph.font_size_26_6(),
+            glyph.variations().len(),
+            glyph.cell_bounds(),
             glyph.geometry_26_6(),
         );
         if let Some(annotation) = glyph.annotation() {
@@ -784,6 +925,7 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
         assert_eq!(diagnostic.severity(), DiagnosticSeverity::Warning);
         let _ = (diagnostic.range(), diagnostic.message(), diagnostic.jlreq());
     }
+    let _ = layout.bounds();
 
     for test_point in [
         Point::try_new(-10_000.0, -10_000.0)?,
@@ -802,10 +944,13 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
     assert!(layout.hit_test_xy(f32::NAN, 0.0).is_err());
     assert!(
         layout
-            .caret_rect(layout.source().len().saturating_add(1))
+            .caret_rect(
+                layout.source().len().saturating_add(1),
+                Affinity::Downstream,
+            )
             .is_none()
     );
-    assert!(layout.caret_rect(1).is_none());
+    assert!(layout.caret_rect(1, Affinity::Downstream).is_none());
     assert!(layout.selection_rects(0..0).is_empty());
     assert!(
         layout
@@ -823,7 +968,7 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
     }
 
     let blank_line = jlreq::layout("\n", &fonts, LayoutOptions::try_new(100.0, 16.0)?)?;
-    assert!(blank_line.caret_rect(0).is_some());
+    assert!(blank_line.caret_rect(0, Affinity::Downstream).is_some());
     let empty = jlreq::layout("", &fonts, LayoutOptions::try_new(100.0, 16.0)?)?;
     let empty_hit = empty.hit_test(Point::default());
     assert_eq!(empty_hit.byte_offset(), 0);

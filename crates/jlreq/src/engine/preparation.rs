@@ -79,7 +79,8 @@ struct FontSelectionKey {
     direction: u8,
     language: String,
     features: Vec<([u8; 4], u32)>,
-    variations: Vec<([u8; 4], u32)>,
+    global_variations: Vec<([u8; 4], i32)>,
+    span_variations: Vec<([u8; 4], i32)>,
 }
 
 impl FontSelectionKey {
@@ -107,23 +108,29 @@ impl FontSelectionKey {
                 .iter()
                 .map(|feature| (feature.tag().bytes(), feature.value()))
                 .collect(),
-            variations: style
-                .variations
+            global_variations: style
+                .global_variations
                 .iter()
-                .map(|variation| (variation.tag().bytes(), variation.value().to_bits()))
+                .map(|variation| (variation.tag().bytes(), variation.value_26_6()))
+                .collect(),
+            span_variations: style
+                .span_variations
+                .iter()
+                .map(|variation| (variation.tag().bytes(), variation.value_26_6()))
                 .collect(),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct EffectiveStyle {
     families: Vec<String>,
     font_style: FontStyle,
     size: i32,
     language: String,
     features: Vec<OpenTypeFeature>,
-    variations: Vec<FontVariation>,
+    global_variations: Vec<FontVariation>,
+    span_variations: Vec<FontVariation>,
     role: TextRole,
 }
 
@@ -238,6 +245,7 @@ struct PreparedCluster {
     frame: jlreq_core::Frame,
     role: Option<jlreq_core::ClusterRole>,
     bidi_level: u8,
+    variations: Arc<[FontVariation]>,
     glyphs: Vec<RawGlyph>,
 }
 
@@ -387,7 +395,8 @@ fn base_effective_style(options: &LayoutOptions) -> EffectiveStyle {
         size: options.font_size,
         language: options.language.clone(),
         features: options.features.clone(),
-        variations: options.variations.clone(),
+        global_variations: options.variations.clone(),
+        span_variations: Vec::new(),
         role: TextRole::Text,
     }
 }
@@ -401,8 +410,35 @@ fn span_effective_style(base: &EffectiveStyle, style: &SpanStyle) -> EffectiveSt
         result.language.clone_from(language);
     }
     result.features.extend_from_slice(&style.features);
-    result.variations.extend_from_slice(&style.variations);
+    result.span_variations.clone_from(&style.variations);
     result.role = style.role;
     result
 }
 
+fn resolved_variations(
+    style: &EffectiveStyle,
+    resource: &FontResource,
+) -> Arc<[FontVariation]> {
+    let capacity = style
+        .global_variations
+        .len()
+        .saturating_add(resource.default_variations().len())
+        .saturating_add(style.span_variations.len());
+    let mut merged = Vec::with_capacity(capacity);
+    overlay_variations(&mut merged, &style.global_variations);
+    overlay_variations(&mut merged, resource.default_variations());
+    overlay_variations(&mut merged, &style.span_variations);
+    Arc::from(merged)
+}
+
+fn overlay_variations(merged: &mut Vec<FontVariation>, layer: &[FontVariation]) {
+    for variation in layer {
+        if let Some(index) = merged
+            .iter()
+            .position(|existing| existing.tag() == variation.tag())
+        {
+            merged.remove(index);
+        }
+        merged.push(*variation);
+    }
+}

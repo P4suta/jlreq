@@ -5,10 +5,10 @@ fn aggregate_run(
     source: &str,
     range: Range<usize>,
     glyphs: Vec<RawGlyph>,
-    size: i32,
-    role: TextRole,
+    style: &EffectiveStyle,
     bidi_level: u8,
     direction: Direction,
+    variations: &Arc<[FontVariation]>,
 ) -> Vec<PreparedCluster> {
     let mut starts: Vec<_> = glyphs
         .iter()
@@ -28,10 +28,11 @@ fn aggregate_run(
         result.push(PreparedCluster {
             range: start..end,
             advance: 0,
-            size,
+            size: style.size,
             frame: frame_for(piece),
-            role: classify_role(source, start..end, role),
+            role: classify_role(source, start..end, style.role),
             bidi_level,
+            variations: Arc::clone(variations),
             glyphs: Vec::new(),
         });
     }
@@ -146,4 +147,3 @@ fn shape_direction(mode: WritingMode, level: Level, script: ScriptClass) -> Dire
         Direction::LeftToRight
     }
 }
-

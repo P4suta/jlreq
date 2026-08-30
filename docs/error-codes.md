@@ -23,6 +23,12 @@ handwritten public-library sources in both directions.
 | `font.system-family-not-found` | Opt-in system discovery found no face for the requested family. |
 | `layout.invalid-option` | A numeric, tag, language, tab, feature, or variation option violates its invariant. |
 
+OpenType tags use this single option code when they are not exactly four bytes in
+`0x20..=0x7e`, contain a leading/interior space, or use non-space data after trailing
+padding. Invalid hit-test coordinates are also option failures; an invalid UTF-8 caret or
+selection boundary instead returns `None` or an empty rectangle list because result
+queries do not mutate layout state.
+
 ## High-level document errors
 
 | Code | Meaning |

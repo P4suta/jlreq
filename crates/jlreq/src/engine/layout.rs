@@ -212,12 +212,13 @@ impl LayoutEngine {
                 block_offset,
                 options,
             );
-            let consumed = paragraph_lines.len().max(1);
+            let next_block_offset = next_paragraph_block_offset(
+                &paragraph_lines,
+                block_offset,
+                options,
+            );
             lines.extend(paragraph_lines);
-            let line_count = i32::try_from(consumed).unwrap_or(i32::MAX);
-            let block_advance = line_count
-                .saturating_mul(options.font_size.saturating_add(options.line_gap).max(0));
-            block_offset = advance_block(block_offset, block_advance, options.writing_mode);
+            block_offset = next_block_offset;
         }
 
         call.diagnostics.sort_by_key(|diagnostic| {
@@ -408,6 +409,9 @@ impl LayoutEngine {
         while index < graphemes.len() {
             if graphemes[index].is_tab {
                 let item = &graphemes[index];
+                let resource = fonts
+                    .get(item.font_id)
+                    .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
                 clusters.push(PreparedCluster {
                     range: item.range.clone(),
                     advance: 0,
@@ -415,6 +419,7 @@ impl LayoutEngine {
                     frame: jlreq_core::Frame::Proportional,
                     role: None,
                     bidi_level: item.level.number(),
+                    variations: resolved_variations(&item.effective, resource),
                     glyphs: Vec::new(),
                 });
                 index = index.saturating_add(1);
@@ -434,6 +439,7 @@ impl LayoutEngine {
             let resource = fonts
                 .get(first.font_id)
                 .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+            let variations = resolved_variations(&first.effective, resource);
             #[cfg(test)]
             call.charge_shape();
             let raw = self.shape_font(ShapeRequest {
@@ -444,7 +450,7 @@ impl LayoutEngine {
                 direction: first.direction,
                 language: &first.effective.language,
                 features: &first.effective.features,
-                variations: &first.effective.variations,
+                variations: &variations,
             })?;
             call.used_fonts.insert(first.font_id);
             call.charge_glyphs(raw.len())?;
@@ -452,10 +458,10 @@ impl LayoutEngine {
                 source,
                 run_range,
                 raw,
-                first.effective.size,
-                first.effective.role,
+                &first.effective,
                 first.level.number(),
                 first.direction,
+                &variations,
             ));
         }
         Ok(PreparedText { clusters })
@@ -495,6 +501,7 @@ impl LayoutEngine {
             let resource = fonts
                 .get(id)
                 .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+            let variations = resolved_variations(style, resource);
             #[cfg(test)]
             call.charge_shape();
             let glyphs = self.shape_font(ShapeRequest {
@@ -505,7 +512,7 @@ impl LayoutEngine {
                 direction,
                 language: &style.language,
                 features: &style.features,
-                variations: &style.variations,
+                variations: &variations,
             })?;
             if !glyphs.is_empty() && glyphs.iter().all(|glyph| glyph.glyph_id != 0) {
                 let selection = (id, false);

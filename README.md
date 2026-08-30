@@ -33,26 +33,43 @@ let options = LayoutOptions::try_new(240.0, 16.0)?;
 let layout = jlreq::layout("日本語組版 — draw-ready glyphs", &fonts, options)?;
 
 for glyph in layout.glyphs() {
-    let font = &layout.fonts()[glyph.font_id().get() as usize];
-    renderer_draw(
-        font.bytes(),
-        font.face_index(),
-        glyph.glyph_id(),
-        glyph.origin(),
-        glyph.transform(),
-    );
+    if let Some(font) = layout.font(glyph.font_id()) {
+        renderer_draw(
+            font.bytes(),
+            font.face_index(),
+            glyph.glyph_id(),
+            glyph.draw_origin(),
+            glyph.font_size_26_6(),
+            glyph.variations(),
+            font.synthesis(),
+            glyph.transform(),
+        );
+    }
 }
 # fn renderer_draw(
-#     _: &[u8], _: u32, _: u32, _: jlreq::Point, _: jlreq::GlyphTransform,
+#     _: &[u8],
+#     _: u32,
+#     _: u32,
+#     _: jlreq::Point,
+#     _: i32,
+#     _: &[jlreq::FontVariation],
+#     _: jlreq::FontSynthesis,
+#     _: jlreq::GlyphTransform,
 # ) {}
 # Ok(())
 # }
 ```
 
-`TextLayout` owns every `FontResource` referenced by its glyphs. A renderer therefore needs
-only the returned layout: use `font_id` to select bytes and TTC face, draw `glyph_id` at the
-physical origin plus offsets, and apply `GlyphTransform`. Rasterization, GPU upload, PDF
+`TextLayout` owns every `FontResource` referenced by its glyphs. Retained IDs can be sparse,
+so renderers resolve them with `TextLayout::font`, not slice indexing. Draw `glyph_id` at
+`draw_origin`, instantiate it with the returned size and effective variations, apply the
+font's synthetic emboldening/skew and then `GlyphTransform`. Rasterization, GPU upload, PDF
 encoding, and drawing are intentionally outside the crate.
+
+`GlyphPlacement::cell_bounds`, `TextLine::bounds`, and `TextLayout::bounds` are physical
+layout-cell boundaries. They deliberately retain whitespace and annotation cells. They are
+not glyph ink bounds; a rasterizer must derive ink bounds from the selected outline and
+variation instance when clipping or painting decorations.
 
 Use `LayoutEngine` instead of `jlreq::layout` for batches. It reuses parsed fonts, shaping
 data, Unicode services, and core-composer scratch space, remains reusable after an error,
@@ -89,8 +106,12 @@ Horizontal and vertical results use physical coordinates. Latin rotation, uprigh
 tate-chu-yoko, per-line UAX #9 visual reordering, hit testing, caret rectangles, and
 selection rectangles therefore require no logical-to-physical conversion in the caller.
 OpenType features and variable-font axes can be set globally or per span. The optional
-`system-fonts` feature adds Fontique-backed OS discovery; only explicit bytes carry the
-cross-platform determinism guarantee.
+`system-fonts` feature adds Fontique-backed OS discovery, passes weight/width/slant to the
+matcher, and records its default axes and synthetic styling in `FontResource`. Global,
+system-selected, and span variation values are merged by tag in that order, with the last
+value winning. Only explicit bytes carry the cross-platform determinism guarantee; once a
+system face is registered, its copied bytes and recorded rendering state are stable for that
+layout, but repeating discovery against a changed OS collection may select another face.
 
 ## Typed documents and all nine inline constructs
 
@@ -114,7 +135,7 @@ reference marks, and script annotations are ordinary strings and are shaped auto
 # fn document(font_bytes: Vec<u8>) -> Result<(), jlreq::LayoutError> {
 use jlreq::{DocumentBuilder, FontLibrary, LayoutOptions, ScriptPosition};
 
-let text = "漢字12 注記 振分 字取 * H2O x+y";
+let text = "漢字12 注記 割注 振分 字取 * H2O x+y";
 let mut doc = DocumentBuilder::new(text);
 doc.group_ruby(0..6, "かんじ")?;
 doc.tate_chu_yoko(6..8)?;
@@ -174,7 +195,8 @@ The exact 0.1.x public API is frozen in
 [`docs/public-api.toml`](docs/public-api.toml); stable failures and diagnostics are in
 [`docs/error-codes.md`](docs/error-codes.md). Architecture, resource bounds, and the release
 handoff are documented in [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md),
-and [docs/RELEASING.md](docs/RELEASING.md).
+and [docs/RELEASING.md](docs/RELEASING.md). A Japanese usage guide is available at
+[`docs/guide.ja.md`](docs/guide.ja.md).
 
 ## License
 

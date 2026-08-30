@@ -60,10 +60,11 @@ cargo build --release -p jlreq-conformance
 target/release/jlreq-conformance run target/release/jlreq-sample-engine
 ```
 
-Full mutation runs cover both handwritten products. Only generated table files and exact
+Full mutation runs cover all three handwritten Rust products. Only generated table files and exact
 mutants proven equivalent in [docs/mutation-ledger.toml](docs/mutation-ledger.toml) may be
 excluded. `just mutation-ledger` binds every such entry to its source SHA-256 and rejects an
-undocumented or broad cargo-mutants exclusion.
+undocumented or broad cargo-mutants exclusion. The ledger gate is implemented in Rust so the
+same `just check` path runs on Windows without a POSIX hashing toolchain.
 
 ## Rules that are not negotiable
 
