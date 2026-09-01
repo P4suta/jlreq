@@ -159,6 +159,19 @@ impl Ruby {
     }
 }
 
+/// Placement side for a script attachment relative to its base text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum ScriptPosition {
+    /// The annotation side: above the line in horizontal writing, right of
+    /// the line in vertical writing.
+    #[default]
+    Superscript,
+    /// The mirrored side: below the line in horizontal writing, left of the
+    /// line in vertical writing.
+    Subscript,
+}
+
 /// One of the nine public inline structures.
 ///
 /// Its representation and lowering data are private. Named constructors carry only
@@ -194,6 +207,7 @@ pub(crate) enum ConstructKind {
     Script {
         range: Range<usize>,
         annotation: ShapedText,
+        position: ScriptPosition,
     },
     Formula(Range<usize>),
 }
@@ -263,11 +277,32 @@ impl Construct {
         }
     }
 
-    /// Attach a pre-shaped subscript/superscript complex to a base range.
+    /// Attach a pre-shaped script complex on the superscript side.
+    ///
+    /// Equivalent to [`script_at`](Self::script_at) with
+    /// [`ScriptPosition::Superscript`].
     #[must_use]
     pub const fn script(range: Range<usize>, annotation: ShapedText) -> Self {
+        Self::script_at(range, annotation, ScriptPosition::Superscript)
+    }
+
+    /// Attach a pre-shaped script complex on an explicit side.
+    ///
+    /// [`ScriptPosition::Superscript`] places the annotation on the same side
+    /// as ruby; [`ScriptPosition::Subscript`] mirrors it to the opposite
+    /// block side, and the line reserves space there.
+    #[must_use]
+    pub const fn script_at(
+        range: Range<usize>,
+        annotation: ShapedText,
+        position: ScriptPosition,
+    ) -> Self {
         Self {
-            kind: ConstructKind::Script { range, annotation },
+            kind: ConstructKind::Script {
+                range,
+                annotation,
+                position,
+            },
         }
     }
 

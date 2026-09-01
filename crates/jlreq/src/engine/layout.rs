@@ -672,7 +672,11 @@ impl LayoutEngine {
                         prepared: annotation_prepared,
                     });
                 },
-                DocumentConstruct::Script { annotation, .. } => {
+                DocumentConstruct::Script {
+                    annotation,
+                    position,
+                    ..
+                } => {
                     let annotation_options = annotation_options(options);
                     let annotation_prepared = self.prepare_text(
                         PrepareRequest {
@@ -687,7 +691,11 @@ impl LayoutEngine {
                     )?;
                     let shaped =
                         annotation_prepared.to_core(annotation, annotation_options.font_size)?;
-                    constructs.push(jlreq_core::Construct::script(local_range, shaped));
+                    constructs.push(jlreq_core::Construct::script_at(
+                        local_range,
+                        shaped,
+                        position.core(),
+                    ));
                     attachments[local_ordinal] = Some(AttachmentShape {
                         global_ordinal,
                         base: global_range,

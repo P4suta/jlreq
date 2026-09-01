@@ -87,6 +87,7 @@ items = [
   "RubyKind",
   "RubyRun",
   "SPECIFICATION",
+  "ScriptPosition",
   "Severity",
   "ShapedText",
   "Size",
