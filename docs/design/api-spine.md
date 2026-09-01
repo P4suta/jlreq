@@ -73,7 +73,7 @@ virtual-body heuristic, reaching the half-em body and scripts the heuristic does
 recognize. Ruby can be mono, group, or jukugo, with
 automatic or explicit `RubyRun` association. The builder shapes annotation strings for
 ruby, emphasis, reference marks, and scripts; callers never manufacture low-level
-annotation clusters. `ScriptPosition` is honoured in placement: superscripts share the
+annotation clusters. `ScriptPosition` is honored in placement: superscripts share the
 annotation side with ruby, subscripts mirror to the opposite block side, and the line
 reserves space on whichever sides it uses.
 

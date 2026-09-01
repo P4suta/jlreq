@@ -814,13 +814,13 @@ impl TextLayout {
                 inside: true,
             });
         }
-        let neighbour = if forward {
+        let neighbor = if forward {
             line_index.saturating_add(1)
         } else {
             line_index.checked_sub(1)?
         };
-        let mut candidates = self.caret_candidates(neighbour);
-        candidates.retain(|(rect, _, _)| self.line_index_for_rect(*rect) == Some(neighbour));
+        let mut candidates = self.caret_candidates(neighbor);
+        candidates.retain(|(rect, _, _)| self.line_index_for_rect(*rect) == Some(neighbor));
         let extreme = if forward {
             candidates
                 .into_iter()
@@ -851,16 +851,16 @@ impl TextLayout {
     /// returns `None`.
     #[must_use]
     pub fn caret_previous_line(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
-        self.caret_on_neighbour_line(offset, affinity, false)
+        self.caret_on_neighbor_line(offset, affinity, false)
     }
 
     /// The caret at the same inline position on the following line.
     #[must_use]
     pub fn caret_next_line(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
-        self.caret_on_neighbour_line(offset, affinity, true)
+        self.caret_on_neighbor_line(offset, affinity, true)
     }
 
-    fn caret_on_neighbour_line(
+    fn caret_on_neighbor_line(
         &self,
         offset: usize,
         affinity: Affinity,
