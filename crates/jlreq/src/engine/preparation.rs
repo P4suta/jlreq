@@ -11,6 +11,7 @@ struct CallState {
     diagnostics: Vec<Diagnostic>,
     font_candidates: BTreeMap<FontCandidateKey, Arc<[FontId]>>,
     font_selections: BTreeMap<FontSelectionKey, (FontId, bool)>,
+    reported_families: BTreeSet<String>,
     #[cfg(test)]
     shape_calls: usize,
 }
@@ -26,6 +27,7 @@ impl CallState {
             diagnostics: Vec::new(),
             font_candidates: BTreeMap::new(),
             font_selections: BTreeMap::new(),
+            reported_families: BTreeSet::new(),
             #[cfg(test)]
             shape_calls: 0,
         }

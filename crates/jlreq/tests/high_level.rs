@@ -482,18 +482,27 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
     assert!(!format!("{resource:?} {fonts:?}").is_empty());
 
     let mut foreign = FontLibrary::new();
-    foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
+    let in_bounds = foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
     foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
     let unknown = foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
+    // Both the out-of-bounds and the in-bounds foreign identifier must fail:
+    // provenance, not slot arithmetic, decides ownership.
     assert!(fonts.get(unknown).is_none());
-    assert_eq!(
-        expected_layout_error(fonts.set_primary(unknown))?.code(),
-        "font.unknown-id"
-    );
-    assert_eq!(
-        expected_layout_error(fonts.set_fallback_order([unknown]))?.code(),
-        "font.unknown-id"
-    );
+    assert!(fonts.get(in_bounds).is_none());
+    for id in [unknown, in_bounds] {
+        assert_eq!(
+            expected_layout_error(fonts.set_primary(id))?.code(),
+            "font.unknown-id"
+        );
+        assert_eq!(
+            expected_layout_error(fonts.set_fallback_order([id]))?.code(),
+            "font.unknown-id"
+        );
+    }
+    let layout = jlreq::layout("A", &fonts, LayoutOptions::try_new(160.0, 16.0)?)?;
+    assert!(layout.font(in_bounds).is_none());
+    let retained = layout.fonts()[0].id();
+    assert!(layout.font(retained).is_some());
 
     #[cfg(feature = "system-fonts")]
     assert_eq!(
@@ -504,6 +513,81 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
         .code(),
         "font.system-family-not-found"
     );
+    Ok(())
+}
+
+#[test]
+fn derived_families_match_spans_and_unknown_families_are_diagnosed() -> Result<(), Box<dyn Error>> {
+    // register_font derives "Noto Sans CJK JP" from the font's own name
+    // table, so a span can request it without a manual register_face call.
+    let mut fonts = FontLibrary::new();
+    let noto = fonts.register_font(bytes(font_test_data::NOTO_SANS_JP_CFF))?;
+    let tinos = fonts.register_face(
+        bytes(font_test_data::TINOS_SUBSET),
+        0,
+        "Tinos",
+        FontStyle::default(),
+    )?;
+    fonts.set_primary(tinos)?;
+    assert_eq!(
+        fonts.get(noto).map(jlreq::FontResource::family),
+        Some("Noto Sans CJK JP")
+    );
+
+    let text = "ABC";
+    let mut builder = DocumentBuilder::new(text);
+    builder.span(0..3, SpanStyle::new().with_family("noto sans cjk jp"))?;
+    let matched = jlreq::layout_document(
+        &builder.build()?,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?,
+    )?;
+    assert!(matched.glyphs().count() > 0);
+    assert!(matched.glyphs().all(|glyph| glyph.font_id() == noto));
+    assert!(
+        matched
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.code() != "font.unknown-family")
+    );
+
+    // A family nothing declares falls back silently in output but reports
+    // one warning per family per call, carrying the first requesting range.
+    let mut builder = DocumentBuilder::new(text);
+    builder.span(0..1, SpanStyle::new().with_family("Absent Family"))?;
+    builder.span(1..2, SpanStyle::new().with_family("Absent Family"))?;
+    builder.span(
+        2..3,
+        SpanStyle::new()
+            .with_family("Second Ghost")
+            .with_family("Tinos"),
+    )?;
+    let diagnosed = jlreq::layout_document(
+        &builder.build()?,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?,
+    )?;
+    assert!(diagnosed.glyphs().count() > 0);
+    let unknown_family: Vec<_> = diagnosed
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.code() == "font.unknown-family")
+        .collect();
+    assert_eq!(unknown_family.len(), 2);
+    assert_eq!(unknown_family[0].range(), Some(0..1));
+    assert_eq!(unknown_family[0].severity(), DiagnosticSeverity::Warning);
+    assert_eq!(unknown_family[1].range(), Some(2..3));
+
+    // Font metrics reach the renderer through the retained resource.
+    let resource = matched
+        .font(noto)
+        .ok_or_else(|| std::io::Error::other("the matched face was not retained"))?;
+    let metrics = resource
+        .metrics()
+        .ok_or_else(|| std::io::Error::other("the fixture font carries metrics tables"))?;
+    assert!(metrics.ascent() > 0.0);
+    assert!(metrics.descent() < 0.0);
+    assert!(metrics.underline_thickness().is_some());
     Ok(())
 }
 

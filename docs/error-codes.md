@@ -122,5 +122,6 @@ queries do not mutate layout state.
 | Code | Meaning |
 | --- | --- |
 | `font.missing-glyph` | No registered face covers a complete grapheme; the primary `.notdef` preserves its range. |
+| `font.unknown-family` | A span requested a family no registered face declares; the library fallback order was used. |
 | `layout.overfull` | A complete line remains wider than its measure after permitted adjustment. |
 | `layout.widow` | The complete layout cannot meet the requested final-line cluster minimum. |

@@ -582,13 +582,16 @@ impl TextLayout {
     /// Look up a retained font by its library identifier.
     ///
     /// Retained resources can have non-contiguous identifiers because a
-    /// layout owns only the faces used by its glyphs.
+    /// layout owns only the faces used by its glyphs. An identifier minted by
+    /// a different [`crate::FontLibrary`] returns `None` instead of the wrong
+    /// font, even when its slot index is in range.
     #[must_use]
     pub fn font(&self, id: FontId) -> Option<&FontResource> {
         self.fonts
             .binary_search_by_key(&id, FontResource::id)
             .ok()
             .and_then(|index| self.fonts.get(index))
+            .filter(|font| font.id.same_provenance(id))
     }
 
     /// Union of all physical line-cell bounds, or `None` for an empty layout.

@@ -24,6 +24,7 @@ items = [
   "DocumentBuilder",
   "FontId",
   "FontLibrary",
+  "FontMetrics",
   "FontResource",
   "FontSlant",
   "FontStyle",
