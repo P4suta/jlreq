@@ -373,6 +373,19 @@ impl LayoutEngine {
             let global =
                 range.start.saturating_add(global_offset)..range.end.saturating_add(global_offset);
             let effective = styles.resolve(&global)?;
+            for family in &effective.families {
+                if !fonts.has_family(family) && !call.reported_families.contains(family) {
+                    call.reported_families.insert(family.clone());
+                    call.diagnostics.push(Diagnostic {
+                        code: "font.unknown-family",
+                        severity: DiagnosticSeverity::Warning,
+                        range: Some(diagnostic_range.clone().unwrap_or_else(|| global.clone())),
+                        message:
+                            "no registered face declares the requested family; the library fallback order was used",
+                        jlreq: None,
+                    });
+                }
+            }
             let level = bidi
                 .levels
                 .get(range.start)

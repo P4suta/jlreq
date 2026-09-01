@@ -43,10 +43,18 @@ types follow one convention — `with_*` setters, bare-name getters — everywhe
 plain-text and typed-document calls with reusable internals.
 
 `FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
-primary face, and ordered fallback. The optional `system-fonts` feature is the only OS
-discovery surface. It matches weight, width, and slant and records selected default axes
-plus synthetic bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi
-types are private.
+primary face, and ordered fallback. When no family is supplied, one is derived from the
+font's own `name` table (typographic family preferred), so `register_font` plus a span
+family request just works; a span family that matches nothing keeps the fallback result
+and reports a `font.unknown-family` diagnostic. `FontId` equality identifies the library
+slot — preserving cross-library determinism — while lookups check provenance, so an
+identifier minted by a different library resolves to `None` rather than the wrong font.
+Each `FontResource` also exposes em-relative design metrics (ascent, descent, line gap,
+x-height, cap height, underline geometry) for renderer-side decoration; composition never
+depends on them. The optional `system-fonts` feature is the only OS discovery surface. It
+matches weight, width, and slant and records selected default axes plus synthetic
+bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi types are
+private.
 
 ## Typed authored content
 

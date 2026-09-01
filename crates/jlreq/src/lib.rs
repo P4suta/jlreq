@@ -14,6 +14,7 @@ mod error;
 mod font;
 mod options;
 mod result;
+mod sfnt;
 mod units;
 
 pub use document::{
@@ -22,7 +23,9 @@ pub use document::{
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};
-pub use font::{FontId, FontLibrary, FontResource, FontSlant, FontStyle, FontSynthesis};
+pub use font::{
+    FontId, FontLibrary, FontMetrics, FontResource, FontSlant, FontStyle, FontSynthesis,
+};
 pub use options::{
     Alignment, BaseDirection, FontVariation, LayoutOptions, OpenTypeFeature, OpenTypeTag,
     ResourceLimits, WritingMode,
