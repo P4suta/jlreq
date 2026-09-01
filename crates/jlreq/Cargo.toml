@@ -26,6 +26,12 @@ include = [
   "LICENSE-APACHE",
 ]
 
+# docs.rs must document the optional system-fonts surface; the `docsrs` cfg
+# gates nightly-only doc(cfg) feature badges.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = []
 system-fonts = ["dep:fontique"]

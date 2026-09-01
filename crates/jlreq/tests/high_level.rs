@@ -415,9 +415,9 @@ fn hit_caret_and_selection_round_trip_in_both_writing_modes() -> Result<(), Box<
 #[test]
 fn explicit_font_bytes_are_bit_identical_across_libraries() -> Result<(), Box<dyn Error>> {
     let mut first_fonts = FontLibrary::new();
-    first_fonts.add_font(bytes(font_test_data::NOTO_SANS_JP_CFF))?;
+    first_fonts.register_font(bytes(font_test_data::NOTO_SANS_JP_CFF))?;
     let mut second_fonts = FontLibrary::new();
-    second_fonts.add_font(bytes(font_test_data::NOTO_SANS_JP_CFF))?;
+    second_fonts.register_font(bytes(font_test_data::NOTO_SANS_JP_CFF))?;
     let first = jlreq::layout(
         "同一フォント",
         &first_fonts,
@@ -443,8 +443,9 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
         (style.weight(), style.width(), style.slant()),
         (550, 90, FontSlant::Italic)
     );
-    let primary = fonts.add_face(bytes(font_test_data::NOTO_SANS_JP_CFF), 0, "Primary", style)?;
-    let secondary = fonts.add_face(
+    let primary =
+        fonts.register_face(bytes(font_test_data::NOTO_SANS_JP_CFF), 0, "Primary", style)?;
+    let secondary = fonts.register_face(
         bytes(font_test_data::TINOS_SUBSET),
         0,
         "Secondary",
@@ -466,9 +467,9 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
     assert!(!format!("{resource:?} {fonts:?}").is_empty());
 
     let mut foreign = FontLibrary::new();
-    foreign.add_font(bytes(font_test_data::TINOS_SUBSET))?;
-    foreign.add_font(bytes(font_test_data::TINOS_SUBSET))?;
-    let unknown = foreign.add_font(bytes(font_test_data::TINOS_SUBSET))?;
+    foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
+    foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
+    let unknown = foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
     assert!(fonts.get(unknown).is_none());
     assert_eq!(
         expected_layout_error(fonts.set_primary(unknown))?.code(),
@@ -903,7 +904,7 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
     for glyph in layout.glyphs() {
         let _ = (
             glyph.glyph_id(),
-            glyph.range(),
+            glyph.source_range(),
             glyph.x(),
             glyph.y(),
             glyph.advance_x(),

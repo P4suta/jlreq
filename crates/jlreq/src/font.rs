@@ -11,6 +11,13 @@ use crate::units::quantize;
 use crate::units::to_f32;
 use crate::{FontVariation, LayoutError};
 
+pub(crate) fn unknown_font_id() -> LayoutError {
+    LayoutError::invalid_font_request(
+        "font.unknown-id",
+        "the font identifier does not belong to this font library",
+    )
+}
+
 /// Stable identifier assigned by a [`FontLibrary`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FontId(u32);
@@ -274,14 +281,6 @@ impl FontLibrary {
         self.register_face(bytes, 0, "", FontStyle::default())
     }
 
-    /// Alias for [`register_font`](Self::register_font), convenient in builder-style setup.
-    pub fn add_font<B>(&mut self, bytes: B) -> Result<FontId, LayoutError>
-    where
-        B: Into<Arc<[u8]>>,
-    {
-        self.register_font(bytes)
-    }
-
     /// Register one face from TTF, OTF, or TTC bytes.
     pub fn register_face<B>(
         &mut self,
@@ -316,8 +315,12 @@ impl FontLibrary {
         let font = harfrust::FontRef::from_index(&bytes, face_index)
             .map_err(|_| LayoutError::invalid_font(face_index))?;
         let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
-        let ordinal = u32::try_from(self.fonts.len())
-            .map_err(|_| LayoutError::invalid_document("font.too-many-ids", None))?;
+        let ordinal = u32::try_from(self.fonts.len()).map_err(|_| {
+            LayoutError::invalid_font_request(
+                "font.too-many-ids",
+                "the library already holds the maximum number of font identifiers",
+            )
+        })?;
         let id = FontId(ordinal);
         self.fonts.push(FontResource {
             id,
@@ -336,24 +339,9 @@ impl FontLibrary {
         Ok(id)
     }
 
-    /// Alias for [`register_face`](Self::register_face).
-    pub fn add_face<B>(
-        &mut self,
-        bytes: B,
-        face_index: u32,
-        family: impl Into<String>,
-        style: FontStyle,
-    ) -> Result<FontId, LayoutError>
-    where
-        B: Into<Arc<[u8]>>,
-    {
-        self.register_face(bytes, face_index, family, style)
-    }
-
     /// Make a registered face the `.notdef` source and first fallback candidate.
     pub fn set_primary(&mut self, id: FontId) -> Result<(), LayoutError> {
-        self.get(id)
-            .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+        self.get(id).ok_or_else(unknown_font_id)?;
         self.primary = Some(id);
         Ok(())
     }
@@ -366,7 +354,7 @@ impl FontLibrary {
         let mut next = Vec::new();
         for id in ids {
             if self.get(id).is_none() {
-                return Err(LayoutError::invalid_document("font.unknown-id", None));
+                return Err(unknown_font_id());
             }
             if !next.contains(&id) {
                 next.push(id);
@@ -412,6 +400,7 @@ impl FontLibrary {
     }
 
     #[cfg(feature = "system-fonts")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "system-fonts")))]
     /// Resolve and copy one system family face through Fontique.
     ///
     /// System selection is intentionally opt-in and is not covered by the cross-platform
@@ -445,8 +434,12 @@ impl FontLibrary {
                 QueryStatus::Stop
             });
         }
-        let (bytes, index, selected_synthesis) = selected
-            .ok_or_else(|| LayoutError::invalid_document("font.system-family-not-found", None))?;
+        let (bytes, index, selected_synthesis) = selected.ok_or_else(|| {
+            LayoutError::invalid_font_request(
+                "font.system-family-not-found",
+                "no installed system font matches the requested family",
+            )
+        })?;
         let default_variations = selected_synthesis
             .variation_settings()
             .iter()

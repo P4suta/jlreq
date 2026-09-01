@@ -17,8 +17,8 @@ pub struct Point {
 impl Point {
     /// Validate and quantize a physical point.
     pub fn try_new(x: f32, y: f32) -> Result<Self, LayoutError> {
-        let x = finite(x, OptionKind::ConstructGeometry)?;
-        let y = finite(y, OptionKind::ConstructGeometry)?;
+        let x = finite(x, OptionKind::Point)?;
+        let y = finite(y, OptionKind::Point)?;
         Ok(Self {
             x: quantize(x),
             y: quantize(y),
@@ -207,12 +207,6 @@ impl GlyphPlacement {
     #[must_use]
     pub fn source_range(&self) -> Range<usize> {
         self.source_range.clone()
-    }
-
-    /// Alias for [`source_range`](Self::source_range).
-    #[must_use]
-    pub fn range(&self) -> Range<usize> {
-        self.source_range()
     }
 
     /// Annotation-local attribution, if this glyph came from ruby or another attachment.
@@ -1076,7 +1070,6 @@ mod tests {
         assert_eq!(horizontal.font_id().get(), 0);
         assert_eq!(horizontal.glyph_id(), 77);
         assert_eq!(horizontal.source_range(), 2..5);
-        assert_eq!(horizontal.range(), 2..5);
         let annotation = horizontal.annotation().unwrap();
         assert_eq!(annotation.construct(), 3);
         assert_eq!(annotation.range(), 7..11);

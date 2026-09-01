@@ -84,7 +84,7 @@ impl OpenTypeTag {
                 });
         if bytes.len() != 4 || !printable || !trailing_spaces_only {
             return Err(LayoutError::invalid_option(
-                OptionKind::Feature,
+                OptionKind::Tag,
                 "an OpenType tag must contain four printable ASCII bytes with spaces only as trailing padding",
             ));
         }

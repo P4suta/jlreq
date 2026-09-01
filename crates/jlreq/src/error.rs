@@ -26,6 +26,10 @@ pub enum OptionKind {
     SpanFontSize,
     /// A construct-specific geometric value.
     ConstructGeometry,
+    /// A four-byte OpenType tag.
+    Tag,
+    /// A physical point coordinate.
+    Point,
 }
 
 /// A finite resource bounded by [`crate::ResourceLimits`].
@@ -74,6 +78,15 @@ pub enum LayoutError {
         code: &'static str,
         /// Responsible source range, when applicable.
         range: Option<Range<usize>>,
+        /// Stable explanatory text.
+        message: &'static str,
+    },
+    /// A font registration, identifier, or system-family request could not be satisfied.
+    InvalidFontRequest {
+        /// Stable machine-readable code.
+        code: &'static str,
+        /// Stable explanatory text.
+        message: &'static str,
     },
     /// A declared resource maximum was exceeded.
     ResourceLimit {
@@ -99,8 +112,20 @@ impl LayoutError {
         Self::InvalidOption { option, message }
     }
 
-    pub(crate) fn invalid_document(code: &'static str, range: Option<Range<usize>>) -> Self {
-        Self::InvalidDocument { code, range }
+    pub(crate) fn invalid_document(
+        code: &'static str,
+        range: Option<Range<usize>>,
+        message: &'static str,
+    ) -> Self {
+        Self::InvalidDocument {
+            code,
+            range,
+            message,
+        }
+    }
+
+    pub(crate) const fn invalid_font_request(code: &'static str, message: &'static str) -> Self {
+        Self::InvalidFontRequest { code, message }
     }
 
     pub(crate) const fn resource(resource: Resource, limit: usize, observed: usize) -> Self {
@@ -118,7 +143,7 @@ impl LayoutError {
             Self::InvalidFont { .. } => "font.invalid",
             Self::NoFonts => "font.none-registered",
             Self::InvalidOption { .. } => "layout.invalid-option",
-            Self::InvalidDocument { code, .. } => code,
+            Self::InvalidDocument { code, .. } | Self::InvalidFontRequest { code, .. } => code,
             Self::ResourceLimit { resource, .. } => match resource {
                 Resource::InputBytes => "limit.input-bytes",
                 Resource::Fonts => "limit.fonts",
@@ -143,6 +168,21 @@ impl LayoutError {
             _ => None,
         }
     }
+
+    /// Stable explanatory text, when the variant carries one.
+    ///
+    /// The text is intended for people; programs should match on
+    /// [`code`](Self::code) instead.
+    #[must_use]
+    pub const fn message(&self) -> Option<&'static str> {
+        match self {
+            Self::InvalidOption { message, .. }
+            | Self::InvalidDocument { message, .. }
+            | Self::InvalidFontRequest { message, .. } => Some(message),
+            Self::CoreInput(error) => Some(error.message()),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for LayoutError {
@@ -158,7 +198,24 @@ impl fmt::Display for LayoutError {
             Self::InvalidOption { option, message } => {
                 write!(formatter, "invalid {option:?}: {message}")
             },
-            Self::InvalidDocument { code, .. } => write!(formatter, "invalid document ({code})"),
+            Self::InvalidDocument {
+                code,
+                range,
+                message,
+            } => {
+                if let Some(range) = range {
+                    write!(
+                        formatter,
+                        "{message} at bytes {}..{} ({code})",
+                        range.start, range.end
+                    )
+                } else {
+                    write!(formatter, "{message} ({code})")
+                }
+            },
+            Self::InvalidFontRequest { code, message } => {
+                write!(formatter, "{message} ({code})")
+            },
             Self::ResourceLimit {
                 resource,
                 limit,
@@ -228,7 +285,11 @@ mod tests {
 
     #[test]
     fn ranges_and_error_sources_are_preserved_for_every_wrapped_error() {
-        let document = LayoutError::invalid_document("document.invalid-span-range", Some(2..5));
+        let document = LayoutError::invalid_document(
+            "document.invalid-span-range",
+            Some(2..5),
+            "a span range must be valid",
+        );
         assert_eq!(document.range(), Some(2..5));
         assert!(document.source().is_none());
 
@@ -242,5 +303,52 @@ mod tests {
 
         assert_eq!(LayoutError::NoFonts.range(), None);
         assert!(LayoutError::NoFonts.source().is_none());
+    }
+
+    #[test]
+    fn messages_and_display_carry_the_explanation_code_and_range() {
+        let ranged = LayoutError::invalid_document(
+            "document.invalid-span-range",
+            Some(2..5),
+            "a span range must be valid",
+        );
+        assert_eq!(ranged.message(), Some("a span range must be valid"));
+        assert_eq!(
+            ranged.to_string(),
+            "a span range must be valid at bytes 2..5 (document.invalid-span-range)"
+        );
+
+        let unranged = LayoutError::invalid_document(
+            "document.conflicting-break",
+            None,
+            "an offset cannot conflict",
+        );
+        assert_eq!(
+            unranged.to_string(),
+            "an offset cannot conflict (document.conflicting-break)"
+        );
+
+        let font = LayoutError::invalid_font_request("font.unknown-id", "the id is foreign");
+        assert_eq!(font.code(), "font.unknown-id");
+        assert_eq!(font.range(), None);
+        assert_eq!(font.message(), Some("the id is foreign"));
+        assert!(font.source().is_none());
+        assert_eq!(font.to_string(), "the id is foreign (font.unknown-id)");
+
+        let option = LayoutError::invalid_option(OptionKind::Point, "value must be finite");
+        assert_eq!(option.message(), Some("value must be finite"));
+        assert_eq!(option.to_string(), "invalid Point: value must be finite");
+        assert_eq!(
+            LayoutError::invalid_option(OptionKind::Tag, "four bytes").to_string(),
+            "invalid Tag: four bytes"
+        );
+
+        assert_eq!(
+            LayoutError::from(core_input_error()).message(),
+            Some(core_input_error().message())
+        );
+        assert_eq!(LayoutError::NoFonts.message(), None);
+        assert_eq!(LayoutError::from(core_compose_error()).message(), None);
+        assert_eq!(LayoutError::invalid_font(3).message(), None);
     }
 }
