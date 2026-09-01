@@ -17,9 +17,14 @@ const CONSTRUCT_RANGE_MESSAGE: &str =
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum TextRole {
-    /// Ordinary prose.
+    /// Ordinary prose; conservative inference stays enabled.
     #[default]
     Text,
+    /// Ordinary prose with inference suppressed.
+    ///
+    /// Use this to state "classify nothing here" — for example, an `!` that
+    /// must not be read as a dividing punctuation mark.
+    Plain,
     /// A numeral treated as one grouped Japanese numeral.
     GroupedNumeral,
     /// A unit-symbol character.
@@ -30,19 +35,51 @@ pub enum TextRole {
     Formula,
     /// A bracket delimiting warichu.
     WarichuBracket,
+    /// A decimal point between digits.
+    DecimalPoint,
+    /// A digit-group separator between digits.
+    DigitGroupSeparator,
+    /// A sentence-medial dividing punctuation mark (JLReq 3.1.6).
+    SentenceMedial,
+    /// A sentence-ending dividing punctuation mark.
+    SentenceTerminator,
 }
 
 impl TextRole {
     pub(crate) const fn core(self) -> jlreq_core::ClusterRole {
         match self {
-            Self::Text => jlreq_core::ClusterRole::Text,
+            Self::Text | Self::Plain => jlreq_core::ClusterRole::Text,
             Self::GroupedNumeral => jlreq_core::ClusterRole::GroupedNumeral,
             Self::UnitSymbol => jlreq_core::ClusterRole::UnitSymbol,
             Self::QuantitySymbol => jlreq_core::ClusterRole::QuantitySymbol,
             Self::Formula => jlreq_core::ClusterRole::Formula,
             Self::WarichuBracket => jlreq_core::ClusterRole::WarichuBracket,
+            Self::DecimalPoint => jlreq_core::ClusterRole::DecimalPoint,
+            Self::DigitGroupSeparator => jlreq_core::ClusterRole::DigitGroupSeparator,
+            Self::SentenceMedial => jlreq_core::ClusterRole::SentenceMedial,
+            Self::SentenceTerminator => jlreq_core::ClusterRole::SentenceTerminator,
         }
     }
+}
+
+/// The metrics virtual body (仮想ボディ) asserted for a span's clusters.
+///
+/// The frame drives JLReq spacing classification. `Auto` keeps the built-in
+/// heuristic — full-em for single Japanese or emoji characters, proportional
+/// otherwise — and the explicit values override it, including for scripts the
+/// heuristic does not recognize.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum MetricsFrame {
+    /// Use the built-in per-character heuristic.
+    #[default]
+    Auto,
+    /// Treat every cluster as a full-em body.
+    FullEm,
+    /// Treat every cluster as proportional.
+    Proportional,
+    /// Treat every cluster as a half-em body.
+    HalfEm,
 }
 
 /// Typed style applied to a UTF-8 byte range.
@@ -56,6 +93,7 @@ pub struct SpanStyle {
     pub(crate) features: Vec<OpenTypeFeature>,
     pub(crate) variations: Vec<FontVariation>,
     pub(crate) role: TextRole,
+    pub(crate) frame: MetricsFrame,
 }
 
 impl SpanStyle {
@@ -70,6 +108,7 @@ impl SpanStyle {
             features: Vec::new(),
             variations: Vec::new(),
             role: TextRole::Text,
+            frame: MetricsFrame::Auto,
         }
     }
 
@@ -163,6 +202,13 @@ impl SpanStyle {
         self
     }
 
+    /// Assert the metrics virtual body instead of the per-character heuristic.
+    #[must_use]
+    pub const fn with_frame(mut self, value: MetricsFrame) -> Self {
+        self.frame = value;
+        self
+    }
+
     /// Preferred families ahead of normal fallback, in request order.
     #[must_use]
     pub fn families(&self) -> &[String] {
@@ -203,6 +249,12 @@ impl SpanStyle {
     #[must_use]
     pub const fn role(&self) -> TextRole {
         self.role
+    }
+
+    /// Asserted metrics virtual body.
+    #[must_use]
+    pub const fn frame(&self) -> MetricsFrame {
+        self.frame
     }
 }
 
@@ -612,6 +664,7 @@ pub struct Document {
     pub(crate) paragraph_styles: Vec<(Range<usize>, ParagraphStyle)>,
     pub(crate) constructs: Vec<DocumentConstruct>,
     pub(crate) mandatory_breaks: Vec<usize>,
+    pub(crate) discretionary_breaks: Vec<usize>,
     pub(crate) prohibited_breaks: Vec<usize>,
 }
 
@@ -662,6 +715,12 @@ impl Document {
         &self.mandatory_breaks
     }
 
+    /// Author-suggested break offsets, ascending and deduplicated.
+    #[must_use]
+    pub fn discretionary_breaks(&self) -> &[usize] {
+        &self.discretionary_breaks
+    }
+
     /// Removed automatic break opportunities, ascending and deduplicated.
     #[must_use]
     pub fn prohibited_breaks(&self) -> &[usize] {
@@ -677,6 +736,7 @@ pub struct DocumentBuilder {
     paragraph_styles: Vec<(Range<usize>, ParagraphStyle)>,
     constructs: Vec<DocumentConstruct>,
     mandatory_breaks: Vec<usize>,
+    discretionary_breaks: Vec<usize>,
     prohibited_breaks: Vec<usize>,
 }
 
@@ -690,6 +750,7 @@ impl DocumentBuilder {
             paragraph_styles: Vec::new(),
             constructs: Vec::new(),
             mandatory_breaks: Vec::new(),
+            discretionary_breaks: Vec::new(),
             prohibited_breaks: Vec::new(),
         }
     }
@@ -761,6 +822,21 @@ impl DocumentBuilder {
     pub fn mandatory_break(&mut self, offset: usize) -> Result<&mut Self, LayoutError> {
         self.validate_offset(offset, "document.invalid-break")?;
         self.mandatory_breaks.push(offset);
+        Ok(self)
+    }
+
+    /// Offer a penalized break candidate at a UTF-8 boundary.
+    ///
+    /// A discretionary candidate is never required and carries a cost when
+    /// taken, so it works in both directions: it adds a candidate at a
+    /// boundary the automatic rules did not offer (where JLReq legality
+    /// permits one), and it discourages — without prohibiting — a break the
+    /// automatic rules did offer. JLReq legality still governs either way; a
+    /// position the classification forbids (such as inside a Latin word)
+    /// stays unbreakable.
+    pub fn discretionary_break(&mut self, offset: usize) -> Result<&mut Self, LayoutError> {
+        self.validate_offset(offset, "document.invalid-break")?;
+        self.discretionary_breaks.push(offset);
         Ok(self)
     }
 
@@ -980,17 +1056,20 @@ impl DocumentBuilder {
         });
         self.mandatory_breaks.sort_unstable();
         self.mandatory_breaks.dedup();
+        self.discretionary_breaks.sort_unstable();
+        self.discretionary_breaks.dedup();
         self.prohibited_breaks.sort_unstable();
         self.prohibited_breaks.dedup();
         if let Some(offset) = self
             .mandatory_breaks
             .iter()
+            .chain(self.discretionary_breaks.iter())
             .find(|offset| self.prohibited_breaks.binary_search(offset).is_ok())
         {
             return Err(LayoutError::invalid_document(
                 "document.conflicting-break",
                 Some(*offset..*offset),
-                "an offset cannot be both a mandatory and a prohibited break",
+                "an offset cannot be both a requested and a prohibited break",
             ));
         }
         for construct in &self.constructs {
@@ -1010,6 +1089,7 @@ impl DocumentBuilder {
             paragraph_styles: self.paragraph_styles,
             constructs: self.constructs,
             mandatory_breaks: self.mandatory_breaks,
+            discretionary_breaks: self.discretionary_breaks,
             prohibited_breaks: self.prohibited_breaks,
         })
     }

@@ -87,6 +87,7 @@ mod tests {
             global_variations: Vec::new(),
             span_variations: Vec::new(),
             role: TextRole::Text,
+            frame: crate::MetricsFrame::Auto,
         }
     }
 
@@ -605,6 +606,111 @@ mod tests {
             )
             .len(),
             1
+        );
+    }
+
+    #[test]
+    fn discretionary_breaks_are_lowered_between_allowed_and_mandatory() {
+        let source = "廃線"; // no automatic opportunity strictly inside a 2-cluster run
+        let (_, font, _) = fixture_fonts();
+        let prepared = PreparedText {
+            clusters: vec![cluster(0..3, font, 0), cluster(3..6, font, 0)],
+        };
+
+        let mut discretionary = DocumentBuilder::new(source);
+        discretionary.discretionary_break(3).unwrap();
+        let breaks = collect_breaks(
+            &discretionary.build().unwrap(),
+            &(0..6),
+            source,
+            &prepared,
+            &[],
+        );
+        let inserted = breaks
+            .iter()
+            .find(|candidate| candidate.offset() == 3)
+            .unwrap();
+        assert!(inserted.is_discretionary());
+        assert!(!inserted.is_mandatory());
+
+        // A mandatory break at the same offset wins over the suggestion.
+        let mut both = DocumentBuilder::new(source);
+        both.discretionary_break(3).unwrap();
+        both.mandatory_break(3).unwrap();
+        let breaks = collect_breaks(&both.build().unwrap(), &(0..6), source, &prepared, &[]);
+        let inserted = breaks
+            .iter()
+            .find(|candidate| candidate.offset() == 3)
+            .unwrap();
+        assert!(inserted.is_mandatory());
+    }
+
+    #[test]
+    fn frames_and_roles_resolve_assertions_before_heuristics() {
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Auto, "日"),
+            jlreq_core::Frame::FullEm
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Auto, "A"),
+            jlreq_core::Frame::Proportional
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::FullEm, "A"),
+            jlreq_core::Frame::FullEm
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Proportional, "日"),
+            jlreq_core::Frame::Proportional
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::HalfEm, "한"),
+            jlreq_core::Frame::HalfEm
+        );
+
+        // Default inference stays conservative and data-driven.
+        assert_eq!(
+            classify_role("3.4", 1..2, TextRole::Text),
+            Some(jlreq_core::ClusterRole::DecimalPoint)
+        );
+        assert_eq!(
+            classify_role("1,000", 1..2, TextRole::Text),
+            Some(jlreq_core::ClusterRole::DigitGroupSeparator)
+        );
+        assert_eq!(
+            classify_role("あ！", 3..6, TextRole::Text),
+            Some(jlreq_core::ClusterRole::SentenceTerminator)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::Text),
+            Some(jlreq_core::ClusterRole::SentenceMedial)
+        );
+        assert_eq!(classify_role("ab", 0..1, TextRole::Text), None);
+
+        // Plain suppresses inference; explicit roles override it.
+        assert_eq!(
+            classify_role("3.4", 1..2, TextRole::Plain),
+            Some(jlreq_core::ClusterRole::Text)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::Plain),
+            Some(jlreq_core::ClusterRole::Text)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::SentenceTerminator),
+            Some(jlreq_core::ClusterRole::SentenceTerminator)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::DecimalPoint),
+            Some(jlreq_core::ClusterRole::DecimalPoint)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::DigitGroupSeparator),
+            Some(jlreq_core::ClusterRole::DigitGroupSeparator)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::SentenceMedial),
+            Some(jlreq_core::ClusterRole::SentenceMedial)
         );
     }
 
