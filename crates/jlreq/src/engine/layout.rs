@@ -168,13 +168,34 @@ impl LayoutEngine {
             )?;
             let breaks =
                 collect_breaks(document, &segment.content, content, &prepared, &constructs);
-            let tabs = collect_tab_stops(content, options)?;
-            let paragraph = jlreq_core::Paragraph::builder(shaped, options.line_extent)
+            let overrides = paragraph_style_for(document, &segment.content)?;
+            let line_extent = overrides
+                .and_then(|style| style.line_extent)
+                .unwrap_or(options.line_extent);
+            let alignment = overrides
+                .and_then(|style| style.alignment)
+                .unwrap_or(options.alignment);
+            let first_line_indent = overrides
+                .and_then(|style| style.first_line_indent)
+                .unwrap_or(options.first_line_indent);
+            let widow = overrides
+                .and_then(|style| style.widow)
+                .unwrap_or(options.widow);
+            let policy = overrides
+                .and_then(|style| style.style.as_ref())
+                .unwrap_or(&options.style);
+            let explicit_stops = overrides
+                .and_then(|style| style.tab_stops.as_deref())
+                .unwrap_or(&options.tab_stops);
+            let tabs = collect_tab_stops(content, options, line_extent, explicit_stops)?;
+            let paragraph = jlreq_core::Paragraph::builder(shaped, line_extent)
                 .breaks(breaks)
                 .constructs(constructs)
                 .tab_stops(tabs)
-                .alignment(options.alignment.core())
+                .alignment(alignment.core())
                 .writing_mode(options.writing_mode.core())
+                .first_line_indent(first_line_indent)
+                .widow(widow.core())
                 .build()?;
 
             let core_limits = jlreq_core::CompositionLimits::default()
@@ -186,7 +207,7 @@ impl LayoutEngine {
             self.composer.set_limits(core_limits);
             let core_layout = self
                 .composer
-                .compose(&paragraph, &options.style)
+                .compose(&paragraph, policy)
                 .map_err(map_core_resource_error)?;
 
             for diagnostic in core_layout.diagnostics() {

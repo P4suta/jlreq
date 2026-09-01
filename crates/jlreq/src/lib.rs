@@ -18,8 +18,8 @@ mod sfnt;
 mod units;
 
 pub use document::{
-    Document, DocumentBuilder, InlineConstruct, RubyKind, RubyRun, ScriptPosition, SpanStyle,
-    TextRole,
+    Document, DocumentBuilder, InlineConstruct, ParagraphStyle, RubyKind, RubyRun, ScriptPosition,
+    SpanStyle, TextRole,
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};
@@ -28,7 +28,7 @@ pub use font::{
 };
 pub use options::{
     Alignment, BaseDirection, FontVariation, LayoutOptions, OpenTypeFeature, OpenTypeTag,
-    ResourceLimits, WritingMode,
+    ResourceLimits, TabAlignment, TabStop, Widow, WritingMode,
 };
 pub use result::{
     Affinity, AnnotationSource, Diagnostic, DiagnosticSeverity, GlyphPlacement, GlyphTransform,

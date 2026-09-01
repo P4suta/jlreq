@@ -517,6 +517,184 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn paragraph_styles_override_measure_alignment_indent_widow_and_tabs() -> Result<(), Box<dyn Error>>
+{
+    let (fonts, _, _) = fixture_fonts()?;
+    let base = LayoutOptions::try_new(240.0, 16.0)?;
+    let text = "ABC ABC\nABC ABC";
+    let first_paragraph = 0..7;
+    let second_paragraph = 8..15;
+
+    // A narrower measure wraps only the styled paragraph.
+    let mut narrow = DocumentBuilder::new(text);
+    narrow.paragraph_style(
+        second_paragraph.clone(),
+        jlreq::ParagraphStyle::new().with_line_extent(40.0)?,
+    )?;
+    let narrow = jlreq::layout_document(&narrow.build()?, &fonts, base.clone())?;
+    let lines_in = |layout: &jlreq::TextLayout, range: &Range<usize>| {
+        layout
+            .lines()
+            .iter()
+            .filter(|line| line.range().start >= range.start && line.range().end <= range.end)
+            .count()
+    };
+    assert_eq!(lines_in(&narrow, &first_paragraph), 1);
+    assert!(lines_in(&narrow, &second_paragraph) > 1);
+
+    // A first-line indent shifts exactly the styled paragraph's first glyph.
+    let plain = jlreq::layout_document(&DocumentBuilder::new(text).build()?, &fonts, base.clone())?;
+    let mut indented = DocumentBuilder::new(text);
+    indented.paragraph_style(
+        second_paragraph.clone(),
+        jlreq::ParagraphStyle::new().with_first_line_indent(16.0)?,
+    )?;
+    let indented = jlreq::layout_document(&indented.build()?, &fonts, base.clone())?;
+    let first_glyph_x = |layout: &jlreq::TextLayout, offset: usize| {
+        layout
+            .glyphs()
+            .find(|glyph| glyph.source_range().start == offset)
+            .map(|glyph| glyph.geometry_26_6().0)
+    };
+    assert_eq!(first_glyph_x(&indented, 0), first_glyph_x(&plain, 0));
+    let plain_second = first_glyph_x(&plain, 8).ok_or("second paragraph glyph")?;
+    let indented_second = first_glyph_x(&indented, 8).ok_or("second paragraph glyph")?;
+    assert_eq!(indented_second, plain_second.saturating_add(16 * 64));
+
+    // The document-wide indent from LayoutOptions applies to every paragraph.
+    let global_indent = jlreq::layout_document(
+        &DocumentBuilder::new(text).build()?,
+        &fonts,
+        base.clone().with_first_line_indent(16.0)?,
+    )?;
+    assert_eq!(
+        first_glyph_x(&global_indent, 0),
+        first_glyph_x(&plain, 0).map(|x| x.saturating_add(16 * 64))
+    );
+
+    // Alignment and policy overrides change only the styled paragraph.
+    let mut centered = DocumentBuilder::new(text);
+    centered.paragraph_style(
+        second_paragraph.clone(),
+        jlreq::ParagraphStyle::new()
+            .with_alignment(Alignment::Center)
+            .with_style(jlreq::Style::book_2020()),
+    )?;
+    let centered = jlreq::layout_document(&centered.build()?, &fonts, base.clone())?;
+    assert_eq!(first_glyph_x(&centered, 0), first_glyph_x(&plain, 0));
+    assert_ne!(centered, plain);
+
+    // Widow control is reachable both document-wide and per paragraph.
+    let widow_text = "ABCABCA";
+    let tight = LayoutOptions::try_new(48.0, 16.0)?;
+    let allow = jlreq::layout(widow_text, &fonts, tight.clone())?;
+    let kept = jlreq::layout(
+        widow_text,
+        &fonts,
+        tight.clone().with_widow(jlreq::Widow::MinimumClusters(3)),
+    )?;
+    let last_line_clusters = |layout: &jlreq::TextLayout| {
+        layout
+            .lines()
+            .last()
+            .map(|line| line.range().len())
+            .unwrap_or_default()
+    };
+    assert!(last_line_clusters(&kept) >= 3);
+    assert!(last_line_clusters(&allow) < 3 || allow != kept);
+    let mut styled_widow = DocumentBuilder::new(widow_text);
+    styled_widow.paragraph_style(
+        0..widow_text.len(),
+        jlreq::ParagraphStyle::new().with_widow(jlreq::Widow::MinimumClusters(3)),
+    )?;
+    let styled_widow = jlreq::layout_document(&styled_widow.build()?, &fonts, tight)?;
+    assert_eq!(styled_widow.lines().len(), kept.lines().len());
+    assert!(last_line_clusters(&styled_widow) >= 3);
+
+    // Explicit tab stops replace the ladder: a Start stop pins the cluster
+    // after the tab to its exact position.
+    let tab_text = "A\tB";
+    let stop = jlreq::TabStop::try_new(32.0, jlreq::TabAlignment::Start)?;
+    let tabbed = jlreq::layout(tab_text, &fonts, base.clone().with_tab_stops([stop]))?;
+    let after_tab = tabbed
+        .glyphs()
+        .find(|glyph| glyph.source_range().start == 2)
+        .ok_or("glyph after tab")?;
+    assert_eq!(after_tab.geometry_26_6().0, 32 * 64);
+    assert_eq!(stop.position().to_bits(), 32.0_f32.to_bits());
+    assert_eq!(stop.alignment(), jlreq::TabAlignment::Start);
+
+    // Validation: overlap at build, bad range at build, and a style that
+    // cuts a paragraph at layout.
+    let mut overlapping = DocumentBuilder::new(text);
+    overlapping.paragraph_style(0..7, jlreq::ParagraphStyle::new())?;
+    assert_eq!(
+        expected_layout_error(
+            overlapping
+                .paragraph_style(3..15, jlreq::ParagraphStyle::new())
+                .map(|_| ())
+        )?
+        .code(),
+        "document.overlapping-paragraph-styles"
+    );
+    assert_eq!(
+        expected_layout_error(
+            DocumentBuilder::new(text)
+                .paragraph_style(7..7, jlreq::ParagraphStyle::new())
+                .map(|_| ())
+        )?
+        .code(),
+        "document.invalid-paragraph-style-range"
+    );
+    let mut splitting = DocumentBuilder::new(text);
+    splitting.paragraph_style(0..10, jlreq::ParagraphStyle::new())?;
+    let error = expected_layout_error(jlreq::layout_document(
+        &splitting.build()?,
+        &fonts,
+        base.clone(),
+    ))?;
+    assert_eq!(error.code(), "document.paragraph-style-splits-paragraph");
+    assert_eq!(error.range(), Some(0..10));
+
+    // Read-back mirrors what the builder accepted.
+    let style = jlreq::ParagraphStyle::new()
+        .with_line_extent(120.0)?
+        .with_alignment(Alignment::End)
+        .with_style(jlreq::Style::book_2020())
+        .with_first_line_indent(8.0)?
+        .with_widow(jlreq::Widow::MinimumClusters(2))
+        .with_tab_stops([stop]);
+    assert_eq!(style.line_extent(), Some(120.0));
+    assert_eq!(style.alignment(), Some(Alignment::End));
+    assert_eq!(style.style(), Some(&jlreq::Style::book_2020()));
+    assert_eq!(style.first_line_indent(), Some(8.0));
+    assert_eq!(style.widow(), Some(jlreq::Widow::MinimumClusters(2)));
+    assert_eq!(style.tab_stops(), Some([stop].as_slice()));
+    let empty = jlreq::ParagraphStyle::new();
+    assert_eq!(empty.line_extent(), None);
+    assert_eq!(empty.alignment(), None);
+    assert!(empty.style().is_none());
+    assert_eq!(empty.first_line_indent(), None);
+    assert_eq!(empty.widow(), None);
+    assert!(empty.tab_stops().is_none());
+    let mut documented = DocumentBuilder::new(text);
+    documented.paragraph_style(first_paragraph.clone(), style.clone())?;
+    let document = documented.build()?;
+    let styles: Vec<_> = document.paragraph_styles().collect();
+    assert_eq!(styles, [(first_paragraph, &style)]);
+
+    // Options-level read-back for the three new document-wide controls.
+    let configured = base
+        .with_widow(jlreq::Widow::MinimumClusters(2))
+        .with_first_line_indent(4.0)?
+        .with_tab_stops([stop]);
+    assert_eq!(configured.widow(), jlreq::Widow::MinimumClusters(2));
+    assert_eq!(configured.first_line_indent().to_bits(), 4.0_f32.to_bits());
+    assert_eq!(configured.tab_stops(), [stop]);
+    Ok(())
+}
+
+#[test]
 fn script_positions_place_annotations_on_opposite_block_sides() -> Result<(), Box<dyn Error>> {
     let (fonts, _, _) = fixture_fonts()?;
     let build = |position: ScriptPosition, mode: WritingMode| -> Result<_, Box<dyn Error>> {

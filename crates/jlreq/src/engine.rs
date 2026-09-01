@@ -615,7 +615,7 @@ mod tests {
             .with_tab_width(2)
             .unwrap();
         assert_eq!(
-            collect_tab_stops("\t", &exact)
+            collect_tab_stops("\t", &exact, exact.line_extent, &[])
                 .unwrap()
                 .iter()
                 .map(|stop| stop.position())
@@ -627,8 +627,40 @@ mod tests {
             .with_tab_width(2)
             .unwrap()
             .with_limits(crate::ResourceLimits::default().with_max_constructs(1));
-        assert_eq!(collect_tab_stops("\t", &bounded).unwrap().len(), 1);
-        assert!(collect_tab_stops("no tab", &bounded).unwrap().is_empty());
+        assert_eq!(
+            collect_tab_stops("\t", &bounded, bounded.line_extent, &[])
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            collect_tab_stops("no tab", &bounded, bounded.line_extent, &[])
+                .unwrap()
+                .is_empty()
+        );
+
+        // Explicit stops replace the generated ladder and carry their
+        // alignment through to the core, quantized like every other length.
+        let explicit = [
+            crate::TabStop::try_new(24.0, crate::TabAlignment::Character('.')).unwrap(),
+            crate::TabStop::try_new(48.0, crate::TabAlignment::End).unwrap(),
+        ];
+        let stops = collect_tab_stops("\t", &exact, exact.line_extent, &explicit).unwrap();
+        assert_eq!(
+            stops
+                .iter()
+                .map(|stop| (stop.position(), stop.alignment()))
+                .collect::<Vec<_>>(),
+            [
+                (24 * 64, jlreq_core::TabAlignment::Character('.')),
+                (48 * 64, jlreq_core::TabAlignment::End),
+            ]
+        );
+        assert!(
+            collect_tab_stops("no tab", &exact, exact.line_extent, &explicit)
+                .unwrap()
+                .is_empty()
+        );
 
         let source = LayoutOptions::try_new(101.0, 17.0)
             .unwrap()

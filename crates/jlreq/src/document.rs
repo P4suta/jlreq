@@ -4,7 +4,9 @@
 use std::ops::Range;
 
 use crate::units::{non_negative, positive};
-use crate::{FontStyle, FontVariation, LayoutError, OpenTypeFeature, OptionKind};
+use crate::{
+    Alignment, FontStyle, FontVariation, LayoutError, OpenTypeFeature, OptionKind, TabStop, Widow,
+};
 
 const SPAN_RANGE_MESSAGE: &str =
     "a span range must be non-empty, inside the text, and on character boundaries";
@@ -205,6 +207,126 @@ impl SpanStyle {
 }
 
 impl Default for SpanStyle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Paragraph-scoped overrides applied to every paragraph a range contains.
+///
+/// Each control is optional; an unset control inherits the document-wide
+/// value from [`crate::LayoutOptions`]. This is what makes indented body
+/// text, a narrower quotation measure, or a centered heading possible inside
+/// one document.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ParagraphStyle {
+    pub(crate) line_extent: Option<i32>,
+    pub(crate) alignment: Option<Alignment>,
+    pub(crate) style: Option<jlreq_core::Style>,
+    pub(crate) first_line_indent: Option<i32>,
+    pub(crate) widow: Option<Widow>,
+    pub(crate) tab_stops: Option<Vec<TabStop>>,
+}
+
+impl ParagraphStyle {
+    /// A style that overrides nothing.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            line_extent: None,
+            alignment: None,
+            style: None,
+            first_line_indent: None,
+            widow: None,
+            tab_stops: None,
+        }
+    }
+
+    /// Override the available inline length for these paragraphs.
+    pub fn with_line_extent(mut self, value: f32) -> Result<Self, LayoutError> {
+        self.line_extent = Some(positive(value, OptionKind::LineExtent)?);
+        Ok(self)
+    }
+
+    /// Override line alignment for these paragraphs.
+    #[must_use]
+    pub const fn with_alignment(mut self, value: Alignment) -> Self {
+        self.alignment = Some(value);
+        self
+    }
+
+    /// Override the complete low-level JLReq policy profile for these paragraphs.
+    #[must_use]
+    pub fn with_style(mut self, value: jlreq_core::Style) -> Self {
+        self.style = Some(value);
+        self
+    }
+
+    /// Override the non-negative first-line indent (字下げ) for these paragraphs.
+    pub fn with_first_line_indent(mut self, value: f32) -> Result<Self, LayoutError> {
+        self.first_line_indent = Some(non_negative(value, OptionKind::FirstLineIndent)?);
+        Ok(self)
+    }
+
+    /// Override the final-line widow policy for these paragraphs.
+    #[must_use]
+    pub const fn with_widow(mut self, value: Widow) -> Self {
+        self.widow = Some(value);
+        self
+    }
+
+    /// Override the explicit tab stops for these paragraphs.
+    ///
+    /// An empty iterator overrides with "no explicit stops", restoring the
+    /// evenly spaced ladder even when the document-wide options declare stops.
+    #[must_use]
+    pub fn with_tab_stops<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = TabStop>,
+    {
+        self.tab_stops = Some(values.into_iter().collect());
+        self
+    }
+
+    /// Overridden inline length after 26.6 quantization, when set.
+    #[must_use]
+    pub fn line_extent(&self) -> Option<f32> {
+        self.line_extent.map(crate::units::to_f32)
+    }
+
+    /// Overridden line alignment, when set.
+    #[must_use]
+    pub const fn alignment(&self) -> Option<Alignment> {
+        self.alignment
+    }
+
+    /// Overridden low-level JLReq policy profile, when set.
+    #[must_use]
+    pub const fn style(&self) -> Option<&jlreq_core::Style> {
+        self.style.as_ref()
+    }
+
+    /// Overridden first-line indent after 26.6 quantization, when set.
+    #[must_use]
+    pub fn first_line_indent(&self) -> Option<f32> {
+        self.first_line_indent.map(crate::units::to_f32)
+    }
+
+    /// Overridden final-line widow policy, when set.
+    #[must_use]
+    pub const fn widow(&self) -> Option<Widow> {
+        self.widow
+    }
+
+    /// Overridden explicit tab stops, when set.
+    #[must_use]
+    pub fn tab_stops(&self) -> Option<&[TabStop]> {
+        self.tab_stops.as_deref()
+    }
+}
+
+impl Default for ParagraphStyle {
     fn default() -> Self {
         Self::new()
     }
@@ -487,6 +609,7 @@ impl InlineConstruct<'_> {
 pub struct Document {
     pub(crate) text: String,
     pub(crate) spans: Vec<(Range<usize>, SpanStyle)>,
+    pub(crate) paragraph_styles: Vec<(Range<usize>, ParagraphStyle)>,
     pub(crate) constructs: Vec<DocumentConstruct>,
     pub(crate) mandatory_breaks: Vec<usize>,
     pub(crate) prohibited_breaks: Vec<usize>,
@@ -508,6 +631,13 @@ impl Document {
     /// Styled spans with their ranges, ascending by start offset.
     pub fn spans(&self) -> impl Iterator<Item = (Range<usize>, &SpanStyle)> {
         self.spans
+            .iter()
+            .map(|(range, style)| (range.clone(), style))
+    }
+
+    /// Paragraph styles with their ranges, ascending by start offset.
+    pub fn paragraph_styles(&self) -> impl Iterator<Item = (Range<usize>, &ParagraphStyle)> {
+        self.paragraph_styles
             .iter()
             .map(|(range, style)| (range.clone(), style))
     }
@@ -544,6 +674,7 @@ impl Document {
 pub struct DocumentBuilder {
     text: String,
     spans: Vec<(Range<usize>, SpanStyle)>,
+    paragraph_styles: Vec<(Range<usize>, ParagraphStyle)>,
     constructs: Vec<DocumentConstruct>,
     mandatory_breaks: Vec<usize>,
     prohibited_breaks: Vec<usize>,
@@ -556,6 +687,7 @@ impl DocumentBuilder {
         Self {
             text: text.into(),
             spans: Vec::new(),
+            paragraph_styles: Vec::new(),
             constructs: Vec::new(),
             mandatory_breaks: Vec::new(),
             prohibited_breaks: Vec::new(),
@@ -586,6 +718,42 @@ impl DocumentBuilder {
             ));
         }
         self.spans.insert(insertion, (range, style));
+        Ok(self)
+    }
+
+    /// Add a non-overlapping paragraph style over a byte range.
+    ///
+    /// The overrides apply to every paragraph the range fully contains. A
+    /// range that cuts a paragraph in half is rejected at layout with
+    /// `document.paragraph-style-splits-paragraph`, because half a paragraph
+    /// cannot take its own measure or alignment.
+    pub fn paragraph_style(
+        &mut self,
+        range: Range<usize>,
+        style: ParagraphStyle,
+    ) -> Result<&mut Self, LayoutError> {
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-paragraph-style-range",
+            "a paragraph-style range must be non-empty, inside the text, and on character boundaries",
+        )?;
+        let insertion = paragraph_style_insertion_point(&self.paragraph_styles, range.start);
+        let overlaps_previous = insertion
+            .checked_sub(1)
+            .and_then(|index| self.paragraph_styles.get(index))
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        let overlaps_next = self
+            .paragraph_styles
+            .get(insertion)
+            .is_some_and(|(other, _)| ranges_overlap(other, &range));
+        if overlaps_previous || overlaps_next {
+            return Err(LayoutError::invalid_document(
+                "document.overlapping-paragraph-styles",
+                Some(range),
+                "paragraph styles must not overlap",
+            ));
+        }
+        self.paragraph_styles.insert(insertion, (range, style));
         Ok(self)
     }
 
@@ -805,6 +973,7 @@ impl DocumentBuilder {
     /// Validate cross-field relationships and finish the document atomically.
     pub fn build(mut self) -> Result<Document, LayoutError> {
         self.spans.sort_by_key(|(range, _)| range.start);
+        self.paragraph_styles.sort_by_key(|(range, _)| range.start);
         self.constructs.sort_by_key(|construct| {
             let range = construct.range();
             (range.start, range.end)
@@ -838,6 +1007,7 @@ impl DocumentBuilder {
         Ok(Document {
             text: self.text,
             spans: self.spans,
+            paragraph_styles: self.paragraph_styles,
             constructs: self.constructs,
             mandatory_breaks: self.mandatory_breaks,
             prohibited_breaks: self.prohibited_breaks,
@@ -892,6 +1062,13 @@ impl DocumentBuilder {
 
 fn span_insertion_point(spans: &[(Range<usize>, SpanStyle)], start: usize) -> usize {
     spans.partition_point(|(other, _)| other.start < start)
+}
+
+fn paragraph_style_insertion_point(
+    styles: &[(Range<usize>, ParagraphStyle)],
+    start: usize,
+) -> usize {
+    styles.partition_point(|(other, _)| other.start < start)
 }
 
 fn validate_ruby_runs(

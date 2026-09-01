@@ -166,6 +166,93 @@ impl FontVariation {
     }
 }
 
+/// Direction-independent alignment at an explicit tab stop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum TabAlignment {
+    /// Content starts at the stop.
+    #[default]
+    Start,
+    /// Content is centered on the stop.
+    Center,
+    /// Content ends at the stop.
+    End,
+    /// Occurrences of the character are aligned on the stop, decimal-point
+    /// style (JLReq 3.6.2).
+    Character(char),
+}
+
+impl TabAlignment {
+    pub(crate) const fn core(self) -> jlreq_core::TabAlignment {
+        match self {
+            Self::Start => jlreq_core::TabAlignment::Start,
+            Self::Center => jlreq_core::TabAlignment::Center,
+            Self::End => jlreq_core::TabAlignment::End,
+            Self::Character(character) => jlreq_core::TabAlignment::Character(character),
+        }
+    }
+}
+
+/// One explicit tab stop, positioned in the same units as the line extent.
+///
+/// Explicit stops replace the evenly spaced ladder derived from
+/// [`LayoutOptions::with_tab_width`] and unlock the center, end, and
+/// character (decimal-point) alignments.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TabStop {
+    position: i32,
+    alignment: TabAlignment,
+}
+
+impl TabStop {
+    /// Validate and quantize a stop at a positive inline position.
+    pub fn try_new(position: f32, alignment: TabAlignment) -> Result<Self, LayoutError> {
+        Ok(Self {
+            position: positive(position, OptionKind::TabStop)?,
+            alignment,
+        })
+    }
+
+    /// Inline position after 26.6 quantization.
+    #[must_use]
+    pub fn position(self) -> f32 {
+        to_f32(self.position)
+    }
+
+    /// Alignment applied at the stop.
+    #[must_use]
+    pub const fn alignment(self) -> TabAlignment {
+        self.alignment
+    }
+
+    pub(crate) fn core(self) -> Result<jlreq_core::TabStop, LayoutError> {
+        Ok(jlreq_core::TabStop::new(
+            self.position,
+            self.alignment.core(),
+        )?)
+    }
+}
+
+/// Final-line widow policy (JLReq 3.5.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum Widow {
+    /// Do not impose a final-line cluster minimum.
+    #[default]
+    Allow,
+    /// Prefer at least this many base clusters on the final line.
+    MinimumClusters(u16),
+}
+
+impl Widow {
+    pub(crate) const fn core(self) -> jlreq_core::Widow {
+        match self {
+            Self::Allow => jlreq_core::Widow::Allow,
+            Self::MinimumClusters(minimum) => jlreq_core::Widow::MinimumClusters(minimum),
+        }
+    }
+}
+
 /// Deterministic high-level resource limits for one call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -319,6 +406,9 @@ pub struct LayoutOptions {
     pub(crate) tab_width: u16,
     pub(crate) features: Vec<OpenTypeFeature>,
     pub(crate) variations: Vec<FontVariation>,
+    pub(crate) widow: Widow,
+    pub(crate) first_line_indent: i32,
+    pub(crate) tab_stops: Vec<TabStop>,
     pub(crate) limits: ResourceLimits,
 }
 
@@ -340,6 +430,9 @@ impl LayoutOptions {
             tab_width: 4,
             features: Vec::new(),
             variations: Vec::new(),
+            widow: Widow::Allow,
+            first_line_indent: 0,
+            tab_stops: Vec::new(),
             limits: ResourceLimits::default(),
         })
     }
@@ -442,6 +535,36 @@ impl LayoutOptions {
         self
     }
 
+    /// Set the document-wide final-line widow policy.
+    #[must_use]
+    pub const fn with_widow(mut self, value: Widow) -> Self {
+        self.widow = value;
+        self
+    }
+
+    /// Set the document-wide non-negative first-line indent (字下げ).
+    ///
+    /// Layout additionally requires the indent to be smaller than the line
+    /// extent.
+    pub fn with_first_line_indent(mut self, value: f32) -> Result<Self, LayoutError> {
+        self.first_line_indent = non_negative(value, OptionKind::FirstLineIndent)?;
+        Ok(self)
+    }
+
+    /// Replace the document-wide explicit tab stops.
+    ///
+    /// Non-empty stops replace the evenly spaced ladder derived from
+    /// [`with_tab_width`](Self::with_tab_width); an empty iterator restores
+    /// the ladder. Stops only apply to paragraphs that contain a tab.
+    #[must_use]
+    pub fn with_tab_stops<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = TabStop>,
+    {
+        self.tab_stops = values.into_iter().collect();
+        self
+    }
+
     /// Replace all high-level resource limits.
     #[must_use]
     pub const fn with_limits(mut self, value: ResourceLimits) -> Self {
@@ -513,6 +636,24 @@ impl LayoutOptions {
     #[must_use]
     pub fn variations(&self) -> &[FontVariation] {
         &self.variations
+    }
+
+    /// Current document-wide final-line widow policy.
+    #[must_use]
+    pub const fn widow(&self) -> Widow {
+        self.widow
+    }
+
+    /// Current document-wide first-line indent after 26.6 quantization.
+    #[must_use]
+    pub fn first_line_indent(&self) -> f32 {
+        crate::units::to_f32(self.first_line_indent)
+    }
+
+    /// Current document-wide explicit tab stops, in application order.
+    #[must_use]
+    pub fn tab_stops(&self) -> &[TabStop] {
+        &self.tab_stops
     }
 
     /// Current limits.

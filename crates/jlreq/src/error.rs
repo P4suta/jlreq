@@ -30,6 +30,10 @@ pub enum OptionKind {
     Tag,
     /// A physical point coordinate.
     Point,
+    /// A first-line indent.
+    FirstLineIndent,
+    /// An explicit tab-stop position.
+    TabStop,
 }
 
 /// A finite resource bounded by [`crate::ResourceLimits`].
