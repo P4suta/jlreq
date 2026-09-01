@@ -517,6 +517,212 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn lines_carry_indices_paragraph_membership_and_offset_lookup() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    // First paragraph wraps into two lines, then a blank paragraph, then one more.
+    let text = "AB CD EF\n\nMN";
+    let layout = jlreq::layout(text, &fonts, LayoutOptions::try_new(60.0, 16.0)?)?;
+    let lines = layout.lines();
+    assert_eq!(lines.len(), 4);
+    for (expected_index, line) in lines.iter().enumerate() {
+        assert_eq!(line.index(), expected_index);
+    }
+    assert_eq!(lines[0].paragraph_index(), 0);
+    assert_eq!(lines[1].paragraph_index(), 0);
+    assert_eq!(lines[2].paragraph_index(), 1);
+    assert_eq!(lines[3].paragraph_index(), 2);
+    assert!(lines[0].is_first_in_paragraph());
+    assert!(!lines[0].is_last_in_paragraph());
+    assert!(!lines[1].is_first_in_paragraph());
+    assert!(lines[1].is_last_in_paragraph());
+    assert!(lines[2].is_first_in_paragraph() && lines[2].is_last_in_paragraph());
+    assert!(lines[3].is_first_in_paragraph() && lines[3].is_last_in_paragraph());
+
+    assert_eq!(layout.line_index_at(0), Some(0));
+    assert_eq!(layout.line_index_at(lines[1].range().start), Some(1));
+    assert_eq!(layout.line_index_at(7), Some(1));
+    // The blank paragraph's empty line holds its own start offset.
+    assert_eq!(lines[2].range().len(), 0);
+    assert_eq!(layout.line_index_at(lines[2].range().start), Some(2));
+    assert_eq!(layout.line_index_at(10), Some(3));
+    // The paragraph separator byte belongs to no displayed line.
+    assert_eq!(layout.line_index_at(8), None);
+    assert_eq!(layout.line_index_at(text.len()), None);
+    Ok(())
+}
+
+#[test]
+fn glyphs_report_their_construct_and_words_and_graphemes_segment() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let text = "AB CD";
+    let mut builder = DocumentBuilder::new(text);
+    builder.group_ruby(0..2, "NN")?;
+    let document = builder.build()?;
+    let layout = jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
+
+    // Base glyphs inside the ruby range and its annotation glyphs report the
+    // construct ordinal; everything else reports none.
+    for glyph in layout.glyphs() {
+        let expected = if glyph.source_range().start < 2 {
+            Some(0)
+        } else {
+            None
+        };
+        assert_eq!(glyph.construct(), expected);
+    }
+    assert!(
+        layout
+            .glyphs()
+            .any(|glyph| glyph.annotation().is_some() && glyph.construct() == Some(0))
+    );
+    let ruby_range = document.construct(0).ok_or("construct read-back")?.range();
+    assert_eq!(ruby_range, 0..2);
+
+    // Grapheme boundaries respect multi-scalar clusters.
+    let family = "a👨\u{200d}👧b";
+    let family_layout = jlreq::layout(family, &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
+    assert_eq!(family_layout.next_grapheme_boundary(0), Some(1));
+    assert_eq!(
+        family_layout.next_grapheme_boundary(1),
+        Some(family.len() - 1)
+    );
+    assert_eq!(
+        family_layout.next_grapheme_boundary(family.len() - 1),
+        Some(family.len())
+    );
+    assert_eq!(family_layout.next_grapheme_boundary(family.len()), None);
+    assert_eq!(
+        family_layout.prev_grapheme_boundary(family.len()),
+        Some(family.len() - 1)
+    );
+    assert_eq!(
+        family_layout.prev_grapheme_boundary(family.len() - 1),
+        Some(1)
+    );
+    assert_eq!(family_layout.prev_grapheme_boundary(1), Some(0));
+    assert_eq!(family_layout.prev_grapheme_boundary(0), None);
+
+    // Word and sentence segments enclose their offsets on char boundaries.
+    assert_eq!(layout.word_range_at(0), Some(0..2));
+    assert_eq!(layout.word_range_at(1), Some(0..2));
+    assert_eq!(layout.word_range_at(2), Some(2..3));
+    assert_eq!(layout.word_range_at(3), Some(3..5));
+    assert_eq!(layout.word_range_at(text.len()), None);
+    let japanese = "これは日本語です。次の文。";
+    let japanese_layout = jlreq::layout(japanese, &fonts, LayoutOptions::try_new(640.0, 16.0)?)?;
+    let kanji_offset = japanese.find("日本語").ok_or("substring")?;
+    let word = japanese_layout
+        .word_range_at(kanji_offset)
+        .ok_or("word segment")?;
+    assert!(word.start <= kanji_offset && word.end > kanji_offset);
+    assert!(japanese.is_char_boundary(word.start) && japanese.is_char_boundary(word.end));
+    let first_sentence = japanese_layout.sentence_range_at(0).ok_or("sentence")?;
+    let terminator_end = japanese.find('。').ok_or("terminator")? + "。".len();
+    assert_eq!(first_sentence, 0..terminator_end);
+    let second_sentence = japanese_layout
+        .sentence_range_at(terminator_end)
+        .ok_or("sentence")?;
+    assert_eq!(second_sentence.start, terminator_end);
+    Ok(())
+}
+
+#[test]
+fn visual_caret_motion_walks_lines_and_crosses_them() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let text = "AB CD EF";
+    let layout = jlreq::layout(text, &fonts, LayoutOptions::try_new(60.0, 16.0)?)?;
+    assert!(layout.lines().len() > 1);
+    let caret_x = |offset: usize, affinity: Affinity| {
+        layout
+            .caret_rect(offset, affinity)
+            .map(|rect| rect.as_26_6().0)
+    };
+
+    // Walking forward from the line start strictly increases the caret's
+    // inline position until the line is exhausted, then continues on the
+    // following line.
+    let mut offset = 0;
+    let mut affinity = Affinity::Upstream;
+    let mut previous_x = caret_x(offset, affinity).ok_or("start caret")?;
+    let mut hops = 0;
+    let mut crossed_line = false;
+    while let Some(next) = layout.next_visual_caret(offset, affinity) {
+        hops += 1;
+        assert!(hops < 32, "visual walk must terminate");
+        let next_x = caret_x(next.byte_offset(), next.affinity()).ok_or("caret")?;
+        if layout.line_index_at(next.byte_offset().min(text.len() - 1))
+            == layout.line_index_at(offset.min(text.len() - 1))
+            && !crossed_line
+        {
+            assert!(next_x > previous_x, "same-line motion moves inline-forward");
+        } else {
+            crossed_line = true;
+        }
+        offset = next.byte_offset();
+        affinity = next.affinity();
+        previous_x = next_x;
+    }
+    assert!(crossed_line, "the walk reaches the second line");
+    assert!(hops >= 4);
+
+    // Backward motion from the walk's end returns to the layout start.
+    let mut back_offset = offset;
+    let mut back_affinity = affinity;
+    let mut back_hops = 0;
+    while let Some(previous) = layout.prev_visual_caret(back_offset, back_affinity) {
+        back_hops += 1;
+        assert!(back_hops < 32, "backward walk must terminate");
+        back_offset = previous.byte_offset();
+        back_affinity = previous.affinity();
+    }
+    assert_eq!(back_offset, 0);
+
+    // Line-to-line motion keeps the inline position and is reversible.
+    let second_line_start = layout.lines()[1].range().start;
+    let up = layout
+        .caret_previous_line(second_line_start, Affinity::Upstream)
+        .ok_or("previous line caret")?;
+    assert_eq!(
+        layout.line_index_at(up.byte_offset().min(text.len() - 1)),
+        Some(0)
+    );
+    let down = layout
+        .caret_next_line(up.byte_offset(), up.affinity())
+        .ok_or("next line caret")?;
+    assert_eq!(
+        layout.line_index_at(down.byte_offset().min(text.len() - 1)),
+        Some(1)
+    );
+    assert_eq!(
+        layout.caret_previous_line(0, Affinity::Upstream),
+        None,
+        "the first line has no previous line"
+    );
+
+    // Filled selection rectangles extend the continuing line to its edge.
+    let exact = layout.selection_rects(1..text.len());
+    let filled = layout.selection_rects_filled(1..text.len());
+    assert_eq!(filled.len(), 2);
+    let exact_first_width: i32 = exact
+        .iter()
+        .filter(|rect| rect.as_26_6().1 == filled[0].as_26_6().1)
+        .map(|rect| rect.as_26_6().2)
+        .sum();
+    assert!(filled[0].as_26_6().2 >= exact_first_width);
+    let line_trailing = {
+        let bounds = layout.lines()[0].bounds().as_26_6();
+        bounds.0 + bounds.2
+    };
+    assert_eq!(
+        filled[0].as_26_6().0 + filled[0].as_26_6().2,
+        line_trailing,
+        "the first selected line fills to its trailing edge"
+    );
+    assert!(layout.selection_rects_filled(0..0).is_empty());
+    Ok(())
+}
+
+#[test]
 fn discretionary_breaks_roles_and_frames_are_authorable() -> Result<(), Box<dyn Error>> {
     let (fonts, _, _) = fixture_fonts()?;
 

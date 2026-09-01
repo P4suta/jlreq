@@ -871,6 +871,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::Identity,
                 writing_mode: WritingMode::HorizontalTb,
+                construct: None,
             },
         );
         assert_eq!(horizontal.geometry_26_6(), (320, 832, 256, 0, 64, 128));
@@ -884,6 +885,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::Identity,
                 writing_mode: WritingMode::VerticalRl,
+                construct: None,
             },
         );
         assert_eq!(vertical.geometry_26_6(), (640, 320, 0, 384, 64, 128));
@@ -897,6 +899,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::TateChuYoko,
                 writing_mode: WritingMode::VerticalRl,
+                construct: None,
             },
         );
         assert_eq!(tate_chu_yoko.geometry_26_6(), (320, 832, 256, 0, 64, 128));

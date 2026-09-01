@@ -89,7 +89,7 @@ paragraph cannot take its own measure.
 
 A finished document reads back everything the builder accepted: `spans()`,
 `paragraph_styles()`, `constructs()` (as borrowed `InlineConstruct` values whose ordinals
-match glyph provenance), `mandatory_breaks()`, and `prohibited_breaks()`, and `SpanStyle`
+match glyph provenance), `mandatory_breaks()`, `discretionary_breaks()`, and `prohibited_breaks()`, and `SpanStyle`
 exposes a getter for each of its fields. Consumers can therefore inspect, diff, or
 serialize a document without a parallel data model.
 
@@ -116,7 +116,21 @@ may be sparse.
 geometry and support both writing modes and bidi. They never require the renderer to infer
 logical ordering from glyph order. `caret_rect` requires `Affinity`; hit-test results can
 therefore round-trip exactly at wraps, paragraph breaks, and bidi boundaries. Selection
-rectangles are split at visually unselected runs.
+rectangles are split at visually unselected runs; `selection_rects_filled` returns the
+per-line editor form instead, extended to the line edge wherever the selection continues.
+
+The layout is also the editor toolkit. Every line carries its `index()`,
+`paragraph_index()`, and first/last-in-paragraph flags; `line_index_at` maps a byte offset
+to its line (a blank paragraph's empty line holds its own start). Caret motion is built
+in: `next_visual_caret`/`prev_visual_caret` walk the reading surface (bidi-correct,
+crossing lines), and `caret_previous_line`/`caret_next_line` keep the inline position
+while changing lines. Text motion uses the same segmentation the layout itself uses —
+`next_grapheme_boundary`/`prev_grapheme_boundary`, and dictionary-backed `word_range_at`
+and `sentence_range_at`, so double-click selection is correct for Japanese without a
+consumer-side segmenter (segmenter types stay private; results are plain offsets and
+ranges). Every glyph reports `construct()`, the document ordinal of the typed structure it
+belongs to — base and annotation glyphs alike — so "select the whole ruby" is one lookup
+against `Document::construct`.
 
 `cell_bounds` and line/layout `bounds` are layout-cell boundaries, not outline ink
 boundaries. They preserve whitespace and annotation cells. Renderers derive ink bounds

@@ -118,7 +118,7 @@ impl LayoutEngine {
         let mut block_offset = 0_i32;
         let mut next_construct = 0_usize;
 
-        for segment in segments {
+        for (paragraph_index, segment) in segments.iter().enumerate() {
             let content = &document.text[segment.content.clone()];
             if content.is_empty() {
                 let origin = match options.writing_mode {
@@ -133,6 +133,10 @@ impl LayoutEngine {
                     writing_mode: options.writing_mode,
                     glyphs: Vec::new(),
                     hit_bounds: None,
+                    index: 0,
+                    paragraph_index,
+                    first_in_paragraph: true,
+                    last_in_paragraph: true,
                 });
                 block_offset = advance_block(
                     block_offset,
@@ -158,7 +162,7 @@ impl LayoutEngine {
                 range: &segment.content,
                 next_construct: &mut next_construct,
             };
-            let (constructs, attachments) = self.lower_constructs(
+            let (constructs, attachments, construct_globals) = self.lower_constructs(
                 document,
                 &mut construct_paragraph,
                 &prepared,
@@ -229,9 +233,13 @@ impl LayoutEngine {
             let paragraph_lines = map_core_lines(
                 &core_layout,
                 &prepared,
-                &attachments,
-                segment.content.start,
-                block_offset,
+                &LineMapping {
+                    attachments: &attachments,
+                    construct_globals: &construct_globals,
+                    global_offset: segment.content.start,
+                    block_offset,
+                    paragraph_index,
+                },
                 options,
             );
             let next_block_offset = next_paragraph_block_offset(
@@ -243,6 +251,7 @@ impl LayoutEngine {
             block_offset = next_block_offset;
         }
 
+        assign_line_metadata(&mut lines);
         call.diagnostics.sort_by_key(|diagnostic| {
             diagnostic
                 .range
@@ -569,9 +578,10 @@ impl LayoutEngine {
         fonts: &FontLibrary,
         options: &LayoutOptions,
         call: &mut CallState,
-    ) -> Result<(Vec<jlreq_core::Construct>, Vec<Option<AttachmentShape>>), LayoutError> {
+    ) -> Result<LoweredConstructs, LayoutError> {
         let mut constructs = Vec::new();
         let mut attachments = Vec::new();
+        let mut construct_globals = Vec::new();
         while let Some(construct) = document.constructs.get(*paragraph.next_construct) {
             let global_ordinal = *paragraph.next_construct;
             let global_range = construct.range();
@@ -594,6 +604,7 @@ impl LayoutEngine {
                 ..global_range.end.saturating_sub(paragraph.range.start);
             let local_ordinal = constructs.len();
             attachments.push(None);
+            construct_globals.push((local_range.clone(), global_ordinal));
             match construct {
                 DocumentConstruct::Ruby {
                     kind,
@@ -728,6 +739,33 @@ impl LayoutEngine {
                 },
             }
         }
-        Ok((constructs, attachments))
+        Ok((constructs, attachments, construct_globals))
+    }
+}
+
+/// The lowered core constructs, per-construct attachment shapes, and each
+/// construct's paragraph-local range paired with its document ordinal.
+type LoweredConstructs = (
+    Vec<jlreq_core::Construct>,
+    Vec<Option<AttachmentShape>>,
+    Vec<(Range<usize>, usize)>,
+);
+
+fn assign_line_metadata(lines: &mut [TextLine]) {
+    let total = lines.len();
+    for index in 0..total {
+        let paragraph = lines[index].paragraph_index;
+        let first = index
+            .checked_sub(1)
+            .and_then(|previous| lines.get(previous))
+            .is_none_or(|previous| previous.paragraph_index != paragraph);
+        let last = lines
+            .get(index.saturating_add(1))
+            .is_none_or(|next| next.paragraph_index != paragraph);
+        if let Some(line) = lines.get_mut(index) {
+            line.index = index;
+            line.first_in_paragraph = first;
+            line.last_in_paragraph = last;
+        }
     }
 }
