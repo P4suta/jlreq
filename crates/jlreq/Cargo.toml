@@ -36,6 +36,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = []
 system-fonts = ["dep:fontique"]
 
+[[example]]
+name = "system_fonts"
+required-features = ["system-fonts"]
+
 [dependencies]
 harfrust = { version = "=0.13.3", default-features = true }
 icu_segmenter = { version = "=2.3.0", default-features = true }
