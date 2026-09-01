@@ -71,6 +71,7 @@ fn collect_breaks(
             breaks.insert(offset, true);
         }
     }
+    synthesize_furawake_splits(document, paragraph_range, prepared, &mut breaks);
     breaks
         .into_iter()
         .map(|(offset, required)| {
@@ -81,6 +82,62 @@ fn collect_breaks(
             }
         })
         .collect()
+}
+
+/// Derive the `columns - 1` furawake sublines the caller left implicit.
+///
+/// The core contract wants explicit split positions (JLReq §3.7.2 describes
+/// furiwake sublines as split where declared), so when the caller supplies
+/// none inside a furawake range, the facade balances the range's shaped
+/// clusters across the requested columns — `count / columns` clusters per
+/// subline, earlier sublines taking the remainder — and inserts the resulting
+/// cluster-start offsets as mandatory breaks. Any caller-supplied break
+/// strictly inside the range disables synthesis for that construct, and the
+/// core then validates the explicit count as before. Ranges with fewer
+/// clusters than columns synthesize nothing; the core reports
+/// `input.furawake-split-count` with the construct's range.
+fn synthesize_furawake_splits(
+    document: &Document,
+    paragraph_range: &Range<usize>,
+    prepared: &PreparedText,
+    breaks: &mut BTreeMap<usize, bool>,
+) {
+    for construct in &document.constructs {
+        let DocumentConstruct::Furawake { range, columns, .. } = construct else {
+            continue;
+        };
+        if range.start < paragraph_range.start || range.end > paragraph_range.end {
+            continue;
+        }
+        let local = range.start.saturating_sub(paragraph_range.start)
+            ..range.end.saturating_sub(paragraph_range.start);
+        let has_user_split = breaks
+            .range(local.start.saturating_add(1)..local.end)
+            .next()
+            .is_some();
+        if has_user_split {
+            continue;
+        }
+        let window = prepared.cluster_range(&local);
+        let count = window.len();
+        let columns = usize::from(*columns);
+        let (Some(base), Some(remainder)) =
+            (count.checked_div(columns), count.checked_rem(columns))
+        else {
+            continue;
+        };
+        if base == 0 {
+            continue;
+        }
+        let mut cursor = window.start;
+        for lane in 0..columns.saturating_sub(1) {
+            let lane_size = base.saturating_add(usize::from(lane < remainder));
+            cursor = cursor.saturating_add(lane_size);
+            if let Some(cluster) = prepared.clusters.get(cursor) {
+                breaks.insert(cluster.range.start, true);
+            }
+        }
+    }
 }
 
 fn sorted_offsets_in_range<'a>(offsets: &'a [usize], range: &Range<usize>) -> &'a [usize] {

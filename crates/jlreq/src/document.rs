@@ -679,6 +679,16 @@ impl DocumentBuilder {
     }
 
     /// Distribute a range over aligned sublines (振分け).
+    ///
+    /// When no [`mandatory_break`](Self::mandatory_break) falls strictly
+    /// inside the range, layout balances the range's shaped clusters across
+    /// the requested columns automatically, earlier columns taking the
+    /// remainder. Supplying any break inside the range takes over completely:
+    /// exactly `columns - 1` splits are then required, and layout reports
+    /// `input.furawake-split-count` otherwise. Automatic balancing needs at
+    /// least one cluster per column and every synthesized split to be a legal
+    /// break point (a split cannot fall inside an indivisible nested
+    /// construct); outside those bounds, supply the splits explicitly.
     pub fn furawake(
         &mut self,
         range: Range<usize>,

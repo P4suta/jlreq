@@ -517,6 +517,73 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn furawake_without_manual_breaks_balances_clusters_across_columns() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let options = LayoutOptions::try_new(240.0, 16.0)?;
+
+    // The quickstart shape: furawake plus nothing else must lay out.
+    let mut quickstart = DocumentBuilder::new("AB MN PZ");
+    quickstart.furawake(3..5, 2, 1.0)?;
+    let auto = jlreq::layout_document(&quickstart.build()?, &fonts, options.clone())?;
+    assert!(auto.glyphs().count() > 0);
+
+    // Synthesis is exactly the balanced manual split: 2 clusters over 2
+    // columns splits after the first cluster.
+    let mut manual = DocumentBuilder::new("AB MN PZ");
+    manual.furawake(3..5, 2, 1.0)?;
+    manual.mandatory_break(4)?;
+    let manual = jlreq::layout_document(&manual.build()?, &fonts, options.clone())?;
+    assert_eq!(auto, manual);
+
+    // Six clusters over three columns: sublines of 2/2/2, splits at 2 and 4.
+    let mut auto_six = DocumentBuilder::new("ABCMNP");
+    auto_six.furawake(0..6, 3, 0.5)?;
+    let auto_six = jlreq::layout_document(&auto_six.build()?, &fonts, options.clone())?;
+    let mut manual_six = DocumentBuilder::new("ABCMNP");
+    manual_six.furawake(0..6, 3, 0.5)?;
+    manual_six.mandatory_break(2)?;
+    manual_six.mandatory_break(4)?;
+    let manual_six = jlreq::layout_document(&manual_six.build()?, &fonts, options.clone())?;
+    assert_eq!(auto_six, manual_six);
+
+    // Five clusters over two columns: the remainder goes to the earlier
+    // subline, so the split falls after three clusters, not two.
+    let mut auto_five = DocumentBuilder::new("ABCMN");
+    auto_five.furawake(0..5, 2, 0.0)?;
+    let auto_five = jlreq::layout_document(&auto_five.build()?, &fonts, options.clone())?;
+    let mut manual_five = DocumentBuilder::new("ABCMN");
+    manual_five.furawake(0..5, 2, 0.0)?;
+    manual_five.mandatory_break(3)?;
+    let manual_five = jlreq::layout_document(&manual_five.build()?, &fonts, options.clone())?;
+    assert_eq!(auto_five, manual_five);
+    let mut unbalanced = DocumentBuilder::new("ABCMN");
+    unbalanced.furawake(0..5, 2, 0.0)?;
+    unbalanced.mandatory_break(2)?;
+    let unbalanced = jlreq::layout_document(&unbalanced.build()?, &fonts, options.clone())?;
+    assert_ne!(auto_five, unbalanced);
+
+    // Fewer clusters than columns cannot balance; the core reports the
+    // explicit-count contract with the construct's range.
+    let mut tiny = DocumentBuilder::new("AB");
+    tiny.furawake(0..1, 2, 0.0)?;
+    let error = expected_layout_error(jlreq::layout_document(
+        &tiny.build()?,
+        &fonts,
+        options.clone(),
+    ))?;
+    assert_eq!(error.code(), "input.furawake-split-count");
+
+    // A caller-supplied split disables synthesis entirely: one split for
+    // three columns stays an explicit-count error instead of being topped up.
+    let mut partial = DocumentBuilder::new("ABCMNP");
+    partial.furawake(0..6, 3, 0.0)?;
+    partial.mandatory_break(2)?;
+    let error = expected_layout_error(jlreq::layout_document(&partial.build()?, &fonts, options))?;
+    assert_eq!(error.code(), "input.furawake-split-count");
+    Ok(())
+}
+
+#[test]
 fn derived_families_match_spans_and_unknown_families_are_diagnosed() -> Result<(), Box<dyn Error>> {
     // register_font derives "Noto Sans CJK JP" from the font's own name
     // table, so a span can request it without a manual register_face call.
