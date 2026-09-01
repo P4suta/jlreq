@@ -517,6 +517,189 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn corrupted_font_bytes_never_panic_and_never_yield_partial_results() -> Result<(), Box<dyn Error>>
+{
+    let pristine = font_test_data::NOTO_SANS_JP_CFF;
+    let options = LayoutOptions::try_new(120.0, 12.0)?;
+
+    // Every truncation prefix of the fixture font must register-or-refuse
+    // cleanly; a sparse subset is laid out end to end.
+    for length in 0..=pristine.len() {
+        let mut fonts = FontLibrary::new();
+        let Ok(_) = fonts.register_font(bytes_of(&pristine[..length])) else {
+            continue;
+        };
+        if length % 137 == 0
+            && let Ok(layout) = jlreq::layout("AB", &fonts, options.clone())
+        {
+            assert!(layout.glyphs().count() < 1_000);
+        }
+    }
+
+    // Every single-byte corruption of the metadata tables (name, head, hhea,
+    // OS/2, post live in the leading section of this fixture) must keep
+    // registration and the derived family/metrics readers total.
+    for index in 0..pristine.len().min(2_200) {
+        let mut corrupted = pristine.to_vec();
+        corrupted[index] ^= 0xff;
+        let mut fonts = FontLibrary::new();
+        if let Ok(id) = fonts.register_font(bytes_of(&corrupted)) {
+            let resource = fonts.get(id).ok_or("registered font is readable")?;
+            let _ = (resource.family().len(), resource.metrics());
+        }
+    }
+    Ok(())
+}
+
+fn bytes_of(data: &[u8]) -> Arc<[u8]> {
+    Arc::from(data.to_vec())
+}
+
+#[test]
+fn every_resource_limit_fails_exactly_below_its_observed_demand() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let text = "AB CD\nMN PZ";
+    let base = LayoutOptions::try_new(160.0, 16.0)?;
+    let mut engine = LayoutEngine::new();
+
+    // Directly countable demands: exactly-at succeeds, one-below fails with
+    // the documented code, and the engine stays reusable after each failure.
+    let font_bytes: usize = fonts.fonts().iter().map(|font| font.bytes().len()).sum();
+    let countable = [
+        ("limit.input-bytes", text.len(), {
+            let make: fn(ResourceLimits, usize) -> ResourceLimits =
+                ResourceLimits::with_max_input_bytes;
+            make
+        }),
+        ("limit.fonts", fonts.len(), ResourceLimits::with_max_fonts),
+        (
+            "limit.font-bytes",
+            font_bytes,
+            ResourceLimits::with_max_font_bytes,
+        ),
+        ("limit.paragraphs", 2, ResourceLimits::with_max_paragraphs),
+    ];
+    for (code, demand, apply) in countable {
+        let exact = base
+            .clone()
+            .with_limits(apply(ResourceLimits::default(), demand));
+        engine.layout(text, &fonts, exact)?;
+        let starved = base
+            .clone()
+            .with_limits(apply(ResourceLimits::default(), demand.saturating_sub(1)));
+        let error = expected_layout_error(engine.layout(text, &fonts, starved))?;
+        assert_eq!(error.code(), code, "one below the {code} demand");
+    }
+
+    // Search-derived demands: find the minimal passing budget, then pin the
+    // boundary from both sides.
+    let searchable = [
+        ("limit.runs", {
+            let make: fn(ResourceLimits, usize) -> ResourceLimits = ResourceLimits::with_max_runs;
+            make
+        }),
+        ("limit.glyphs", ResourceLimits::with_max_glyphs),
+        (
+            "limit.core-operations",
+            ResourceLimits::with_max_core_operations,
+        ),
+    ];
+    for (code, apply) in searchable {
+        let mut low = 0_usize;
+        let mut high = 1_000_000_usize;
+        let passes = |budget: usize, engine: &mut LayoutEngine| {
+            engine
+                .layout(
+                    text,
+                    &fonts,
+                    base.clone()
+                        .with_limits(apply(ResourceLimits::default(), budget)),
+                )
+                .is_ok()
+        };
+        assert!(
+            passes(high, &mut engine),
+            "the ceiling must pass for {code}"
+        );
+        while low + 1 < high {
+            let middle = low + (high - low) / 2;
+            if passes(middle, &mut engine) {
+                high = middle;
+            } else {
+                low = middle;
+            }
+        }
+        let error = expected_layout_error(
+            engine.layout(
+                text,
+                &fonts,
+                base.clone()
+                    .with_limits(apply(ResourceLimits::default(), low)),
+            ),
+        )?;
+        assert_eq!(error.code(), code, "one below the minimal {code} budget");
+        engine.layout(
+            text,
+            &fonts,
+            base.clone()
+                .with_limits(apply(ResourceLimits::default(), high)),
+        )?;
+    }
+
+    // The engine is fully reusable after the whole battery.
+    engine.layout(text, &fonts, base)?;
+    Ok(())
+}
+
+#[test]
+fn layouts_are_deterministic_and_partition_their_source() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let text = "AB CD EF\n\nMN PZ";
+    let options = LayoutOptions::try_new(60.0, 16.0)?
+        .with_first_line_indent(4.0)?
+        .with_widow(jlreq::Widow::MinimumClusters(2));
+
+    // Identical inputs are bit-identical, one-shot equals engine reuse, and
+    // a layout relaid from its own retained options equals itself.
+    let first = jlreq::layout(text, &fonts, options.clone())?;
+    let second = jlreq::layout(text, &fonts, options.clone())?;
+    assert_eq!(first, second);
+    let mut engine = LayoutEngine::new();
+    let reused_a = engine.layout(text, &fonts, options.clone())?;
+    let reused_b = engine.layout(text, &fonts, options)?;
+    assert_eq!(first, reused_a);
+    assert_eq!(reused_a, reused_b);
+    assert_eq!(jlreq::layout(text, &fonts, first.options().clone())?, first);
+
+    // Lines partition the non-separator source in order, and every base
+    // glyph stays inside its line's range.
+    let mut cursor = 0;
+    for line in first.lines() {
+        let range = line.range();
+        assert!(range.start >= cursor, "line ranges are ordered");
+        assert!(
+            text[cursor..range.start]
+                .chars()
+                .all(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')),
+            "only paragraph separators fall between lines"
+        );
+        for glyph in line.glyphs() {
+            if glyph.annotation().is_none() {
+                let source = glyph.source_range();
+                assert!(source.start >= range.start && source.end <= range.end);
+            }
+        }
+        cursor = range.end;
+    }
+    assert!(
+        text[cursor..]
+            .chars()
+            .all(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+    );
+    Ok(())
+}
+
+#[test]
 fn lines_carry_indices_paragraph_membership_and_offset_lookup() -> Result<(), Box<dyn Error>> {
     let (fonts, _, _) = fixture_fonts()?;
     // First paragraph wraps into two lines, then a blank paragraph, then one more.
