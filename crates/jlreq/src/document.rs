@@ -73,26 +73,37 @@ impl SpanStyle {
 
     /// Add a preferred family ahead of normal fallback.
     #[must_use]
-    pub fn family(mut self, family: impl Into<String>) -> Self {
+    pub fn with_family(mut self, family: impl Into<String>) -> Self {
         self.families.push(family.into());
+        self
+    }
+
+    /// Replace every preferred family. An empty iterator clears them.
+    #[must_use]
+    pub fn with_families<I, S>(mut self, families: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.families = families.into_iter().map(Into::into).collect();
         self
     }
 
     /// Set requested family matching attributes.
     #[must_use]
-    pub const fn font_style(mut self, style: FontStyle) -> Self {
+    pub const fn with_font_style(mut self, style: FontStyle) -> Self {
         self.font_style = style;
         self
     }
 
     /// Override the main font size for this span.
-    pub fn font_size(mut self, value: f32) -> Result<Self, LayoutError> {
+    pub fn with_font_size(mut self, value: f32) -> Result<Self, LayoutError> {
         self.font_size = Some(positive(value, OptionKind::SpanFontSize)?);
         Ok(self)
     }
 
     /// Override shaping language for this span.
-    pub fn language(mut self, value: impl Into<String>) -> Result<Self, LayoutError> {
+    pub fn with_language(mut self, value: impl Into<String>) -> Result<Self, LayoutError> {
         let value = value.into();
         if value.is_empty()
             || value.len() > 63
@@ -111,23 +122,85 @@ impl SpanStyle {
 
     /// Add a span-specific OpenType feature.
     #[must_use]
-    pub fn feature(mut self, value: OpenTypeFeature) -> Self {
+    pub fn with_feature(mut self, value: OpenTypeFeature) -> Self {
         self.features.push(value);
+        self
+    }
+
+    /// Replace every span-specific OpenType feature. An empty iterator clears them.
+    #[must_use]
+    pub fn with_features<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = OpenTypeFeature>,
+    {
+        self.features = values.into_iter().collect();
         self
     }
 
     /// Add a span-specific variable-font axis value.
     #[must_use]
-    pub fn variation(mut self, value: FontVariation) -> Self {
+    pub fn with_variation(mut self, value: FontVariation) -> Self {
         self.variations.push(value);
+        self
+    }
+
+    /// Replace every span-specific variable-font axis value. An empty iterator clears them.
+    #[must_use]
+    pub fn with_variations<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = FontVariation>,
+    {
+        self.variations = values.into_iter().collect();
         self
     }
 
     /// Assert a semantic classification instead of relying on conservative inference.
     #[must_use]
-    pub const fn role(mut self, value: TextRole) -> Self {
+    pub const fn with_role(mut self, value: TextRole) -> Self {
         self.role = value;
         self
+    }
+
+    /// Preferred families ahead of normal fallback, in request order.
+    #[must_use]
+    pub fn families(&self) -> &[String] {
+        &self.families
+    }
+
+    /// Requested family matching attributes.
+    #[must_use]
+    pub const fn font_style(&self) -> FontStyle {
+        self.font_style
+    }
+
+    /// Span font-size override after 26.6 quantization, when one is set.
+    #[must_use]
+    pub fn font_size(&self) -> Option<f32> {
+        self.font_size.map(crate::units::to_f32)
+    }
+
+    /// Span shaping-language override, when one is set.
+    #[must_use]
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
+    }
+
+    /// Span-specific OpenType features, in application order.
+    #[must_use]
+    pub fn features(&self) -> &[OpenTypeFeature] {
+        &self.features
+    }
+
+    /// Span-specific variable-font axis values, in application order.
+    #[must_use]
+    pub fn variations(&self) -> &[FontVariation] {
+        &self.variations
+    }
+
+    /// Asserted semantic classification.
+    #[must_use]
+    pub const fn role(&self) -> TextRole {
+        self.role
     }
 }
 
@@ -245,6 +318,156 @@ impl DocumentConstruct {
             | Self::Script { range, .. } => range.clone(),
         }
     }
+
+    fn view(&self) -> InlineConstruct<'_> {
+        match self {
+            Self::Ruby {
+                kind,
+                base,
+                annotation,
+                runs,
+            } => InlineConstruct::Ruby {
+                kind: *kind,
+                base: base.clone(),
+                annotation,
+                runs,
+            },
+            Self::TateChuYoko(range) => InlineConstruct::TateChuYoko {
+                range: range.clone(),
+            },
+            Self::Emphasis { range, mark } => InlineConstruct::EmphasisDots {
+                range: range.clone(),
+                mark: *mark,
+            },
+            Self::Warichu(range) => InlineConstruct::Warichu {
+                range: range.clone(),
+            },
+            Self::Furawake {
+                range,
+                columns,
+                line_gap,
+            } => InlineConstruct::Furawake {
+                range: range.clone(),
+                columns: *columns,
+                line_gap: crate::units::to_f32(*line_gap),
+            },
+            Self::Jidori { range, cells } => InlineConstruct::Jidori {
+                range: range.clone(),
+                cells: *cells,
+            },
+            Self::ReferenceMark { range, mark } => InlineConstruct::ReferenceMark {
+                range: range.clone(),
+                mark,
+            },
+            Self::Script {
+                range,
+                annotation,
+                position,
+            } => InlineConstruct::Script {
+                range: range.clone(),
+                annotation,
+                position: *position,
+            },
+            Self::Formula(range) => InlineConstruct::Formula {
+                range: range.clone(),
+            },
+        }
+    }
+}
+
+/// One typed inline construct read back from a [`Document`].
+///
+/// Values borrow from the document and mirror what the corresponding
+/// [`DocumentBuilder`] call accepted, so a document can be inspected,
+/// diffed, or serialized by its consumer.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum InlineConstruct<'a> {
+    /// Ruby annotation over a base range.
+    Ruby {
+        /// Relationship between base and annotation.
+        kind: RubyKind,
+        /// Base UTF-8 range in the document text.
+        base: Range<usize>,
+        /// Annotation string.
+        annotation: &'a str,
+        /// Explicit runs; empty when associations are derived automatically.
+        runs: &'a [RubyRun],
+    },
+    /// A range kept horizontal in vertical text (縦中横).
+    TateChuYoko {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+    },
+    /// An emphasis mark repeated alongside every base cluster (圏点).
+    EmphasisDots {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+        /// The repeated mark.
+        mark: char,
+    },
+    /// An inline cutting note (割注).
+    Warichu {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+    },
+    /// A range distributed over aligned sublines (振分け).
+    Furawake {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+        /// Number of sublines.
+        columns: u16,
+        /// Extra block-axis distance between sublines.
+        line_gap: f32,
+    },
+    /// A range fit into a fixed number of full-em cells (字取り).
+    Jidori {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+        /// Cell count.
+        cells: u16,
+    },
+    /// An attached reference mark (合印).
+    ReferenceMark {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+        /// The mark string.
+        mark: &'a str,
+    },
+    /// Attached superscript or subscript text (添字).
+    Script {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+        /// Annotation string.
+        annotation: &'a str,
+        /// Placement side.
+        position: ScriptPosition,
+    },
+    /// A range marked as mathematical content (数式).
+    Formula {
+        /// UTF-8 range in the document text.
+        range: Range<usize>,
+    },
+}
+
+impl InlineConstruct<'_> {
+    /// Document UTF-8 range the construct covers.
+    ///
+    /// For ruby this is the base range.
+    #[must_use]
+    pub fn range(&self) -> Range<usize> {
+        match self {
+            Self::Ruby { base, .. } => base.clone(),
+            Self::TateChuYoko { range }
+            | Self::EmphasisDots { range, .. }
+            | Self::Warichu { range }
+            | Self::Furawake { range, .. }
+            | Self::Jidori { range, .. }
+            | Self::ReferenceMark { range, .. }
+            | Self::Script { range, .. }
+            | Self::Formula { range } => range.clone(),
+        }
+    }
 }
 
 /// Validated styled text and typed inline constructs.
@@ -269,6 +492,39 @@ impl Document {
     #[must_use]
     pub const fn construct_count(&self) -> usize {
         self.constructs.len()
+    }
+
+    /// Styled spans with their ranges, ascending by start offset.
+    pub fn spans(&self) -> impl Iterator<Item = (Range<usize>, &SpanStyle)> {
+        self.spans
+            .iter()
+            .map(|(range, style)| (range.clone(), style))
+    }
+
+    /// Typed inline constructs, ascending by range.
+    ///
+    /// The iteration order matches the construct ordinals reported by
+    /// [`crate::AnnotationSource::construct`].
+    pub fn constructs(&self) -> impl Iterator<Item = InlineConstruct<'_>> {
+        self.constructs.iter().map(DocumentConstruct::view)
+    }
+
+    /// One typed inline construct by ordinal, when it exists.
+    #[must_use]
+    pub fn construct(&self, ordinal: usize) -> Option<InlineConstruct<'_>> {
+        self.constructs.get(ordinal).map(DocumentConstruct::view)
+    }
+
+    /// Required break offsets, ascending and deduplicated.
+    #[must_use]
+    pub fn mandatory_breaks(&self) -> &[usize] {
+        &self.mandatory_breaks
+    }
+
+    /// Removed automatic break opportunities, ascending and deduplicated.
+    #[must_use]
+    pub fn prohibited_breaks(&self) -> &[usize] {
+        &self.prohibited_breaks
     }
 }
 
@@ -695,30 +951,150 @@ mod tests {
             FontVariation::try_new(OpenTypeTag::try_new("wght").unwrap(), 525.0).unwrap();
         let font_style = FontStyle::new(525, 90, FontSlant::Italic);
         let style = SpanStyle::new()
-            .family("first")
-            .family("second")
-            .font_style(font_style)
-            .font_size(17.25)
+            .with_family("first")
+            .with_family("second")
+            .with_font_style(font_style)
+            .with_font_size(17.25)
             .unwrap()
-            .language("ja-Latn-JP")
+            .with_language("ja-Latn-JP")
             .unwrap()
-            .feature(feature)
-            .variation(variation)
-            .role(TextRole::Formula);
+            .with_feature(feature)
+            .with_variation(variation)
+            .with_role(TextRole::Formula);
 
-        assert_eq!(style.families, ["first", "second"]);
-        assert_eq!(style.font_style, font_style);
+        assert_eq!(style.families(), ["first", "second"]);
         assert_eq!(style.font_size, Some(17 * 64 + 16));
-        assert_eq!(style.language.as_deref(), Some("ja-Latn-JP"));
-        assert_eq!(style.features, [feature]);
-        assert_eq!(style.variations, [variation]);
-        assert_eq!(style.role, TextRole::Formula);
+        assert_eq!(style.font_style(), font_style);
+        assert_eq!(style.font_size(), Some(17.25));
+        assert_eq!(style.language(), Some("ja-Latn-JP"));
+        assert_eq!(style.features(), [feature]);
+        assert_eq!(style.variations(), [variation]);
+        assert_eq!(style.role(), TextRole::Formula);
 
-        assert!(SpanStyle::new().language("a".repeat(63)).is_ok());
-        assert!(SpanStyle::new().language("a".repeat(64)).is_err());
-        assert!(SpanStyle::new().language("a".repeat(65)).is_err());
-        assert!(SpanStyle::new().language("").is_err());
-        assert!(SpanStyle::new().language("ja_JP").is_err());
+        let defaults = SpanStyle::new();
+        assert!(defaults.families().is_empty());
+        assert_eq!(defaults.font_size(), None);
+        assert_eq!(defaults.language(), None);
+        assert!(defaults.features().is_empty());
+        assert!(defaults.variations().is_empty());
+        assert_eq!(defaults.role(), TextRole::Text);
+
+        let replaced = style
+            .clone()
+            .with_families(["third"])
+            .with_features([feature, feature])
+            .with_variations([variation, variation]);
+        assert_eq!(replaced.families(), ["third"]);
+        assert_eq!(replaced.features(), [feature, feature]);
+        assert_eq!(replaced.variations(), [variation, variation]);
+        let cleared = replaced
+            .with_families(Vec::<String>::new())
+            .with_features([])
+            .with_variations([]);
+        assert!(cleared.families().is_empty());
+        assert!(cleared.features().is_empty());
+        assert!(cleared.variations().is_empty());
+
+        assert!(SpanStyle::new().with_language("a".repeat(63)).is_ok());
+        assert!(SpanStyle::new().with_language("a".repeat(64)).is_err());
+        assert!(SpanStyle::new().with_language("a".repeat(65)).is_err());
+        assert!(SpanStyle::new().with_language("").is_err());
+        assert!(SpanStyle::new().with_language("ja_JP").is_err());
+    }
+
+    #[test]
+    fn documents_read_back_spans_constructs_and_breaks() {
+        let text = "漢字12 注記 割注 振分 字取 * H2O x+y";
+        let mut builder = DocumentBuilder::new(text);
+        builder
+            .span(0..6, SpanStyle::new().with_family("Main"))
+            .unwrap();
+        builder.group_ruby(0..6, "かんじ").unwrap();
+        builder.tate_chu_yoko(6..8).unwrap();
+        builder.emphasis_dots(9..15, '・').unwrap();
+        builder.warichu(16..22).unwrap();
+        builder.furawake(23..29, 2, 1.5).unwrap();
+        builder.jidori(30..36, 4).unwrap();
+        builder.reference_mark(37..38, "※").unwrap();
+        builder
+            .script(39..42, "2", ScriptPosition::Subscript)
+            .unwrap();
+        builder.formula(43..46).unwrap();
+        builder.mandatory_break(26).unwrap();
+        builder.prohibit_break(3).unwrap();
+        let document = builder.build().unwrap();
+
+        assert_eq!(document.text(), text);
+        assert_eq!(document.mandatory_breaks(), [26]);
+        assert_eq!(document.prohibited_breaks(), [3]);
+
+        let spans: Vec<_> = document.spans().collect();
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].0, 0..6);
+        assert_eq!(spans[0].1.families(), ["Main"]);
+
+        assert_eq!(document.construct_count(), 9);
+        let constructs: Vec<_> = document.constructs().collect();
+        assert_eq!(constructs.len(), 9);
+        assert_eq!(
+            constructs[0],
+            InlineConstruct::Ruby {
+                kind: RubyKind::Group,
+                base: 0..6,
+                annotation: "かんじ",
+                runs: &[],
+            }
+        );
+        assert_eq!(constructs[1], InlineConstruct::TateChuYoko { range: 6..8 });
+        assert_eq!(
+            constructs[2],
+            InlineConstruct::EmphasisDots {
+                range: 9..15,
+                mark: '・',
+            }
+        );
+        assert_eq!(constructs[3], InlineConstruct::Warichu { range: 16..22 });
+        assert_eq!(
+            constructs[4],
+            InlineConstruct::Furawake {
+                range: 23..29,
+                columns: 2,
+                line_gap: 1.5,
+            }
+        );
+        assert_eq!(
+            constructs[5],
+            InlineConstruct::Jidori {
+                range: 30..36,
+                cells: 4,
+            }
+        );
+        assert_eq!(
+            constructs[6],
+            InlineConstruct::ReferenceMark {
+                range: 37..38,
+                mark: "※",
+            }
+        );
+        assert_eq!(
+            constructs[7],
+            InlineConstruct::Script {
+                range: 39..42,
+                annotation: "2",
+                position: ScriptPosition::Subscript,
+            }
+        );
+        assert_eq!(constructs[8], InlineConstruct::Formula { range: 43..46 });
+
+        for (ordinal, construct) in document.constructs().enumerate() {
+            assert_eq!(document.construct(ordinal), Some(construct.clone()));
+            let range = construct.range();
+            assert!(range.start < range.end);
+            assert!(range.end <= text.len());
+        }
+        assert_eq!(document.construct(9), None);
+        assert_eq!(constructs[0].range(), 0..6);
+        assert_eq!(constructs[8].range(), 43..46);
     }
 
     #[test]

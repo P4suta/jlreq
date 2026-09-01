@@ -103,6 +103,7 @@ impl LayoutEngine {
                 fonts: Vec::new(),
                 diagnostics: Vec::new(),
                 writing_mode: options.writing_mode,
+                options: options.clone(),
             });
         }
 
@@ -238,6 +239,7 @@ impl LayoutEngine {
             fonts: retained_fonts,
             diagnostics: call.diagnostics,
             writing_mode: options.writing_mode,
+            options: options.clone(),
         })
     }
 

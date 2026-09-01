@@ -5,7 +5,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::units::{finite, quantize, to_f32};
-use crate::{FontId, FontResource, LayoutError, OptionKind, WritingMode};
+use crate::{FontId, FontResource, LayoutError, LayoutOptions, OptionKind, WritingMode};
 
 /// Physical point represented internally in deterministic 26.6 fixed point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -540,6 +540,7 @@ pub struct TextLayout {
     pub(crate) fonts: Vec<FontResource>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) writing_mode: WritingMode,
+    pub(crate) options: LayoutOptions,
 }
 
 impl TextLayout {
@@ -547,6 +548,23 @@ impl TextLayout {
     #[must_use]
     pub fn source(&self) -> &str {
         &self.source
+    }
+
+    /// Writing mode the layout was produced in.
+    ///
+    /// Available even for an empty layout, which has no lines to ask.
+    #[must_use]
+    pub const fn writing_mode(&self) -> WritingMode {
+        self.writing_mode
+    }
+
+    /// The exact options the layout was produced with.
+    ///
+    /// Editors can clone this value to lay the same content out again after
+    /// an edit without retaining their own copy.
+    #[must_use]
+    pub const fn options(&self) -> &LayoutOptions {
+        &self.options
     }
 
     /// Lines in paragraph order.
@@ -814,6 +832,10 @@ fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    fn test_options() -> LayoutOptions {
+        LayoutOptions::try_new(100.0, 10.0).unwrap()
+    }
 
     fn assert_float(actual: f32, expected: f32) {
         assert_eq!(actual.to_bits(), expected.to_bits());
@@ -1141,6 +1163,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: vec![diagnostic],
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         assert_eq!(layout.bounds().unwrap().as_26_6(), (32, 64, 448, 256));
         let before = layout.hit_test(Point::from_fixed(160, 200));
@@ -1194,6 +1217,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         assert_eq!(
             empty_horizontal
@@ -1267,6 +1291,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         let wrapped_end = layout.hit_test(Point::from_fixed(48, 32));
@@ -1334,6 +1359,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         for glyph in bidi.glyphs() {
             let bounds = glyph.cell_bounds();
@@ -1384,6 +1410,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         assert_eq!(
@@ -1436,6 +1463,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         for x in [-32, 0, 63, 64, 96, 160] {

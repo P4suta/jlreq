@@ -229,8 +229,8 @@ mod tests {
     fn style_resolver_scans_forward_and_shares_one_effective_style_per_span() {
         let options = LayoutOptions::try_new(300.0, 16.0).unwrap();
         let spans = vec![
-            (1..3, SpanStyle::new().family("First")),
-            (4..6, SpanStyle::new().family("Second")),
+            (1..3, SpanStyle::new().with_family("First")),
+            (4..6, SpanStyle::new().with_family("Second")),
         ];
         let mut resolver = StyleResolver::new(&spans, &options, 0);
 
@@ -353,10 +353,10 @@ mod tests {
             FontVariation::try_new(crate::OpenTypeTag::try_new("wght").unwrap(), 515.0).unwrap();
         let options = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .language("en")
+            .with_language("en")
             .unwrap()
-            .feature(feature)
-            .variation(variation);
+            .with_feature(feature)
+            .with_variation(variation);
 
         let left = vec![(2..4, SpanStyle::new())];
         assert_eq!(
@@ -377,15 +377,15 @@ mod tests {
         let span_variation =
             FontVariation::try_new(crate::OpenTypeTag::try_new("wdth").unwrap(), 90.0).unwrap();
         let span = SpanStyle::new()
-            .family("Secondary")
-            .font_style(FontStyle::new(600, 90, crate::FontSlant::Italic))
-            .font_size(18.0)
+            .with_family("Secondary")
+            .with_font_style(FontStyle::new(600, 90, crate::FontSlant::Italic))
+            .with_font_size(18.0)
             .unwrap()
-            .language("ja")
+            .with_language("ja")
             .unwrap()
-            .feature(span_feature)
-            .variation(span_variation)
-            .role(TextRole::Formula);
+            .with_feature(span_feature)
+            .with_variation(span_variation)
+            .with_role(TextRole::Formula);
         let merged = effective_style(&(1..3), &[(0..4, span)], &options).unwrap();
         assert_eq!(merged.families, ["Secondary"]);
         assert_eq!(merged.size, 18 * 64);
@@ -403,12 +403,12 @@ mod tests {
         };
         let options = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .variation(variation("wght", 400.0))
-            .variation(variation("wdth", 90.0))
-            .variation(variation("wght", 500.0));
+            .with_variation(variation("wght", 400.0))
+            .with_variation(variation("wdth", 90.0))
+            .with_variation(variation("wght", 500.0));
         let span = SpanStyle::new()
-            .variation(variation("wdth", 80.0))
-            .variation(variation("wght", 700.0));
+            .with_variation(variation("wdth", 80.0))
+            .with_variation(variation("wght", 700.0));
         let style = span_effective_style(&base_effective_style(&options), &span);
         let (fonts, first, _) = fixture_fonts();
         let mut resource = fonts.get(first).unwrap().clone();
@@ -612,7 +612,7 @@ mod tests {
     fn tab_stops_and_annotation_options_honor_exact_boundaries() {
         let exact = LayoutOptions::try_new(64.0, 16.0)
             .unwrap()
-            .tab_width(2)
+            .with_tab_width(2)
             .unwrap();
         assert_eq!(
             collect_tab_stops("\t", &exact)
@@ -624,15 +624,15 @@ mod tests {
         );
         let bounded = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .tab_width(2)
+            .with_tab_width(2)
             .unwrap()
-            .limits(crate::ResourceLimits::default().with_max_constructs(1));
+            .with_limits(crate::ResourceLimits::default().with_max_constructs(1));
         assert_eq!(collect_tab_stops("\t", &bounded).unwrap().len(), 1);
         assert!(collect_tab_stops("no tab", &bounded).unwrap().is_empty());
 
         let source = LayoutOptions::try_new(101.0, 17.0)
             .unwrap()
-            .alignment(Alignment::End);
+            .with_alignment(Alignment::End);
         let annotation = annotation_options(&source);
         assert_eq!(annotation.font_size, 544);
         assert_eq!(annotation.line_extent, source.line_extent);
@@ -768,10 +768,12 @@ mod tests {
     fn block_and_direction_helpers_distinguish_every_geometry_branch() {
         let horizontal = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .line_gap(2.0)
+            .with_line_gap(2.0)
             .unwrap();
         assert_eq!(adjusted_block(10, 3, 20, &horizontal), 414);
-        let vertical = horizontal.clone().writing_mode(WritingMode::VerticalRl);
+        let vertical = horizontal
+            .clone()
+            .with_writing_mode(WritingMode::VerticalRl);
         assert_eq!(adjusted_block(10, 3, 20, &vertical), -354);
 
         let (_, id, _) = fixture_fonts();

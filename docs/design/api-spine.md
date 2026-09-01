@@ -34,10 +34,13 @@ for glyph in layout.glyphs() {
 ```
 
 `LayoutOptions::try_new(line_extent, font_size)` validates and quantizes its two required
-values. Builder methods set writing mode, alignment, core `Style`, language, base
-direction, line gap, tab width, OpenType features and variations, and `ResourceLimits`.
-`LayoutEngine` exposes the same plain-text and typed-document calls with reusable
-internals.
+values. Consuming `with_*` setters cover writing mode, alignment, core `Style`, language,
+base direction, line gap, tab width, OpenType features and variations, and
+`ResourceLimits`; every field also has a same-named getter, and the two collections have
+replacing `with_features`/`with_variations` forms whose empty iterator clears them. Value
+types follow one convention — `with_*` setters, bare-name getters — everywhere:
+`LayoutOptions`, `SpanStyle`, and `ResourceLimits` alike. `LayoutEngine` exposes the same
+plain-text and typed-document calls with reusable internals.
 
 `FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
 primary face, and ordered fallback. The optional `system-fonts` feature is the only OS
@@ -56,6 +59,12 @@ annotation clusters.
 The builder validates byte boundaries and cross-field relationships before producing an
 immutable `Document`. `layout_document` then returns a complete result or a typed error.
 
+A finished document reads back everything the builder accepted: `spans()`, `constructs()`
+(as borrowed `InlineConstruct` values whose ordinals match glyph provenance),
+`mandatory_breaks()`, and `prohibited_breaks()`, and `SpanStyle` exposes a getter for each
+of its fields. Consumers can therefore inspect, diff, or serialize a document without a
+parallel data model.
+
 ## Renderer-facing results
 
 `TextLayout` owns:
@@ -69,8 +78,11 @@ immutable `Document`. `layout_document` then returns a complete result or a type
 A glyph exposes font ID, glyph ID, source byte range, optional annotation attribution,
 draw origin, advances, offsets, resolved size and variation axes, cell bounds, 26.6
 geometry, transform, and bidi level. A line exposes source range, physical origin and
-extents, writing mode, cell bounds, and its visual glyph slice. `TextLayout::font` is the
-required ID lookup because retained font identifiers may be sparse.
+extents, writing mode, cell bounds, and its visual glyph slice. The layout itself reports
+its `writing_mode()` (defined even when there are no lines) and retains the exact
+`options()` it was produced with, so an editor can re-lay content out without keeping its
+own copy. `TextLayout::font` is the required ID lookup because retained font identifiers
+may be sparse.
 
 `hit_test`, `caret_rect`, and `selection_rects` are defined over the same physical
 geometry and support both writing modes and bidi. They never require the renderer to infer
@@ -85,9 +97,11 @@ from font outlines when needed.
 ## Errors, diagnostics, and atomicity
 
 `LayoutError` distinguishes invalid font data or TTC index, missing fonts, invalid
-options, invalid typed document data, resource exhaustion, core input failure, and core
-composition failure. Its `code()` and optional source range are stable; display prose may
-improve.
+options, invalid typed document data, font-library misuse (`InvalidFontRequest`), resource
+exhaustion, core input failure, and core composition failure. Its `code()` and optional
+source range are stable; `message()` carries a stable one-sentence explanation where the
+variant has one, and `Display` shows the message, the byte range when present, and the
+code. Display prose may improve.
 
 Invalid fonts, options, ranges, and resource limits return no `TextLayout`. Missing glyphs
 and overfull or widow conditions that still permit a complete answer are diagnostics.
@@ -100,7 +114,10 @@ are overlaid per tag with the span layer last.
 
 ## Core: pre-shaped exact composition
 
-`jlreq-core` is reachable directly and as `jlreq::core`. It accepts caller-shaped UTF-8
+`jlreq-core` is reachable directly and as `jlreq::core`; the composition-policy types the
+facade takes as input — `Style`, `StyleBuilder`, and `StyleError` — are additionally
+re-exported at the `jlreq` root so the headline typesetting knob needs no module path.
+The core accepts caller-shaped UTF-8
 clusters, integer advances, break opportunities, paragraph policy, and typed constructs.
 Its `ShapedText`, `ParagraphBuilder`, `Style`, `CompositionLimits`, `Composer`,
 `Layout`, placements, diagnostics, and typed errors retain the existing public behavior

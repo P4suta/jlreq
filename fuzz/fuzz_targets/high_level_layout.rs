@@ -34,17 +34,17 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
     let options = options
-        .writing_mode(if byte(4) & 1 == 0 {
+        .with_writing_mode(if byte(4) & 1 == 0 {
             WritingMode::HorizontalTb
         } else {
             WritingMode::VerticalRl
         })
-        .base_direction(match byte(5) % 3 {
+        .with_base_direction(match byte(5) % 3 {
             0 => BaseDirection::Auto,
             1 => BaseDirection::LeftToRight,
             _ => BaseDirection::RightToLeft,
         })
-        .limits(
+        .with_limits(
             ResourceLimits::default()
                 .with_max_input_bytes(text.len().max(MAX_TEXT_BYTES))
                 .with_max_fonts(4)
