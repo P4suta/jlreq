@@ -37,6 +37,7 @@ items = [
   "LayoutEngine",
   "LayoutError",
   "LayoutOptions",
+  "MetricsFrame",
   "OpenTypeFeature",
   "OpenTypeTag",
   "OptionKind",

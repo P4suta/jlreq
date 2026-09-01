@@ -134,6 +134,7 @@ struct EffectiveStyle {
     global_variations: Vec<FontVariation>,
     span_variations: Vec<FontVariation>,
     role: TextRole,
+    frame: crate::MetricsFrame,
 }
 
 struct StyleResolver<'a> {
@@ -402,6 +403,7 @@ fn base_effective_style(options: &LayoutOptions) -> EffectiveStyle {
         global_variations: options.variations.clone(),
         span_variations: Vec::new(),
         role: TextRole::Text,
+        frame: crate::MetricsFrame::Auto,
     }
 }
 
@@ -416,6 +418,7 @@ fn span_effective_style(base: &EffectiveStyle, style: &SpanStyle) -> EffectiveSt
     result.features.extend_from_slice(&style.features);
     result.span_variations.clone_from(&style.variations);
     result.role = style.role;
+    result.frame = style.frame;
     result
 }
 

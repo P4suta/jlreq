@@ -18,8 +18,8 @@ mod sfnt;
 mod units;
 
 pub use document::{
-    Document, DocumentBuilder, InlineConstruct, ParagraphStyle, RubyKind, RubyRun, ScriptPosition,
-    SpanStyle, TextRole,
+    Document, DocumentBuilder, InlineConstruct, MetricsFrame, ParagraphStyle, RubyKind, RubyRun,
+    ScriptPosition, SpanStyle, TextRole,
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};

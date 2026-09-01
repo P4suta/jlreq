@@ -64,8 +64,13 @@ private.
 
 ## Typed authored content
 
-`DocumentBuilder` adds non-overlapping `SpanStyle` ranges, mandatory and prohibited
-breaks, and all nine inline structure families. Ruby can be mono, group, or jukugo, with
+`DocumentBuilder` adds non-overlapping `SpanStyle` ranges, mandatory, discretionary
+(penalized, still legality-checked), and prohibited breaks, and all nine inline structure
+families. A span asserts semantic roles — including decimal point, digit-group separator,
+and sentence-medial/-terminator dividing marks, with `TextRole::Plain` suppressing the
+conservative inference entirely — and a `MetricsFrame` overriding the per-character
+virtual-body heuristic, reaching the half-em body and scripts the heuristic does not
+recognize. Ruby can be mono, group, or jukugo, with
 automatic or explicit `RubyRun` association. The builder shapes annotation strings for
 ruby, emphasis, reference marks, and scripts; callers never manufacture low-level
 annotation clusters. `ScriptPosition` is honoured in placement: superscripts share the

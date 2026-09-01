@@ -517,6 +517,61 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn discretionary_breaks_roles_and_frames_are_authorable() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+
+    // A discretionary candidate flows through to the core as a penalized
+    // break opportunity (the lowering itself is pinned by the engine unit
+    // tests); the document reads the suggestion back, and layout stays
+    // complete with the candidate in play.
+    let text = "AB CD EF";
+    let narrow = LayoutOptions::try_new(60.0, 16.0)?;
+    let natural = jlreq::layout(text, &fonts, narrow.clone())?;
+    assert!(natural.lines().len() > 1);
+    let mut suggested = DocumentBuilder::new(text);
+    suggested.discretionary_break(4)?;
+    let document = suggested.build()?;
+    assert_eq!(document.discretionary_breaks(), [4]);
+    let laid_out = jlreq::layout_document(&document, &fonts, narrow)?;
+    assert!(laid_out.lines().len() > 1);
+    assert_eq!(laid_out.source(), text);
+
+    // Suggesting and prohibiting the same offset is a contradiction.
+    let mut conflicted = DocumentBuilder::new(text);
+    conflicted.discretionary_break(3)?;
+    conflicted.prohibit_break(3)?;
+    assert_eq!(
+        expected_layout_error(conflicted.build())?.code(),
+        "document.conflicting-break"
+    );
+
+    // Asserted roles and frames flow through spans into a complete layout.
+    let text = "3.4 A!";
+    let mut builder = DocumentBuilder::new(text);
+    builder.span(
+        1..2,
+        SpanStyle::new().with_role(jlreq::TextRole::DecimalPoint),
+    )?;
+    builder.span(5..6, SpanStyle::new().with_role(jlreq::TextRole::Plain))?;
+    builder.span(
+        0..1,
+        SpanStyle::new().with_frame(jlreq::MetricsFrame::FullEm),
+    )?;
+    let document = builder.build()?;
+    let spans: Vec<_> = document.spans().collect();
+    assert_eq!(spans[1].1.role(), jlreq::TextRole::DecimalPoint);
+    assert_eq!(spans[0].1.frame(), jlreq::MetricsFrame::FullEm);
+    assert_eq!(
+        spans[2].1.frame(),
+        jlreq::MetricsFrame::Auto,
+        "unset frames stay on the heuristic"
+    );
+    let layout = jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
+    assert!(layout.glyphs().count() > 0);
+    Ok(())
+}
+
+#[test]
 fn paragraph_styles_override_measure_alignment_indent_widow_and_tabs() -> Result<(), Box<dyn Error>>
 {
     let (fonts, _, _) = fixture_fonts()?;

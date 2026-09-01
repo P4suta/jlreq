@@ -41,6 +41,7 @@ fn collect_breaks(
 ) -> Vec<jlreq_core::Break> {
     let prohibited = sorted_offsets_in_range(&document.prohibited_breaks, paragraph_range);
     let mandatory = sorted_offsets_in_range(&document.mandatory_breaks, paragraph_range);
+    let discretionary = sorted_offsets_in_range(&document.discretionary_breaks, paragraph_range);
     let mut breaks = BTreeMap::new();
     let mut construct_index = 0_usize;
     let mut maximum_construct_end = 0_usize;
@@ -62,26 +63,37 @@ fn collect_breaks(
                 .is_ok(),
             offset < maximum_construct_end,
         ) {
-            breaks.insert(offset, false);
+            breaks.insert(offset, BreakStrength::Allowed);
+        }
+    }
+    for offset in discretionary.iter().copied() {
+        let offset = offset.saturating_sub(paragraph_range.start);
+        if prepared.is_boundary(offset, source.len()) {
+            breaks.insert(offset, BreakStrength::Discretionary);
         }
     }
     for offset in mandatory.iter().copied() {
         let offset = offset.saturating_sub(paragraph_range.start);
         if prepared.is_boundary(offset, source.len()) {
-            breaks.insert(offset, true);
+            breaks.insert(offset, BreakStrength::Mandatory);
         }
     }
     synthesize_furawake_splits(document, paragraph_range, prepared, &mut breaks);
     breaks
         .into_iter()
-        .map(|(offset, required)| {
-            if required {
-                jlreq_core::Break::mandatory(offset)
-            } else {
-                jlreq_core::Break::allowed(offset)
-            }
+        .map(|(offset, strength)| match strength {
+            BreakStrength::Mandatory => jlreq_core::Break::mandatory(offset),
+            BreakStrength::Discretionary => jlreq_core::Break::discretionary(offset),
+            BreakStrength::Allowed => jlreq_core::Break::allowed(offset),
         })
         .collect()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BreakStrength {
+    Allowed,
+    Discretionary,
+    Mandatory,
 }
 
 /// Derive the `columns - 1` furawake sublines the caller left implicit.
@@ -100,7 +112,7 @@ fn synthesize_furawake_splits(
     document: &Document,
     paragraph_range: &Range<usize>,
     prepared: &PreparedText,
-    breaks: &mut BTreeMap<usize, bool>,
+    breaks: &mut BTreeMap<usize, BreakStrength>,
 ) {
     for construct in &document.constructs {
         let DocumentConstruct::Furawake { range, columns, .. } = construct else {
@@ -134,7 +146,7 @@ fn synthesize_furawake_splits(
             let lane_size = base.saturating_add(usize::from(lane < remainder));
             cursor = cursor.saturating_add(lane_size);
             if let Some(cluster) = prepared.clusters.get(cursor) {
-                breaks.insert(cluster.range.start, true);
+                breaks.insert(cluster.range.start, BreakStrength::Mandatory);
             }
         }
     }
