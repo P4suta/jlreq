@@ -35,6 +35,9 @@ queries do not mutate layout state.
 | --- | --- |
 | `document.invalid-span-range` | A span range is empty, out of bounds, or not on UTF-8 boundaries. |
 | `document.overlapping-spans` | Two span styles overlap. |
+| `document.invalid-paragraph-style-range` | A paragraph-style range is empty, out of bounds, or not on UTF-8 boundaries. |
+| `document.overlapping-paragraph-styles` | Two paragraph styles overlap. |
+| `document.paragraph-style-splits-paragraph` | A paragraph-style range cuts a paragraph instead of containing it. |
 | `document.invalid-break` | An authored break offset is out of bounds or splits UTF-8. |
 | `document.conflicting-break` | The same offset is both mandatory and prohibited. |
 | `document.invalid-construct-range` | A typed structure has an invalid source range. |

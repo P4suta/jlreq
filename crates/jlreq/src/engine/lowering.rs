@@ -163,16 +163,21 @@ fn automatic_break_allowed(
 fn collect_tab_stops(
     source: &str,
     options: &LayoutOptions,
+    line_extent: i32,
+    explicit: &[crate::TabStop],
 ) -> Result<Vec<jlreq_core::TabStop>, LayoutError> {
     if !source.contains('\t') {
         return Ok(Vec::new());
+    }
+    if !explicit.is_empty() {
+        return explicit.iter().map(|stop| stop.core()).collect();
     }
     let interval = options
         .font_size
         .saturating_mul(i32::from(options.tab_width));
     let mut position = interval;
     let mut result = Vec::new();
-    while position < options.line_extent && result.len() < options.limits.constructs {
+    while position < line_extent && result.len() < options.limits.constructs {
         result.push(jlreq_core::TabStop::new(
             position,
             jlreq_core::TabAlignment::Start,
@@ -180,6 +185,36 @@ fn collect_tab_stops(
         position = position.saturating_add(interval);
     }
     Ok(result)
+}
+
+/// The paragraph style whose range fully contains this paragraph, if any.
+///
+/// A style that overlaps a paragraph without containing it is rejected:
+/// half a paragraph cannot take its own measure or alignment.
+fn paragraph_style_for<'a>(
+    document: &'a Document,
+    content: &Range<usize>,
+) -> Result<Option<&'a crate::ParagraphStyle>, LayoutError> {
+    if content.start >= content.end {
+        return Ok(None);
+    }
+    for (range, style) in &document.paragraph_styles {
+        if range.start >= content.end {
+            break;
+        }
+        if !ranges_overlap(range, content) {
+            continue;
+        }
+        if range.start <= content.start && content.end <= range.end {
+            return Ok(Some(style));
+        }
+        return Err(LayoutError::invalid_document(
+            "document.paragraph-style-splits-paragraph",
+            Some(range.clone()),
+            "a paragraph style must fully contain every paragraph it touches",
+        ));
+    }
+    Ok(None)
 }
 
 fn annotation_options(options: &LayoutOptions) -> LayoutOptions {

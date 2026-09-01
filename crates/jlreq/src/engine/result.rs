@@ -48,7 +48,17 @@ fn map_core_lines(
             .map(|cell| Level::new(cell.level).unwrap_or_else(|_| Level::ltr()))
             .collect();
         let visual = BidiInfo::reorder_visual(&levels);
-        let mut cursor = line.inline_origin();
+        // The physical run starts where the core placed its first cluster,
+        // which folds in alignment, first-line indent, and ruby leading
+        // separation; `inline_origin` alone carries only the alignment
+        // offset. The core cursor is monotonic in logical order, so the
+        // minimum placement inline is that start.
+        let mut cursor = line
+            .clusters()
+            .iter()
+            .map(jlreq_core::ClusterPlacement::inline)
+            .min()
+            .unwrap_or_else(|| line.inline_origin());
         let mut glyphs = Vec::new();
         for visual_index in visual {
             let cell = &cells[visual_index];

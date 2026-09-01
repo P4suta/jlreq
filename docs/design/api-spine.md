@@ -35,12 +35,18 @@ for glyph in layout.glyphs() {
 
 `LayoutOptions::try_new(line_extent, font_size)` validates and quantizes its two required
 values. Consuming `with_*` setters cover writing mode, alignment, core `Style`, language,
-base direction, line gap, tab width, OpenType features and variations, and
-`ResourceLimits`; every field also has a same-named getter, and the two collections have
-replacing `with_features`/`with_variations` forms whose empty iterator clears them. Value
-types follow one convention — `with_*` setters, bare-name getters — everywhere:
-`LayoutOptions`, `SpanStyle`, and `ResourceLimits` alike. `LayoutEngine` exposes the same
-plain-text and typed-document calls with reusable internals.
+base direction, line gap, tab width, explicit `TabStop`s, first-line indent, `Widow`
+policy, OpenType features and variations, and `ResourceLimits`; every field also has a
+same-named getter, and the collections have replacing `with_*s` forms whose empty
+iterator clears them. Value types follow one convention — `with_*` setters, bare-name
+getters — everywhere: `LayoutOptions`, `SpanStyle`, `ParagraphStyle`, and
+`ResourceLimits` alike. `LayoutEngine` exposes the same plain-text and typed-document
+calls with reusable internals.
+
+Tab stops, alignment at stops (`TabAlignment`, including decimal-point `Character`
+alignment), and the widow policy are facade mirrors of the core types, taking the same
+quantized `f32` units as every other public length. Explicit stops replace the evenly
+spaced ladder derived from the tab width.
 
 `FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
 primary face, and ordered fallback. When no family is supplied, one is derived from the
@@ -69,11 +75,18 @@ reserves space on whichever sides it uses.
 The builder validates byte boundaries and cross-field relationships before producing an
 immutable `Document`. `layout_document` then returns a complete result or a typed error.
 
-A finished document reads back everything the builder accepted: `spans()`, `constructs()`
-(as borrowed `InlineConstruct` values whose ordinals match glyph provenance),
-`mandatory_breaks()`, and `prohibited_breaks()`, and `SpanStyle` exposes a getter for each
-of its fields. Consumers can therefore inspect, diff, or serialize a document without a
-parallel data model.
+`DocumentBuilder::paragraph_style` applies a `ParagraphStyle` — optional overrides for
+line extent, alignment, JLReq policy `Style`, first-line indent, widow policy, and tab
+stops — to every paragraph its range fully contains, which is what makes indented body
+text, a narrower quotation measure, or a centered heading possible inside one document.
+Styles must not overlap, and a range that cuts a paragraph is rejected at layout: half a
+paragraph cannot take its own measure.
+
+A finished document reads back everything the builder accepted: `spans()`,
+`paragraph_styles()`, `constructs()` (as borrowed `InlineConstruct` values whose ordinals
+match glyph provenance), `mandatory_breaks()`, and `prohibited_breaks()`, and `SpanStyle`
+exposes a getter for each of its fields. Consumers can therefore inspect, diff, or
+serialize a document without a parallel data model.
 
 ## Renderer-facing results
 
