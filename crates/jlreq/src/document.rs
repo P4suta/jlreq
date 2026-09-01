@@ -6,6 +6,11 @@ use std::ops::Range;
 use crate::units::{non_negative, positive};
 use crate::{FontStyle, FontVariation, LayoutError, OpenTypeFeature, OptionKind};
 
+const SPAN_RANGE_MESSAGE: &str =
+    "a span range must be non-empty, inside the text, and on character boundaries";
+const CONSTRUCT_RANGE_MESSAGE: &str =
+    "a construct range must be non-empty, inside the text, and on character boundaries";
+
 /// Conservative semantic classification that cannot always be inferred from text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
@@ -296,7 +301,7 @@ impl DocumentBuilder {
         range: Range<usize>,
         style: SpanStyle,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-span-range")?;
+        self.validate_non_empty_range(&range, "document.invalid-span-range", SPAN_RANGE_MESSAGE)?;
         let insertion = span_insertion_point(&self.spans, range.start);
         let overlaps_previous = insertion
             .checked_sub(1)
@@ -310,6 +315,7 @@ impl DocumentBuilder {
             return Err(LayoutError::invalid_document(
                 "document.overlapping-spans",
                 Some(range),
+                "span styles must not overlap",
             ));
         }
         self.spans.insert(insertion, (range, style));
@@ -341,12 +347,17 @@ impl DocumentBuilder {
     where
         I: IntoIterator<Item = RubyRun>,
     {
-        self.validate_non_empty_range(&base, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &base,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         let annotation = annotation.into();
         if annotation.is_empty() {
             return Err(LayoutError::invalid_document(
                 "document.empty-ruby-annotation",
                 Some(base),
+                "a ruby annotation must contain at least one character",
             ));
         }
         self.constructs.push(DocumentConstruct::Ruby {
@@ -396,7 +407,11 @@ impl DocumentBuilder {
         range: Range<usize>,
         mark: char,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         self.constructs
             .push(DocumentConstruct::Emphasis { range, mark });
         Ok(self)
@@ -414,11 +429,16 @@ impl DocumentBuilder {
         columns: u16,
         line_gap: f32,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         if columns < 2 {
             return Err(LayoutError::invalid_document(
                 "document.invalid-furawake-columns",
                 Some(range),
+                "furawake requires at least two columns",
             ));
         }
         self.constructs.push(DocumentConstruct::Furawake {
@@ -431,11 +451,16 @@ impl DocumentBuilder {
 
     /// Fit a range in a fixed number of full-em cells (字取り).
     pub fn jidori(&mut self, range: Range<usize>, cells: u16) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         if cells == 0 {
             return Err(LayoutError::invalid_document(
                 "document.invalid-jidori-cells",
                 Some(range),
+                "jidori requires at least one cell",
             ));
         }
         self.constructs
@@ -449,12 +474,17 @@ impl DocumentBuilder {
         range: Range<usize>,
         mark: impl Into<String>,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         let mark = mark.into();
         if mark.is_empty() {
             return Err(LayoutError::invalid_document(
                 "document.empty-reference-mark",
                 Some(range),
+                "a reference mark must contain at least one character",
             ));
         }
         self.constructs
@@ -469,12 +499,17 @@ impl DocumentBuilder {
         annotation: impl Into<String>,
         position: ScriptPosition,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         let annotation = annotation.into();
         if annotation.is_empty() {
             return Err(LayoutError::invalid_document(
                 "document.empty-script-annotation",
                 Some(range),
+                "a script annotation must contain at least one character",
             ));
         }
         self.constructs.push(DocumentConstruct::Script {
@@ -509,6 +544,7 @@ impl DocumentBuilder {
             return Err(LayoutError::invalid_document(
                 "document.conflicting-break",
                 Some(*offset..*offset),
+                "an offset cannot be both a mandatory and a prohibited break",
             ));
         }
         for construct in &self.constructs {
@@ -535,20 +571,29 @@ impl DocumentBuilder {
         &self,
         range: &Range<usize>,
         code: &'static str,
+        message: &'static str,
     ) -> Result<(), LayoutError> {
         if range.start >= range.end
             || range.end > self.text.len()
             || !self.text.is_char_boundary(range.start)
             || !self.text.is_char_boundary(range.end)
         {
-            return Err(LayoutError::invalid_document(code, Some(range.clone())));
+            return Err(LayoutError::invalid_document(
+                code,
+                Some(range.clone()),
+                message,
+            ));
         }
         Ok(())
     }
 
     fn validate_offset(&self, offset: usize, code: &'static str) -> Result<(), LayoutError> {
         if offset == 0 || offset >= self.text.len() || !self.text.is_char_boundary(offset) {
-            return Err(LayoutError::invalid_document(code, Some(offset..offset)));
+            return Err(LayoutError::invalid_document(
+                code,
+                Some(offset..offset),
+                "a break offset must be a character boundary strictly inside the text",
+            ));
         }
         Ok(())
     }
@@ -558,7 +603,11 @@ impl DocumentBuilder {
         range: Range<usize>,
         constructor: fn(Range<usize>) -> DocumentConstruct,
     ) -> Result<&mut Self, LayoutError> {
-        self.validate_non_empty_range(&range, "document.invalid-construct-range")?;
+        self.validate_non_empty_range(
+            &range,
+            "document.invalid-construct-range",
+            CONSTRUCT_RANGE_MESSAGE,
+        )?;
         self.constructs.push(constructor(range));
         Ok(self)
     }
@@ -582,6 +631,7 @@ fn validate_ruby_runs(
         return Err(LayoutError::invalid_document(
             "document.group-ruby-run-count",
             Some(base.clone()),
+            "group ruby accepts exactly one explicit run",
         ));
     }
     let mut base_cursor = base.start;
@@ -601,6 +651,7 @@ fn validate_ruby_runs(
             return Err(LayoutError::invalid_document(
                 "document.invalid-ruby-run",
                 Some(run.base.clone()),
+                "ruby runs must advance through the base and annotation on character boundaries",
             ));
         }
         base_cursor = run.base.end;
@@ -610,6 +661,7 @@ fn validate_ruby_runs(
         return Err(LayoutError::invalid_document(
             "document.incomplete-ruby-runs",
             Some(base.clone()),
+            "explicit ruby runs must cover the whole base and annotation",
         ));
     }
     Ok(())

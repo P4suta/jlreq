@@ -411,7 +411,7 @@ impl LayoutEngine {
                 let item = &graphemes[index];
                 let resource = fonts
                     .get(item.font_id)
-                    .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                    .ok_or_else(crate::font::unknown_font_id)?;
                 clusters.push(PreparedCluster {
                     range: item.range.clone(),
                     advance: 0,
@@ -438,7 +438,7 @@ impl LayoutEngine {
             let run_range = first.range.start..graphemes[index.saturating_sub(1)].range.end;
             let resource = fonts
                 .get(first.font_id)
-                .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                .ok_or_else(crate::font::unknown_font_id)?;
             let variations = resolved_variations(&first.effective, resource);
             #[cfg(test)]
             call.charge_shape();
@@ -500,7 +500,7 @@ impl LayoutEngine {
         for id in candidates.iter().copied() {
             let resource = fonts
                 .get(id)
-                .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                .ok_or_else(crate::font::unknown_font_id)?;
             let variations = resolved_variations(style, resource);
             #[cfg(test)]
             call.charge_shape();
@@ -551,6 +551,7 @@ impl LayoutEngine {
                 return Err(LayoutError::invalid_document(
                     "document.construct-crosses-paragraph",
                     Some(global_range),
+                    "a construct must stay inside one paragraph",
                 ));
             }
             let local_range = global_range.start.saturating_sub(paragraph.range.start)

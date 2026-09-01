@@ -353,6 +353,8 @@ fn diagnostic_severity(value: jlreq_core::Severity) -> DiagnosticSeverity {
     match value {
         jlreq_core::Severity::Info => DiagnosticSeverity::Info,
         jlreq_core::Severity::Error => DiagnosticSeverity::Error,
+        // Severity is non_exhaustive: Warning doubles as the conservative
+        // mapping for any severity introduced by a future core.
         _ => DiagnosticSeverity::Warning,
     }
 }

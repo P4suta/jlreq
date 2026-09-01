@@ -174,6 +174,7 @@ impl<'a> StyleResolver<'a> {
             return Err(LayoutError::invalid_document(
                 "document.span-splits-grapheme",
                 Some(global.clone()),
+                "a span boundary must not split a grapheme cluster",
             ));
         }
         if let Some((index, selected)) = &self.selected
@@ -378,6 +379,7 @@ fn effective_style(
                 return Err(LayoutError::invalid_document(
                     "document.span-splits-grapheme",
                     Some(global.clone()),
+                    "a span boundary must not split a grapheme cluster",
                 ));
             }
             selected = Some(style);

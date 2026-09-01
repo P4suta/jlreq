@@ -174,6 +174,7 @@ fn ruby_runs(
                 local_base.start.saturating_add(paragraph_offset)
                     ..local_base.end.saturating_add(paragraph_offset),
             ),
+            "mono ruby needs one annotation cluster per base cluster",
         ));
     }
     Ok(base_clusters
