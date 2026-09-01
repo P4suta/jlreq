@@ -263,10 +263,21 @@ impl RubyRun {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ScriptPosition {
-    /// Superscript-side placement.
+    /// Superscript-side placement: above the line in horizontal writing,
+    /// right of the line in vertical writing.
     Superscript,
-    /// Subscript-side placement.
+    /// Subscript-side placement: below the line in horizontal writing, left
+    /// of the line in vertical writing.
     Subscript,
+}
+
+impl ScriptPosition {
+    pub(crate) const fn core(self) -> jlreq_core::ScriptPosition {
+        match self {
+            Self::Superscript => jlreq_core::ScriptPosition::Superscript,
+            Self::Subscript => jlreq_core::ScriptPosition::Subscript,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

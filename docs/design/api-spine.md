@@ -62,7 +62,9 @@ private.
 breaks, and all nine inline structure families. Ruby can be mono, group, or jukugo, with
 automatic or explicit `RubyRun` association. The builder shapes annotation strings for
 ruby, emphasis, reference marks, and scripts; callers never manufacture low-level
-annotation clusters.
+annotation clusters. `ScriptPosition` is honoured in placement: superscripts share the
+annotation side with ruby, subscripts mirror to the opposite block side, and the line
+reserves space on whichever sides it uses.
 
 The builder validates byte boundaries and cross-field relationships before producing an
 immutable `Document`. `layout_document` then returns a complete result or a typed error.

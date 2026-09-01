@@ -2624,6 +2624,91 @@ mod tests {
         assert_eq!(script_line.attachments[0].block(), 0);
         assert_eq!(script_line.block_extent, 2_000);
 
+        // Subscript mirrors to the opposite block side: below the text in
+        // horizontal writing, and the line reserves the same space there.
+        let subscript = Paragraph::builder(text("ab"), 4_000)
+            .constructs([Construct::script_at(
+                0..2,
+                text("x"),
+                crate::ScriptPosition::Subscript,
+            )])
+            .build()
+            .expect("valid subscript paragraph");
+        let mut subscript_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &subscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut subscript_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(subscript_line.attachments.len(), 1);
+        assert_eq!(subscript_line.attachments[0].inline(), 500);
+        assert_eq!(subscript_line.attachments[0].block(), 2_000);
+        assert_eq!(subscript_line.block_extent, 2_000);
+
+        // Opposite sides reserve space independently, so a line carrying both
+        // grows by the sum, not the maximum.
+        let both = Paragraph::builder(text("ab"), 4_000)
+            .constructs([
+                Construct::script(0..1, text("x")),
+                Construct::script_at(1..2, text("y"), crate::ScriptPosition::Subscript),
+            ])
+            .build()
+            .expect("valid two-sided paragraph");
+        let mut both_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &both,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut both_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(both_line.attachments.len(), 2);
+        assert_eq!(both_line.block_extent, 3_000);
+
+        // Vertical writing mirrors left instead of below.
+        let vertical_subscript = Paragraph::builder(text("ab"), 4_000)
+            .writing_mode(WritingMode::VerticalRl)
+            .constructs([Construct::script_at(
+                0..2,
+                text("x"),
+                crate::ScriptPosition::Subscript,
+            )])
+            .build()
+            .expect("valid vertical subscript paragraph");
+        let mut vertical_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &vertical_subscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut vertical_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(vertical_line.attachments[0].block(), 0);
+        let vertical_superscript = Paragraph::builder(text("ab"), 4_000)
+            .writing_mode(WritingMode::VerticalRl)
+            .constructs([Construct::script(0..2, text("x"))])
+            .build()
+            .expect("valid vertical superscript paragraph");
+        let mut vertical_super_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &vertical_superscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut vertical_super_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(vertical_super_line.attachments[0].block(), 2_000);
+
         let emphasis = Paragraph::builder(text("ab"), 4_000)
             .constructs([Construct::emphasis_dots(0..2, '・')])
             .build()

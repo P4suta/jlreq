@@ -517,6 +517,61 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
 }
 
 #[test]
+fn script_positions_place_annotations_on_opposite_block_sides() -> Result<(), Box<dyn Error>> {
+    let (fonts, _, _) = fixture_fonts()?;
+    let build = |position: ScriptPosition, mode: WritingMode| -> Result<_, Box<dyn Error>> {
+        let mut builder = DocumentBuilder::new("AB");
+        builder.script(0..1, "N", position)?;
+        Ok(jlreq::layout_document(
+            &builder.build()?,
+            &fonts,
+            LayoutOptions::try_new(240.0, 16.0)?.with_writing_mode(mode),
+        )?)
+    };
+
+    let annotation_extremes = |layout: &jlreq::TextLayout, vertical: bool| {
+        let mut base: Option<i32> = None;
+        let mut annotation: Option<i32> = None;
+        for glyph in layout.glyphs() {
+            let value = if vertical {
+                glyph.geometry_26_6().0
+            } else {
+                glyph.geometry_26_6().1
+            };
+            if glyph.annotation().is_some() {
+                annotation = Some(annotation.map_or(value, |kept| kept.max(value)));
+            } else {
+                base = Some(base.map_or(value, |kept| kept.max(value)));
+            }
+        }
+        (base, annotation)
+    };
+
+    // Horizontal: the superscript annotation sits above the base glyphs
+    // (smaller y), the subscript below (larger y).
+    let superscript = build(ScriptPosition::Superscript, WritingMode::HorizontalTb)?;
+    let subscript = build(ScriptPosition::Subscript, WritingMode::HorizontalTb)?;
+    assert_ne!(superscript, subscript);
+    let (base_y, above_y) = annotation_extremes(&superscript, false);
+    let (_, below_y) = annotation_extremes(&subscript, false);
+    let base_y = base_y.ok_or("no base glyph")?;
+    assert!(above_y.ok_or("no superscript glyph")? < base_y);
+    assert!(below_y.ok_or("no subscript glyph")? > base_y);
+
+    // Vertical: superscript right of the base column (larger x), subscript
+    // left of it (smaller x).
+    let vertical_raised = build(ScriptPosition::Superscript, WritingMode::VerticalRl)?;
+    let vertical_lowered = build(ScriptPosition::Subscript, WritingMode::VerticalRl)?;
+    assert_ne!(vertical_raised, vertical_lowered);
+    let (base_x, right_x) = annotation_extremes(&vertical_raised, true);
+    let (_, left_x) = annotation_extremes(&vertical_lowered, true);
+    let base_x = base_x.ok_or("no base glyph")?;
+    assert!(right_x.ok_or("no superscript glyph")? > base_x);
+    assert!(left_x.ok_or("no subscript glyph")? < base_x);
+    Ok(())
+}
+
+#[test]
 fn furawake_without_manual_breaks_balances_clusters_across_columns() -> Result<(), Box<dyn Error>> {
     let (fonts, _, _) = fixture_fonts()?;
     let options = LayoutOptions::try_new(240.0, 16.0)?;
