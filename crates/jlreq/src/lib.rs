@@ -6,6 +6,7 @@
 
 /// Dependency-free `no_std + alloc` composition API for already-shaped text.
 pub use jlreq_core as core;
+pub use jlreq_core::{Style, StyleBuilder, StyleError};
 
 mod document;
 mod engine;
@@ -16,7 +17,8 @@ mod result;
 mod units;
 
 pub use document::{
-    Document, DocumentBuilder, RubyKind, RubyRun, ScriptPosition, SpanStyle, TextRole,
+    Document, DocumentBuilder, InlineConstruct, RubyKind, RubyRun, ScriptPosition, SpanStyle,
+    TextRole,
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};

@@ -83,7 +83,7 @@ let layout = jlreq::layout_document(
     &document.build()?,
     &fonts,
     LayoutOptions::try_new(240.0, 16.0)?
-        .writing_mode(WritingMode::VerticalRl),
+        .with_writing_mode(WritingMode::VerticalRl),
 )?;
 assert!(layout.lines().iter().all(|line| {
     line.writing_mode() == WritingMode::VerticalRl

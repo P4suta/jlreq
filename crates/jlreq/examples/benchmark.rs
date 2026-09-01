@@ -46,7 +46,8 @@ fn main() -> BenchResult<()> {
     })?;
 
     let bidi = "日本語 abc مرحبا 🇪🇨 ".repeat(48);
-    let bidi_options = LayoutOptions::try_new(640.0, 18.0)?.base_direction(BaseDirection::Auto);
+    let bidi_options =
+        LayoutOptions::try_new(640.0, 18.0)?.with_base_direction(BaseDirection::Auto);
     measure("layout.reused-engine.bidi-fallback", samples, || {
         let layout = engine.layout(black_box(&bidi), &fonts, bidi_options.clone())?;
         Ok(layout.glyphs().count())
@@ -66,10 +67,9 @@ fn main() -> BenchResult<()> {
     let variable_fonts = variable_fonts()?;
     let variable_text = "variable ".repeat(128);
     let variable_document = variable_span_document(&variable_text)?;
-    let variable_options = LayoutOptions::try_new(640.0, 18.0)?.variation(FontVariation::try_new(
-        OpenTypeTag::try_new("wght")?,
-        500.0,
-    )?);
+    let variable_options = LayoutOptions::try_new(640.0, 18.0)?.with_variation(
+        FontVariation::try_new(OpenTypeTag::try_new("wght")?, 500.0)?,
+    );
     measure("layout.reused-engine.variable-runs", samples, || {
         let layout = engine.layout_document(
             black_box(&variable_document),
@@ -80,7 +80,7 @@ fn main() -> BenchResult<()> {
     })?;
 
     let complex_document = complex_document(32)?;
-    let horizontal_options = LayoutOptions::try_new(320.0, 18.0)?.line_gap(3.0)?;
+    let horizontal_options = LayoutOptions::try_new(320.0, 18.0)?.with_line_gap(3.0)?;
     measure(
         "layout.reused-engine.horizontal-multiparagraph",
         samples,
@@ -94,8 +94,8 @@ fn main() -> BenchResult<()> {
         },
     )?;
     let vertical_options = LayoutOptions::try_new(640.0, 18.0)?
-        .writing_mode(WritingMode::VerticalRl)
-        .tab_width(4)?;
+        .with_writing_mode(WritingMode::VerticalRl)
+        .with_tab_width(4)?;
     measure("layout.reused-engine.vertical-constructs", samples, || {
         let layout = engine.layout_document(
             black_box(&complex_document),
@@ -283,9 +283,9 @@ fn many_span_document(text: &str) -> BenchResult<Document> {
     let mut builder = DocumentBuilder::new(text);
     for ordinal in (0..boundaries.len().saturating_sub(1)).step_by(2) {
         let style = if ordinal.is_multiple_of(4) {
-            SpanStyle::new().family("Noto Sans JP")
+            SpanStyle::new().with_family("Noto Sans JP")
         } else {
-            SpanStyle::new().family("Tinos")
+            SpanStyle::new().with_family("Tinos")
         };
         let next = ordinal.saturating_add(1);
         if let Some((&start, &end)) = boundaries.get(ordinal).zip(boundaries.get(next)) {
@@ -309,7 +309,7 @@ fn variable_span_document(text: &str) -> BenchResult<Document> {
         };
         let _ = builder.span(
             start..start.saturating_add(SEGMENT_LEN),
-            SpanStyle::new().variation(variation),
+            SpanStyle::new().with_variation(variation),
         )?;
     }
     Ok(builder.build()?)
@@ -322,7 +322,7 @@ fn complex_document(repetitions: usize) -> BenchResult<Document> {
         let base = repetition.saturating_mul(SEGMENT.len());
         let _ = builder.span(
             base..base.saturating_add(11),
-            SpanStyle::new().font_size(if repetition.is_multiple_of(2) {
+            SpanStyle::new().with_font_size(if repetition.is_multiple_of(2) {
                 30.0
             } else {
                 22.0

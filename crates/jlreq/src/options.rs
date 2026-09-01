@@ -305,7 +305,7 @@ impl Default for ResourceLimits {
 }
 
 /// Validated controls for automatic shaping and line layout.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct LayoutOptions {
     pub(crate) line_extent: i32,
@@ -324,6 +324,9 @@ pub struct LayoutOptions {
 
 impl LayoutOptions {
     /// Validate the two required floating-point inputs and quantize them to 26.6.
+    ///
+    /// The line extent and font size are constructor invariants; every other
+    /// control has a `with_*` setter and a same-named getter.
     pub fn try_new(line_extent: f32, font_size: f32) -> Result<Self, LayoutError> {
         Ok(Self {
             line_extent: positive(line_extent, OptionKind::LineExtent)?,
@@ -343,27 +346,27 @@ impl LayoutOptions {
 
     /// Set horizontal or vertical writing.
     #[must_use]
-    pub const fn writing_mode(mut self, value: WritingMode) -> Self {
+    pub const fn with_writing_mode(mut self, value: WritingMode) -> Self {
         self.writing_mode = value;
         self
     }
 
     /// Set line alignment.
     #[must_use]
-    pub const fn alignment(mut self, value: Alignment) -> Self {
+    pub const fn with_alignment(mut self, value: Alignment) -> Self {
         self.alignment = value;
         self
     }
 
     /// Set the complete low-level JLReq policy profile.
     #[must_use]
-    pub fn style(mut self, value: jlreq_core::Style) -> Self {
+    pub fn with_style(mut self, value: jlreq_core::Style) -> Self {
         self.style = value;
         self
     }
 
     /// Set a BCP 47/OpenType language tag.
-    pub fn language(mut self, value: impl Into<String>) -> Result<Self, LayoutError> {
+    pub fn with_language(mut self, value: impl Into<String>) -> Result<Self, LayoutError> {
         let value = value.into();
         if value.is_empty()
             || value.len() > 63
@@ -382,19 +385,19 @@ impl LayoutOptions {
 
     /// Set paragraph base direction.
     #[must_use]
-    pub const fn base_direction(mut self, value: BaseDirection) -> Self {
+    pub const fn with_base_direction(mut self, value: BaseDirection) -> Self {
         self.base_direction = value;
         self
     }
 
     /// Set extra block-axis distance between adjacent lines.
-    pub fn line_gap(mut self, value: f32) -> Result<Self, LayoutError> {
+    pub fn with_line_gap(mut self, value: f32) -> Result<Self, LayoutError> {
         self.line_gap = non_negative(value, OptionKind::LineGap)?;
         Ok(self)
     }
 
     /// Set the tab interval in space cells.
-    pub fn tab_width(mut self, value: u16) -> Result<Self, LayoutError> {
+    pub fn with_tab_width(mut self, value: u16) -> Result<Self, LayoutError> {
         if value == 0 {
             return Err(LayoutError::invalid_option(
                 OptionKind::TabWidth,
@@ -407,21 +410,41 @@ impl LayoutOptions {
 
     /// Add one global OpenType feature.
     #[must_use]
-    pub fn feature(mut self, value: OpenTypeFeature) -> Self {
+    pub fn with_feature(mut self, value: OpenTypeFeature) -> Self {
         self.features.push(value);
+        self
+    }
+
+    /// Replace every global OpenType feature. An empty iterator clears them.
+    #[must_use]
+    pub fn with_features<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = OpenTypeFeature>,
+    {
+        self.features = values.into_iter().collect();
         self
     }
 
     /// Add one global variable-font axis value.
     #[must_use]
-    pub fn variation(mut self, value: FontVariation) -> Self {
+    pub fn with_variation(mut self, value: FontVariation) -> Self {
         self.variations.push(value);
+        self
+    }
+
+    /// Replace every global variable-font axis value. An empty iterator clears them.
+    #[must_use]
+    pub fn with_variations<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = FontVariation>,
+    {
+        self.variations = values.into_iter().collect();
         self
     }
 
     /// Replace all high-level resource limits.
     #[must_use]
-    pub const fn limits(mut self, value: ResourceLimits) -> Self {
+    pub const fn with_limits(mut self, value: ResourceLimits) -> Self {
         self.limits = value;
         self
     }
@@ -440,13 +463,61 @@ impl LayoutOptions {
 
     /// Current writing mode.
     #[must_use]
-    pub const fn writing_mode_value(&self) -> WritingMode {
+    pub const fn writing_mode(&self) -> WritingMode {
         self.writing_mode
+    }
+
+    /// Current line alignment.
+    #[must_use]
+    pub const fn alignment(&self) -> Alignment {
+        self.alignment
+    }
+
+    /// Current low-level JLReq policy profile.
+    #[must_use]
+    pub const fn style(&self) -> &jlreq_core::Style {
+        &self.style
+    }
+
+    /// Current shaping language tag.
+    #[must_use]
+    pub fn language(&self) -> &str {
+        &self.language
+    }
+
+    /// Current paragraph base direction.
+    #[must_use]
+    pub const fn base_direction(&self) -> BaseDirection {
+        self.base_direction
+    }
+
+    /// Current extra block-axis distance between adjacent lines.
+    #[must_use]
+    pub fn line_gap(&self) -> f32 {
+        crate::units::to_f32(self.line_gap)
+    }
+
+    /// Current tab interval in space cells.
+    #[must_use]
+    pub const fn tab_width(&self) -> u16 {
+        self.tab_width
+    }
+
+    /// Current global OpenType features, in application order.
+    #[must_use]
+    pub fn features(&self) -> &[OpenTypeFeature] {
+        &self.features
+    }
+
+    /// Current global variable-font axis values, in application order.
+    #[must_use]
+    pub fn variations(&self) -> &[FontVariation] {
+        &self.variations
     }
 
     /// Current limits.
     #[must_use]
-    pub const fn resource_limits(&self) -> ResourceLimits {
+    pub const fn limits(&self) -> ResourceLimits {
         self.limits
     }
 }
@@ -473,19 +544,19 @@ mod tests {
         assert!(
             LayoutOptions::try_new(100.0, 16.0)
                 .unwrap()
-                .language("a".repeat(63))
+                .with_language("a".repeat(63))
                 .is_ok()
         );
         assert!(
             LayoutOptions::try_new(100.0, 16.0)
                 .unwrap()
-                .language("a".repeat(64))
+                .with_language("a".repeat(64))
                 .is_err()
         );
         assert!(
             LayoutOptions::try_new(100.0, 16.0)
                 .unwrap()
-                .language("a".repeat(65))
+                .with_language("a".repeat(65))
                 .is_err()
         );
     }

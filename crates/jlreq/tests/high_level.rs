@@ -78,7 +78,7 @@ fn plain_horizontal_and_vertical_text_are_draw_ready() -> Result<(), Box<dyn Err
     let vertical = jlreq::layout(
         text,
         &fonts,
-        LayoutOptions::try_new(240.0, 16.0)?.writing_mode(WritingMode::VerticalRl),
+        LayoutOptions::try_new(240.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
     )?;
     assert!(
         vertical
@@ -89,6 +89,13 @@ fn plain_horizontal_and_vertical_text_are_draw_ready() -> Result<(), Box<dyn Err
     assert!(vertical.lines().iter().all(|line| {
         line.writing_mode() == WritingMode::VerticalRl && line.origin().x_26_6() <= 0
     }));
+
+    assert_eq!(horizontal.writing_mode(), WritingMode::HorizontalTb);
+    assert_eq!(vertical.writing_mode(), WritingMode::VerticalRl);
+    assert_eq!(vertical.options().writing_mode(), WritingMode::VerticalRl);
+    assert!((vertical.options().line_extent() - 240.0).abs() < f32::EPSILON);
+    let relayout = jlreq::layout(text, &fonts, vertical.options().clone())?;
+    assert_eq!(relayout, vertical);
     Ok(())
 }
 
@@ -99,7 +106,7 @@ fn bidi_fallback_and_missing_glyphs_preserve_source_ranges() -> Result<(), Box<d
     let layout = jlreq::layout(
         text,
         &fonts,
-        LayoutOptions::try_new(640.0, 18.0)?.base_direction(BaseDirection::Auto),
+        LayoutOptions::try_new(640.0, 18.0)?.with_base_direction(BaseDirection::Auto),
     )?;
     assert!(layout.glyphs().any(|glyph| glyph.bidi_level() % 2 == 1));
     assert!(layout.glyphs().any(|glyph| glyph.font_id() == arabic));
@@ -151,9 +158,15 @@ fn paragraph_breaks_tabs_and_empty_input_are_defined() -> Result<(), Box<dyn Err
         piece != "\r" && piece != "\n" && piece != "\u{2028}"
     }));
 
-    let empty = jlreq::layout("", &fonts, LayoutOptions::try_new(160.0, 16.0)?)?;
+    let empty = jlreq::layout(
+        "",
+        &fonts,
+        LayoutOptions::try_new(160.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
+    )?;
     assert!(empty.lines().is_empty());
     assert_eq!(empty.glyphs().count(), 0);
+    assert_eq!(empty.writing_mode(), WritingMode::VerticalRl);
+    assert_eq!(empty.options().writing_mode(), WritingMode::VerticalRl);
     Ok(())
 }
 
@@ -187,8 +200,8 @@ fn ttc_variations_and_features_reach_the_shaper() -> Result<(), Box<dyn Error>> 
     let weight = FontVariation::try_new(OpenTypeTag::try_new("wght")?, 700.0)?;
     let liga = OpenTypeFeature::new(OpenTypeTag::try_new("liga")?, 1);
     let options = LayoutOptions::try_new(320.0, 18.0)?
-        .variation(weight)
-        .feature(liga);
+        .with_variation(weight)
+        .with_feature(liga);
     let layout = jlreq::layout("A", &variable, options)?;
     assert!(layout.glyphs().all(|glyph| glyph.glyph_id() != 0));
     Ok(())
@@ -208,12 +221,14 @@ fn resolved_size_variations_and_draw_cells_match_shaping_runs() -> Result<(), Bo
     let mut builder = DocumentBuilder::new("abc");
     builder.span(
         0..3,
-        SpanStyle::new().font_size(20.0)?.variation(span_value),
+        SpanStyle::new()
+            .with_font_size(20.0)?
+            .with_variation(span_value),
     )?;
     let layout = jlreq::layout_document(
         &builder.build()?,
         &fonts,
-        LayoutOptions::try_new(240.0, 16.0)?.variation(global),
+        LayoutOptions::try_new(240.0, 16.0)?.with_variation(global),
     )?;
     let glyphs = layout.glyphs().collect::<Vec<_>>();
     assert!(glyphs.len() >= 2);
@@ -259,8 +274,8 @@ fn paragraph_progress_uses_actual_line_cells_and_applies_gap_once() -> Result<()
             "A\nB",
             &fonts,
             LayoutOptions::try_new(240.0, 16.0)?
-                .writing_mode(mode)
-                .line_gap(3.0)?,
+                .with_writing_mode(mode)
+                .with_line_gap(3.0)?,
         )?;
         assert_eq!(plain.lines().len(), 2);
         if mode == WritingMode::HorizontalTb {
@@ -282,15 +297,15 @@ fn paragraph_progress_uses_actual_line_cells_and_applies_gap_once() -> Result<()
         }
 
         let mut builder = DocumentBuilder::new("漢注\n字");
-        builder.span(0..6, SpanStyle::new().font_size(40.0)?)?;
+        builder.span(0..6, SpanStyle::new().with_font_size(40.0)?)?;
         builder.group_ruby(0..3, "かん")?;
         builder.warichu(3..6)?;
         let layout = jlreq::layout_document(
             &builder.build()?,
             &fonts,
             LayoutOptions::try_new(240.0, 16.0)?
-                .writing_mode(mode)
-                .line_gap(3.0)?,
+                .with_writing_mode(mode)
+                .with_line_gap(3.0)?,
         )?;
         assert_eq!(layout.lines().len(), 2);
         let first = layout.lines()[0].bounds().as_26_6();
@@ -326,7 +341,7 @@ fn all_typed_constructs_and_ruby_modes_are_automatically_shaped() -> Result<(), 
     let layout = jlreq::layout_document(
         &document,
         &fonts,
-        LayoutOptions::try_new(800.0, 20.0)?.writing_mode(WritingMode::VerticalRl),
+        LayoutOptions::try_new(800.0, 20.0)?.with_writing_mode(WritingMode::VerticalRl),
     )?;
     assert!(layout.glyphs().any(|glyph| glyph.annotation().is_some()));
     assert!(
@@ -365,7 +380,7 @@ fn limits_fail_atomically_and_engine_remains_reusable() -> Result<(), Box<dyn Er
     assert!(LayoutOptions::try_new(100.0, f32::INFINITY).is_err());
 
     let (fonts, _, _) = fixture_fonts()?;
-    let limited = LayoutOptions::try_new(200.0, 16.0)?.limits(
+    let limited = LayoutOptions::try_new(200.0, 16.0)?.with_limits(
         ResourceLimits::default()
             .with_max_glyphs(1)
             .with_max_core_operations(64),
@@ -394,7 +409,7 @@ fn hit_caret_and_selection_round_trip_in_both_writing_modes() -> Result<(), Box<
         let layout = jlreq::layout(
             "A日本語مرحبا",
             &fonts,
-            LayoutOptions::try_new(420.0, 18.0)?.writing_mode(mode),
+            LayoutOptions::try_new(420.0, 18.0)?.with_writing_mode(mode),
         )?;
         let first = layout
             .glyphs()
@@ -532,27 +547,60 @@ fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn 
     );
 
     let options = LayoutOptions::try_new(100.125, 16.25)?
-        .alignment(Alignment::Center)
-        .style(jlreq::core::Style::book_2020())
-        .language("ja-JP")?
-        .base_direction(BaseDirection::LeftToRight)
-        .line_gap(2.5)?
-        .tab_width(8)?
-        .feature(feature)
-        .variation(variation)
-        .limits(ResourceLimits::default());
+        .with_writing_mode(WritingMode::HorizontalTb)
+        .with_alignment(Alignment::Center)
+        .with_style(jlreq::Style::book_2020())
+        .with_language("ja-JP")?
+        .with_base_direction(BaseDirection::LeftToRight)
+        .with_line_gap(2.5)?
+        .with_tab_width(8)?
+        .with_feature(feature)
+        .with_variation(variation)
+        .with_limits(limits);
     assert!((options.line_extent() - 100.125).abs() < f32::EPSILON);
     assert!((options.font_size() - 16.25).abs() < f32::EPSILON);
-    assert_eq!(options.writing_mode_value(), WritingMode::HorizontalTb);
-    assert_eq!(options.resource_limits(), ResourceLimits::default());
-    assert!(LayoutOptions::try_new(100.0, 16.0)?.language("").is_err());
+    assert_eq!(options.writing_mode(), WritingMode::HorizontalTb);
+    assert_eq!(options.alignment(), Alignment::Center);
+    assert_eq!(options.style(), &jlreq::Style::book_2020());
+    assert_eq!(options.language(), "ja-JP");
+    assert_eq!(options.base_direction(), BaseDirection::LeftToRight);
+    assert!((options.line_gap() - 2.5).abs() < f32::EPSILON);
+    assert_eq!(options.tab_width(), 8);
+    assert_eq!(options.features(), [feature]);
+    assert_eq!(options.variations(), [variation]);
+    assert_eq!(options.limits(), limits);
+
+    let replaced = options
+        .clone()
+        .with_features([feature, feature])
+        .with_variations([variation]);
+    assert_eq!(replaced.features(), [feature, feature]);
+    assert_eq!(replaced.variations(), [variation]);
+    let cleared = replaced.with_features([]).with_variations([]);
+    assert!(cleared.features().is_empty());
+    assert!(cleared.variations().is_empty());
+    let options = options.with_limits(ResourceLimits::default());
+    assert_eq!(options.limits(), ResourceLimits::default());
     assert!(
         LayoutOptions::try_new(100.0, 16.0)?
-            .language("ja_JP")
+            .with_language("")
             .is_err()
     );
-    assert!(LayoutOptions::try_new(100.0, 16.0)?.line_gap(-1.0).is_err());
-    assert!(LayoutOptions::try_new(100.0, 16.0)?.tab_width(0).is_err());
+    assert!(
+        LayoutOptions::try_new(100.0, 16.0)?
+            .with_language("ja_JP")
+            .is_err()
+    );
+    assert!(
+        LayoutOptions::try_new(100.0, 16.0)?
+            .with_line_gap(-1.0)
+            .is_err()
+    );
+    assert!(
+        LayoutOptions::try_new(100.0, 16.0)?
+            .with_tab_width(0)
+            .is_err()
+    );
 
     let (fonts, _, _) = fixture_fonts()?;
     for alignment in [
@@ -561,11 +609,15 @@ fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn 
         Alignment::End,
         Alignment::Justify,
     ] {
-        let layout = jlreq::layout("ABC", &fonts, options.clone().alignment(alignment))?;
+        let layout = jlreq::layout("ABC", &fonts, options.clone().with_alignment(alignment))?;
         assert!(!layout.lines().is_empty());
     }
     for direction in [BaseDirection::LeftToRight, BaseDirection::RightToLeft] {
-        let layout = jlreq::layout("A مرحبا", &fonts, options.clone().base_direction(direction))?;
+        let layout = jlreq::layout(
+            "A مرحبا",
+            &fonts,
+            options.clone().with_base_direction(direction),
+        )?;
         assert!(!layout.lines().is_empty());
     }
     Ok(())
@@ -587,15 +639,15 @@ fn span_roles_and_document_validation_are_typed() -> Result<(), Box<dyn Error>> 
     ];
     let mut builder = DocumentBuilder::new(text);
     for (index, role) in roles.into_iter().enumerate() {
-        let mut style = SpanStyle::new().role(role);
+        let mut style = SpanStyle::new().with_role(role);
         if index == 0 {
             style = style
-                .family("Noto Sans JP")
-                .font_style(FontStyle::new(500, 100, FontSlant::Normal))
-                .font_size(17.0)?
-                .language("ja")?
-                .feature(feature)
-                .variation(variation);
+                .with_family("Noto Sans JP")
+                .with_font_style(FontStyle::new(500, 100, FontSlant::Normal))
+                .with_font_size(17.0)?
+                .with_language("ja")?
+                .with_feature(feature)
+                .with_variation(variation);
         }
         builder.span(index..index.saturating_add(1), style)?;
     }
@@ -605,8 +657,8 @@ fn span_roles_and_document_validation_are_typed() -> Result<(), Box<dyn Error>> 
     assert_eq!(document.text(), text);
     let layout = jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(200.0, 16.0)?)?;
     assert!(!layout.lines().is_empty());
-    assert!(SpanStyle::new().font_size(0.0).is_err());
-    assert!(SpanStyle::new().language("ja_JP").is_err());
+    assert!(SpanStyle::new().with_font_size(0.0).is_err());
+    assert!(SpanStyle::new().with_language("ja_JP").is_err());
 
     let mut invalid = DocumentBuilder::new("éA");
     assert_eq!(
@@ -798,7 +850,7 @@ fn every_high_level_resource_limit_has_a_stable_error() -> Result<(), Box<dyn Er
         let error = expected_layout_error(jlreq::layout(
             "A",
             &fonts,
-            LayoutOptions::try_new(100.0, 16.0)?.limits(limits),
+            LayoutOptions::try_new(100.0, 16.0)?.with_limits(limits),
         ))?;
         assert!(matches!(
             error,
@@ -815,7 +867,7 @@ fn every_high_level_resource_limit_has_a_stable_error() -> Result<(), Box<dyn Er
         &document,
         &fonts,
         LayoutOptions::try_new(100.0, 16.0)?
-            .limits(ResourceLimits::default().with_max_constructs(0)),
+            .with_limits(ResourceLimits::default().with_max_constructs(0)),
     ))?;
     assert!(matches!(
         error,
