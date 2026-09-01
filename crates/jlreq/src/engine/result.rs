@@ -1,14 +1,27 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+struct LineMapping<'a> {
+    attachments: &'a [Option<AttachmentShape>],
+    construct_globals: &'a [(Range<usize>, usize)],
+    global_offset: usize,
+    block_offset: i32,
+    paragraph_index: usize,
+}
+
 fn map_core_lines(
     layout: &jlreq_core::Layout,
     prepared: &PreparedText,
-    attachments: &[Option<AttachmentShape>],
-    global_offset: usize,
-    block_offset: i32,
+    mapping: &LineMapping<'_>,
     options: &LayoutOptions,
 ) -> Vec<TextLine> {
+    let LineMapping {
+        attachments,
+        construct_globals,
+        global_offset,
+        block_offset,
+        paragraph_index,
+    } = *mapping;
     let mut result = Vec::with_capacity(layout.lines().len());
     let mut used_clusters = vec![0_usize; prepared.clusters.len()];
     for (line_index, line) in layout.lines().iter().enumerate() {
@@ -35,12 +48,23 @@ fn map_core_lines(
                 continue;
             }
             let level = prepared.clusters[cluster_indices[0]].bidi_level;
+            let construct = match placement.origin() {
+                jlreq_core::PlacementOrigin::Construct(local) => construct_globals
+                    .get(local)
+                    .map(|(_, global)| *global),
+                jlreq_core::PlacementOrigin::Cluster(_) => cluster_indices
+                    .first()
+                    .and_then(|index| prepared.clusters.get(*index))
+                    .and_then(|cluster| covering_construct(construct_globals, &cluster.range)),
+                _ => None,
+            };
             cells.push(Cell {
                 clusters: cluster_indices,
                 block: placement.block(),
                 advance: placement.advance().max(0),
                 level,
                 transform: core_transform(placement.transform()),
+                construct,
             });
         }
         let levels: Vec<_> = cells
@@ -80,6 +104,7 @@ fn map_core_lines(
                             block: adjusted_block(cell.block, line_index, block_offset, options),
                             transform: cell.transform,
                             writing_mode: options.writing_mode,
+                            construct: cell.construct,
                         },
                     ));
                     glyph_cursor = glyph_cursor.saturating_add(raw.inline_advance(
@@ -118,9 +143,30 @@ fn map_core_lines(
             writing_mode: options.writing_mode,
             glyphs,
             hit_bounds,
+            index: 0,
+            paragraph_index,
+            first_in_paragraph: false,
+            last_in_paragraph: false,
         });
     }
     result
+}
+
+/// The document ordinal of the innermost construct covering a cluster range.
+fn covering_construct(
+    construct_globals: &[(Range<usize>, usize)],
+    cluster: &Range<usize>,
+) -> Option<usize> {
+    let mut best: Option<(usize, usize)> = None;
+    for (range, global) in construct_globals {
+        if range.start <= cluster.start && cluster.end <= range.end {
+            let span = range.end.saturating_sub(range.start);
+            if best.is_none_or(|(kept, _)| span < kept) {
+                best = Some((span, *global));
+            }
+        }
+    }
+    best.map(|(_, global)| global)
 }
 
 fn placement_cluster_indices(
@@ -163,6 +209,7 @@ struct Cell {
     advance: i32,
     level: u8,
     transform: GlyphTransform,
+    construct: Option<usize>,
 }
 
 struct PlacementContext {
@@ -172,6 +219,7 @@ struct PlacementContext {
     block: i32,
     transform: GlyphTransform,
     writing_mode: WritingMode,
+    construct: Option<usize>,
 }
 
 fn place_raw_glyph(
@@ -186,6 +234,7 @@ fn place_raw_glyph(
         block,
         transform,
         writing_mode,
+        construct,
     } = placement;
     let horizontal =
         writing_mode == WritingMode::HorizontalTb || transform == GlyphTransform::TateChuYoko;
@@ -224,6 +273,7 @@ fn place_raw_glyph(
         transform,
         bidi_level: cluster.bidi_level,
         writing_mode,
+        construct,
     }
 }
 
@@ -268,6 +318,7 @@ fn append_attachments(
                         ),
                         transform,
                         writing_mode: options.writing_mode,
+                        construct: Some(shape.global_ordinal),
                     },
                 ));
                 glyph_cursor = glyph_cursor.saturating_add(raw.inline_advance(
