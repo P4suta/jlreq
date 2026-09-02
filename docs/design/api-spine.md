@@ -34,27 +34,64 @@ for glyph in layout.glyphs() {
 ```
 
 `LayoutOptions::try_new(line_extent, font_size)` validates and quantizes its two required
-values. Builder methods set writing mode, alignment, core `Style`, language, base
-direction, line gap, tab width, OpenType features and variations, and `ResourceLimits`.
-`LayoutEngine` exposes the same plain-text and typed-document calls with reusable
-internals.
+values. Consuming `with_*` setters cover writing mode, alignment, core `Style`, language,
+base direction, line gap, tab width, explicit `TabStop`s, first-line indent, `Widow`
+policy, OpenType features and variations, and `ResourceLimits`; every field also has a
+same-named getter, and the collections have replacing `with_*s` forms whose empty
+iterator clears them. Value types follow one convention — `with_*` setters, bare-name
+getters — everywhere: `LayoutOptions`, `SpanStyle`, `ParagraphStyle`, and
+`ResourceLimits` alike. `LayoutEngine` exposes the same plain-text and typed-document
+calls with reusable internals.
+
+Tab stops, alignment at stops (`TabAlignment`, including decimal-point `Character`
+alignment), and the widow policy are facade mirrors of the core types, taking the same
+quantized `f32` units as every other public length. Explicit stops replace the evenly
+spaced ladder derived from the tab width.
 
 `FontLibrary` registers owned memory fonts and TTC indices, family/style metadata, a
-primary face, and ordered fallback. The optional `system-fonts` feature is the only OS
-discovery surface. It matches weight, width, and slant and records selected default axes
-plus synthetic bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi
-types are private.
+primary face, and ordered fallback. When no family is supplied, one is derived from the
+font's own `name` table (typographic family preferred), so `register_font` plus a span
+family request just works; a span family that matches nothing keeps the fallback result
+and reports a `font.unknown-family` diagnostic. `FontId` equality identifies the library
+slot — preserving cross-library determinism — while lookups check provenance, so an
+identifier minted by a different library resolves to `None` rather than the wrong font.
+Each `FontResource` also exposes em-relative design metrics (ascent, descent, line gap,
+x-height, cap height, underline geometry) for renderer-side decoration; composition never
+depends on them. The optional `system-fonts` feature is the only OS discovery surface. It
+matches weight, width, and slant and records selected default axes plus synthetic
+bold/skew in `FontResource`. HarfRust, Fontique, ICU4X, and unicode-bidi types are
+private.
 
 ## Typed authored content
 
-`DocumentBuilder` adds non-overlapping `SpanStyle` ranges, mandatory and prohibited
-breaks, and all nine inline structure families. Ruby can be mono, group, or jukugo, with
+`DocumentBuilder` adds non-overlapping `SpanStyle` ranges, mandatory, discretionary
+(penalized, still legality-checked), and prohibited breaks, and all nine inline structure
+families. A span asserts semantic roles — including decimal point, digit-group separator,
+and sentence-medial/-terminator dividing marks, with `TextRole::Plain` suppressing the
+conservative inference entirely — and a `MetricsFrame` overriding the per-character
+virtual-body heuristic, reaching the half-em body and scripts the heuristic does not
+recognize. Ruby can be mono, group, or jukugo, with
 automatic or explicit `RubyRun` association. The builder shapes annotation strings for
 ruby, emphasis, reference marks, and scripts; callers never manufacture low-level
-annotation clusters.
+annotation clusters. `ScriptPosition` is honored in placement: superscripts share the
+annotation side with ruby, subscripts mirror to the opposite block side, and the line
+reserves space on whichever sides it uses.
 
 The builder validates byte boundaries and cross-field relationships before producing an
 immutable `Document`. `layout_document` then returns a complete result or a typed error.
+
+`DocumentBuilder::paragraph_style` applies a `ParagraphStyle` — optional overrides for
+line extent, alignment, JLReq policy `Style`, first-line indent, widow policy, and tab
+stops — to every paragraph its range fully contains, which is what makes indented body
+text, a narrower quotation measure, or a centered heading possible inside one document.
+Styles must not overlap, and a range that cuts a paragraph is rejected at layout: half a
+paragraph cannot take its own measure.
+
+A finished document reads back everything the builder accepted: `spans()`,
+`paragraph_styles()`, `constructs()` (as borrowed `InlineConstruct` values whose ordinals
+match glyph provenance), `mandatory_breaks()`, `discretionary_breaks()`, and `prohibited_breaks()`, and `SpanStyle`
+exposes a getter for each of its fields. Consumers can therefore inspect, diff, or
+serialize a document without a parallel data model.
 
 ## Renderer-facing results
 
@@ -69,14 +106,31 @@ immutable `Document`. `layout_document` then returns a complete result or a type
 A glyph exposes font ID, glyph ID, source byte range, optional annotation attribution,
 draw origin, advances, offsets, resolved size and variation axes, cell bounds, 26.6
 geometry, transform, and bidi level. A line exposes source range, physical origin and
-extents, writing mode, cell bounds, and its visual glyph slice. `TextLayout::font` is the
-required ID lookup because retained font identifiers may be sparse.
+extents, writing mode, cell bounds, and its visual glyph slice. The layout itself reports
+its `writing_mode()` (defined even when there are no lines) and retains the exact
+`options()` it was produced with, so an editor can re-lay content out without keeping its
+own copy. `TextLayout::font` is the required ID lookup because retained font identifiers
+may be sparse.
 
 `hit_test`, `caret_rect`, and `selection_rects` are defined over the same physical
 geometry and support both writing modes and bidi. They never require the renderer to infer
 logical ordering from glyph order. `caret_rect` requires `Affinity`; hit-test results can
 therefore round-trip exactly at wraps, paragraph breaks, and bidi boundaries. Selection
-rectangles are split at visually unselected runs.
+rectangles are split at visually unselected runs; `selection_rects_filled` returns the
+per-line editor form instead, extended to the line edge wherever the selection continues.
+
+The layout is also the editor toolkit. Every line carries its `index()`,
+`paragraph_index()`, and first/last-in-paragraph flags; `line_index_at` maps a byte offset
+to its line (a blank paragraph's empty line holds its own start). Caret motion is built
+in: `next_visual_caret`/`prev_visual_caret` walk the reading surface (bidi-correct,
+crossing lines), and `caret_previous_line`/`caret_next_line` keep the inline position
+while changing lines. Text motion uses the same segmentation the layout itself uses —
+`next_grapheme_boundary`/`prev_grapheme_boundary`, and dictionary-backed `word_range_at`
+and `sentence_range_at`, so double-click selection is correct for Japanese without a
+consumer-side segmenter (segmenter types stay private; results are plain offsets and
+ranges). Every glyph reports `construct()`, the document ordinal of the typed structure it
+belongs to — base and annotation glyphs alike — so "select the whole ruby" is one lookup
+against `Document::construct`.
 
 `cell_bounds` and line/layout `bounds` are layout-cell boundaries, not outline ink
 boundaries. They preserve whitespace and annotation cells. Renderers derive ink bounds
@@ -85,9 +139,11 @@ from font outlines when needed.
 ## Errors, diagnostics, and atomicity
 
 `LayoutError` distinguishes invalid font data or TTC index, missing fonts, invalid
-options, invalid typed document data, resource exhaustion, core input failure, and core
-composition failure. Its `code()` and optional source range are stable; display prose may
-improve.
+options, invalid typed document data, font-library misuse (`InvalidFontRequest`), resource
+exhaustion, core input failure, and core composition failure. Its `code()` and optional
+source range are stable; `message()` carries a stable one-sentence explanation where the
+variant has one, and `Display` shows the message, the byte range when present, and the
+code. Display prose may improve.
 
 Invalid fonts, options, ranges, and resource limits return no `TextLayout`. Missing glyphs
 and overfull or widow conditions that still permit a complete answer are diagnostics.
@@ -100,7 +156,10 @@ are overlaid per tag with the span layer last.
 
 ## Core: pre-shaped exact composition
 
-`jlreq-core` is reachable directly and as `jlreq::core`. It accepts caller-shaped UTF-8
+`jlreq-core` is reachable directly and as `jlreq::core`; the composition-policy types the
+facade takes as input — `Style`, `StyleBuilder`, and `StyleError` — are additionally
+re-exported at the `jlreq` root so the headline typesetting knob needs no module path.
+The core accepts caller-shaped UTF-8
 clusters, integer advances, break opportunities, paragraph policy, and typed constructs.
 Its `ShapedText`, `ParagraphBuilder`, `Style`, `CompositionLimits`, `Composer`,
 `Layout`, placements, diagnostics, and typed errors retain the existing public behavior

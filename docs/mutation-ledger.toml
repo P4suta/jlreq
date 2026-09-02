@@ -130,6 +130,18 @@ source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6
 proof = "FRAME_PROPORTIONAL is bit 4 and does not overlap the accumulated bits 0-3; OR and XOR are identical."
 
 [[equivalent]]
+mutant = "crates/jlreq/src/result.rs:895:54: replace / with % in TextLayout::caret_on_neighbor_line"
+exclude_re = '^crates/jlreq/src/result[.]rs:895:54: replace / with % in TextLayout::caret_on_neighbor_line$'
+source_sha256 = "9b068ef39001fabddc13d9af8763e9af6f5273fc33c1a5a6b44ee5402468887e"
+proof = "The probe only has to land inside the column it targets. Both `x + width / 2` and `x + width % 2` do: the remainder is 0 or 1, and `Rect::contains` includes the edges, so each point lies within `x ..= x + width`. Where the target's leading edge is shared with the next column, `line_index_for_rect` keeps the first line at equal distance, and the target is the earlier of the two in both motion directions. The horizontal branch of the same expression is not equivalent and is covered by `line_geometry_queries_pick_the_line_the_caret_is_actually_on`."
+
+[[equivalent]]
+mutant = "crates/jlreq/src/result.rs:970:46: replace || with && in TextLayout::selection_rects_filled"
+exclude_re = '^crates/jlreq/src/result[.]rs:970:46: replace [|][|] with && in TextLayout::selection_rects_filled$'
+source_sha256 = "9b068ef39001fabddc13d9af8763e9af6f5273fc33c1a5a6b44ee5402468887e"
+proof = "The disjunction skips lines the selection does not touch; it is a fast path, not a correctness guard. A line the conjunction fails to skip produces the clamped range `range.start.max(line.start) .. range.end.min(line.end)`, whose start exceeds its end for any non-overlapping line. `selection_rects` rejects such a range in `is_valid_selection_range` and returns no rectangles, so the loop reaches the same `continue` one step later with the same result."
+
+[[equivalent]]
 mutant = "crates/jlreq-core/src/generated.rs:55:41: replace < with <= in ascends"
 exclude_re = '^crates/jlreq-core/src/generated[.]rs:55:41: replace < with <= in ascends$'
 source_sha256 = "1ae94e171d53337b1cf8f472b5f1ad4d805551207911bbd5d1f4c6dd6563de6c"

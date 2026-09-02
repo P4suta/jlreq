@@ -87,6 +87,7 @@ mod tests {
             global_variations: Vec::new(),
             span_variations: Vec::new(),
             role: TextRole::Text,
+            frame: crate::MetricsFrame::Auto,
         }
     }
 
@@ -229,8 +230,8 @@ mod tests {
     fn style_resolver_scans_forward_and_shares_one_effective_style_per_span() {
         let options = LayoutOptions::try_new(300.0, 16.0).unwrap();
         let spans = vec![
-            (1..3, SpanStyle::new().family("First")),
-            (4..6, SpanStyle::new().family("Second")),
+            (1..3, SpanStyle::new().with_family("First")),
+            (4..6, SpanStyle::new().with_family("Second")),
         ];
         let mut resolver = StyleResolver::new(&spans, &options, 0);
 
@@ -353,10 +354,10 @@ mod tests {
             FontVariation::try_new(crate::OpenTypeTag::try_new("wght").unwrap(), 515.0).unwrap();
         let options = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .language("en")
+            .with_language("en")
             .unwrap()
-            .feature(feature)
-            .variation(variation);
+            .with_feature(feature)
+            .with_variation(variation);
 
         let left = vec![(2..4, SpanStyle::new())];
         assert_eq!(
@@ -377,15 +378,15 @@ mod tests {
         let span_variation =
             FontVariation::try_new(crate::OpenTypeTag::try_new("wdth").unwrap(), 90.0).unwrap();
         let span = SpanStyle::new()
-            .family("Secondary")
-            .font_style(FontStyle::new(600, 90, crate::FontSlant::Italic))
-            .font_size(18.0)
+            .with_family("Secondary")
+            .with_font_style(FontStyle::new(600, 90, crate::FontSlant::Italic))
+            .with_font_size(18.0)
             .unwrap()
-            .language("ja")
+            .with_language("ja")
             .unwrap()
-            .feature(span_feature)
-            .variation(span_variation)
-            .role(TextRole::Formula);
+            .with_feature(span_feature)
+            .with_variation(span_variation)
+            .with_role(TextRole::Formula);
         let merged = effective_style(&(1..3), &[(0..4, span)], &options).unwrap();
         assert_eq!(merged.families, ["Secondary"]);
         assert_eq!(merged.size, 18 * 64);
@@ -403,12 +404,12 @@ mod tests {
         };
         let options = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .variation(variation("wght", 400.0))
-            .variation(variation("wdth", 90.0))
-            .variation(variation("wght", 500.0));
+            .with_variation(variation("wght", 400.0))
+            .with_variation(variation("wdth", 90.0))
+            .with_variation(variation("wght", 500.0));
         let span = SpanStyle::new()
-            .variation(variation("wdth", 80.0))
-            .variation(variation("wght", 700.0));
+            .with_variation(variation("wdth", 80.0))
+            .with_variation(variation("wght", 700.0));
         let style = span_effective_style(&base_effective_style(&options), &span);
         let (fonts, first, _) = fixture_fonts();
         let mut resource = fonts.get(first).unwrap().clone();
@@ -609,13 +610,118 @@ mod tests {
     }
 
     #[test]
+    fn discretionary_breaks_are_lowered_between_allowed_and_mandatory() {
+        let source = "廃線"; // no automatic opportunity strictly inside a 2-cluster run
+        let (_, font, _) = fixture_fonts();
+        let prepared = PreparedText {
+            clusters: vec![cluster(0..3, font, 0), cluster(3..6, font, 0)],
+        };
+
+        let mut discretionary = DocumentBuilder::new(source);
+        discretionary.discretionary_break(3).unwrap();
+        let breaks = collect_breaks(
+            &discretionary.build().unwrap(),
+            &(0..6),
+            source,
+            &prepared,
+            &[],
+        );
+        let inserted = breaks
+            .iter()
+            .find(|candidate| candidate.offset() == 3)
+            .unwrap();
+        assert!(inserted.is_discretionary());
+        assert!(!inserted.is_mandatory());
+
+        // A mandatory break at the same offset wins over the suggestion.
+        let mut both = DocumentBuilder::new(source);
+        both.discretionary_break(3).unwrap();
+        both.mandatory_break(3).unwrap();
+        let breaks = collect_breaks(&both.build().unwrap(), &(0..6), source, &prepared, &[]);
+        let inserted = breaks
+            .iter()
+            .find(|candidate| candidate.offset() == 3)
+            .unwrap();
+        assert!(inserted.is_mandatory());
+    }
+
+    #[test]
+    fn frames_and_roles_resolve_assertions_before_heuristics() {
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Auto, "日"),
+            jlreq_core::Frame::FullEm
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Auto, "A"),
+            jlreq_core::Frame::Proportional
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::FullEm, "A"),
+            jlreq_core::Frame::FullEm
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::Proportional, "日"),
+            jlreq_core::Frame::Proportional
+        );
+        assert_eq!(
+            resolve_frame(crate::MetricsFrame::HalfEm, "한"),
+            jlreq_core::Frame::HalfEm
+        );
+
+        // Default inference stays conservative and data-driven.
+        assert_eq!(
+            classify_role("3.4", 1..2, TextRole::Text),
+            Some(jlreq_core::ClusterRole::DecimalPoint)
+        );
+        assert_eq!(
+            classify_role("1,000", 1..2, TextRole::Text),
+            Some(jlreq_core::ClusterRole::DigitGroupSeparator)
+        );
+        assert_eq!(
+            classify_role("あ！", 3..6, TextRole::Text),
+            Some(jlreq_core::ClusterRole::SentenceTerminator)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::Text),
+            Some(jlreq_core::ClusterRole::SentenceMedial)
+        );
+        assert_eq!(classify_role("ab", 0..1, TextRole::Text), None);
+
+        // Plain suppresses inference; explicit roles override it.
+        assert_eq!(
+            classify_role("3.4", 1..2, TextRole::Plain),
+            Some(jlreq_core::ClusterRole::Text)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::Plain),
+            Some(jlreq_core::ClusterRole::Text)
+        );
+        assert_eq!(
+            classify_role("あ！い", 3..6, TextRole::SentenceTerminator),
+            Some(jlreq_core::ClusterRole::SentenceTerminator)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::DecimalPoint),
+            Some(jlreq_core::ClusterRole::DecimalPoint)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::DigitGroupSeparator),
+            Some(jlreq_core::ClusterRole::DigitGroupSeparator)
+        );
+        assert_eq!(
+            classify_role("x", 0..1, TextRole::SentenceMedial),
+            Some(jlreq_core::ClusterRole::SentenceMedial)
+        );
+    }
+
+    #[test]
     fn tab_stops_and_annotation_options_honor_exact_boundaries() {
         let exact = LayoutOptions::try_new(64.0, 16.0)
             .unwrap()
-            .tab_width(2)
+            .with_tab_width(2)
             .unwrap();
         assert_eq!(
-            collect_tab_stops("\t", &exact)
+            collect_tab_stops("\t", &exact, exact.line_extent, &[])
                 .unwrap()
                 .iter()
                 .map(|stop| stop.position())
@@ -624,15 +730,47 @@ mod tests {
         );
         let bounded = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .tab_width(2)
+            .with_tab_width(2)
             .unwrap()
-            .limits(crate::ResourceLimits::default().with_max_constructs(1));
-        assert_eq!(collect_tab_stops("\t", &bounded).unwrap().len(), 1);
-        assert!(collect_tab_stops("no tab", &bounded).unwrap().is_empty());
+            .with_limits(crate::ResourceLimits::default().with_max_constructs(1));
+        assert_eq!(
+            collect_tab_stops("\t", &bounded, bounded.line_extent, &[])
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            collect_tab_stops("no tab", &bounded, bounded.line_extent, &[])
+                .unwrap()
+                .is_empty()
+        );
+
+        // Explicit stops replace the generated ladder and carry their
+        // alignment through to the core, quantized like every other length.
+        let explicit = [
+            crate::TabStop::try_new(24.0, crate::TabAlignment::Character('.')).unwrap(),
+            crate::TabStop::try_new(48.0, crate::TabAlignment::End).unwrap(),
+        ];
+        let stops = collect_tab_stops("\t", &exact, exact.line_extent, &explicit).unwrap();
+        assert_eq!(
+            stops
+                .iter()
+                .map(|stop| (stop.position(), stop.alignment()))
+                .collect::<Vec<_>>(),
+            [
+                (24 * 64, jlreq_core::TabAlignment::Character('.')),
+                (48 * 64, jlreq_core::TabAlignment::End),
+            ]
+        );
+        assert!(
+            collect_tab_stops("no tab", &exact, exact.line_extent, &explicit)
+                .unwrap()
+                .is_empty()
+        );
 
         let source = LayoutOptions::try_new(101.0, 17.0)
             .unwrap()
-            .alignment(Alignment::End);
+            .with_alignment(Alignment::End);
         let annotation = annotation_options(&source);
         assert_eq!(annotation.font_size, 544);
         assert_eq!(annotation.line_extent, source.line_extent);
@@ -733,6 +871,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::Identity,
                 writing_mode: WritingMode::HorizontalTb,
+                construct: None,
             },
         );
         assert_eq!(horizontal.geometry_26_6(), (320, 832, 256, 0, 64, 128));
@@ -746,6 +885,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::Identity,
                 writing_mode: WritingMode::VerticalRl,
+                construct: None,
             },
         );
         assert_eq!(vertical.geometry_26_6(), (640, 320, 0, 384, 64, 128));
@@ -759,6 +899,7 @@ mod tests {
                 block: 640,
                 transform: GlyphTransform::TateChuYoko,
                 writing_mode: WritingMode::VerticalRl,
+                construct: None,
             },
         );
         assert_eq!(tate_chu_yoko.geometry_26_6(), (320, 832, 256, 0, 64, 128));
@@ -768,10 +909,12 @@ mod tests {
     fn block_and_direction_helpers_distinguish_every_geometry_branch() {
         let horizontal = LayoutOptions::try_new(100.0, 16.0)
             .unwrap()
-            .line_gap(2.0)
+            .with_line_gap(2.0)
             .unwrap();
         assert_eq!(adjusted_block(10, 3, 20, &horizontal), 414);
-        let vertical = horizontal.clone().writing_mode(WritingMode::VerticalRl);
+        let vertical = horizontal
+            .clone()
+            .with_writing_mode(WritingMode::VerticalRl);
         assert_eq!(adjusted_block(10, 3, 20, &vertical), -354);
 
         let (_, id, _) = fixture_fonts();

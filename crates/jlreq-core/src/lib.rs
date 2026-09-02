@@ -42,7 +42,7 @@ mod pipeline;
 mod spec;
 pub mod style;
 
-pub use construct::{Construct, Ruby, RubyKind, RubyRun};
+pub use construct::{Construct, Ruby, RubyKind, RubyRun, ScriptPosition};
 pub use layout::{
     Attachment, ClusterPlacement, CoordinateTransform, Diagnostic, Layout, Line, PlacementOrigin,
     Severity,

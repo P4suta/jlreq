@@ -41,6 +41,7 @@ fn collect_breaks(
 ) -> Vec<jlreq_core::Break> {
     let prohibited = sorted_offsets_in_range(&document.prohibited_breaks, paragraph_range);
     let mandatory = sorted_offsets_in_range(&document.mandatory_breaks, paragraph_range);
+    let discretionary = sorted_offsets_in_range(&document.discretionary_breaks, paragraph_range);
     let mut breaks = BTreeMap::new();
     let mut construct_index = 0_usize;
     let mut maximum_construct_end = 0_usize;
@@ -62,25 +63,93 @@ fn collect_breaks(
                 .is_ok(),
             offset < maximum_construct_end,
         ) {
-            breaks.insert(offset, false);
+            breaks.insert(offset, BreakStrength::Allowed);
+        }
+    }
+    for offset in discretionary.iter().copied() {
+        let offset = offset.saturating_sub(paragraph_range.start);
+        if prepared.is_boundary(offset, source.len()) {
+            breaks.insert(offset, BreakStrength::Discretionary);
         }
     }
     for offset in mandatory.iter().copied() {
         let offset = offset.saturating_sub(paragraph_range.start);
         if prepared.is_boundary(offset, source.len()) {
-            breaks.insert(offset, true);
+            breaks.insert(offset, BreakStrength::Mandatory);
         }
     }
+    synthesize_furawake_splits(document, paragraph_range, prepared, &mut breaks);
     breaks
         .into_iter()
-        .map(|(offset, required)| {
-            if required {
-                jlreq_core::Break::mandatory(offset)
-            } else {
-                jlreq_core::Break::allowed(offset)
-            }
+        .map(|(offset, strength)| match strength {
+            BreakStrength::Mandatory => jlreq_core::Break::mandatory(offset),
+            BreakStrength::Discretionary => jlreq_core::Break::discretionary(offset),
+            BreakStrength::Allowed => jlreq_core::Break::allowed(offset),
         })
         .collect()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BreakStrength {
+    Allowed,
+    Discretionary,
+    Mandatory,
+}
+
+/// Derive the `columns - 1` furawake sublines the caller left implicit.
+///
+/// The core contract wants explicit split positions (JLReq §3.7.2 describes
+/// furiwake sublines as split where declared), so when the caller supplies
+/// none inside a furawake range, the facade balances the range's shaped
+/// clusters across the requested columns — `count / columns` clusters per
+/// subline, earlier sublines taking the remainder — and inserts the resulting
+/// cluster-start offsets as mandatory breaks. Any caller-supplied break
+/// strictly inside the range disables synthesis for that construct, and the
+/// core then validates the explicit count as before. Ranges with fewer
+/// clusters than columns synthesize nothing; the core reports
+/// `input.furawake-split-count` with the construct's range.
+fn synthesize_furawake_splits(
+    document: &Document,
+    paragraph_range: &Range<usize>,
+    prepared: &PreparedText,
+    breaks: &mut BTreeMap<usize, BreakStrength>,
+) {
+    for construct in &document.constructs {
+        let DocumentConstruct::Furawake { range, columns, .. } = construct else {
+            continue;
+        };
+        if range.start < paragraph_range.start || range.end > paragraph_range.end {
+            continue;
+        }
+        let local = range.start.saturating_sub(paragraph_range.start)
+            ..range.end.saturating_sub(paragraph_range.start);
+        let has_user_split = breaks
+            .range(local.start.saturating_add(1)..local.end)
+            .next()
+            .is_some();
+        if has_user_split {
+            continue;
+        }
+        let window = prepared.cluster_range(&local);
+        let count = window.len();
+        let columns = usize::from(*columns);
+        let (Some(base), Some(remainder)) =
+            (count.checked_div(columns), count.checked_rem(columns))
+        else {
+            continue;
+        };
+        if base == 0 {
+            continue;
+        }
+        let mut cursor = window.start;
+        for lane in 0..columns.saturating_sub(1) {
+            let lane_size = base.saturating_add(usize::from(lane < remainder));
+            cursor = cursor.saturating_add(lane_size);
+            if let Some(cluster) = prepared.clusters.get(cursor) {
+                breaks.insert(cluster.range.start, BreakStrength::Mandatory);
+            }
+        }
+    }
 }
 
 fn sorted_offsets_in_range<'a>(offsets: &'a [usize], range: &Range<usize>) -> &'a [usize] {
@@ -106,16 +175,21 @@ fn automatic_break_allowed(
 fn collect_tab_stops(
     source: &str,
     options: &LayoutOptions,
+    line_extent: i32,
+    explicit: &[crate::TabStop],
 ) -> Result<Vec<jlreq_core::TabStop>, LayoutError> {
     if !source.contains('\t') {
         return Ok(Vec::new());
+    }
+    if !explicit.is_empty() {
+        return explicit.iter().map(|stop| stop.core()).collect();
     }
     let interval = options
         .font_size
         .saturating_mul(i32::from(options.tab_width));
     let mut position = interval;
     let mut result = Vec::new();
-    while position < options.line_extent && result.len() < options.limits.constructs {
+    while position < line_extent && result.len() < options.limits.constructs {
         result.push(jlreq_core::TabStop::new(
             position,
             jlreq_core::TabAlignment::Start,
@@ -123,6 +197,41 @@ fn collect_tab_stops(
         position = position.saturating_add(interval);
     }
     Ok(result)
+}
+
+/// The paragraph style whose range fully contains this paragraph, if any.
+///
+/// A style that overlaps a paragraph without containing it is rejected:
+/// half a paragraph cannot take its own measure or alignment.
+fn paragraph_style_for<'a>(
+    document: &'a Document,
+    content: &Range<usize>,
+) -> Result<Option<&'a crate::ParagraphStyle>, LayoutError> {
+    for (range, style) in &document.paragraph_styles {
+        if range.start > content.end {
+            break;
+        }
+        // A blank paragraph occupies a position rather than a span, so a
+        // style reaching that position governs it like any other paragraph.
+        if content.start >= content.end {
+            if range.start <= content.start && content.start <= range.end {
+                return Ok(Some(style));
+            }
+            continue;
+        }
+        if !ranges_overlap(range, content) {
+            continue;
+        }
+        if range.start <= content.start && content.end <= range.end {
+            return Ok(Some(style));
+        }
+        return Err(LayoutError::invalid_document(
+            "document.paragraph-style-splits-paragraph",
+            Some(range.clone()),
+            "a paragraph style must fully contain every paragraph it touches",
+        ));
+    }
+    Ok(None)
 }
 
 fn annotation_options(options: &LayoutOptions) -> LayoutOptions {
@@ -174,6 +283,7 @@ fn ruby_runs(
                 local_base.start.saturating_add(paragraph_offset)
                     ..local_base.end.saturating_add(paragraph_offset),
             ),
+            "mono ruby needs one annotation cluster per base cluster",
         ));
     }
     Ok(base_clusters

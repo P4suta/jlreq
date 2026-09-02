@@ -460,6 +460,7 @@ fn place_attachments(
     construct_ordinals: &mut Vec<usize>,
 ) {
     let mut attachment_extent = 0;
+    let mut mirrored_extent = 0;
     paragraph.collect_constructs_overlapping(line_start, line_end, construct_ordinals);
     for ordinal in construct_ordinals.iter().copied() {
         let Some(construct) = paragraph.constructs.get(ordinal) else {
@@ -501,37 +502,23 @@ fn place_attachments(
                     attachment_extent = attachment_extent.max(size.block());
                 }
             },
-            ConstructKind::ReferenceMark { range, mark }
-            | ConstructKind::Script {
+            ConstructKind::ReferenceMark { range, mark } => {
+                let placed =
+                    place_attached_run(paragraph, line, ordinal, range, mark, false);
+                attachment_extent = attachment_extent.max(placed);
+            },
+            ConstructKind::Script {
                 range,
                 annotation: mark,
+                position,
             } => {
-                if let Some((start, end)) = bounds_for_range(line, range) {
-                    let width = mark.clusters().iter().fold(0_i64, |sum, cluster| {
-                        sum.saturating_add(i64::from(cluster.advance()))
-                    });
-                    let mut inline = i64::from(start).saturating_add(
-                        (i64::from(end)
-                            .saturating_sub(i64::from(start))
-                            .saturating_sub(width))
-                            / 2,
-                    );
-                    for cluster in mark.clusters() {
-                        let size = cluster.size_override().unwrap_or(mark.size());
-                        line.attachments.push(Attachment {
-                            construct: ordinal,
-                            range: cluster.range(),
-                            inline: clamp_i32(inline),
-                            block: attachment_block(paragraph, line, size),
-                            advance: cluster.advance(),
-                            size,
-                            writing_mode: paragraph.writing_mode,
-                            transform: CoordinateTransform::Identity,
-                            symbol: None,
-                        });
-                        attachment_extent = attachment_extent.max(size.block());
-                        inline = inline.saturating_add(i64::from(cluster.advance()));
-                    }
+                let mirrored = *position == crate::construct::ScriptPosition::Subscript;
+                let placed =
+                    place_attached_run(paragraph, line, ordinal, range, mark, mirrored);
+                if mirrored {
+                    mirrored_extent = mirrored_extent.max(placed);
+                } else {
+                    attachment_extent = attachment_extent.max(placed);
                 }
             },
             ConstructKind::TateChuYoko(_)
@@ -541,7 +528,61 @@ fn place_attachments(
             | ConstructKind::Formula(_) => {},
         }
     }
-    line.block_extent = line.block_extent.saturating_add(attachment_extent);
+    line.block_extent = line
+        .block_extent
+        .saturating_add(attachment_extent)
+        .saturating_add(mirrored_extent);
+}
+
+/// Center one pre-shaped annotation run over its base and push its clusters.
+///
+/// Returns the largest block size placed, so the caller can reserve line
+/// space on the chosen side. `mirrored` selects the block side opposite the
+/// annotation side: below the line in horizontal writing, left of the line in
+/// vertical writing.
+fn place_attached_run(
+    paragraph: &Paragraph,
+    line: &mut Line,
+    ordinal: usize,
+    range: &Range<usize>,
+    mark: &crate::model::ShapedText,
+    mirrored: bool,
+) -> i32 {
+    let Some((start, end)) = bounds_for_range(line, range) else {
+        return 0;
+    };
+    let width = mark.clusters().iter().fold(0_i64, |sum, cluster| {
+        sum.saturating_add(i64::from(cluster.advance()))
+    });
+    let mut inline = i64::from(start).saturating_add(
+        (i64::from(end)
+            .saturating_sub(i64::from(start))
+            .saturating_sub(width))
+            / 2,
+    );
+    let mut extent = 0;
+    for cluster in mark.clusters() {
+        let size = cluster.size_override().unwrap_or(mark.size());
+        let block = if mirrored {
+            mirrored_attachment_block(paragraph, line)
+        } else {
+            attachment_block(paragraph, line, size)
+        };
+        line.attachments.push(Attachment {
+            construct: ordinal,
+            range: cluster.range(),
+            inline: clamp_i32(inline),
+            block,
+            advance: cluster.advance(),
+            size,
+            writing_mode: paragraph.writing_mode,
+            transform: CoordinateTransform::Identity,
+            symbol: None,
+        });
+        extent = extent.max(size.block());
+        inline = inline.saturating_add(i64::from(cluster.advance()));
+    }
+    extent
 }
 
 fn place_ruby_attachments(
@@ -843,6 +884,15 @@ fn attachment_block(paragraph: &Paragraph, line: &Line, size: Size) -> i32 {
     match paragraph.writing_mode {
         WritingMode::HorizontalTb => line.block_origin.saturating_sub(size.block()),
         WritingMode::VerticalRl => line.block_origin.saturating_add(size.block()),
+    }
+}
+
+/// The block position mirroring [`attachment_block`] to the opposite side of
+/// the line's own text extent, used by subscript placement.
+fn mirrored_attachment_block(paragraph: &Paragraph, line: &Line) -> i32 {
+    match paragraph.writing_mode {
+        WritingMode::HorizontalTb => line.block_origin.saturating_add(line.block_extent),
+        WritingMode::VerticalRl => line.block_origin.saturating_sub(line.block_extent),
     }
 }
 

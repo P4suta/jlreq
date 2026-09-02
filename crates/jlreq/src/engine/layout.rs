@@ -103,6 +103,7 @@ impl LayoutEngine {
                 fonts: Vec::new(),
                 diagnostics: Vec::new(),
                 writing_mode: options.writing_mode,
+                options: options.clone(),
             });
         }
 
@@ -117,12 +118,27 @@ impl LayoutEngine {
         let mut block_offset = 0_i32;
         let mut next_construct = 0_usize;
 
-        for segment in segments {
+        for (paragraph_index, segment) in segments.iter().enumerate() {
             let content = &document.text[segment.content.clone()];
+            let overrides = paragraph_style_for(document, &segment.content)?;
+            let line_extent = overrides
+                .and_then(|style| style.line_extent)
+                .unwrap_or(options.line_extent);
+            let alignment = overrides
+                .and_then(|style| style.alignment)
+                .unwrap_or(options.alignment);
+            let first_line_indent = overrides
+                .and_then(|style| style.first_line_indent)
+                .unwrap_or(options.first_line_indent);
             if content.is_empty() {
+                // A blank paragraph has no clusters for the core to place, so
+                // the facade applies that paragraph's own indent and alignment
+                // to the caret position directly. Its caret otherwise sat at
+                // the margin while every neighboring line obeyed the style.
+                let inline = empty_line_inline(line_extent, first_line_indent, alignment);
                 let origin = match options.writing_mode {
-                    WritingMode::HorizontalTb => Point::from_fixed(0, block_offset),
-                    WritingMode::VerticalRl => Point::from_fixed(block_offset, 0),
+                    WritingMode::HorizontalTb => Point::from_fixed(inline, block_offset),
+                    WritingMode::VerticalRl => Point::from_fixed(block_offset, inline),
                 };
                 lines.push(TextLine {
                     range: segment.content.clone(),
@@ -132,6 +148,10 @@ impl LayoutEngine {
                     writing_mode: options.writing_mode,
                     glyphs: Vec::new(),
                     hit_bounds: None,
+                    index: 0,
+                    paragraph_index,
+                    first_in_paragraph: true,
+                    last_in_paragraph: true,
                 });
                 block_offset = advance_block(
                     block_offset,
@@ -157,7 +177,7 @@ impl LayoutEngine {
                 range: &segment.content,
                 next_construct: &mut next_construct,
             };
-            let (constructs, attachments) = self.lower_constructs(
+            let (constructs, attachments, construct_globals) = self.lower_constructs(
                 document,
                 &mut construct_paragraph,
                 &prepared,
@@ -167,13 +187,24 @@ impl LayoutEngine {
             )?;
             let breaks =
                 collect_breaks(document, &segment.content, content, &prepared, &constructs);
-            let tabs = collect_tab_stops(content, options)?;
-            let paragraph = jlreq_core::Paragraph::builder(shaped, options.line_extent)
+            let widow = overrides
+                .and_then(|style| style.widow)
+                .unwrap_or(options.widow);
+            let policy = overrides
+                .and_then(|style| style.style.as_ref())
+                .unwrap_or(&options.style);
+            let explicit_stops = overrides
+                .and_then(|style| style.tab_stops.as_deref())
+                .unwrap_or(&options.tab_stops);
+            let tabs = collect_tab_stops(content, options, line_extent, explicit_stops)?;
+            let paragraph = jlreq_core::Paragraph::builder(shaped, line_extent)
                 .breaks(breaks)
                 .constructs(constructs)
                 .tab_stops(tabs)
-                .alignment(options.alignment.core())
+                .alignment(alignment.core())
                 .writing_mode(options.writing_mode.core())
+                .first_line_indent(first_line_indent)
+                .widow(widow.core())
                 .build()?;
 
             let core_limits = jlreq_core::CompositionLimits::default()
@@ -185,7 +216,7 @@ impl LayoutEngine {
             self.composer.set_limits(core_limits);
             let core_layout = self
                 .composer
-                .compose(&paragraph, &options.style)
+                .compose(&paragraph, policy)
                 .map_err(map_core_resource_error)?;
 
             for diagnostic in core_layout.diagnostics() {
@@ -207,9 +238,13 @@ impl LayoutEngine {
             let paragraph_lines = map_core_lines(
                 &core_layout,
                 &prepared,
-                &attachments,
-                segment.content.start,
-                block_offset,
+                &LineMapping {
+                    attachments: &attachments,
+                    construct_globals: &construct_globals,
+                    global_offset: segment.content.start,
+                    block_offset,
+                    paragraph_index,
+                },
                 options,
             );
             let next_block_offset = next_paragraph_block_offset(
@@ -221,6 +256,7 @@ impl LayoutEngine {
             block_offset = next_block_offset;
         }
 
+        assign_line_metadata(&mut lines);
         call.diagnostics.sort_by_key(|diagnostic| {
             diagnostic
                 .range
@@ -238,6 +274,7 @@ impl LayoutEngine {
             fonts: retained_fonts,
             diagnostics: call.diagnostics,
             writing_mode: options.writing_mode,
+            options: options.clone(),
         })
     }
 
@@ -371,6 +408,19 @@ impl LayoutEngine {
             let global =
                 range.start.saturating_add(global_offset)..range.end.saturating_add(global_offset);
             let effective = styles.resolve(&global)?;
+            for family in &effective.families {
+                if !fonts.has_family(family) && !call.reported_families.contains(family) {
+                    call.reported_families.insert(family.clone());
+                    call.diagnostics.push(Diagnostic {
+                        code: "font.unknown-family",
+                        severity: DiagnosticSeverity::Warning,
+                        range: Some(diagnostic_range.clone().unwrap_or_else(|| global.clone())),
+                        message:
+                            "no registered face declares the requested family; the library fallback order was used",
+                        jlreq: None,
+                    });
+                }
+            }
             let level = bidi
                 .levels
                 .get(range.start)
@@ -411,7 +461,7 @@ impl LayoutEngine {
                 let item = &graphemes[index];
                 let resource = fonts
                     .get(item.font_id)
-                    .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                    .ok_or_else(crate::font::unknown_font_id)?;
                 clusters.push(PreparedCluster {
                     range: item.range.clone(),
                     advance: 0,
@@ -438,7 +488,7 @@ impl LayoutEngine {
             let run_range = first.range.start..graphemes[index.saturating_sub(1)].range.end;
             let resource = fonts
                 .get(first.font_id)
-                .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                .ok_or_else(crate::font::unknown_font_id)?;
             let variations = resolved_variations(&first.effective, resource);
             #[cfg(test)]
             call.charge_shape();
@@ -500,7 +550,7 @@ impl LayoutEngine {
         for id in candidates.iter().copied() {
             let resource = fonts
                 .get(id)
-                .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+                .ok_or_else(crate::font::unknown_font_id)?;
             let variations = resolved_variations(style, resource);
             #[cfg(test)]
             call.charge_shape();
@@ -533,9 +583,10 @@ impl LayoutEngine {
         fonts: &FontLibrary,
         options: &LayoutOptions,
         call: &mut CallState,
-    ) -> Result<(Vec<jlreq_core::Construct>, Vec<Option<AttachmentShape>>), LayoutError> {
+    ) -> Result<LoweredConstructs, LayoutError> {
         let mut constructs = Vec::new();
         let mut attachments = Vec::new();
+        let mut construct_globals = Vec::new();
         while let Some(construct) = document.constructs.get(*paragraph.next_construct) {
             let global_ordinal = *paragraph.next_construct;
             let global_range = construct.range();
@@ -551,12 +602,14 @@ impl LayoutEngine {
                 return Err(LayoutError::invalid_document(
                     "document.construct-crosses-paragraph",
                     Some(global_range),
+                    "a construct must stay inside one paragraph",
                 ));
             }
             let local_range = global_range.start.saturating_sub(paragraph.range.start)
                 ..global_range.end.saturating_sub(paragraph.range.start);
             let local_ordinal = constructs.len();
             attachments.push(None);
+            construct_globals.push((local_range.clone(), global_ordinal));
             match construct {
                 DocumentConstruct::Ruby {
                     kind,
@@ -656,7 +709,11 @@ impl LayoutEngine {
                         prepared: annotation_prepared,
                     });
                 },
-                DocumentConstruct::Script { annotation, .. } => {
+                DocumentConstruct::Script {
+                    annotation,
+                    position,
+                    ..
+                } => {
                     let annotation_options = annotation_options(options);
                     let annotation_prepared = self.prepare_text(
                         PrepareRequest {
@@ -671,7 +728,11 @@ impl LayoutEngine {
                     )?;
                     let shaped =
                         annotation_prepared.to_core(annotation, annotation_options.font_size)?;
-                    constructs.push(jlreq_core::Construct::script(local_range, shaped));
+                    constructs.push(jlreq_core::Construct::script_at(
+                        local_range,
+                        shaped,
+                        position.core(),
+                    ));
                     attachments[local_ordinal] = Some(AttachmentShape {
                         global_ordinal,
                         base: global_range,
@@ -683,6 +744,48 @@ impl LayoutEngine {
                 },
             }
         }
-        Ok((constructs, attachments))
+        Ok((constructs, attachments, construct_globals))
     }
+}
+
+/// The lowered core constructs, per-construct attachment shapes, and each
+/// construct's paragraph-local range paired with its document ordinal.
+type LoweredConstructs = (
+    Vec<jlreq_core::Construct>,
+    Vec<Option<AttachmentShape>>,
+    Vec<(Range<usize>, usize)>,
+);
+
+fn assign_line_metadata(lines: &mut [TextLine]) {
+    let total = lines.len();
+    for index in 0..total {
+        let paragraph = lines[index].paragraph_index;
+        let first = index
+            .checked_sub(1)
+            .and_then(|previous| lines.get(previous))
+            .is_none_or(|previous| previous.paragraph_index != paragraph);
+        let last = lines
+            .get(index.saturating_add(1))
+            .is_none_or(|next| next.paragraph_index != paragraph);
+        if let Some(line) = lines.get_mut(index) {
+            line.index = index;
+            line.first_in_paragraph = first;
+            line.last_in_paragraph = last;
+        }
+    }
+}
+
+/// Where a blank paragraph's caret sits on the inline axis.
+///
+/// An empty line occupies no inline space, so alignment distributes the whole
+/// measure that the indent does not claim. Justify aligns like start, matching
+/// the core's treatment of a line it cannot stretch.
+fn empty_line_inline(line_extent: i32, first_line_indent: i32, alignment: Alignment) -> i32 {
+    let remaining = line_extent.saturating_sub(first_line_indent).max(0);
+    let offset = match alignment {
+        Alignment::Start | Alignment::Justify => 0,
+        Alignment::Center => remaining / 2,
+        Alignment::End => remaining,
+    };
+    first_line_indent.saturating_add(offset)
 }

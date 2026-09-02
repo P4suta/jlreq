@@ -118,6 +118,10 @@ test-ci:
 doc:
     cargo doc --workspace --all-features --no-deps
 
+# Compile every documentation example and run the runnable ones against the fixture font.
+examples:
+    cargo run --quiet -p xtask -- examples
+
 # Build and verify all three public crate archives. Temporary crates.io patches validate the
 # exact-version core dependency before the initial release reaches the registry.
 package:
@@ -279,8 +283,10 @@ actionlint:
 
 # Validate every repository-owned POSIX shell entry point, including release packaging and
 # the three-engine census driver.
+# Scripts are listed explicitly: the Windows fallback shell does not expand globs,
+# and an unlisted new script failing the gate loudly beats a glob skipping it silently.
 shellcheck:
-    shellcheck engines/census-all.sh scripts/*.sh
+    shellcheck engines/census-all.sh scripts/check-semver.sh scripts/finalize-release.sh scripts/package-binaries.sh scripts/run-mutation-smoke.sh scripts/verify-crates.sh scripts/verify-release-state.sh
 
 # Reject high-severity GitHub Actions and Dependabot security findings without
 # granting the auditor network or repository credentials.
@@ -530,7 +536,7 @@ check: fmt-check toml-check typos lint design shear reuse shellcheck actionlint 
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check coverage design semver deny shear reuse shellcheck actionlint zizmor msrv conform-engines
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc examples package no-std wasm fuzz-check coverage design semver deny shear reuse shellcheck actionlint zizmor msrv conform-engines
     @echo "local CI passed"
 
 # Release acceptance performs no publication, tag, GitHub Release, or external settings

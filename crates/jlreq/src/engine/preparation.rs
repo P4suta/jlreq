@@ -11,6 +11,7 @@ struct CallState {
     diagnostics: Vec<Diagnostic>,
     font_candidates: BTreeMap<FontCandidateKey, Arc<[FontId]>>,
     font_selections: BTreeMap<FontSelectionKey, (FontId, bool)>,
+    reported_families: BTreeSet<String>,
     #[cfg(test)]
     shape_calls: usize,
 }
@@ -26,6 +27,7 @@ impl CallState {
             diagnostics: Vec::new(),
             font_candidates: BTreeMap::new(),
             font_selections: BTreeMap::new(),
+            reported_families: BTreeSet::new(),
             #[cfg(test)]
             shape_calls: 0,
         }
@@ -132,6 +134,7 @@ struct EffectiveStyle {
     global_variations: Vec<FontVariation>,
     span_variations: Vec<FontVariation>,
     role: TextRole,
+    frame: crate::MetricsFrame,
 }
 
 struct StyleResolver<'a> {
@@ -174,6 +177,7 @@ impl<'a> StyleResolver<'a> {
             return Err(LayoutError::invalid_document(
                 "document.span-splits-grapheme",
                 Some(global.clone()),
+                "a span boundary must not split a grapheme cluster",
             ));
         }
         if let Some((index, selected)) = &self.selected
@@ -378,6 +382,7 @@ fn effective_style(
                 return Err(LayoutError::invalid_document(
                     "document.span-splits-grapheme",
                     Some(global.clone()),
+                    "a span boundary must not split a grapheme cluster",
                 ));
             }
             selected = Some(style);
@@ -398,6 +403,7 @@ fn base_effective_style(options: &LayoutOptions) -> EffectiveStyle {
         global_variations: options.variations.clone(),
         span_variations: Vec::new(),
         role: TextRole::Text,
+        frame: crate::MetricsFrame::Auto,
     }
 }
 
@@ -412,6 +418,7 @@ fn span_effective_style(base: &EffectiveStyle, style: &SpanStyle) -> EffectiveSt
     result.features.extend_from_slice(&style.features);
     result.span_variations.clone_from(&style.variations);
     result.role = style.role;
+    result.frame = style.frame;
     result
 }
 
