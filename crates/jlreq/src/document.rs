@@ -1440,4 +1440,70 @@ mod tests {
         assert_eq!(span_insertion_point(&spans, 3), 1);
         assert_eq!(span_insertion_point(&spans, 5), 2);
     }
+
+    #[test]
+    fn paragraph_style_insertion_uses_the_lower_bound_for_every_ordering_case() {
+        let styles = [
+            (1..2, ParagraphStyle::default()),
+            (3..4, ParagraphStyle::default()),
+        ];
+        assert_eq!(paragraph_style_insertion_point(&styles, 0), 0);
+        assert_eq!(paragraph_style_insertion_point(&styles, 1), 0);
+        assert_eq!(paragraph_style_insertion_point(&styles, 2), 1);
+        assert_eq!(paragraph_style_insertion_point(&styles, 3), 1);
+        assert_eq!(paragraph_style_insertion_point(&styles, 4), 2);
+        assert_eq!(paragraph_style_insertion_point(&styles, 5), 2);
+        assert_eq!(paragraph_style_insertion_point(&[], 0), 0);
+    }
+
+    #[test]
+    fn paragraph_style_overlap_is_detected_against_both_neighbours() {
+        // The insertion point locates the two styles a new range can touch, so
+        // an overlap must be caught against a later style as reliably as
+        // against the first one.
+        let text = "0123456789";
+        // The middle style is neither first nor last, so a candidate touching
+        // it is only found by looking at the located neighbours.
+        for candidate in [3..5, 5..6, 6..8, 4..7] {
+            let mut builder = DocumentBuilder::new(text);
+            builder
+                .paragraph_style(0..1, ParagraphStyle::new())
+                .unwrap();
+            builder
+                .paragraph_style(4..7, ParagraphStyle::new())
+                .unwrap();
+            builder
+                .paragraph_style(8..10, ParagraphStyle::new())
+                .unwrap();
+            assert_eq!(
+                builder
+                    .paragraph_style(candidate.clone(), ParagraphStyle::new())
+                    .expect_err("the candidate overlaps the middle style")
+                    .code(),
+                "document.overlapping-paragraph-styles",
+                "candidate {candidate:?}"
+            );
+        }
+
+        // Ranges that only touch at an edge remain acceptable, in both
+        // insertion directions.
+        let mut builder = DocumentBuilder::new(text);
+        builder
+            .paragraph_style(4..6, ParagraphStyle::new())
+            .unwrap();
+        builder
+            .paragraph_style(6..8, ParagraphStyle::new())
+            .unwrap();
+        builder
+            .paragraph_style(2..4, ParagraphStyle::new())
+            .unwrap();
+        let document = builder.build().unwrap();
+        assert_eq!(
+            document
+                .paragraph_styles()
+                .map(|(range, _)| range)
+                .collect::<Vec<_>>(),
+            [2..4, 4..6, 6..8]
+        );
+    }
 }

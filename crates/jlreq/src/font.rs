@@ -806,6 +806,88 @@ mod tests {
     }
 
     #[test]
+    fn identifier_ordering_and_hashing_observe_the_slot_and_nothing_else() {
+        use core::cmp::Ordering;
+        use core::hash::{Hash as _, Hasher as _};
+
+        let first = test_id(1);
+        let second = test_id(2);
+        let foreign = FontId {
+            index: 1,
+            nonce: TEST_NONCE.saturating_add(1),
+        };
+
+        // Ordering is total, agrees with cmp, and ignores provenance.
+        assert_eq!(first.partial_cmp(&second), Some(Ordering::Less));
+        assert_eq!(second.partial_cmp(&first), Some(Ordering::Greater));
+        assert_eq!(first.partial_cmp(&first), Some(Ordering::Equal));
+        assert_eq!(first.partial_cmp(&foreign), Some(Ordering::Equal));
+        assert_eq!(first.cmp(&second), Ordering::Less);
+        assert!(first < second);
+        assert!(second > first);
+
+        // Hashing is defined and slot-based, so a BTreeMap or hashed cache
+        // keyed by identifier behaves the same across libraries.
+        let digest = |id: FontId| {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            id.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(digest(first), digest(foreign));
+        assert_ne!(digest(first), digest(second));
+        let empty = std::collections::hash_map::DefaultHasher::new();
+        let mut hashed = std::collections::hash_map::DefaultHasher::new();
+        first.hash(&mut hashed);
+        assert_ne!(
+            hashed.finish(),
+            empty.finish(),
+            "hashing must write the slot, not nothing"
+        );
+    }
+
+    #[test]
+    fn metrics_convert_every_design_value_to_its_own_em_fraction() {
+        let raw = crate::sfnt::RawMetrics {
+            units_per_em: 2_048,
+            ascent: 1_800,
+            descent: -512,
+            line_gap: 256,
+            x_height: Some(1_024),
+            cap_height: Some(1_434),
+            underline_position: Some(-256),
+            underline_thickness: Some(102),
+        };
+        let metrics = em_relative_metrics(raw);
+        let em = |value: f32| (value / 2_048.0).to_bits();
+        assert_eq!(metrics.ascent().to_bits(), em(1_800.0));
+        assert_eq!(metrics.descent().to_bits(), em(-512.0));
+        assert_eq!(metrics.line_gap().to_bits(), em(256.0));
+        assert_eq!(metrics.x_height().map(f32::to_bits), Some(em(1_024.0)));
+        assert_eq!(metrics.cap_height().map(f32::to_bits), Some(em(1_434.0)));
+        assert_eq!(
+            metrics.underline_position().map(f32::to_bits),
+            Some(em(-256.0))
+        );
+        assert_eq!(
+            metrics.underline_thickness().map(f32::to_bits),
+            Some(em(102.0))
+        );
+
+        // Absent optional values stay absent rather than becoming zero.
+        let sparse = em_relative_metrics(crate::sfnt::RawMetrics {
+            x_height: None,
+            cap_height: None,
+            underline_position: None,
+            underline_thickness: None,
+            ..raw
+        });
+        assert_eq!(sparse.x_height(), None);
+        assert_eq!(sparse.cap_height(), None);
+        assert_eq!(sparse.underline_position(), None);
+        assert_eq!(sparse.underline_thickness(), None);
+    }
+
+    #[test]
     fn identifiers_from_another_library_never_resolve_even_in_bounds() {
         let mut first = FontLibrary::new();
         let mut second = FontLibrary::new();
