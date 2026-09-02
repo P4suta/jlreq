@@ -134,11 +134,11 @@ fn extract_fences(
                 // Names collide globally, not per file: two fences differing
                 // only in punctuation would otherwise share one scratch
                 // binary and silently overwrite each other.
-                if let Some(other) = fences
+                let collision = fences
                     .iter()
                     .find(|fence| binary_name(&fence.name) == binary_name(&name))
-                    && (other.file == file || other.body != body)
-                {
+                    .filter(|other| other.file == file || other.body != body);
+                if let Some(other) = collision {
                     violations.push(format!(
                         "{file}:{start}: example name `{name}` collides with `{}` at {}:{}",
                         other.name, other.file, other.line
