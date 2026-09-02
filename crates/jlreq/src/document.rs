@@ -1457,13 +1457,13 @@ mod tests {
     }
 
     #[test]
-    fn paragraph_style_overlap_is_detected_against_both_neighbours() {
+    fn paragraph_style_overlap_is_detected_against_both_neighbors() {
         // The insertion point locates the two styles a new range can touch, so
         // an overlap must be caught against a later style as reliably as
         // against the first one.
         let text = "0123456789";
         // The middle style is neither first nor last, so a candidate touching
-        // it is only found by looking at the located neighbours.
+        // it is only found by looking at the located neighbors.
         for candidate in [3..5, 5..6, 6..8, 4..7] {
             let mut builder = DocumentBuilder::new(text);
             builder
