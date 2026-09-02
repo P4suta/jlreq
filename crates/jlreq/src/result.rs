@@ -1896,6 +1896,101 @@ mod tests {
         }
     }
 
+    /// Three vertical columns of two glyphs each, contiguous and progressing
+    /// right to left the way `WritingMode::VerticalRl` composes them.
+    fn stacked_vertical_layout() -> TextLayout {
+        let mut lines = Vec::new();
+        for (index, (range, block_origin)) in [(0..2, 0_i32), (2..4, -64), (4..6, -128)]
+            .into_iter()
+            .enumerate()
+        {
+            let mut first = glyph(WritingMode::VerticalRl);
+            first.annotation = None;
+            first.source_range = range.start..range.start.saturating_add(1);
+            // A vertical cell spans `x - font_size ..= x`, so the glyph sits at
+            // the column's own trailing edge.
+            first.x = block_origin;
+            first.y = 0;
+            first.advance_x = 0;
+            first.advance_y = 64;
+            first.font_size = 64;
+            first.bidi_level = 0;
+            first.transform = GlyphTransform::Identity;
+            let mut second = first.clone();
+            second.source_range = range.start.saturating_add(1)..range.end;
+            second.y = 64;
+            let glyphs = vec![first, second];
+            lines.push(TextLine {
+                range,
+                origin: Point::from_fixed(block_origin, 0),
+                inline_extent: 128,
+                block_extent: 64,
+                writing_mode: WritingMode::VerticalRl,
+                hit_bounds: None,
+                glyphs,
+                index,
+                paragraph_index: 0,
+                first_in_paragraph: index == 0,
+                last_in_paragraph: index == 2,
+            });
+        }
+        TextLayout {
+            source: "abcdef".to_owned(),
+            lines,
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::VerticalRl,
+            options: test_options(),
+        }
+    }
+
+    #[test]
+    fn vertical_line_geometry_probes_the_column_it_targets() {
+        let layout = stacked_vertical_layout();
+        let bounds: Vec<_> = layout
+            .lines
+            .iter()
+            .map(|line| line.bounds().as_26_6())
+            .collect();
+        assert_eq!(bounds[0].0.saturating_add(bounds[0].2), 0);
+        assert_eq!(bounds[1].0.saturating_add(bounds[1].2), bounds[0].0);
+
+        // Attribution probes a rectangle's own middle on the block axis, so a
+        // full column resolves to itself while its trailing edge — shared with
+        // the previous column — resolves to the earlier one.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[1].0, 0, bounds[1].2, 1)),
+            Some(1)
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[0].0, 0, 0, 1)),
+            Some(0),
+            "the shared column edge belongs to the earlier column"
+        );
+        // A rectangle straddling two columns is decided by its middle, not by
+        // the column its leading edge happens to start in.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[2].0.saturating_add(32), 0, 64, 1)),
+            Some(1),
+            "the middle lands on the shared edge, which the earlier column wins"
+        );
+
+        // Column-to-column motion probes the middle of the target column, so
+        // it lands there rather than on its edge or past it.
+        let next = layout
+            .caret_next_line(0, Affinity::Upstream)
+            .expect("a following column exists");
+        assert_eq!(layout.line_index_at(next.byte_offset()), Some(1));
+        let further = layout
+            .caret_next_line(next.byte_offset(), next.affinity())
+            .expect("a third column exists");
+        assert_eq!(layout.line_index_at(further.byte_offset()), Some(2));
+        let back = layout
+            .caret_previous_line(further.byte_offset(), further.affinity())
+            .expect("a preceding column exists");
+        assert_eq!(layout.line_index_at(back.byte_offset()), Some(1));
+    }
+
     #[test]
     fn line_geometry_queries_pick_the_line_the_caret_is_actually_on() {
         let layout = stacked_layout();
@@ -1942,6 +2037,29 @@ mod tests {
             .caret_previous_line(further.byte_offset(), further.affinity())
             .expect("a preceding line exists");
         assert_eq!(layout.line_index_at(back.byte_offset()), Some(1));
+
+        // Composed lines are contiguous, so attribution has to probe a
+        // rectangle's middle: its own top edge is equally close to the line
+        // above, and the earlier line wins a tie. That keeps a caret from
+        // drifting as it is re-resolved.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 64, 1, 64)),
+            Some(1),
+            "a rectangle filling the second line belongs to it"
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 64, 1, 0)),
+            Some(0),
+            "a rectangle on the shared edge belongs to the earlier line"
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 0, 1, 64)),
+            Some(0)
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 128, 1, 64)),
+            Some(2)
+        );
     }
 
     #[test]
@@ -2000,6 +2118,31 @@ mod tests {
             "the last line keeps its own trailing edge"
         );
 
+        // A selection that starts exactly where a line starts, or ends
+        // exactly where one ends, extends nothing: only continuing past the
+        // line reaches its layout edge, which is wider than its glyphs here.
+        let bounds_of_middle = layout.lines[1].bounds().as_26_6();
+        assert!(
+            bounds_of_middle.0 < 0,
+            "the line cell reaches past its glyphs"
+        );
+        let flush_start = layout.selection_rects_filled(2..3);
+        assert_eq!(flush_start.len(), 1);
+        assert_eq!(
+            flush_start[0].as_26_6().0,
+            0,
+            "a selection flush with the line start keeps the glyph edge"
+        );
+        let flush_end = layout.selection_rects_filled(3..4);
+        assert_eq!(flush_end.len(), 1);
+        assert_eq!(
+            flush_end[0]
+                .as_26_6()
+                .0
+                .saturating_add(flush_end[0].as_26_6().2),
+            128,
+            "a selection flush with the line end keeps the glyph edge"
+        );
         assert!(layout.selection_rects_filled(3..3).is_empty());
     }
 
