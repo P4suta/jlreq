@@ -665,21 +665,33 @@ impl TextLayout {
         self.lines.iter().flat_map(|line| line.glyphs.iter())
     }
 
-    /// Index of the line whose byte range contains `offset`, when one does.
+    /// Index of the line holding the caret position `offset`, when one holds it.
     ///
-    /// An empty line (a blank paragraph) holds its own start offset, so a
-    /// caret can land on it. Offsets inside paragraph separators belong to
-    /// no displayed line and return `None`.
+    /// Every offset a caret can occupy is addressable: an offset inside a
+    /// line belongs to it, an offset ending a line belongs to that line
+    /// unless the next line starts there (a wrap, where the following line
+    /// owns the position), and an empty line — a blank paragraph — holds its
+    /// own start. Only an offset past the end of the text returns `None`.
     #[must_use]
     pub fn line_index_at(&self, offset: usize) -> Option<usize> {
         let index = self.lines.partition_point(|line| {
             let held_end = line.range.end.max(line.range.start.saturating_add(1));
             held_end <= offset
         });
-        self.lines
+        if self
+            .lines
             .get(index)
-            .filter(|line| line.range.start <= offset)
-            .map(|_| index)
+            .is_some_and(|line| line.range.start <= offset)
+        {
+            return Some(index);
+        }
+        // The offset ends the preceding line: a paragraph separator follows,
+        // or the text does.
+        let previous = index.checked_sub(1)?;
+        self.lines
+            .get(previous)
+            .filter(|line| line.range.end == offset)
+            .map(|_| previous)
     }
 
     /// The grapheme-cluster boundary strictly after `offset`, when one exists.
@@ -1837,6 +1849,158 @@ mod tests {
             layout.selection_rects(0..5),
             [Rect::from_fixed(0, 0, 320, 64)]
         );
+    }
+
+    /// Three stacked lines of two glyphs each: bytes 0..2, 2..4, 4..6.
+    fn stacked_layout() -> TextLayout {
+        let mut lines = Vec::new();
+        for (index, (range, y)) in [(0..2, 0_i32), (2..4, 64), (4..6, 128)]
+            .into_iter()
+            .enumerate()
+        {
+            let mut left = glyph(WritingMode::HorizontalTb);
+            left.annotation = None;
+            left.source_range = range.start..range.start.saturating_add(1);
+            left.x = 0;
+            // The pipeline places a glyph at the line's block origin plus its
+            // own size, so the cell sits inside the line's own band.
+            left.y = y.saturating_add(64);
+            left.advance_x = 64;
+            left.font_size = 64;
+            left.bidi_level = 0;
+            let mut right = left.clone();
+            right.source_range = range.start.saturating_add(1)..range.end;
+            right.x = 64;
+            let glyphs = vec![left, right];
+            lines.push(TextLine {
+                range,
+                origin: Point::from_fixed(-32, y),
+                inline_extent: 192,
+                block_extent: 64,
+                writing_mode: WritingMode::HorizontalTb,
+                hit_bounds: TextLine::hit_bounds_for(&glyphs),
+                glyphs,
+                index,
+                paragraph_index: 0,
+                first_in_paragraph: index == 0,
+                last_in_paragraph: index == 2,
+            });
+        }
+        TextLayout {
+            source: "abcdef".to_owned(),
+            lines,
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
+        }
+    }
+
+    #[test]
+    fn line_geometry_queries_pick_the_line_the_caret_is_actually_on() {
+        let layout = stacked_layout();
+
+        // A caret rect is attributed to the line that holds it, not to a
+        // neighbor: the midpoint of the rect must stay inside its own line.
+        // Affinity picks the side, so the first position is upstream-only and
+        // the last downstream-only; a wrap boundary resolves to the line the
+        // chosen side belongs to.
+        for (offset, affinity, expected) in [
+            (0_usize, Affinity::Upstream, 0_usize),
+            (2, Affinity::Upstream, 1),
+            (2, Affinity::Downstream, 0),
+            (4, Affinity::Upstream, 2),
+            (4, Affinity::Downstream, 1),
+            (6, Affinity::Downstream, 2),
+        ] {
+            let rect = layout
+                .caret_rect(offset, affinity)
+                .unwrap_or_else(|| panic!("offset {offset} {affinity:?} has no caret"));
+            assert_eq!(
+                layout.line_index_for_rect(rect),
+                Some(expected),
+                "caret at {offset} ({affinity:?}) belongs to line {expected}"
+            );
+        }
+
+        // Line-to-line motion lands on the adjacent line, never skipping one
+        // or collapsing onto the same line.
+        let start = layout
+            .caret_next_line(0, Affinity::Upstream)
+            .expect("a following line exists");
+        assert_eq!(layout.line_index_at(start.byte_offset()), Some(1));
+        let further = layout
+            .caret_next_line(start.byte_offset(), start.affinity())
+            .expect("a third line exists");
+        assert_eq!(layout.line_index_at(further.byte_offset()), Some(2));
+        assert_eq!(
+            layout.caret_next_line(further.byte_offset(), further.affinity()),
+            None,
+            "the final line has no following line"
+        );
+        let back = layout
+            .caret_previous_line(further.byte_offset(), further.affinity())
+            .expect("a preceding line exists");
+        assert_eq!(layout.line_index_at(back.byte_offset()), Some(1));
+    }
+
+    #[test]
+    fn filled_selection_extends_only_the_sides_the_selection_continues_past() {
+        let layout = stacked_layout();
+
+        // A selection confined to one line touches exactly that line, and
+        // needs no extension, so it equals the exact glyph-cell union.
+        let middle = layout.selection_rects_filled(2..4);
+        assert_eq!(middle.len(), 1);
+        let exact_middle = layout
+            .selection_rects(2..4)
+            .into_iter()
+            .reduce(Rect::union)
+            .expect("the middle line is selected");
+        assert_eq!(middle[0].as_26_6(), exact_middle.as_26_6());
+
+        // Spanning three lines fills the interior line edge to edge, extends
+        // the first line only forward, and the last line only backward.
+        let spanning = layout.selection_rects_filled(1..5);
+        assert_eq!(spanning.len(), 3);
+        let bounds: Vec<_> = layout
+            .lines
+            .iter()
+            .map(|line| line.bounds().as_26_6())
+            .collect();
+        assert_eq!(
+            spanning[0].as_26_6().0,
+            64,
+            "the first line keeps its own leading edge"
+        );
+        assert_eq!(
+            spanning[0]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[0].as_26_6().2),
+            bounds[0].0.saturating_add(bounds[0].2),
+            "the first line fills to its trailing edge"
+        );
+        assert_eq!(spanning[1].as_26_6().0, bounds[1].0);
+        assert_eq!(
+            spanning[1]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[1].as_26_6().2),
+            bounds[1].0.saturating_add(bounds[1].2),
+            "the interior line fills both edges"
+        );
+        assert_eq!(spanning[2].as_26_6().0, bounds[2].0);
+        assert_eq!(
+            spanning[2]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[2].as_26_6().2),
+            64,
+            "the last line keeps its own trailing edge"
+        );
+
+        assert!(layout.selection_rects_filled(3..3).is_empty());
     }
 
     #[test]

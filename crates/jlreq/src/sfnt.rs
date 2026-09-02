@@ -250,6 +250,39 @@ mod tests {
             family_from_name_table(&ranked).as_deref(),
             Some("Unicode Typographic")
         );
+
+        // US-English outranks another Windows language for the same name ID,
+        // even when the other language is recorded first.
+        let languages = name_table(&[
+            (3, 1, 0x0411, 16, &utf16("日本語名")),
+            (3, 1, 0x0409, 16, &utf16("English Name")),
+        ]);
+        assert_eq!(
+            family_from_name_table(&languages).as_deref(),
+            Some("English Name")
+        );
+        assert_eq!(
+            record_rank(
+                NAME_TYPOGRAPHIC_FAMILY,
+                PLATFORM_WINDOWS,
+                LANGUAGE_WINDOWS_ENGLISH_US
+            ),
+            Some((0, 0))
+        );
+        assert_eq!(
+            record_rank(NAME_TYPOGRAPHIC_FAMILY, PLATFORM_WINDOWS, 0x0411),
+            Some((0, 1))
+        );
+        assert_eq!(record_rank(NAME_FAMILY, PLATFORM_UNICODE, 0), Some((1, 2)));
+        assert_eq!(
+            record_rank(NAME_FAMILY, PLATFORM_MACINTOSH, 0),
+            Some((1, 3))
+        );
+        assert_eq!(
+            record_rank(2, PLATFORM_WINDOWS, LANGUAGE_WINDOWS_ENGLISH_US),
+            None
+        );
+        assert_eq!(record_rank(NAME_FAMILY, 7, 0), None);
     }
 
     #[test]

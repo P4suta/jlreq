@@ -60,13 +60,16 @@ fn map_core_lines(
             };
             cells.push(Cell {
                 clusters: cluster_indices,
+                inline: placement.inline(),
                 block: placement.block(),
                 advance: placement.advance().max(0),
                 level,
                 transform: core_transform(placement.transform()),
                 construct,
+                trailing_gap: 0,
             });
         }
+        assign_trailing_gaps(&mut cells);
         let levels: Vec<_> = cells
             .iter()
             .map(|cell| Level::new(cell.level).unwrap_or_else(|_| Level::ltr()))
@@ -75,12 +78,11 @@ fn map_core_lines(
         // The physical run starts where the core placed its first cluster,
         // which folds in alignment, first-line indent, and ruby leading
         // separation; `inline_origin` alone carries only the alignment
-        // offset. The core cursor is monotonic in logical order, so the
-        // minimum placement inline is that start.
-        let mut cursor = line
-            .clusters()
+        // offset. Warichu and furawake lanes restart inside the line, so the
+        // minimum placement inline — not the first one — is that start.
+        let mut cursor = cells
             .iter()
-            .map(jlreq_core::ClusterPlacement::inline)
+            .map(|cell| cell.inline)
             .min()
             .unwrap_or_else(|| line.inline_origin());
         let mut glyphs = Vec::new();
@@ -113,7 +115,9 @@ fn map_core_lines(
                 }
                 cluster_cursor = cluster_cursor.saturating_add(cluster.advance);
             });
-            cursor = cursor.saturating_add(cell.advance.max(cluster_cursor));
+            cursor = cursor
+                .saturating_add(cell.advance.max(cluster_cursor))
+                .saturating_add(cell.trailing_gap);
         }
         append_attachments(
             &mut glyphs,
@@ -205,11 +209,38 @@ fn logical_cluster_order(indices: &[usize], level: u8) -> Vec<usize> {
 #[derive(Debug)]
 struct Cell {
     clusters: Vec<usize>,
+    inline: i32,
     block: i32,
     advance: i32,
     level: u8,
     transform: GlyphTransform,
     construct: Option<usize>,
+    trailing_gap: i32,
+}
+
+/// Record the inline space the core inserted after each cell.
+///
+/// The core applies alignment adjustment and JLReq spacing to its own cursor
+/// rather than to a cluster's advance, so the space lives in the distance
+/// between consecutive placements. Physical layout reorders cells visually
+/// and cannot simply reuse each placement's inline position, so it carries
+/// the gap alongside the advance instead: the line keeps the core's total
+/// width, and each gap stays attached to the cell it followed. A lane that
+/// restarts behind its predecessor (warichu, furawake) yields no gap.
+fn assign_trailing_gaps(cells: &mut [Cell]) {
+    for index in 0..cells.len() {
+        let Some(next) = cells.get(index.saturating_add(1)) else {
+            break;
+        };
+        let Some(cell) = cells.get(index) else {
+            break;
+        };
+        let occupied = cell.inline.saturating_add(cell.advance);
+        let gap = next.inline.saturating_sub(occupied).max(0);
+        if let Some(cell) = cells.get_mut(index) {
+            cell.trailing_gap = gap;
+        }
+    }
 }
 
 struct PlacementContext {

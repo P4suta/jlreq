@@ -120,10 +120,25 @@ impl LayoutEngine {
 
         for (paragraph_index, segment) in segments.iter().enumerate() {
             let content = &document.text[segment.content.clone()];
+            let overrides = paragraph_style_for(document, &segment.content)?;
+            let line_extent = overrides
+                .and_then(|style| style.line_extent)
+                .unwrap_or(options.line_extent);
+            let alignment = overrides
+                .and_then(|style| style.alignment)
+                .unwrap_or(options.alignment);
+            let first_line_indent = overrides
+                .and_then(|style| style.first_line_indent)
+                .unwrap_or(options.first_line_indent);
             if content.is_empty() {
+                // A blank paragraph has no clusters for the core to place, so
+                // the facade applies that paragraph's own indent and alignment
+                // to the caret position directly. Its caret otherwise sat at
+                // the margin while every neighboring line obeyed the style.
+                let inline = empty_line_inline(line_extent, first_line_indent, alignment);
                 let origin = match options.writing_mode {
-                    WritingMode::HorizontalTb => Point::from_fixed(0, block_offset),
-                    WritingMode::VerticalRl => Point::from_fixed(block_offset, 0),
+                    WritingMode::HorizontalTb => Point::from_fixed(inline, block_offset),
+                    WritingMode::VerticalRl => Point::from_fixed(block_offset, inline),
                 };
                 lines.push(TextLine {
                     range: segment.content.clone(),
@@ -172,16 +187,6 @@ impl LayoutEngine {
             )?;
             let breaks =
                 collect_breaks(document, &segment.content, content, &prepared, &constructs);
-            let overrides = paragraph_style_for(document, &segment.content)?;
-            let line_extent = overrides
-                .and_then(|style| style.line_extent)
-                .unwrap_or(options.line_extent);
-            let alignment = overrides
-                .and_then(|style| style.alignment)
-                .unwrap_or(options.alignment);
-            let first_line_indent = overrides
-                .and_then(|style| style.first_line_indent)
-                .unwrap_or(options.first_line_indent);
             let widow = overrides
                 .and_then(|style| style.widow)
                 .unwrap_or(options.widow);
@@ -768,4 +773,19 @@ fn assign_line_metadata(lines: &mut [TextLine]) {
             line.last_in_paragraph = last;
         }
     }
+}
+
+/// Where a blank paragraph's caret sits on the inline axis.
+///
+/// An empty line occupies no inline space, so alignment distributes the whole
+/// measure that the indent does not claim. Justify aligns like start, matching
+/// the core's treatment of a line it cannot stretch.
+fn empty_line_inline(line_extent: i32, first_line_indent: i32, alignment: Alignment) -> i32 {
+    let remaining = line_extent.saturating_sub(first_line_indent).max(0);
+    let offset = match alignment {
+        Alignment::Start | Alignment::Justify => 0,
+        Alignment::Center => remaining / 2,
+        Alignment::End => remaining,
+    };
+    first_line_indent.saturating_add(offset)
 }

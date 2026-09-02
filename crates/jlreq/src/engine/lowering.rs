@@ -207,12 +207,17 @@ fn paragraph_style_for<'a>(
     document: &'a Document,
     content: &Range<usize>,
 ) -> Result<Option<&'a crate::ParagraphStyle>, LayoutError> {
-    if content.start >= content.end {
-        return Ok(None);
-    }
     for (range, style) in &document.paragraph_styles {
-        if range.start >= content.end {
+        if range.start > content.end {
             break;
+        }
+        // A blank paragraph occupies a position rather than a span, so a
+        // style reaching that position governs it like any other paragraph.
+        if content.start >= content.end {
+            if range.start <= content.start && content.start <= range.end {
+                return Ok(Some(style));
+            }
+            continue;
         }
         if !ranges_overlap(range, content) {
             continue;

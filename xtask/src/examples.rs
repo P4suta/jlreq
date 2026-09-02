@@ -76,6 +76,18 @@ fn run(_arguments: &[String]) -> io::Result<Vec<String>> {
         .iter()
         .filter(|fence| SOURCES.contains(&fence.file) && fence.mode != Mode::Skip)
         .collect();
+    // A gate that can pass by having nothing to check is not a gate: each
+    // documented entry point must keep at least one executed program.
+    for file in SOURCES {
+        if !checked
+            .iter()
+            .any(|fence| fence.file == *file && fence.mode == Mode::Run)
+        {
+            violations.push(format!(
+                "{file}: no executable Rust example remains; each documented entry point must keep at least one program this gate runs"
+            ));
+        }
+    }
     for fence in &checked {
         if !fence.body.contains("fn main") {
             violations.push(format!(
@@ -119,12 +131,17 @@ fn extract_fences(
                     anonymous = anonymous.saturating_add(1);
                     format!("{file}-{anonymous}")
                 });
-                if fences
+                // Names collide globally, not per file: two fences differing
+                // only in punctuation would otherwise share one scratch
+                // binary and silently overwrite each other.
+                if let Some(other) = fences
                     .iter()
-                    .any(|fence| fence.file == file && fence.name == name)
+                    .find(|fence| binary_name(&fence.name) == binary_name(&name))
+                    && (other.file == file || other.body != body)
                 {
                     violations.push(format!(
-                        "{file}:{start}: duplicate example name `{name}` in one file"
+                        "{file}:{start}: example name `{name}` collides with `{}` at {}:{}",
+                        other.name, other.file, other.line
                     ));
                 }
                 fences.push(Fence {
@@ -394,7 +411,7 @@ fn main() {}
         let (fences, violations) = extract(duplicated);
         assert_eq!(fences.len(), 2);
         assert_eq!(violations.len(), 1);
-        assert!(violations[0].contains("duplicate example name `twice`"));
+        assert!(violations[0].contains("collides with"), "{violations:?}");
     }
 
     #[test]

@@ -721,16 +721,35 @@ fn lines_carry_indices_paragraph_membership_and_offset_lookup() -> Result<(), Bo
     assert!(lines[2].is_first_in_paragraph() && lines[2].is_last_in_paragraph());
     assert!(lines[3].is_first_in_paragraph() && lines[3].is_last_in_paragraph());
 
+    // Every caret position is addressable, including the ones the editing
+    // primitives themselves produce.
     assert_eq!(layout.line_index_at(0), Some(0));
     assert_eq!(layout.line_index_at(lines[1].range().start), Some(1));
     assert_eq!(layout.line_index_at(7), Some(1));
+    // A wrap boundary belongs to the following line, which starts there.
+    assert_eq!(lines[0].range().end, lines[1].range().start);
+    assert_eq!(layout.line_index_at(lines[0].range().end), Some(1));
+    // A line ending before a paragraph separator keeps its own end.
+    assert_eq!(layout.line_index_at(lines[1].range().end), Some(1));
     // The blank paragraph's empty line holds its own start offset.
     assert_eq!(lines[2].range().len(), 0);
     assert_eq!(layout.line_index_at(lines[2].range().start), Some(2));
     assert_eq!(layout.line_index_at(10), Some(3));
-    // The paragraph separator byte belongs to no displayed line.
-    assert_eq!(layout.line_index_at(8), None);
-    assert_eq!(layout.line_index_at(text.len()), None);
+    // The end of the text belongs to the final line; past it, nothing does.
+    assert_eq!(layout.line_index_at(text.len()), Some(3));
+    assert_eq!(layout.line_index_at(text.len().saturating_add(1)), None);
+
+    // Every offset a caret walk visits resolves to a line.
+    let mut offset = 0;
+    let mut affinity = Affinity::Upstream;
+    while let Some(next) = layout.next_visual_caret(offset, affinity) {
+        offset = next.byte_offset();
+        affinity = next.affinity();
+        assert!(
+            layout.line_index_at(offset).is_some(),
+            "caret offset {offset} must belong to a line"
+        );
+    }
     Ok(())
 }
 
@@ -833,9 +852,7 @@ fn visual_caret_motion_walks_lines_and_crosses_them() -> Result<(), Box<dyn Erro
         hops += 1;
         assert!(hops < 32, "visual walk must terminate");
         let next_x = caret_x(next.byte_offset(), next.affinity()).ok_or("caret")?;
-        if layout.line_index_at(next.byte_offset().min(text.len() - 1))
-            == layout.line_index_at(offset.min(text.len() - 1))
-            && !crossed_line
+        if layout.line_index_at(next.byte_offset()) == layout.line_index_at(offset) && !crossed_line
         {
             assert!(next_x > previous_x, "same-line motion moves inline-forward");
         } else {
@@ -865,17 +882,11 @@ fn visual_caret_motion_walks_lines_and_crosses_them() -> Result<(), Box<dyn Erro
     let up = layout
         .caret_previous_line(second_line_start, Affinity::Upstream)
         .ok_or("previous line caret")?;
-    assert_eq!(
-        layout.line_index_at(up.byte_offset().min(text.len() - 1)),
-        Some(0)
-    );
+    assert_eq!(layout.line_index_at(up.byte_offset()), Some(0));
     let down = layout
         .caret_next_line(up.byte_offset(), up.affinity())
         .ok_or("next line caret")?;
-    assert_eq!(
-        layout.line_index_at(down.byte_offset().min(text.len() - 1)),
-        Some(1)
-    );
+    assert_eq!(layout.line_index_at(down.byte_offset()), Some(1));
     assert_eq!(
         layout.caret_previous_line(0, Affinity::Upstream),
         None,
@@ -1126,6 +1137,48 @@ fn paragraph_styles_override_measure_alignment_indent_widow_and_tabs() -> Result
     let document = documented.build()?;
     let styles: Vec<_> = document.paragraph_styles().collect();
     assert_eq!(styles, [(first_paragraph, &style)]);
+
+    // A blank paragraph obeys the alignment and indent that govern it, so its
+    // caret does not jump to the margin between two styled paragraphs.
+    let blank = "ああ\n\nいい";
+    let plain_blank =
+        jlreq::layout_document(&DocumentBuilder::new(blank).build()?, &fonts, base.clone())?;
+    assert_eq!(plain_blank.lines()[1].range().len(), 0);
+    assert_eq!(plain_blank.lines()[1].origin().x_26_6(), 0);
+    for (alignment, expected_26_6) in [
+        (Alignment::End, 240 * 64),
+        (Alignment::Center, 120 * 64),
+        (Alignment::Start, 0),
+    ] {
+        let mut aligned = DocumentBuilder::new(blank);
+        aligned.paragraph_style(
+            0..blank.len(),
+            jlreq::ParagraphStyle::new().with_alignment(alignment),
+        )?;
+        let layout = jlreq::layout_document(&aligned.build()?, &fonts, base.clone())?;
+        let empty = &layout.lines()[1];
+        assert_eq!(empty.range().len(), 0);
+        assert_eq!(
+            empty.origin().x_26_6(),
+            expected_26_6,
+            "blank paragraph under {alignment:?}"
+        );
+        let caret = layout
+            .caret_rect(empty.range().start, Affinity::Downstream)
+            .ok_or("the blank paragraph holds a caret")?;
+        assert_eq!(
+            caret.as_26_6().0,
+            empty.origin().x_26_6(),
+            "the caret follows the empty line's own origin"
+        );
+    }
+    let mut indented_blank = DocumentBuilder::new(blank);
+    indented_blank.paragraph_style(
+        0..blank.len(),
+        jlreq::ParagraphStyle::new().with_first_line_indent(16.0)?,
+    )?;
+    let layout = jlreq::layout_document(&indented_blank.build()?, &fonts, base.clone())?;
+    assert_eq!(layout.lines()[1].origin().x_26_6(), 16 * 64);
 
     // Options-level read-back for the three new document-wide controls.
     let configured = base

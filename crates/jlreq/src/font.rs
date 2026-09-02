@@ -19,9 +19,12 @@ pub(crate) fn unknown_font_id() -> LayoutError {
     )
 }
 
-/// Source of the per-library provenance nonce; zero is reserved for
-/// "no face registered yet".
-static NEXT_LIBRARY_NONCE: AtomicU64 = AtomicU64::new(1);
+/// Source of the provenance nonce stamped on every registration.
+///
+/// Minting per registration rather than per library is what makes a cloned
+/// library safe: the faces the clone inherited keep their identifiers, while
+/// anything registered afterwards — in either copy — is distinguishable.
+static NEXT_REGISTRATION_NONCE: AtomicU64 = AtomicU64::new(1);
 
 /// Stable identifier assigned by a [`FontLibrary`].
 ///
@@ -29,8 +32,10 @@ static NEXT_LIBRARY_NONCE: AtomicU64 = AtomicU64::new(1);
 /// library slot only, which keeps layouts produced from identical bytes and
 /// options bit-identical across distinct libraries. Provenance is checked by
 /// the lookups instead: [`FontLibrary::get`] and [`crate::TextLayout::font`]
-/// return `None` for an identifier minted by a different library rather than
-/// silently resolving the wrong font.
+/// return `None` for an identifier minted by a different registration rather
+/// than silently resolving the wrong font. A cloned library keeps the
+/// identifiers it inherited and diverges from its source for every face
+/// registered afterwards.
 #[derive(Clone, Copy)]
 pub struct FontId {
     index: u32,
@@ -407,7 +412,6 @@ pub struct FontLibrary {
     fonts: Vec<FontResource>,
     primary: Option<FontId>,
     fallback_order: Vec<FontId>,
-    nonce: u64,
 }
 
 impl fmt::Debug for FontLibrary {
@@ -429,7 +433,6 @@ impl FontLibrary {
             fonts: Vec::new(),
             primary: None,
             fallback_order: Vec::new(),
-            nonce: 0,
         }
     }
 
@@ -496,12 +499,9 @@ impl FontLibrary {
                 "the library already holds the maximum number of font identifiers",
             )
         })?;
-        if self.nonce == 0 {
-            self.nonce = NEXT_LIBRARY_NONCE.fetch_add(1, Ordering::Relaxed);
-        }
         let id = FontId {
             index: ordinal,
-            nonce: self.nonce,
+            nonce: NEXT_REGISTRATION_NONCE.fetch_add(1, Ordering::Relaxed),
         };
         self.fonts.push(FontResource {
             id,
@@ -731,7 +731,6 @@ mod tests {
             ],
             primary: Some(test_id(0)),
             fallback_order: vec![test_id(0), test_id(1), test_id(2)],
-            nonce: TEST_NONCE,
         }
     }
 
@@ -925,9 +924,39 @@ mod tests {
             "font.unknown-id"
         );
 
-        // A clone shares provenance with its source.
-        let cloned = first.clone();
+        // A clone keeps the identifiers it inherited...
+        let mut cloned = first.clone();
         assert!(cloned.get(first_id).is_some());
+
+        // ...and diverges from its source for every later registration, so a
+        // slot both copies filled independently never resolves across them.
+        let from_source = first
+            .register_face(
+                Arc::<[u8]>::from(font_test_data::TINOS_SUBSET),
+                0,
+                "FromSource",
+                FontStyle::default(),
+            )
+            .unwrap();
+        let from_clone = cloned
+            .register_face(
+                Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF),
+                0,
+                "FromClone",
+                FontStyle::default(),
+            )
+            .unwrap();
+        assert_eq!(from_source, from_clone, "both filled the same slot");
+        assert_eq!(
+            first.get(from_source).map(FontResource::family),
+            Some("FromSource")
+        );
+        assert_eq!(
+            cloned.get(from_clone).map(FontResource::family),
+            Some("FromClone")
+        );
+        assert!(cloned.get(from_source).is_none());
+        assert!(first.get(from_clone).is_none());
     }
 
     #[test]

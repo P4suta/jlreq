@@ -33,7 +33,7 @@ jlreq = "0.1"
 
 ## 最短の利用手順
 
-```rust no_run
+```rust
 use jlreq::{FontLibrary, LayoutOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
