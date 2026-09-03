@@ -425,9 +425,9 @@ dependencies = [
 
 [[package]]
 name = "rwml-fonts"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf94ed9173a29f5326edc98180b3df5e4e6bbbdfa3e8edb8b4ca60f6ec1165f6"
+checksum = "1df05d141619f779eebe8b63dc82789b9d87387fcdb927713d1badeae6a91f82"
 
 [[package]]
 name = "serde"
