@@ -23,6 +23,7 @@ use crate::style::{
     RubyAlignment, RubyOverhangIndent, RubyOverhangKana, SentenceMedialDividingMark, Style,
     UnlistedCodePoint,
 };
+use crate::trace::{Categories, Fact, Phase, Site, Trace};
 
 const INFINITE_COST: u128 = u128::MAX;
 // These stage files expand in this module so the private pipeline contract and public API
@@ -2992,5 +2993,150 @@ mod tests {
         assert_eq!(error.limit(), limit);
         assert_eq!(error.observed(), limit.saturating_add(1));
         assert_eq!(composer.transitions, limit);
+    }
+
+    /// The corpus the tracing-equivalence tests run over.
+    ///
+    /// It is deliberately shaped to reach every branch that changes the search's work:
+    /// a plain paragraph, both writing modes, a ruby construct, a paragraph that is one
+    /// line, and one that overflows its measure.
+    fn tracing_corpus() -> Vec<(Paragraph, Style)> {
+        let mut corpus = Vec::new();
+        for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+            corpus.push((
+                break_everywhere("日本語組版", 3_000, mode),
+                Style::default(),
+            ));
+            corpus.push((
+                break_everywhere("日本語組版", 60_000, mode),
+                Style::default(),
+            ));
+            corpus.push((
+                break_everywhere("日、本。語（版）", 2_500, mode),
+                Style::book_2020(),
+            ));
+            corpus.push((
+                break_everywhere("あA1あA1あ", 2_000, mode),
+                Style::default(),
+            ));
+        }
+        corpus.push((
+            Paragraph::builder(text("日本語組版"), 2_000)
+                .constructs(vec![Construct::ruby(ruby(
+                    RubyKind::Mono,
+                    0..3,
+                    "にほ",
+                    vec![RubyRun::new(0..3, 0..6)],
+                ))])
+                .breaks(
+                    "日本語組版"
+                        .char_indices()
+                        .skip(1)
+                        .map(|(offset, _)| Break::allowed(offset)),
+                )
+                .widow(Widow::MinimumClusters(2))
+                .build()
+                .expect("valid ruby fixture paragraph"),
+            Style::default(),
+        ));
+        corpus
+    }
+
+    /// Recording must not change the answer, and must not change the work charged for it.
+    ///
+    /// This is the census guard. The three-implementation census cannot be re-run without
+    /// the OCaml and Racket toolchains, so the standing invariant is that core behaviour
+    /// on existing input does not move. `compose` and `compose_traced` share one body and
+    /// this holds them to the same layout, the same error, and — the sharper of the two —
+    /// the same charged transition count, which a changed search would move even where
+    /// the final geometry happened to agree.
+    #[test]
+    fn tracing_changes_neither_the_layout_nor_the_charged_work() {
+        for (paragraph, style) in tracing_corpus() {
+            let mut plain = super::Composer::new();
+            let mut traced = super::Composer::new();
+            let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+
+            let expected = plain.compose(&paragraph, &style);
+            let observed = traced.compose_traced(&paragraph, &style, &mut trace);
+
+            assert_eq!(expected, observed);
+            assert_eq!(plain.transitions, traced.transitions);
+            assert_eq!(plain.chosen, traced.chosen);
+        }
+    }
+
+    /// A refused paragraph keeps the decisions taken before the refusal.
+    #[test]
+    fn a_refused_composition_returns_the_same_error_and_keeps_its_trace() {
+        let source = "日本語組版".repeat(64);
+        let paragraph = Paragraph::builder(text(&source), 20_000)
+            .breaks(
+                source
+                    .char_indices()
+                    .skip(1)
+                    .map(|(offset, _)| Break::allowed(offset)),
+            )
+            .build()
+            .expect("valid fixture paragraph");
+        let limits = crate::CompositionLimits::DEFAULT.with_max_search_transitions(4);
+
+        let mut plain = super::Composer::with_limits(limits);
+        let mut traced = super::Composer::with_limits(limits);
+        let mut trace = crate::trace::Trace::new();
+
+        let expected = plain.compose(&paragraph, &Style::default());
+        let observed = traced.compose_traced(&paragraph, &Style::default(), &mut trace);
+
+        assert_eq!(expected, observed);
+        assert!(observed.is_err());
+        assert_eq!(plain.transitions, traced.transitions);
+        assert_eq!(trace.events().len(), 1);
+        assert_eq!(trace.events()[0].kind(), "prepare.paragraph");
+    }
+
+    /// Preparation and search may not speak for a line, because neither is setting one.
+    #[test]
+    fn the_recorded_phases_match_the_stages_that_produced_them() {
+        let paragraph = break_everywhere("日本語組版", 3_000, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        let layout = composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+
+        let kinds: Vec<&str> = trace
+            .events()
+            .iter()
+            .map(crate::trace::Event::kind)
+            .collect();
+        assert_eq!(kinds.first(), Some(&"prepare.paragraph"));
+        assert_eq!(
+            kinds
+                .iter()
+                .filter(|kind| **kind == "search.chosen")
+                .count(),
+            layout.lines().len()
+        );
+        assert!(!trace.is_truncated());
+
+        for event in trace.events() {
+            match event.kind() {
+                "prepare.paragraph" => assert_eq!(event.site().line(), None),
+                _ => assert!(event.site().line().is_some()),
+            }
+        }
+    }
+
+    /// A trace that is off costs an empty vector and records nothing.
+    #[test]
+    fn an_untraced_composition_records_nothing() {
+        let paragraph = break_everywhere("日本語組版", 3_000, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::NONE);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+        assert!(trace.events().is_empty());
     }
 }

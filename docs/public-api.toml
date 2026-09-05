@@ -104,7 +104,9 @@ items = [
   "Widow",
   "WritingMode",
   "compose",
+  "compose_traced",
   "style",
+  "trace",
 ]
 
 [[module]]
@@ -135,6 +137,21 @@ items = [
   "StyleBuilder",
   "StyleError",
   "UnlistedCodePoint",
+]
+
+# The decision trace. Deliberately outside the compatibility promise the other modules
+# carry: these names exist so a person can read why a layout came out as it did, and
+# `docs/adr/0028` records why that channel is allowed to move between releases while the
+# result and its diagnostics are not.
+[[module]]
+path = "jlreq_core::trace"
+items = [
+  "Categories",
+  "Event",
+  "Fact",
+  "RuleAddress",
+  "Site",
+  "Trace",
 ]
 
 # One dedicated enum for every alternative the generated JLReq 2020 policy inventory

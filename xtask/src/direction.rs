@@ -61,6 +61,13 @@ const LAYERS: &[Layer] = &[
         name: "layout",
         may_depend_on: &["model"],
     },
+    // The trace vocabulary names the domain types the earlier layers already own
+    // rather than re-spelling them as local codes, which would be the second
+    // carrier ADR 0019 forbids.
+    Layer {
+        name: "trace",
+        may_depend_on: &["construct", "layout", "model", "paragraph", "style"],
+    },
     Layer {
         name: "pipeline",
         may_depend_on: &[
@@ -73,6 +80,7 @@ const LAYERS: &[Layer] = &[
             "paragraph",
             "spec",
             "style",
+            "trace",
         ],
     },
     Layer {
@@ -88,6 +96,7 @@ const LAYERS: &[Layer] = &[
             "pipeline",
             "spec",
             "style",
+            "trace",
         ],
     },
 ];

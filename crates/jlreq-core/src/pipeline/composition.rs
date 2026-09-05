@@ -256,16 +256,65 @@ impl Composer {
         paragraph: &Paragraph,
         style: &Style,
     ) -> Result<Layout, ComposeError> {
+        let mut trace = Trace::off();
+        self.compose_inner(paragraph, style, &mut trace)
+    }
+
+    /// Compose one validated paragraph and record why it came out that way.
+    ///
+    /// The answer is the answer [`compose`](Self::compose) gives: both call one
+    /// implementation, and the sink the untraced entry passes records nothing. Events are
+    /// appended, so one buffer may serve a whole document, and a
+    /// [`ComposeError`] still leaves behind the decisions taken before it.
+    pub fn compose_traced(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<Layout, ComposeError> {
+        self.compose_inner(paragraph, style, trace)
+    }
+
+    fn compose_inner(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<Layout, ComposeError> {
         self.reset_for_call();
         if paragraph.text.clusters().is_empty() {
             return Ok(Layout::default());
         }
         self.check_static_limits(paragraph)?;
         self.prepare_candidates(paragraph);
+        trace.enter(Phase::Prepare);
         self.prepare_indexes(paragraph, style);
+        self.trace_paragraph(paragraph, trace);
+        trace.enter(Phase::Search);
         self.search(paragraph, style)?;
         self.backtrack();
-        Ok(self.place(paragraph, style))
+        trace.enter(Phase::Placement);
+        Ok(self.place(paragraph, style, trace))
+    }
+
+    fn trace_paragraph(&self, paragraph: &Paragraph, trace: &mut Trace) {
+        if trace.wants(Categories::PREPARE) {
+            trace.push(
+                Site::paragraph(
+                    0..paragraph.text.clusters().len(),
+                    0..paragraph.text.source().len(),
+                ),
+                Fact::ParagraphPrepared {
+                    clusters: paragraph.text.clusters().len(),
+                    candidates: self.candidates.len(),
+                    constructs: paragraph.constructs.len(),
+                    fast_measure: self.prepared.fast_measure,
+                    line_extent: paragraph.line_extent,
+                    writing_mode: paragraph.writing_mode,
+                    alignment: paragraph.alignment,
+                },
+            );
+        }
     }
 
     fn reset_for_call(&mut self) {
@@ -607,7 +656,7 @@ impl Composer {
         self.chosen.reverse();
     }
 
-    fn place(&mut self, paragraph: &Paragraph, style: &Style) -> Layout {
+    fn place(&mut self, paragraph: &Paragraph, style: &Style, trace: &mut Trace) -> Layout {
         let mut layout = Layout::default();
         let mut block_cursor = 0_i64;
         for line_index in 0..self.chosen.len().saturating_sub(1) {
@@ -617,6 +666,7 @@ impl Composer {
             let start_cluster = cluster_index_at_or_after(paragraph, start_offset);
             let end_cluster = cluster_index_at_or_after(paragraph, end_offset);
             let is_last = line_index.saturating_add(2) == self.chosen.len();
+            self.trace_line_choice(line_index, start_cluster..end_cluster, trace);
             let block_origin = match paragraph.writing_mode {
                 WritingMode::HorizontalTb => clamp_i32(block_cursor),
                 WritingMode::VerticalRl => clamp_i32(block_cursor.saturating_neg()),
@@ -642,6 +692,34 @@ impl Composer {
         }
         add_widow_diagnostic(paragraph, &mut layout);
         layout
+    }
+
+    /// Report one line the search settled on, and what that line alone cost.
+    ///
+    /// The edge cost is the difference between the two nodes the backtrack walked
+    /// through, which is the quantity the search actually compared; the running total is
+    /// recoverable by addition and is not restated here.
+    fn trace_line_choice(&self, line_index: usize, clusters: Range<usize>, trace: &mut Trace) {
+        if !trace.wants(Categories::SEARCH) {
+            return;
+        }
+        let next_line = line_index.saturating_add(1);
+        let start_candidate = self.chosen[line_index];
+        let end_candidate = self.chosen[next_line];
+        let edge_cost = self.nodes[end_candidate]
+            .cost
+            .saturating_sub(self.nodes[start_candidate].cost);
+        let bytes = self.candidates[start_candidate].offset..self.candidates[end_candidate].offset;
+        let line = u32::try_from(line_index).unwrap_or(u32::MAX);
+        trace.push(
+            Site::on_line(line, clusters, bytes),
+            Fact::LineChosen {
+                line,
+                start_candidate,
+                end_candidate,
+                edge_cost,
+            },
+        );
     }
 
     fn place_line(
