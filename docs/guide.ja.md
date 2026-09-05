@@ -313,6 +313,61 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 `TextLayout::diagnostics` に載ります。コードの一覧は
 [`error-codes.md`](error-codes.md) に固定されています。
 
+## なぜこうなったかを調べる
+
+診断は「注目すべきことが起きた」と述べます。**なぜそうなったか**は判断トレースが
+答えます。`DocumentTrace` を渡すと、段落の切り出し、書記素からシェーピングrunへの
+まとめ方、**どの書記素をどの書体が覆ったか（そして何番目の候補だったか）**、
+コアに渡った分割機会の数、そしてコア自身の判断（行分割探索・約物空き・調整ラダー・
+配置）が、1判断1行で1本の流れに並びます。
+
+```rust no_run
+use jlreq::core::trace::Categories as CoreCategories;
+use jlreq::trace::{Categories, DocumentTrace, Fact};
+use jlreq::{FontLibrary, LayoutEngine, LayoutOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let font_path = std::env::args()
+        .nth(1)
+        .ok_or("フォントファイルを指定してください")?;
+    let mut fonts = FontLibrary::new();
+    fonts.register_font(std::fs::read(font_path)?)?;
+    let mut engine = LayoutEngine::new();
+    let text = "日本語の組版、その理由。";
+
+    // すべて記録して、1判断1行で読む。
+    let mut trace = DocumentTrace::new();
+    let layout = engine.layout_traced(
+        text,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?,
+        &mut trace,
+    )?;
+    let _ = layout.lines().len();
+    print!("{trace}");
+
+    // 1つの問いに絞ることもできます。これは書体の選定だけを記録します。
+    let mut faces = DocumentTrace::with_categories(Categories::FACES, CoreCategories::NONE);
+    engine.layout_traced(text, &fonts, LayoutOptions::try_new(240.0, 16.0)?, &mut faces)?;
+    for event in faces.events() {
+        if let Fact::FaceChosen { family, position, .. } = event.fact() {
+            println!("{:?} は {family:?}（候補 {position} 番目）", &text[event.site().bytes()]);
+        }
+    }
+    Ok(())
+}
+```
+
+`layout` と `layout_traced` は同一の本体を通ります。記録は実行時の選択であって
+2本目のコード経路ではないので、トレースが説明するのは記録していない呼び出しが
+行ったことそのものです。エラーになった場合もトレースは残ります — 拒否された段落の
+理由こそ最も必要だからです。
+
+読み方と語彙は [`design/tracing.md`](design/tracing.md)、
+このチャネルを結果や診断と分けた理由は
+[ADR-0028](adr/0028-the-trace-is-not-a-diagnostic.md) にあります。動く例は
+[`crates/jlreq/examples/explain.rs`](../crates/jlreq/examples/explain.rs) です。
+
 ## 決定論の境界
 
 明示的なフォントbytes、face index、本文、オプションが同じなら、対応OS間で26.6結果は

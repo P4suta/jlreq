@@ -113,17 +113,34 @@ truncated. Truncation is deliberately not a `ComposeError`: `CompositionResource
 surface with a documented code, and a debugging aid must not be able to turn a composable
 paragraph into a refusal.
 
+**One document, one trace.** The core cannot see face selection, grapheme itemization, or
+paragraph segmentation, so it cannot answer the question a caller asks most often: why did
+this glyph come from that font. `jlreq::trace::DocumentTrace` records those, and absorbs
+each paragraph's core trace with its byte offsets shifted into document coordinates, rather
+than handing a caller two channels to reconcile by hand. The absorbed line is rendered
+exactly as the core rendered it — paragraph-local offsets included — because rewriting a
+core line would make the two goldens disagree about the same decision; the facade's own
+`para.segment` states the paragraph's document range, which relates the two frames.
+
+The facade's categories are a second, separate set. That is not symmetry for its own sake:
+no facade family grows faster than the input, so its default records everything, while the
+core keeps a default that excludes the two families that are superlinear.
+
+Absorption happens *before* the composer's result is unwrapped. A paragraph that refuses is
+the case whose reasoning a reader most needs, so a refusal must not take the trace with it.
+
 ## Consequences
 
 The question a user actually asks — why did this line break here, why did this space
-shrink — has a mechanical answer for the first time, and the answer cites the sentence it
-rests on.
+shrink, why did this glyph come from that font — has a mechanical answer for the first
+time, and the answer cites the sentence it rests on.
 
 The project gains the drift oracle it could not otherwise have. `crates/jlreq-core/tests/`
-holds rendered traces byte for byte, in a suite that runs on every push across three
-operating systems, where the census runs on none. A change that reorders the ladder or
-charges a different surcharge moves a golden even where the final geometry agrees, and
-geometry agreeing by coincidence is precisely the case that would otherwise ship.
+and `crates/jlreq/tests/` hold rendered traces byte for byte, in suites that run on every
+push across three operating systems, where the census runs on none. A change that reorders
+the ladder or charges a different surcharge moves a golden even where the final geometry
+agrees, and geometry agreeing by coincidence is precisely the case that would otherwise
+ship.
 
 The two `#[cfg(test)]` inspection hatches become a stated channel rather than a private
 one. They remain for now, because removing them is a separate change with its own risk.

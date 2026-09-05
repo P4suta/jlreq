@@ -13,24 +13,38 @@ either.
 
 ## Recording one
 
-```rust,no_run
-use jlreq_core::trace::{Categories, Trace};
+```rust
+use jlreq_core::trace::Trace;
+use jlreq_core::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 
-# fn example(paragraph: &jlreq_core::Paragraph, style: &jlreq_core::Style)
-#     -> Result<(), jlreq_core::ComposeError> {
-let mut trace = Trace::new();
-let layout = jlreq_core::compose_traced(paragraph, style, &mut trace)?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let source = "日本語の組版、その理由。";
+    let clusters = source
+        .char_indices()
+        .map(|(start, character)| Cluster::new(start..start + character.len_utf8(), 1_000));
+    let text = ShapedText::new(source, Size::square(1_000)?, Frame::FullEm, clusters)?;
+    let paragraph = Paragraph::builder(text, 7_680)
+        .breaks(
+            source
+                .char_indices()
+                .skip(1)
+                .map(|(offset, _)| Break::allowed(offset)),
+        )
+        .build()?;
 
-// One decision per line, already formatted.
-println!("{trace}");
+    let mut trace = Trace::new();
+    let layout = jlreq_core::compose_traced(&paragraph, &Style::jlreq_2020(), &mut trace)?;
+    let _ = layout.lines().len();
 
-// Or walk it: every event names its kind, where it belongs, and the rule it rests on.
-for event in trace.events() {
-    let _ = (event.kind(), event.site().bytes(), event.jlreq());
+    // One decision per line, already formatted.
+    print!("{trace}");
+
+    // Or walk it: every event names its kind, where it belongs, and the rule it rests on.
+    for event in trace.events() {
+        let _ = (event.kind(), event.site().bytes(), event.jlreq());
+    }
+    Ok(())
 }
-# let _ = layout;
-# Ok(())
-# }
 ```
 
 `compose` records nothing and allocates nothing for the sink, so the untraced path costs a
@@ -48,10 +62,15 @@ or linear in the input rather than in the output:
 
 Turn one on deliberately, on a paragraph you have already narrowed down:
 
-```rust,no_run
-# use jlreq_core::trace::{Categories, Trace};
-let mut trace = Trace::with_categories(Categories::DEFAULT.with(Categories::SEARCH_CANDIDATES));
-# let _ = trace.categories();
+```rust
+use jlreq_core::trace::{Categories, Trace};
+
+fn main() {
+    let asked = Categories::DEFAULT.with(Categories::SEARCH_CANDIDATES);
+    let trace = Trace::with_categories(asked);
+    assert!(trace.categories().contains(Categories::SEARCH_CANDIDATES));
+    assert!(!Categories::DEFAULT.contains(Categories::PLACE_CLUSTERS));
+}
 ```
 
 A trace stops at `Trace::DEFAULT_MAX_EVENTS` and reports `is_truncated`. Truncation is not
@@ -119,6 +138,78 @@ would name a boundary that is not one.
 Kinsoku is the exception and does speak during preparation, because a kinsoku refusal names
 the boundary it actually refused.
 
+## The facade half
+
+`jlreq_core::trace` explains one paragraph's composition. It cannot explain the question a
+caller most often has — *why did this glyph come from that font* — because face selection,
+grapheme itemization, and paragraph segmentation all happen above it. `jlreq::trace` records
+those, and absorbs each paragraph's core trace so one document has one trace:
+
+```rust
+use jlreq::core::trace::Categories as CoreCategories;
+use jlreq::trace::{Categories, DocumentTrace};
+use jlreq::{FontLibrary, LayoutEngine, LayoutOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let font_path = std::env::args().nth(1).ok_or("pass a font path")?;
+    let mut fonts = FontLibrary::new();
+    fonts.register_font(std::fs::read(font_path)?)?;
+    let mut engine = LayoutEngine::new();
+
+    let asked = Categories::FACES
+        .with(Categories::RUNS)
+        .with(Categories::ITEMIZE);
+    let mut trace = DocumentTrace::with_categories(asked, CoreCategories::NONE);
+    let layout = engine.layout_traced(
+        "日本Aب🇪🇨",
+        &fonts,
+        LayoutOptions::try_new(200.0, 16.0)?,
+        &mut trace,
+    )?;
+    let _ = layout.lines().len();
+    print!("{trace}");
+    Ok(())
+}
+```
+
+With the four faces `crates/jlreq/tests/goldens/face-fallback.txt` registers rather than the
+one above, that prints the following; the golden holds the whole of it:
+
+```text
+jlreq.trace/1 document events=10 facade=0x000e core=0x0000 truncated=0
+0000 P00 face.fallback            b0..3 face=0 family=Noto Sans JP candidates=4
+0002 P00 face.chosen              b6..7 face=0 family=Noto Sans JP position=1 candidates=4
+0003 P00 face.chosen              b7..9 face=1 family=Vazirmatn position=2 candidates=4
+0004 P00 face.chosen              b9..17 face=2 family=Noto Color Emoji position=3 candidates=4
+0007 P00 text.run                 b7..9 script=rtl direction=rtl level=1 face=1 glyphs=2 annotation=0
+0009 P00 text.itemized            b0..17 graphemes=5 runs=4 clusters=5 base-level=0 mixed=1 annotation=0
+```
+
+Two category sets, because the two channels have different cost profiles: no facade family
+grows faster than the input, so `Categories::ALL` is also the facade default, while the core
+keeps its own `DEFAULT` that excludes the two superlinear families.
+
+| family | kinds | answers |
+| --- | --- | --- |
+| `PARAGRAPHS` | `text.segmented`, `para.segment` | how the text was cut up, and what style each paragraph resolved to |
+| `ITEMIZE` | `text.itemized` | graphemes, runs, clusters, and the bidi level UAX #9 resolved |
+| `RUNS` | `text.run` | each shaping run's script, direction, level, face, and glyph count |
+| `FACES` | `face.chosen`, `face.fallback` | which face covered a grapheme, and how many were tried first |
+| `BREAKS` | `text.breaks` | how many opportunities of each strength reached the search |
+| `CORE` | everything above | one paragraph's core trace, tagged with the paragraph it came from |
+
+Two things a reader has to know about the columns:
+
+- A line is `ordinal`, then the **paragraph scope** (`P00`, or `doc` for the whole call),
+  then the body. A facade body is `kind`, document byte range, fields. A core body is the
+  core's own line, verbatim — so its byte range is paragraph-local, as the core means it.
+  `para.segment` states each paragraph's document range, which relates the two. The kind
+  column is padded to the same width in both channels, so the fields line up either way.
+- `face.chosen` and `face.fallback` fire once per *distinct* decision, not once per
+  grapheme: `select_font` memoizes on the grapheme text, style, and direction, and a
+  repeated grapheme takes the cached answer without re-shaping. The site names the grapheme
+  that caused the decision to be made.
+
 ## The goldens
 
 `crates/jlreq-core/tests/goldens/` holds a rendered trace per scenario, byte for byte,
@@ -144,6 +235,14 @@ A golden that changes without a stated reason is the finding, not the noise.
 Two further tests keep the corpus honest: one asserts it still reaches every family it was
 assembled for, so a scenario cannot quietly stop exercising anything while its golden keeps
 passing, and one asserts recording does not change the layout of any recorded scenario.
+
+`crates/jlreq/tests/document_trace.rs` does the same for the facade, with the same `BLESS`
+variable and the same two honesty tests — plus one the core does not need. The facade has
+two ways to diverge that a single composition cannot reach: one call's `CallState`
+accumulates across every paragraph, and a `LayoutEngine` keeps font and shaper caches
+*between* calls. So `recording_changes_neither_the_layout_nor_the_engine` compares a whole
+traced document with an untraced one, and then lays the same document out again on the
+engine that was traced, to show it came back unchanged.
 
 ## Adding a fact
 

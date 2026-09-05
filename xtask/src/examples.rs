@@ -35,11 +35,16 @@ pub(crate) const GATE: Gate = Gate {
 };
 
 /// Files whose fences are compiled, and run unless marked `no_run`.
-const SOURCES: &[&str] = &["README.md", "docs/guide.ja.md"];
+const SOURCES: &[&str] = &["README.md", "docs/guide.ja.md", "docs/design/tracing.md"];
 
 /// Files participating in shared-fence identity checks. The crate README is
 /// compiled by rustdoc already, so it is only cross-checked here.
-const SYNC_SOURCES: &[&str] = &["README.md", "crates/jlreq/README.md", "docs/guide.ja.md"];
+const SYNC_SOURCES: &[&str] = &[
+    "README.md",
+    "crates/jlreq/README.md",
+    "docs/guide.ja.md",
+    "docs/design/tracing.md",
+];
 
 /// The marker naming the fence that follows it.
 const NAME_MARKER_PREFIX: &str = "<!-- jlreq-example: ";
@@ -250,6 +255,7 @@ fn build_and_run(
          [workspace]\n\n\
          [dependencies]\n\
          jlreq = { path = \"../../crates/jlreq\" }\n\
+         jlreq-core = { path = \"../../crates/jlreq-core\" }\n\
          font-test-data = \"=0.9.1\"\n",
     )?;
     fs::write(
