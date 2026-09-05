@@ -1219,6 +1219,88 @@ fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {
     left.start < right.end && right.start < left.end
 }
 
+/// The three result types a person prints while investigating a layout.
+///
+/// The README used to hand-assemble these strings, which is the usual sign a type owes its
+/// caller a readable default. `Debug` is not that default: it is not a stable format, and it
+/// prints every field at equal weight, so the one that matters is buried.
+///
+/// Coordinates print in caller units, since that is what the caller supplied and what a
+/// renderer consumes; the 26.6 accessors remain for anyone who needs the exact integers.
+impl std::fmt::Display for Diagnostic {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let severity = match self.severity {
+            DiagnosticSeverity::Info => "info",
+            DiagnosticSeverity::Warning => "warning",
+            DiagnosticSeverity::Error => "error",
+        };
+        write!(formatter, "{severity}: {message}", message = self.message)?;
+        if let Some(range) = self.range.as_ref() {
+            write!(formatter, " at bytes {}..{}", range.start, range.end)?;
+        }
+        write!(formatter, " ({code}", code = self.code)?;
+        if let Some(jlreq) = self.jlreq {
+            write!(formatter, ", JLReq {jlreq}")?;
+        }
+        formatter.write_str(")")
+    }
+}
+
+impl std::fmt::Display for TextLine {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mode = match self.writing_mode {
+            WritingMode::HorizontalTb => "horizontal-tb",
+            WritingMode::VerticalRl => "vertical-rl",
+        };
+        write!(
+            formatter,
+            "line {index} of paragraph {paragraph} bytes {start}..{end} \
+             at ({x}, {y}) {inline}x{block} {mode} {glyphs} glyph(s)",
+            index = self.index,
+            paragraph = self.paragraph_index,
+            start = self.range.start,
+            end = self.range.end,
+            x = self.origin.x(),
+            y = self.origin.y(),
+            inline = to_f32(self.inline_extent),
+            block = to_f32(self.block_extent),
+            glyphs = self.glyphs.len(),
+        )
+    }
+}
+
+impl std::fmt::Display for GlyphPlacement {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let origin = self.draw_origin();
+        write!(
+            formatter,
+            "glyph {glyph} from face {face} for bytes {start}..{end} \
+             at ({x}, {y}) advance ({ax}, {ay}) size {size}",
+            glyph = self.glyph_id,
+            face = self.font_id.get(),
+            start = self.source_range.start,
+            end = self.source_range.end,
+            x = origin.x(),
+            y = origin.y(),
+            ax = to_f32(self.advance_x),
+            ay = to_f32(self.advance_y),
+            size = to_f32(self.font_size),
+        )?;
+        if self.transform != GlyphTransform::Identity {
+            let transform = match self.transform {
+                GlyphTransform::Identity => "identity",
+                GlyphTransform::RotateClockwise => "rotate-clockwise",
+                GlyphTransform::TateChuYoko => "tate-chu-yoko",
+            };
+            write!(formatter, " {transform}")?;
+        }
+        if let Some(annotation) = self.annotation.as_ref() {
+            write!(formatter, " annotating construct {}", annotation.construct())?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1262,6 +1344,73 @@ mod tests {
             writing_mode: mode,
             construct: Some(3),
         }
+    }
+
+    /// The readable defaults exist so nobody hand-assembles these strings again, so they are
+    /// pinned exactly rather than probed for substrings.
+    #[test]
+    fn the_result_types_read_without_help() {
+        let diagnostic = Diagnostic {
+            code: "layout.overfull",
+            severity: DiagnosticSeverity::Warning,
+            range: Some(4..9),
+            message: "the line could not be reduced to the measure",
+            jlreq: Some("3.8.1"),
+        };
+        assert_eq!(
+            diagnostic.to_string(),
+            "warning: the line could not be reduced to the measure at bytes 4..9 \
+             (layout.overfull, JLReq 3.8.1)"
+        );
+
+        let bare = Diagnostic {
+            code: "font.unknown-family",
+            severity: DiagnosticSeverity::Info,
+            range: None,
+            message: "no registered face declares the requested family",
+            jlreq: None,
+        };
+        assert_eq!(
+            bare.to_string(),
+            "info: no registered face declares the requested family (font.unknown-family)"
+        );
+
+        let placed = glyph(WritingMode::VerticalRl);
+        assert_eq!(
+            placed.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3 \
+             rotate-clockwise annotating construct 3"
+        );
+
+        let line = TextLine {
+            range: 2..5,
+            origin: Point::from_fixed(64, 128),
+            inline_extent: 192,
+            block_extent: 640,
+            writing_mode: WritingMode::HorizontalTb,
+            glyphs: vec![placed],
+            hit_bounds: None,
+            index: 1,
+            paragraph_index: 0,
+            first_in_paragraph: false,
+            last_in_paragraph: true,
+        };
+        assert_eq!(
+            line.to_string(),
+            "line 1 of paragraph 0 bytes 2..5 at (1, 2) 3x10 horizontal-tb 1 glyph(s)"
+        );
+    }
+
+    /// An identity transform stays silent, because the common case must not print noise.
+    #[test]
+    fn an_untransformed_unannotated_glyph_says_only_what_it_must() {
+        let mut plain = glyph(WritingMode::HorizontalTb);
+        plain.transform = GlyphTransform::Identity;
+        plain.annotation = None;
+        assert_eq!(
+            plain.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3"
+        );
     }
 
     fn linear_hit_test(layout: &TextLayout, point: Point) -> HitTest {

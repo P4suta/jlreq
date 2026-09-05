@@ -131,6 +131,25 @@ mod tests {
         assert!(engine.ensure_cache(&invalid_face).is_err());
     }
 
+    /// The type a person reaches for when a glyph came from the wrong face must say what
+    /// it is holding, not only how much of it.
+    #[test]
+    fn the_engine_debug_names_the_faces_it_cached() {
+        let (fonts, first, _) = fixture_fonts();
+        let options = LayoutOptions::try_new(200.0, 16.0).unwrap();
+        let mut engine = LayoutEngine::new();
+        assert!(format!("{engine:?}").contains("cached_fonts: 0"));
+
+        let _ = engine.layout("A", &fonts, options).unwrap();
+        let rendered = format!("{engine:?}");
+        assert!(rendered.contains("cached_fonts: 1"), "{rendered}");
+        assert!(
+            rendered.contains(&format!("({}, 0, ", first.get())),
+            "the cached face is named by id and TTC face index: {rendered}"
+        );
+        assert!(rendered.contains("shaper_buffer_held: true"), "{rendered}");
+    }
+
     #[test]
     fn preparation_groups_only_identical_non_tab_runs() {
         let (fonts, _, _) = fixture_fonts();

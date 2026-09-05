@@ -106,11 +106,30 @@ pub struct LayoutEngine {
     shape_variations: Vec<Variation>,
 }
 
+/// Say what the engine is holding, not just how much of it.
+///
+/// This is the type a person reaches for when a glyph came from the wrong face, and a
+/// single count answers none of the questions they have. The cached faces are named by
+/// identifier and TTC face index — the pair `select_font` actually resolves against — and
+/// the shaper's reusable buffer is reported as held or in flight, because a
+/// `None` there means a previous `shape_font` call unwound between taking and returning it.
+///
+/// The parsed font data itself is deliberately not printed: it is megabytes of `Arc<[u8]>`
+/// and `Debug` output is read in a terminal.
 impl fmt::Debug for LayoutEngine {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let faces: Vec<_> = self
+            .fonts
+            .iter()
+            .map(|(id, cached)| (id.get(), cached.face_index, cached.bytes.len()))
+            .collect();
         formatter
             .debug_struct("LayoutEngine")
             .field("cached_fonts", &self.fonts.len())
+            .field("faces_id_index_bytes", &faces)
+            .field("shaper_buffer_held", &self.unicode_buffer.is_some())
+            .field("feature_scratch", &self.shape_features.len())
+            .field("variation_scratch", &self.shape_variations.len())
             .finish_non_exhaustive()
     }
 }
