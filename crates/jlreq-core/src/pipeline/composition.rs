@@ -291,7 +291,10 @@ impl Composer {
         self.prepare_indexes(paragraph, style);
         self.trace_paragraph(paragraph, trace);
         trace.enter(Phase::Search);
-        self.search(paragraph, style)?;
+        if let Err(refusal) = self.search(paragraph, style, trace) {
+            self.trace_refusal(paragraph, &refusal, trace);
+            return Err(refusal);
+        }
         self.backtrack();
         trace.enter(Phase::Placement);
         Ok(self.place(paragraph, style, trace))
@@ -516,7 +519,31 @@ impl Composer {
         }
     }
 
-    fn search(&mut self, paragraph: &Paragraph, style: &Style) -> Result<(), ComposeError> {
+    /// Say that the paragraph was refused, and how much work had been charged for it.
+    ///
+    /// The refusal itself is the caller's `ComposeError`; what a reader cannot recover
+    /// from that is how far the search had got, so that is what this records.
+    fn trace_refusal(&self, paragraph: &Paragraph, refusal: &ComposeError, trace: &mut Trace) {
+        if trace.wants(Categories::SEARCH) {
+            trace.push(
+                Site::paragraph(
+                    0..paragraph.text.clusters().len(),
+                    0..paragraph.text.source().len(),
+                ),
+                Fact::SearchRefused {
+                    charged: self.transitions,
+                    limit: refusal.limit(),
+                },
+            );
+        }
+    }
+
+    fn search(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<(), ComposeError> {
         self.nodes.clear();
         self.nodes.resize(
             self.candidates.len(),
@@ -536,6 +563,13 @@ impl Composer {
         for end in 1..self.candidates.len() {
             let candidate = self.candidates[end];
             if !self.prepared.legal_candidates[end] {
+                if trace.wants(Categories::KINSOKU) {
+                    let ordinal = self.prepared.candidate_ordinals[end];
+                    trace.push(
+                        Site::paragraph(ordinal..ordinal, candidate.offset..candidate.offset),
+                        Fact::SearchCandidateRefused { candidate: end },
+                    );
+                }
                 continue;
             }
             for start in (mandatory_partition_start..end).rev() {
@@ -595,33 +629,53 @@ impl Composer {
                 };
                 let delta = available.saturating_sub(width);
                 let is_last = end.saturating_add(1) == self.candidates.len();
-                let mut edge_cost =
-                    non_negative_cost(line_badness(delta, is_last, style.adjustment_preference()));
-                if candidate.discretionary {
-                    edge_cost = edge_cost.saturating_add(100_000);
-                }
-                edge_cost = edge_cost.saturating_add(non_negative_cost(warichu_break_penalty(
-                    paragraph,
-                    candidate.offset,
-                )));
-                edge_cost = edge_cost.saturating_add(non_negative_cost(formula_break_penalty(
-                    paragraph,
-                    candidate.offset,
-                )));
-                if is_last {
-                    edge_cost = edge_cost.saturating_add(non_negative_cost(widow_penalty(
-                        paragraph,
-                        self.candidates[start].offset,
-                        candidate.offset,
-                    )));
-                }
+                let badness = line_badness(delta, is_last, style.adjustment_preference());
+                let discretionary = if candidate.discretionary { 100_000 } else { 0 };
+                let warichu = warichu_break_penalty(paragraph, candidate.offset);
+                let formula = formula_break_penalty(paragraph, candidate.offset);
+                let widow = if is_last {
+                    widow_penalty(paragraph, self.candidates[start].offset, candidate.offset)
+                } else {
+                    0
+                };
+                let mut edge_cost = non_negative_cost(badness);
+                edge_cost = edge_cost.saturating_add(non_negative_cost(discretionary));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(warichu));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(formula));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(widow));
                 let cost = edge_cost.saturating_add(self.nodes[start].cost);
-                if search_candidate_precedes(cost, start, self.nodes[end]) {
+                let accepted = search_candidate_precedes(cost, start, self.nodes[end]);
+                if accepted {
                     self.nodes[end] = Node {
                         cost,
                         previous: start,
                         line_count: line_number.saturating_add(1),
                     };
+                }
+                if trace.wants(Categories::SEARCH_CANDIDATES) {
+                    trace.push(
+                        Site::paragraph(
+                            start_ordinal..end_ordinal,
+                            self.candidates[start].offset..candidate.offset,
+                        ),
+                        Fact::SearchCandidate {
+                            start_candidate: start,
+                            end_candidate: end,
+                            natural_width: measured_width,
+                            reduced_width: width,
+                            available,
+                            delta,
+                            badness,
+                            discretionary,
+                            warichu,
+                            formula,
+                            widow,
+                            edge_cost,
+                            total_cost: cost,
+                            is_last,
+                            accepted,
+                        },
+                    );
                 }
 
                 if self.prepared.regular {
@@ -634,6 +688,21 @@ impl Composer {
                         style.adjustment_preference(),
                         self.nodes[end].cost,
                     ) {
+                        if trace.wants(Categories::SEARCH_CANDIDATES) {
+                            trace.push(
+                                Site::paragraph(
+                                    start_ordinal..end_ordinal,
+                                    self.candidates[start].offset..candidate.offset,
+                                ),
+                                Fact::SearchBoundStop {
+                                    start_candidate: start,
+                                    end_candidate: end,
+                                    minimum_width,
+                                    available,
+                                    best_cost: self.nodes[end].cost,
+                                },
+                            );
+                        }
                         break;
                     }
                 }

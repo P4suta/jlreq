@@ -198,6 +198,68 @@ pub enum Fact {
         /// The paragraph's alignment.
         alignment: Alignment,
     },
+    /// One break pair the search weighed, and what it cost.
+    ///
+    /// The natural and the reduced width are both here, so the reduction capacity the
+    /// search assumed for this line is their difference. That is why the ladder stays
+    /// quiet while the search runs: it would be restating a subtraction.
+    SearchCandidate {
+        /// The break candidate the trial line starts at.
+        start_candidate: usize,
+        /// The break candidate the trial line ends at.
+        end_candidate: usize,
+        /// The line's width before any reduction.
+        natural_width: i64,
+        /// The line's width once the available reduction is spent.
+        reduced_width: i64,
+        /// The measure.
+        available: i64,
+        /// Measure minus reduced width; negative when the line does not fit.
+        delta: i64,
+        /// The badness of that difference.
+        badness: i64,
+        /// The surcharge for breaking at an author's discretionary opportunity.
+        discretionary: i64,
+        /// The surcharge for breaking inside a warichu (割注).
+        warichu: i64,
+        /// The surcharge for breaking inside a formula.
+        formula: i64,
+        /// The surcharge for leaving too little on the final line.
+        widow: i64,
+        /// The total charged for this line alone.
+        edge_cost: u128,
+        /// The best known cost of reaching the end of this trial line.
+        total_cost: u128,
+        /// Whether this trial line would end the paragraph.
+        is_last: bool,
+        /// Whether this pair became the best known way to reach its end.
+        accepted: bool,
+    },
+    /// A candidate the search skipped without weighing, because kinsoku (禁則) refuses it.
+    SearchCandidateRefused {
+        /// The break candidate.
+        candidate: usize,
+    },
+    /// The search stopped extending a line leftward because no earlier start can win.
+    SearchBoundStop {
+        /// The break candidate the abandoned trial line starts at.
+        start_candidate: usize,
+        /// The break candidate the trial line ends at.
+        end_candidate: usize,
+        /// The narrowest this line could be made.
+        minimum_width: i64,
+        /// The measure.
+        available: i64,
+        /// The best known cost of reaching this end.
+        best_cost: u128,
+    },
+    /// The search was refused before it finished, having charged its whole budget.
+    SearchRefused {
+        /// What the search had charged when it was refused.
+        charged: usize,
+        /// The budget it was held to.
+        limit: usize,
+    },
     /// One line the search settled on.
     LineChosen {
         /// The line ordinal, counting from zero.
@@ -220,6 +282,10 @@ impl Fact {
     pub const fn kind(&self) -> &'static str {
         match *self {
             Self::ParagraphPrepared { .. } => "prepare.paragraph",
+            Self::SearchCandidate { .. } => "search.candidate",
+            Self::SearchCandidateRefused { .. } => "search.refused-candidate",
+            Self::SearchBoundStop { .. } => "search.bound-stop",
+            Self::SearchRefused { .. } => "search.refused",
             Self::LineChosen { .. } => "search.chosen",
         }
     }
@@ -229,7 +295,11 @@ impl Fact {
     pub const fn category(&self) -> Categories {
         match *self {
             Self::ParagraphPrepared { .. } => Categories::PREPARE,
-            Self::LineChosen { .. } => Categories::SEARCH,
+            Self::SearchCandidate { .. } | Self::SearchBoundStop { .. } => {
+                Categories::SEARCH_CANDIDATES
+            },
+            Self::SearchCandidateRefused { .. } => Categories::KINSOKU,
+            Self::SearchRefused { .. } | Self::LineChosen { .. } => Categories::SEARCH,
         }
     }
 
@@ -240,7 +310,11 @@ impl Fact {
     #[must_use]
     pub const fn jlreq(&self) -> Option<RuleAddress> {
         match *self {
-            Self::ParagraphPrepared { .. } => None,
+            Self::ParagraphPrepared { .. } | Self::SearchRefused { .. } => None,
+            Self::SearchCandidate { .. } | Self::SearchBoundStop { .. } => {
+                Some(RuleAddress::Section("3.8.1"))
+            },
+            Self::SearchCandidateRefused { .. } => Some(RuleAddress::Section("3.1.9")),
             Self::LineChosen { .. } => Some(RuleAddress::Section("3.1.1")),
         }
     }
@@ -404,7 +478,13 @@ impl Trace {
     /// remains readable as their difference.
     const fn phase_admits(&self, category: Categories) -> bool {
         match self.phase {
-            Phase::Prepare => category.contains(Categories::PREPARE),
+            // Kinsoku legality is settled per boundary while the indexes are built, and a
+            // boundary is what it names, so preparation may speak for it. The ladder may
+            // not: preparation reaches those helpers with a boundary of zero for every
+            // cluster, because it is summing a paragraph rather than setting a line.
+            Phase::Prepare => {
+                category.contains(Categories::PREPARE) || category.contains(Categories::KINSOKU)
+            },
             Phase::Search => {
                 category.contains(Categories::SEARCH)
                     || category.contains(Categories::SEARCH_CANDIDATES)
@@ -448,8 +528,42 @@ mod tests {
         }
     }
 
-    fn every_fact() -> [Fact; 2] {
-        [prepared(), chosen()]
+    /// One instance of every variant, so a new one cannot be added without being named
+    /// here, in `kind`, in `category`, and in `jlreq`.
+    fn every_fact() -> [Fact; 6] {
+        [
+            prepared(),
+            Fact::SearchCandidate {
+                start_candidate: 0,
+                end_candidate: 2,
+                natural_width: 4_100,
+                reduced_width: 3_900,
+                available: 4_000,
+                delta: 100,
+                badness: 3,
+                discretionary: 100_000,
+                warichu: 5,
+                formula: 7,
+                widow: 11,
+                edge_cost: 100_026,
+                total_cost: 100_026,
+                is_last: false,
+                accepted: true,
+            },
+            Fact::SearchCandidateRefused { candidate: 3 },
+            Fact::SearchBoundStop {
+                start_candidate: 1,
+                end_candidate: 4,
+                minimum_width: 4_200,
+                available: 4_000,
+                best_cost: 19,
+            },
+            Fact::SearchRefused {
+                charged: 64,
+                limit: 64,
+            },
+            chosen(),
+        ]
     }
 
     #[test]

@@ -3091,8 +3091,18 @@ mod tests {
         assert_eq!(expected, observed);
         assert!(observed.is_err());
         assert_eq!(plain.transitions, traced.transitions);
-        assert_eq!(trace.events().len(), 1);
-        assert_eq!(trace.events()[0].kind(), "prepare.paragraph");
+        let kinds: Vec<&str> = trace
+            .events()
+            .iter()
+            .map(crate::trace::Event::kind)
+            .collect();
+        assert_eq!(kinds, vec!["prepare.paragraph", "search.refused"]);
+        // The refusal says how far the search got, which the `ComposeError` cannot.
+        assert!(matches!(
+            trace.events()[1].fact(),
+            crate::trace::Fact::SearchRefused { charged, limit }
+                if *charged == traced.transitions && *limit == 4
+        ));
     }
 
     /// Preparation and search may not speak for a line, because neither is setting one.
@@ -3121,10 +3131,10 @@ mod tests {
         assert!(!trace.is_truncated());
 
         for event in trace.events() {
-            match event.kind() {
-                "prepare.paragraph" => assert_eq!(event.site().line(), None),
-                _ => assert!(event.site().line().is_some()),
-            }
+            // Only a decision taken while a line is being set can name one; everything
+            // the search and the preparation say is about the paragraph.
+            let names_a_line = event.site().line().is_some();
+            assert_eq!(names_a_line, event.kind() == "search.chosen");
         }
     }
 
@@ -3138,5 +3148,87 @@ mod tests {
             .compose_traced(&paragraph, &Style::default(), &mut trace)
             .expect("small fixture composes");
         assert!(trace.events().is_empty());
+    }
+
+    /// The search's own reasoning is recoverable: what it weighed, what it charged, and
+    /// what a rejected line would have cost.
+    #[test]
+    fn the_search_records_what_it_weighed_and_what_it_refused() {
+        let paragraph = break_everywhere("日本語組版", 2_500, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+
+        // Destructure while filtering, so the assertions below need no fallible arm.
+        let candidates: Vec<(i64, i64, i64, i64, u128, u128)> = trace
+            .events()
+            .iter()
+            .filter_map(|event| match *event.fact() {
+                crate::trace::Fact::SearchCandidate {
+                    natural_width,
+                    reduced_width,
+                    available,
+                    delta,
+                    edge_cost,
+                    total_cost,
+                    ..
+                } => Some((
+                    natural_width,
+                    reduced_width,
+                    available,
+                    delta,
+                    edge_cost,
+                    total_cost,
+                )),
+                _ => None,
+            })
+            .collect();
+        assert!(!candidates.is_empty());
+        assert!(trace.events().iter().any(|event| matches!(
+            *event.fact(),
+            crate::trace::Fact::SearchCandidate { accepted: true, .. }
+        )));
+
+        // The reduction capacity the search assumed is the difference between the two
+        // widths, which is why the ladder stays quiet during the search.
+        for (natural_width, reduced_width, available, delta, edge_cost, total_cost) in candidates {
+            assert!(reduced_width <= natural_width);
+            assert_eq!(delta, available.saturating_sub(reduced_width));
+            assert!(total_cost >= edge_cost);
+        }
+    }
+
+    /// Every family can be silenced on its own, and silencing one silences nothing else.
+    #[test]
+    fn categories_select_exactly_the_families_they_name() {
+        let paragraph = break_everywhere("日本語組版", 2_500, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+
+        let mut everything = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut everything)
+            .expect("small fixture composes");
+
+        let mut only_search =
+            crate::trace::Trace::with_categories(crate::trace::Categories::SEARCH);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut only_search)
+            .expect("small fixture composes");
+
+        assert!(everything.events().len() > only_search.events().len());
+        assert!(
+            only_search
+                .events()
+                .iter()
+                .all(|event| event.category() == crate::trace::Categories::SEARCH)
+        );
+        assert!(
+            everything
+                .events()
+                .iter()
+                .any(|event| event.category() == crate::trace::Categories::SEARCH_CANDIDATES)
+        );
     }
 }
