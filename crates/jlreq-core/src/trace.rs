@@ -24,6 +24,7 @@ use core::ops::Range;
 
 mod render;
 
+use crate::layout::CoordinateTransform;
 use crate::model::WritingMode;
 use crate::paragraph::Alignment;
 
@@ -388,6 +389,50 @@ pub enum Fact {
         /// What was hung.
         amount: i64,
     },
+    /// A warichu (割注) block, and how its two sublines were cut.
+    Warichu {
+        /// The inline extent of the first subline.
+        first_width: i32,
+        /// The inline extent of the second.
+        second_width: i32,
+        /// What the block occupies on the line.
+        advance: i32,
+    },
+    /// A furawake (振分け) block, and the lanes its text was split across.
+    Furawake {
+        /// The declared column count.
+        columns: u16,
+        /// The lanes the text actually filled.
+        lanes: usize,
+        /// The gap set between lanes.
+        line_gap: i32,
+        /// What the block occupies on the line.
+        advance: i32,
+        /// The block-axis demand the block makes of the line.
+        block_extent: i32,
+    },
+    /// A tate-chu-yoko (縦中横) group set upright inside vertical writing.
+    TateChuYoko {
+        /// Clusters in the group.
+        members: usize,
+        /// What the group would occupy set horizontally.
+        horizontal_width: i64,
+        /// The block-axis demand it makes of the line.
+        block_extent: i32,
+    },
+    /// One placed cluster.
+    ClusterPlaced {
+        /// The shaped-text ordinal.
+        ordinal: usize,
+        /// The logical inline coordinate.
+        inline: i32,
+        /// The logical block coordinate.
+        block: i32,
+        /// The placed inline advance.
+        advance: i32,
+        /// The local transform needed before drawing.
+        transform: CoordinateTransform,
+    },
     /// One line's finished geometry.
     LineFinished {
         /// The line's logical inline origin.
@@ -427,6 +472,10 @@ impl Fact {
             Self::ExpansionStage { .. } => "expand.stage",
             Self::ExpansionResidual { .. } => "expand.residual",
             Self::Hanging { .. } => "hang.line-end",
+            Self::Warichu { .. } => "warichu.block",
+            Self::Furawake { .. } => "furawake.block",
+            Self::TateChuYoko { .. } => "tcy.group",
+            Self::ClusterPlaced { .. } => "place.cluster",
             Self::LineFinished { .. } => "line.finished",
         }
     }
@@ -448,6 +497,10 @@ impl Fact {
             | Self::ExpansionStage { .. }
             | Self::ExpansionResidual { .. } => Categories::EXPAND,
             Self::Hanging { .. } => Categories::HANGING,
+            Self::Warichu { .. } | Self::Furawake { .. } | Self::TateChuYoko { .. } => {
+                Categories::STRUCTURE
+            },
+            Self::ClusterPlaced { .. } => Categories::PLACE_CLUSTERS,
         }
     }
 
@@ -458,7 +511,9 @@ impl Fact {
     #[must_use]
     pub const fn jlreq(&self) -> Option<RuleAddress> {
         match *self {
-            Self::ParagraphPrepared { .. } | Self::SearchRefused { .. } => None,
+            Self::ParagraphPrepared { .. }
+            | Self::SearchRefused { .. }
+            | Self::ClusterPlaced { .. } => None,
             Self::SearchCandidate { .. } | Self::SearchBoundStop { .. } => {
                 Some(RuleAddress::Section("3.8.1"))
             },
@@ -476,6 +531,10 @@ impl Fact {
             | Self::ExpansionStage { .. }
             | Self::ExpansionResidual { .. } => Some(RuleAddress::Section("3.8.3")),
             Self::Hanging { .. } => Some(RuleAddress::Section("2.5.1")),
+            // Both stack their text off the line onto sublines beside it, which is one
+            // paragraph of the specification rather than two.
+            Self::Warichu { .. } | Self::Furawake { .. } => Some(RuleAddress::Section("3.3.2")),
+            Self::TateChuYoko { .. } => Some(RuleAddress::Section("3.2.4")),
         }
     }
 }
@@ -690,7 +749,7 @@ mod tests {
 
     /// One instance of every variant, so a new one cannot be added without being named
     /// here, in `kind`, in `category`, and in `jlreq`.
-    pub(super) fn every_fact() -> [Fact; 15] {
+    pub(super) fn every_fact() -> [Fact; 19] {
         [
             prepared(),
             Fact::SearchCandidate {
@@ -782,6 +841,30 @@ mod tests {
                 available: 4_000,
                 amount: 250,
             },
+            Fact::Warichu {
+                first_width: 1_500,
+                second_width: 1_500,
+                advance: 1_500,
+            },
+            Fact::Furawake {
+                columns: 3,
+                lanes: 3,
+                line_gap: 100,
+                advance: 2_000,
+                block_extent: 3_200,
+            },
+            Fact::TateChuYoko {
+                members: 2,
+                horizontal_width: 1_400,
+                block_extent: 1_400,
+            },
+            Fact::ClusterPlaced {
+                ordinal: 5,
+                inline: 4_000,
+                block: 1_000,
+                advance: 1_000,
+                transform: crate::layout::CoordinateTransform::RotateClockwise,
+            },
             Fact::LineFinished {
                 inline_origin: 0,
                 block_origin: 1_000,
@@ -833,7 +916,7 @@ mod tests {
     /// and namespace tests that read it would quietly narrow.
     #[test]
     fn the_fixture_holds_one_of_every_variant() {
-        let mut seen = [false; 15];
+        let mut seen = [false; 19];
         for fact in every_fact() {
             let index = match fact {
                 Fact::ParagraphPrepared { .. } => 0,
@@ -850,7 +933,11 @@ mod tests {
                 Fact::ExpansionStage { .. } => 11,
                 Fact::ExpansionResidual { .. } => 12,
                 Fact::Hanging { .. } => 13,
-                Fact::LineFinished { .. } => 14,
+                Fact::Warichu { .. } => 14,
+                Fact::Furawake { .. } => 15,
+                Fact::TateChuYoko { .. } => 16,
+                Fact::ClusterPlaced { .. } => 17,
+                Fact::LineFinished { .. } => 18,
             };
             seen[index] = true;
         }

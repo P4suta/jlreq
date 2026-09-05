@@ -84,6 +84,29 @@ fn corpus() -> Result<Vec<Scenario>, InputError> {
         .breaks(every_boundary(ruby_source))
         .build()?;
 
+    let warichu_source = "本文（注記）本文";
+    let warichu_paragraph = Paragraph::builder(shaped(warichu_source, Frame::FullEm)?, 6_000)
+        .constructs([Construct::warichu(6..18)])
+        // A warichu is indivisible, so the line may only break outside it.
+        .breaks([Break::allowed(3), Break::allowed(6), Break::allowed(18), Break::allowed(21)])
+        .build()?;
+
+    let furawake_source = "前振分ける文字後";
+    let furawake_paragraph = Paragraph::builder(shaped(furawake_source, Frame::FullEm)?, 6_000)
+        .constructs([Construct::furawake(3..21, 2, 100)])
+        // Furawake takes exactly one declared split between adjacent sublines, so the
+        // break set is stated rather than taken from every boundary.
+        .breaks([Break::allowed(3), Break::allowed(12), Break::allowed(21)])
+        .build()?;
+
+    let tcy_source = "第12章";
+    let tcy_paragraph = Paragraph::builder(shaped(tcy_source, Frame::FullEm)?, 6_000)
+        .constructs([Construct::tate_chu_yoko(3..5)])
+        .writing_mode(WritingMode::VerticalRl)
+        // The upright group is one unit, so the line may only break at its two ends.
+        .breaks([Break::allowed(3), Break::allowed(5)])
+        .build()?;
+
     Ok(vec![
         Scenario {
             name: "horizontal-plain",
@@ -151,6 +174,27 @@ fn corpus() -> Result<Vec<Scenario>, InputError> {
             paragraph: ruby_paragraph,
             style: Style::default(),
             categories: Categories::DEFAULT,
+        },
+        Scenario {
+            name: "warichu",
+            intent: "a warichu block, whose two sublines are cut inside one line's advance",
+            paragraph: warichu_paragraph,
+            style: Style::default(),
+            categories: Categories::DEFAULT,
+        },
+        Scenario {
+            name: "furawake",
+            intent: "a furawake block, whose text is dealt across declared columns",
+            paragraph: furawake_paragraph,
+            style: Style::default(),
+            categories: Categories::DEFAULT,
+        },
+        Scenario {
+            name: "tate-chu-yoko",
+            intent: "digits set upright inside vertical writing, which rotate their neighbours",
+            paragraph: tcy_paragraph,
+            style: Style::default(),
+            categories: Categories::DEFAULT.with(Categories::PLACE_CLUSTERS),
         },
     ])
 }
@@ -282,9 +326,11 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
             "expand.residual",
             "expand.site",
             "expand.stage",
+            "furawake.block",
             "hang.line-end",
             "line.finished",
             "line.fit",
+            "place.cluster",
             "prepare.paragraph",
             "reduce.site",
             "reduce.stage",
@@ -293,6 +339,8 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
             "search.chosen",
             "search.refused-candidate",
             "space.boundary",
+            "tcy.group",
+            "warichu.block",
         ],
         "the corpus no longer reaches the families it was assembled for"
     );

@@ -891,6 +891,18 @@ impl Composer {
             {
                 let segment = furawake_segment(paragraph, group, columns, line_gap, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, segment.range.end),
+                        Fact::Furawake {
+                            columns,
+                            lanes: segment.lanes.len(),
+                            line_gap: segment.line_gap,
+                            advance: segment.advance,
+                            block_extent: segment.block_extent,
+                        },
+                    );
+                }
                 block_extent = block_extent.max(segment.block_extent);
                 place_furawake_segment(paragraph, &segment, cursor, block_origin, &mut placed);
                 cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
@@ -900,6 +912,16 @@ impl Composer {
             {
                 let segment = warichu_segment(paragraph, group, start_cluster, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, segment.range.end),
+                        Fact::Warichu {
+                            first_width: segment.first_width,
+                            second_width: segment.second_width,
+                            advance: segment.advance,
+                        },
+                    );
+                }
                 place_warichu_segment(paragraph, &segment, cursor, block_origin, &mut placed);
                 cursor = cursor.saturating_add(i64::from(segment.advance));
                 local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
@@ -915,6 +937,16 @@ impl Composer {
                         sum.saturating_add(i64::from(cluster.advance()))
                     });
                 block_extent = block_extent.max(clamp_i32(horizontal_width));
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, group_end),
+                        Fact::TateChuYoko {
+                            members: member_count,
+                            horizontal_width,
+                            block_extent: clamp_i32(horizontal_width),
+                        },
+                    );
+                }
                 let mut member_block = i64::from(block_origin)
                     .saturating_sub(horizontal_width.checked_div(2).unwrap_or(0));
                 for (member_local, cluster) in paragraph.text.clusters()[ordinal..group_end]
@@ -969,6 +1001,8 @@ impl Composer {
                 self.line_adjustments.get(boundary).copied().unwrap_or(0),
             ));
         }
+
+        trace_placed_clusters(line_ordinal, start_cluster..end_cluster, &placed, trace);
 
         let range = if let (Some(first), Some(last)) = (clusters.first(), clusters.last()) {
             first.range().start..last.range().end

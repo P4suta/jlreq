@@ -415,6 +415,37 @@ fn trace_line_spacing(
     }
 }
 
+/// Report every cluster a line placed, once the line has placed them all.
+///
+/// This reads the emitted placements rather than the branches that produced them, so one
+/// pass covers ordinary clusters, warichu and furawake sublines, and tate-chu-yoko members
+/// alike, and none of them can be instrumented differently from the others by accident.
+fn trace_placed_clusters(
+    line: u32,
+    clusters: Range<usize>,
+    placed: &[ClusterPlacement],
+    trace: &mut Trace,
+) {
+    if !trace.wants(Categories::PLACE_CLUSTERS) {
+        return;
+    }
+    for placement in placed {
+        let ordinal = match placement.origin {
+            PlacementOrigin::Cluster(ordinal) | PlacementOrigin::Construct(ordinal) => ordinal,
+        };
+        trace.push(
+            Site::on_line(line, clusters.clone(), placement.range.clone()),
+            Fact::ClusterPlaced {
+                ordinal,
+                inline: placement.inline,
+                block: placement.block,
+                advance: placement.advance,
+                transform: placement.transform,
+            },
+        );
+    }
+}
+
 /// The whole line, as a site.
 fn line_site(paragraph: &Paragraph, line: u32, line_start: usize, line_end: usize) -> Site {
     Site::on_line(

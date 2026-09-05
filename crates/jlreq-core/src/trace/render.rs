@@ -12,6 +12,7 @@
 use core::fmt;
 
 use super::{Event, Fact, RuleAddress, Site, Trace};
+use crate::layout::CoordinateTransform;
 use crate::model::WritingMode;
 use crate::paragraph::Alignment;
 
@@ -86,6 +87,15 @@ const fn writing_mode(mode: WritingMode) -> &'static str {
     match mode {
         WritingMode::HorizontalTb => "horizontal-tb",
         WritingMode::VerticalRl => "vertical-rl",
+    }
+}
+
+/// The local transform as a stable token.
+const fn coordinate_transform(transform: CoordinateTransform) -> &'static str {
+    match transform {
+        CoordinateTransform::Identity => "identity",
+        CoordinateTransform::RotateClockwise => "rotate-clockwise",
+        CoordinateTransform::TateChuYoko => "tate-chu-yoko",
     }
 }
 
@@ -266,6 +276,45 @@ fn write_fields(fact: &Fact, formatter: &mut fmt::Formatter<'_>) -> fmt::Result 
             formatter,
             "occupied={occupied} avail={available} amount={amount}"
         ),
+        Fact::Warichu {
+            first_width,
+            second_width,
+            advance,
+        } => write!(
+            formatter,
+            "first={first_width} second={second_width} advance={advance}"
+        ),
+        Fact::Furawake {
+            columns,
+            lanes,
+            line_gap,
+            advance,
+            block_extent,
+        } => write!(
+            formatter,
+            "columns={columns} lanes={lanes} gap={line_gap} advance={advance} \
+             block_extent={block_extent}"
+        ),
+        Fact::TateChuYoko {
+            members,
+            horizontal_width,
+            block_extent,
+        } => write!(
+            formatter,
+            "members={members} horizontal={horizontal_width} block_extent={block_extent}"
+        ),
+        Fact::ClusterPlaced {
+            ordinal,
+            inline,
+            block,
+            advance,
+            transform,
+        } => write!(
+            formatter,
+            "ordinal={ordinal} inline={inline} block={block} advance={advance} \
+             transform={transform}",
+            transform = coordinate_transform(transform),
+        ),
         Fact::LineFinished {
             inline_origin,
             block_origin,
@@ -288,6 +337,7 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::{FORMAT, KIND_WIDTH};
+    use crate::layout::CoordinateTransform;
     use crate::model::WritingMode;
     use crate::paragraph::Alignment;
     use crate::trace::{Categories, Fact, RuleAddress, Site, Trace};
@@ -482,6 +532,50 @@ mod tests {
                  2.5.1",
             ),
             (
+                Site::on_line(3, 1..4, 3..12),
+                Fact::Warichu {
+                    first_width: 1_511,
+                    second_width: 1_523,
+                    advance: 1_531,
+                },
+                "warichu.block            L03  c1..4 b3..12 first=1511 second=1523 advance=1531 \
+                 3.3.2",
+            ),
+            (
+                Site::on_line(3, 4..9, 12..27),
+                Fact::Furawake {
+                    columns: 3,
+                    lanes: 2,
+                    line_gap: 101,
+                    advance: 2_003,
+                    block_extent: 3_209,
+                },
+                "furawake.block           L03  c4..9 b12..27 columns=3 lanes=2 gap=101 \
+                 advance=2003 block_extent=3209 3.3.2",
+            ),
+            (
+                Site::on_line(4, 2..4, 6..12),
+                Fact::TateChuYoko {
+                    members: 2,
+                    horizontal_width: 1_409,
+                    block_extent: 1_409,
+                },
+                "tcy.group                L04  c2..4 b6..12 members=2 horizontal=1409 \
+                 block_extent=1409 3.2.4",
+            ),
+            (
+                Site::on_line(4, 0..9, 21..24),
+                Fact::ClusterPlaced {
+                    ordinal: 7,
+                    inline: 4_007,
+                    block: -1_013,
+                    advance: 1_019,
+                    transform: CoordinateTransform::RotateClockwise,
+                },
+                "place.cluster            L04  c0..9 b21..24 ordinal=7 inline=4007 block=-1013 \
+                 advance=1019 transform=rotate-clockwise",
+            ),
+            (
                 Site::on_line(5, 0..8, 0..24),
                 Fact::LineFinished {
                     inline_origin: 37,
@@ -547,7 +641,7 @@ mod tests {
         let mut lines = rendered.lines();
         assert_eq!(
             lines.next(),
-            Some("jlreq.trace/1 events=16 categories=0x0fff truncated=0")
+            Some("jlreq.trace/1 events=20 categories=0x0fff truncated=0")
         );
         for (ordinal, line) in lines.enumerate() {
             let wanted = format!("{ordinal:04} ");
