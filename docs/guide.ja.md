@@ -364,6 +364,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 理由こそ最も必要だからです。
 
 読み方と語彙は [`design/tracing.md`](design/tracing.md)、
+レイアウトが自己整合しているかを機械的に確かめる不変条件ハーネスは
+[`design/invariants.md`](design/invariants.md)、
 このチャネルを結果や診断と分けた理由は
 [ADR-0028](adr/0028-the-trace-is-not-a-diagnostic.md) にあります。動く例は
 [`crates/jlreq/examples/explain.rs`](../crates/jlreq/examples/explain.rs) です。

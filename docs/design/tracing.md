@@ -11,6 +11,9 @@ produced, but *why*. [ADR 0028](../adr/0028-the-trace-is-not-a-diagnostic.md) re
 that is a separate channel from `Layout` and `Diagnostic` rather than an extension of
 either.
 
+Its companion, [`invariants.md`](invariants.md), covers the other half of the question: not
+why a layout came out as it did, but whether it is self-consistent at all.
+
 ## Recording one
 
 ```rust
