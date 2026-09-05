@@ -292,6 +292,32 @@ pub enum Fact {
         /// The offset the alignment applies before anything is placed.
         alignment_offset: i64,
     },
+    /// The mojikumi (文字組み) spacing at one boundary, and where it came from.
+    ///
+    /// `applied` is the amount composition used. `before_term` and `after_term` are the two
+    /// halves of the Table 1 cell that the class pair selects; when their sum differs from
+    /// `applied`, a construct — a tate-chu-yoko (縦中横) or a formula — stated the spacing
+    /// instead, and the difference is the whole explanation.
+    BoundarySpace {
+        /// The class of the cluster before the boundary.
+        before_class: u8,
+        /// The class of the cluster after it.
+        after_class: u8,
+        /// The inline size the leading term is scaled against.
+        before_size: i32,
+        /// The inline size the trailing term is scaled against.
+        after_size: i32,
+        /// Whether the leading occurrence is set solid, suppressing its term.
+        before_solid: bool,
+        /// Whether the trailing occurrence is set solid, suppressing its term.
+        after_solid: bool,
+        /// The cell's leading term, already scaled.
+        before_term: i32,
+        /// The cell's trailing term, already scaled.
+        after_term: i32,
+        /// The spacing composition actually used at this boundary.
+        applied: i32,
+    },
     /// One boundary the reduction half of the ladder may take from.
     ReductionSite {
         /// The boundary's ordinal within the line.
@@ -394,6 +420,7 @@ impl Fact {
             Self::SearchRefused { .. } => "search.refused",
             Self::LineChosen { .. } => "search.chosen",
             Self::LineFit { .. } => "line.fit",
+            Self::BoundarySpace { .. } => "space.boundary",
             Self::ReductionSite { .. } => "reduce.site",
             Self::ReductionStage { .. } => "reduce.stage",
             Self::ExpansionSite { .. } => "expand.site",
@@ -415,6 +442,7 @@ impl Fact {
             Self::SearchCandidateRefused { .. } => Categories::KINSOKU,
             Self::SearchRefused { .. } | Self::LineChosen { .. } => Categories::SEARCH,
             Self::LineFit { .. } | Self::LineFinished { .. } => Categories::PLACE,
+            Self::BoundarySpace { .. } => Categories::SPACING,
             Self::ReductionSite { .. } | Self::ReductionStage { .. } => Categories::REDUCE,
             Self::ExpansionSite { .. }
             | Self::ExpansionStage { .. }
@@ -437,6 +465,11 @@ impl Fact {
             Self::SearchCandidateRefused { .. } => Some(RuleAddress::Section("3.1.9")),
             Self::LineChosen { .. } => Some(RuleAddress::Section("3.1.1")),
             Self::LineFit { .. } | Self::LineFinished { .. } => Some(RuleAddress::Section("3.8.1")),
+            Self::BoundarySpace {
+                before_class,
+                after_class,
+                ..
+            } => Some(RuleAddress::Cell("B.1", before_class, after_class)),
             Self::ReductionSite { .. }
             | Self::ReductionStage { .. }
             | Self::ExpansionSite { .. }
@@ -657,7 +690,7 @@ mod tests {
 
     /// One instance of every variant, so a new one cannot be added without being named
     /// here, in `kind`, in `category`, and in `jlreq`.
-    fn every_fact() -> [Fact; 14] {
+    pub(super) fn every_fact() -> [Fact; 15] {
         [
             prepared(),
             Fact::SearchCandidate {
@@ -699,6 +732,17 @@ mod tests {
                 justify: false,
                 need: 0,
                 alignment_offset: 0,
+            },
+            Fact::BoundarySpace {
+                before_class: 1,
+                after_class: 27,
+                before_size: 1_000,
+                after_size: 1_000,
+                before_solid: false,
+                after_solid: true,
+                before_term: 0,
+                after_term: 250,
+                applied: 250,
             },
             Fact::ReductionSite {
                 boundary: 2,
@@ -778,6 +822,41 @@ mod tests {
             Categories::ALL
                 .without(Categories::SEARCH_CANDIDATES)
                 .without(Categories::PLACE_CLUSTERS)
+        );
+    }
+
+    /// The fixture must hold one of every variant, and the compiler must say so.
+    ///
+    /// The match below has no wildcard arm, so a new [`Fact`] does not compile until it is
+    /// given an index here; the assertion then fails until the fixture actually holds one.
+    /// Without this the fixture could silently stop covering a variant, and the rendering
+    /// and namespace tests that read it would quietly narrow.
+    #[test]
+    fn the_fixture_holds_one_of_every_variant() {
+        let mut seen = [false; 15];
+        for fact in every_fact() {
+            let index = match fact {
+                Fact::ParagraphPrepared { .. } => 0,
+                Fact::SearchCandidate { .. } => 1,
+                Fact::SearchCandidateRefused { .. } => 2,
+                Fact::SearchBoundStop { .. } => 3,
+                Fact::SearchRefused { .. } => 4,
+                Fact::LineChosen { .. } => 5,
+                Fact::LineFit { .. } => 6,
+                Fact::BoundarySpace { .. } => 7,
+                Fact::ReductionSite { .. } => 8,
+                Fact::ReductionStage { .. } => 9,
+                Fact::ExpansionSite { .. } => 10,
+                Fact::ExpansionStage { .. } => 11,
+                Fact::ExpansionResidual { .. } => 12,
+                Fact::Hanging { .. } => 13,
+                Fact::LineFinished { .. } => 14,
+            };
+            seen[index] = true;
+        }
+        assert!(
+            seen.iter().all(|covered| *covered),
+            "the fixture is missing a variant"
         );
     }
 

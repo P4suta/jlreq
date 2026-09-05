@@ -862,6 +862,7 @@ impl Composer {
                 },
             );
         }
+        trace_line_spacing(paragraph, style, line_ordinal, start_cluster, end_cluster, trace);
         prepare_line_adjustments_with_scratch(
             paragraph,
             style,

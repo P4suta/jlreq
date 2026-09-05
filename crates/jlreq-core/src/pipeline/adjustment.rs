@@ -356,6 +356,65 @@ struct LineRecorder<'a> {
     trace: &'a mut Trace,
 }
 
+/// Report the mojikumi (文字組み) spacing at each boundary of a line.
+///
+/// This runs as its own pass rather than from inside the spacing helpers, which the
+/// paragraph-wide prefix sums and the search both reach — instrumenting them would flood
+/// a trace with measurements of lines that were never set. The applied amount is read
+/// from the same function composition reads, so the trace cannot report an amount the
+/// engine did not use; the two table terms beside it say where that amount came from, and
+/// their sum differing from it is a construct having stated the spacing instead.
+fn trace_line_spacing(
+    paragraph: &Paragraph,
+    style: &Style,
+    line: u32,
+    line_start: usize,
+    line_end: usize,
+    trace: &mut Trace,
+) {
+    if !trace.wants(Categories::SPACING) {
+        return;
+    }
+    let clusters = paragraph.text.clusters();
+    for ordinal in line_start..line_end.saturating_sub(1) {
+        let after_ordinal = ordinal.saturating_add(1);
+        let (Some(before), Some(after)) = (clusters.get(ordinal), clusters.get(after_ordinal))
+        else {
+            continue;
+        };
+        let before_class = class_of_cluster_with_style(paragraph, style, ordinal);
+        let after_class = class_of_cluster_with_style(paragraph, style, after_ordinal);
+        let before_size = before.size_override().unwrap_or(paragraph.text.size());
+        let after_size = after.size_override().unwrap_or(paragraph.text.size());
+        let before_solid = single_cluster_character(paragraph, before)
+            .is_some_and(|character| contextual_punctuation_is_solid(paragraph, before, character));
+        let after_solid = single_cluster_character(paragraph, after)
+            .is_some_and(|character| contextual_punctuation_is_solid(paragraph, after, character));
+        let [before_term, after_term] = crate::spec::table_one_space_components(
+            before_class,
+            after_class,
+            before_size,
+            after_size,
+            before_solid,
+            after_solid,
+        );
+        trace.push(
+            boundary_site(paragraph, line, line_start, ordinal.saturating_sub(line_start)),
+            Fact::BoundarySpace {
+                before_class,
+                after_class,
+                before_size: before_size.inline(),
+                after_size: after_size.inline(),
+                before_solid,
+                after_solid,
+                before_term,
+                after_term,
+                applied: boundary_space_after_with_style(paragraph, style, ordinal),
+            },
+        );
+    }
+}
+
 /// The whole line, as a site.
 fn line_site(paragraph: &Paragraph, line: u32, line_start: usize, line_end: usize) -> Site {
     Site::on_line(

@@ -1,14 +1,16 @@
 # mono-ruby
 # a construct on the line, which stops the indexed fast measurement
 # lines=3 diagnostics=0
-jlreq.trace/1 events=10 categories=0x07fb truncated=0
+jlreq.trace/1 events=12 categories=0x07fb truncated=0
 0000 prepare.paragraph        P   c0..5 b0..15 clusters=5 candidates=6 constructs=1 fast=0 extent=2000 mode=horizontal-tb align=justify
 0001 search.chosen            L00 c0 b0..3 line=0 start=0 end=1 edge=0 3.1.1
 0002 line.fit                 L00 c0 b0..3 last=0 content=2000 avail=2000 remaining=0 clusters=1 justify=0 need=0 offset=0 3.8.1
 0003 line.finished            L00 c0 b0..3 inline=0 block=0 extent=2000 block_extent=2000 clusters=1 attachments=2 3.8.1
 0004 search.chosen            L01 c1..3 b3..9 line=1 start=1 end=3 edge=0 3.1.1
 0005 line.fit                 L01 c1..3 b3..9 last=0 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
-0006 line.finished            L01 c1..3 b3..9 inline=0 block=2000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
-0007 search.chosen            L02 c3..5 b9..15 line=2 start=3 end=5 edge=0 3.1.1
-0008 line.fit                 L02 c3..5 b9..15 last=1 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
-0009 line.finished            L02 c3..5 b9..15 inline=0 block=3000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
+0006 space.boundary           L01 c1 b3..6 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0007 line.finished            L01 c1..3 b3..9 inline=0 block=2000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
+0008 search.chosen            L02 c3..5 b9..15 line=2 start=3 end=5 edge=0 3.1.1
+0009 line.fit                 L02 c3..5 b9..15 last=1 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
+0010 space.boundary           L02 c3 b9..12 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0011 line.finished            L02 c3..5 b9..15 inline=0 block=3000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1

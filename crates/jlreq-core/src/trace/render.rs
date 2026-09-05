@@ -187,6 +187,24 @@ fn write_fields(fact: &Fact, formatter: &mut fmt::Formatter<'_>) -> fmt::Result 
             last = flag(is_last),
             justify = flag(justify),
         ),
+        Fact::BoundarySpace {
+            before_class,
+            after_class,
+            before_size,
+            after_size,
+            before_solid,
+            after_solid,
+            before_term,
+            after_term,
+            applied,
+        } => write!(
+            formatter,
+            "before={before_class:02} after={after_class:02} bsize={before_size} \
+             asize={after_size} bsolid={bsolid} asolid={asolid} terms={before_term},{after_term} \
+             applied={applied}",
+            bsolid = flag(before_solid),
+            asolid = flag(after_solid),
+        ),
         Fact::ReductionSite {
             boundary,
             weight,
@@ -368,6 +386,22 @@ mod tests {
                  remaining=-306 clusters=5 justify=0 need=-306 offset=37 3.8.1",
             ),
             (
+                Site::on_line(1, 1..2, 3..6),
+                Fact::BoundarySpace {
+                    before_class: 1,
+                    after_class: 27,
+                    before_size: 1_009,
+                    after_size: 1_013,
+                    before_solid: false,
+                    after_solid: true,
+                    before_term: 0,
+                    after_term: 253,
+                    applied: 253,
+                },
+                "space.boundary           L01  c1 b3..6 before=01 after=27 bsize=1009 \
+                 asize=1013 bsolid=0 asolid=1 terms=0,253 applied=253 B.1@cl-01,cl-27",
+            ),
+            (
                 Site::on_line(1, 2..3, 6..9),
                 Fact::ReductionSite {
                     boundary: 2,
@@ -513,7 +547,7 @@ mod tests {
         let mut lines = rendered.lines();
         assert_eq!(
             lines.next(),
-            Some("jlreq.trace/1 events=15 categories=0x0fff truncated=0")
+            Some("jlreq.trace/1 events=16 categories=0x0fff truncated=0")
         );
         for (ordinal, line) in lines.enumerate() {
             let wanted = format!("{ordinal:04} ");
@@ -544,6 +578,25 @@ mod tests {
         let rendered = format!("{trace}");
         assert!(rendered.contains("truncated=1"));
         assert!(rendered.contains("events=0"));
+    }
+
+    /// Every variant the vocabulary fixture holds must also be rendered here.
+    ///
+    /// The vocabulary fixture is itself held complete by a wildcard-free match, so this
+    /// makes the two fixtures rise and fall together: a new variant cannot reach the
+    /// rendering untested by being added to only one of them.
+    #[test]
+    fn the_rendering_fixture_covers_every_variant_the_vocabulary_holds() {
+        let rendered: Vec<&str> = every_rendering()
+            .iter()
+            .map(|(_, fact, _)| fact.kind())
+            .collect();
+        for fact in super::super::tests::every_fact() {
+            assert!(
+                rendered.contains(&fact.kind()),
+                "a variant is in the vocabulary fixture but not the rendering fixture"
+            );
+        }
     }
 
     #[test]

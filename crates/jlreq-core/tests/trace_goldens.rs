@@ -111,7 +111,7 @@ fn corpus() -> Result<Vec<Scenario>, InputError> {
             intent: "the five half-width punctuation classes, where Table 1 supplies the space",
             paragraph: plain("日、本。語（版）字", 2_500, WritingMode::HorizontalTb)?,
             style: Style::book_2020(),
-            categories: Categories::DEFAULT,
+            categories: Categories::DEFAULT.with(Categories::SPACING),
         },
         Scenario {
             name: "kinsoku-refusal",
@@ -292,6 +292,7 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
             "search.candidate",
             "search.chosen",
             "search.refused-candidate",
+            "space.boundary",
         ],
         "the corpus no longer reaches the families it was assembled for"
     );

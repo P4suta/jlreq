@@ -1,40 +1,44 @@
 # mixed-script
 # a Japanese/Western boundary, where the expansion opportunity lives
 # lines=5 diagnostics=0
-jlreq.trace/1 events=36 categories=0x07fb truncated=0
+jlreq.trace/1 events=40 categories=0x07fb truncated=0
 0000 prepare.paragraph        P   c0..9 b0..17 clusters=9 candidates=10 constructs=0 fast=1 extent=2500 mode=horizontal-tb align=justify
 0001 search.chosen            L00 c0..2 b0..6 line=0 start=0 end=2 edge=250000 3.1.1
 0002 line.fit                 L00 c0..2 b0..6 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
-0003 expand.site              L00 c0 b0..3 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
-0004 expand.stage             L00 c0..2 b0..6 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0005 expand.stage             L00 c0..2 b0..6 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0006 expand.stage             L00 c0..2 b0..6 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
-0007 expand.residual          L00 c0..2 b0..6 sites=1 amount=250 3.8.3
-0008 line.finished            L00 c0..2 b0..6 inline=0 block=0 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
-0009 search.chosen            L01 c2..4 b6..8 line=1 start=2 end=4 edge=250000 3.1.1
-0010 line.fit                 L01 c2..4 b6..8 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
-0011 expand.site              L01 c2 b6..7 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
-0012 expand.stage             L01 c2..4 b6..8 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0013 expand.stage             L01 c2..4 b6..8 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0014 expand.stage             L01 c2..4 b6..8 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
-0015 expand.residual          L01 c2..4 b6..8 sites=1 amount=250 3.8.3
-0016 line.finished            L01 c2..4 b6..8 inline=0 block=1000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
-0017 search.chosen            L02 c4..6 b8..10 line=2 start=4 end=6 edge=250000 3.1.1
-0018 line.fit                 L02 c4..6 b8..10 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
-0019 expand.site              L02 c4 b8..9 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
-0020 expand.stage             L02 c4..6 b8..10 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0021 expand.stage             L02 c4..6 b8..10 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0022 expand.stage             L02 c4..6 b8..10 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
-0023 expand.residual          L02 c4..6 b8..10 sites=1 amount=250 3.8.3
-0024 line.finished            L02 c4..6 b8..10 inline=0 block=2000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
-0025 search.chosen            L03 c6..8 b10..14 line=3 start=6 end=8 edge=250000 3.1.1
-0026 line.fit                 L03 c6..8 b10..14 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
-0027 expand.site              L03 c6 b10..11 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
-0028 expand.stage             L03 c6..8 b10..14 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0029 expand.stage             L03 c6..8 b10..14 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
-0030 expand.stage             L03 c6..8 b10..14 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
-0031 expand.residual          L03 c6..8 b10..14 sites=1 amount=250 3.8.3
-0032 line.finished            L03 c6..8 b10..14 inline=0 block=3000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
-0033 search.chosen            L04 c8 b14..17 line=4 start=8 end=9 edge=22500 3.1.1
-0034 line.fit                 L04 c8 b14..17 last=1 content=1000 avail=2500 remaining=1500 clusters=1 justify=0 need=0 offset=0 3.8.1
-0035 line.finished            L04 c8 b14..17 inline=0 block=4000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1
+0003 space.boundary           L00 c0 b0..3 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0004 expand.site              L00 c0 b0..3 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
+0005 expand.stage             L00 c0..2 b0..6 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0006 expand.stage             L00 c0..2 b0..6 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0007 expand.stage             L00 c0..2 b0..6 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
+0008 expand.residual          L00 c0..2 b0..6 sites=1 amount=250 3.8.3
+0009 line.finished            L00 c0..2 b0..6 inline=0 block=0 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
+0010 search.chosen            L01 c2..4 b6..8 line=1 start=2 end=4 edge=250000 3.1.1
+0011 line.fit                 L01 c2..4 b6..8 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
+0012 space.boundary           L01 c2 b6..7 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0013 expand.site              L01 c2 b6..7 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
+0014 expand.stage             L01 c2..4 b6..8 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0015 expand.stage             L01 c2..4 b6..8 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0016 expand.stage             L01 c2..4 b6..8 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
+0017 expand.residual          L01 c2..4 b6..8 sites=1 amount=250 3.8.3
+0018 line.finished            L01 c2..4 b6..8 inline=0 block=1000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
+0019 search.chosen            L02 c4..6 b8..10 line=2 start=4 end=6 edge=250000 3.1.1
+0020 line.fit                 L02 c4..6 b8..10 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
+0021 space.boundary           L02 c4 b8..9 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0022 expand.site              L02 c4 b8..9 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
+0023 expand.stage             L02 c4..6 b8..10 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0024 expand.stage             L02 c4..6 b8..10 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0025 expand.stage             L02 c4..6 b8..10 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
+0026 expand.residual          L02 c4..6 b8..10 sites=1 amount=250 3.8.3
+0027 line.finished            L02 c4..6 b8..10 inline=0 block=2000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
+0028 search.chosen            L03 c6..8 b10..14 line=3 start=6 end=8 edge=250000 3.1.1
+0029 line.fit                 L03 c6..8 b10..14 last=0 content=2000 avail=2500 remaining=500 clusters=2 justify=1 need=500 offset=0 3.8.1
+0030 space.boundary           L03 c6 b10..11 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0031 expand.site              L03 c6 b10..11 boundary=0 weight=1000 cap=250 stage=3 residual=0 3.8.3
+0032 expand.stage             L03 c6..8 b10..14 stage=1 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0033 expand.stage             L03 c6..8 b10..14 stage=2 sites=0 capacity=0 taken=0 remaining=500 3.8.3
+0034 expand.stage             L03 c6..8 b10..14 stage=3 sites=1 capacity=250 taken=250 remaining=250 3.8.3
+0035 expand.residual          L03 c6..8 b10..14 sites=1 amount=250 3.8.3
+0036 line.finished            L03 c6..8 b10..14 inline=0 block=3000 extent=2500 block_extent=1000 clusters=2 attachments=0 3.8.1
+0037 search.chosen            L04 c8 b14..17 line=4 start=8 end=9 edge=22500 3.1.1
+0038 line.fit                 L04 c8 b14..17 last=1 content=1000 avail=2500 remaining=1500 clusters=1 justify=0 need=0 offset=0 3.8.1
+0039 line.finished            L04 c8 b14..17 inline=0 block=4000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1
