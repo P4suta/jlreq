@@ -191,7 +191,7 @@ fn corpus() -> Result<Vec<Scenario>, InputError> {
         },
         Scenario {
             name: "tate-chu-yoko",
-            intent: "digits set upright inside vertical writing, which rotate their neighbours",
+            intent: "digits set upright inside vertical writing, which rotate their neighbors",
             paragraph: tcy_paragraph,
             style: Style::default(),
             categories: Categories::DEFAULT.with(Categories::PLACE_CLUSTERS),
