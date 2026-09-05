@@ -116,10 +116,24 @@ fn fast_width_after_available_reduction(
     reduced.saturating_sub(hanging_amount(paragraph, style, end, reduced, available))
 }
 
+/// The floor a line of these clusters could ever shrink to, read from the prefix index.
+///
+/// An empty or inverted span has a floor of zero. Without the second guard `range_sum` would
+/// subtract two prefix entries in the wrong order and return a *negative* floor, which
+/// `search_lower_bound_exceeds` reads as "this line can always be made to fit" and so never
+/// stops extending it.
+///
+/// The search only ever asks for a span whose start precedes its end, so this is a guard
+/// rather than a change of behavior. It is here because a bound wrong in this direction
+/// costs work and never an answer: the search would explore candidates it could have
+/// dropped and still reach the same layout, so nothing downstream would ever report it.
 fn fast_minimum_width(prepared: &PreparedParagraph, start: usize, end: usize) -> i64 {
     let Some(last) = end.checked_sub(1) else {
         return 0;
     };
+    if start >= last {
+        return 0;
+    }
     range_sum(&prepared.minimum_prefix, start, last)
 }
 

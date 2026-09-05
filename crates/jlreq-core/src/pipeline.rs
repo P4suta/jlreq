@@ -129,6 +129,298 @@ mod tests {
         }
     }
 
+    /// A deliberately naive minimum width: the same sum `minimum_prefix` encodes, added one
+    /// cluster at a time with no index at all.
+    ///
+    /// `fast_minimum_width` is the only one of the three indexed measurements with no slow
+    /// counterpart in shipped code — it exists solely to bound the search — so its oracle has
+    /// to be written here. That is the point of the idiom: a second implementation that is
+    /// obviously correct and obviously too slow to ship.
+    fn oracle_minimum_width(paragraph: &Paragraph, start: usize, end: usize) -> i64 {
+        let Some(last) = end.checked_sub(1) else {
+            return 0;
+        };
+        let mut sum = 0_i64;
+        for ordinal in start..last {
+            if super::is_western_word_space(paragraph, ordinal) {
+                continue;
+            }
+            sum = sum.saturating_add(i64::from(
+                paragraph.text.clusters()[ordinal].advance(),
+            ));
+        }
+        sum
+    }
+
+    /// A deliberately naive reduction capacity: what the whole ladder would find at every
+    /// internal boundary, summed, plus whatever the line end can give up.
+    ///
+    /// This is what `reduction_prefix` and `line_end_reduction` encode between them. Summing
+    /// them one boundary at a time is the same statement without the index.
+    fn oracle_reduction_capacity(
+        paragraph: &Paragraph,
+        style: &Style,
+        start: usize,
+        end: usize,
+    ) -> i64 {
+        let Some(last) = end.checked_sub(1) else {
+            return 0;
+        };
+        let mut sites = Vec::new();
+        let mut capacity = 0_i64;
+        for ordinal in start..last {
+            sites.clear();
+            if paragraph
+                .text
+                .clusters()
+                .get(ordinal.saturating_add(1))
+                .is_some()
+            {
+                if super::is_western_word_space(paragraph, ordinal) {
+                    let cluster = &paragraph.text.clusters()[ordinal];
+                    let room = super::effective_cluster_body_advance(paragraph, ordinal)
+                        .saturating_sub(super::quarter_inline_size(paragraph, cluster))
+                        .max(0);
+                    super::push_reduction_site(
+                        &mut sites,
+                        0,
+                        cluster
+                            .size_override()
+                            .unwrap_or(paragraph.text.size())
+                            .inline(),
+                        room,
+                        1,
+                        false,
+                    );
+                }
+                super::append_table_reduction_sites(paragraph, style, ordinal, 0, &mut sites);
+            }
+            for site in &sites {
+                capacity = capacity.saturating_add(i64::from(site.capacity));
+            }
+        }
+        sites.clear();
+        super::append_line_end_reduction_site(paragraph, style, last, 0, &mut sites);
+        for site in &sites {
+            capacity = capacity.saturating_add(i64::from(site.capacity));
+        }
+        capacity
+    }
+
+    /// Paragraphs that reach the indexed measurement path, chosen so the index has something
+    /// different to encode in each.
+    fn indexed_cases() -> Vec<(&'static str, Paragraph)> {
+        vec![
+            (
+                "ideographic",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .build()
+                    .expect("valid ideographic paragraph"),
+            ),
+            (
+                "punctuation",
+                Paragraph::builder(text("日、本。語（版）"), 4_000)
+                    .build()
+                    .expect("valid punctuation paragraph"),
+            ),
+            (
+                "western-spaces",
+                Paragraph::builder(
+                    mapped_text("a bc d ", Frame::Proportional, |_, cluster| cluster),
+                    4_000,
+                )
+                .build()
+                .expect("valid proportional paragraph"),
+            ),
+            (
+                "mixed-script",
+                Paragraph::builder(
+                    mapped_text("和文Latin和", Frame::Proportional, |_, cluster| cluster),
+                    4_000,
+                )
+                .build()
+                .expect("valid mixed paragraph"),
+            ),
+            (
+                "indented",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .first_line_indent(1_000)
+                    .build()
+                    .expect("valid indented paragraph"),
+            ),
+            (
+                "vertical",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .writing_mode(WritingMode::VerticalRl)
+                    .build()
+                    .expect("valid vertical paragraph"),
+            ),
+            (
+                "emphasis",
+                Paragraph::builder(text("日本語組版"), 4_000)
+                    .constructs([Construct::emphasis_dots(3..6, '・')])
+                    .build()
+                    .expect("valid emphasis paragraph"),
+            ),
+            (
+                "tate-chu-yoko",
+                Paragraph::builder(text("第12章です"), 4_000)
+                    .constructs([Construct::tate_chu_yoko(3..5)])
+                    .writing_mode(WritingMode::VerticalRl)
+                    .build()
+                    .expect("valid tate-chu-yoko paragraph"),
+            ),
+        ]
+    }
+
+    /// The indexed fast path and the naive one agree on **every** span, not only on whole
+    /// paragraphs.
+    ///
+    /// `pipeline.rs`'s search oracle established this idiom for line breaking: run a
+    /// deliberately quadratic, obviously-correct implementation beside the indexed one and
+    /// require identical answers. The three prefix-sum measurements had only whole-paragraph
+    /// spot checks, and a prefix index is exactly the kind of code whose off-by-one lives at
+    /// an interior boundary — the first cluster of a line, the last, a line of one cluster —
+    /// which a whole-paragraph check never visits.
+    ///
+    /// This walks every `(start, end)` pair of every case under every published profile, at
+    /// two line numbers so the first-line indent is exercised on both sides.
+    #[test]
+    fn indexed_measurement_matches_the_naive_sum_for_every_span() {
+        let profiles = [
+            Style::jlreq_2020(),
+            Style::book_2020(),
+            Style::magazine_2020(),
+            Style::newspaper_2020(),
+            Style::jis_reading_2020(),
+        ];
+        let mut spans = 0_usize;
+        for (name, paragraph) in indexed_cases() {
+            for style in &profiles {
+                let mut composer = super::Composer::new();
+                composer.prepare_candidates(&paragraph);
+                composer.prepare_indexes(&paragraph, style);
+                assert!(
+                    composer.prepared.fast_measure,
+                    "{name}: the case must reach the indexed path"
+                );
+                let clusters = paragraph.text.clusters();
+                let source = paragraph.text.source().len();
+                let offset = |ordinal: usize| -> usize {
+                    clusters
+                        .get(ordinal)
+                        .map_or(source, |cluster| cluster.range().start)
+                };
+                for end in 0..=clusters.len() {
+                    for start in 0..=end {
+                        for line_number in [0_usize, 1] {
+                            let indexed = super::fast_measure_line(
+                                &composer.prepared,
+                                &paragraph,
+                                style,
+                                start,
+                                end,
+                                line_number,
+                            );
+                            let naive = super::measure_line(
+                                &paragraph,
+                                style,
+                                offset(start),
+                                offset(end),
+                                line_number,
+                            );
+                            assert_eq!(
+                                indexed, naive,
+                                "{name}: measurement of clusters {start}..{end} on line \
+                                 {line_number} differs between the index and the naive sum"
+                            );
+
+                            for available in [0_i64, 1_000, 2_000, 4_000, 40_000] {
+                                assert_eq!(
+                                    super::fast_width_after_available_reduction(
+                                        &composer.prepared,
+                                        &paragraph,
+                                        style,
+                                        start,
+                                        end,
+                                        indexed,
+                                        available,
+                                    ),
+                                    super::width_after_available_reduction(
+                                        &paragraph,
+                                        style,
+                                        offset(start),
+                                        offset(end),
+                                        naive,
+                                        available,
+                                    ),
+                                    "{name}: reduction of clusters {start}..{end} against \
+                                     {available} differs between the index and the ladder"
+                                );
+                            }
+                            spans = spans.saturating_add(1);
+                        }
+                    }
+                }
+            }
+        }
+        // A floor, not a target: it is here so the sweep cannot silently become empty.
+        assert!(spans > 2_000, "the sweep must be wide: {spans} spans");
+    }
+
+    /// The two indexes the search bounds itself with agree with recomputation.
+    ///
+    /// `fast_minimum_width` and the reduction capacity never reach the caller — they only
+    /// decide when the search may stop extending a line. A wrong bound does not produce a
+    /// wrong number anywhere a user can see; it silently drops the arrangement that would
+    /// have won. Nothing else in the workspace would notice.
+    #[test]
+    fn the_search_bounds_match_recomputation_for_every_span() {
+        let style = Style::jlreq_2020();
+        for (name, paragraph) in indexed_cases() {
+            let mut composer = super::Composer::new();
+            composer.prepare_candidates(&paragraph);
+            composer.prepare_indexes(&paragraph, &style);
+            let clusters = paragraph.text.clusters().len();
+            for end in 0..=clusters {
+                for start in 0..=end {
+                    if composer.prepared.regular {
+                        assert_eq!(
+                            super::fast_minimum_width(&composer.prepared, start, end),
+                            oracle_minimum_width(&paragraph, start, end),
+                            "{name}: the minimum-width bound for {start}..{end} was recomputed \
+                             differently"
+                        );
+                    }
+                    // The reduction capacity is only ever read inside
+                    // `fast_width_after_available_reduction`, which returns before touching
+                    // the index when the span is empty, so there is nothing to agree about
+                    // there. `fast_minimum_width` had no such guard, which is what this
+                    // sweep found: it is compared above over every pair, degenerate ones
+                    // included.
+                    let Some(last) = end.checked_sub(1).filter(|_| start < end) else {
+                        continue;
+                    };
+                    let indexed = super::range_sum(&composer.prepared.reduction_prefix, start, last)
+                        .saturating_add(
+                            composer
+                                .prepared
+                                .line_end_reduction
+                                .get(last)
+                                .copied()
+                                .unwrap_or(0),
+                        );
+                    assert_eq!(
+                        indexed,
+                        oracle_reduction_capacity(&paragraph, &style, start, end),
+                        "{name}: the reserved reduction capacity for {start}..{end} was \
+                         recomputed differently"
+                    );
+                }
+            }
+        }
+    }
+
     fn oracle_chosen(
         paragraph: &Paragraph,
         style: &Style,
