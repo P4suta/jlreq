@@ -15,6 +15,12 @@
 //! Every dependency that can move a number here is pinned to an exact version in
 //! `crates/jlreq/Cargo.toml`, so a golden that moves is a change in this repository.
 //!
+//! One thing to read past rather than chase: the fixture faces are subsets, so ordinary
+//! Japanese text records `face.fallback` in these goldens. That is the fixture speaking,
+//! not a defect — the selection logic is doing exactly what it should with a face that
+//! genuinely lacks the codepoint, and `face-fallback.txt` is the case assembled to show
+//! selection succeeding as well as failing.
+//!
 //! To adopt an intended change, run the suite with `JLREQ_BLESS=1` and read the diff
 //! before committing it. A golden that changes without a reason stated in the commit
 //! message is the finding, not the noise.

@@ -108,6 +108,7 @@ items = [
   "compose_traced",
   "style",
   "trace",
+  "verify",
 ]
 
 [[module]]
@@ -147,6 +148,13 @@ items = [
 [[module]]
 path = "jlreq_core::trace"
 items = ["Categories", "Event", "Fact", "RuleAddress", "Site", "Trace"]
+
+# The invariant harness. Also outside the compatibility promise: it exists so a caller, a
+# test, or a fuzz target can ask whether a layout is self-consistent, and the set of
+# invariants it names is expected to grow.
+[[module]]
+path = "jlreq_core::verify"
+items = ["Fault", "Report", "inspect"]
 
 # The facade half of the same channel, and outside the compatibility promise for the same
 # reason. It answers what the core cannot see: how the document was cut up, how graphemes

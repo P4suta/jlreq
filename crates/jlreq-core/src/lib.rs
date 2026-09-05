@@ -42,6 +42,7 @@ mod pipeline;
 mod spec;
 pub mod style;
 pub mod trace;
+pub mod verify;
 
 pub use construct::{Construct, Ruby, RubyKind, RubyRun, ScriptPosition};
 pub use layout::{

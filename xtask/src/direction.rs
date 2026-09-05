@@ -68,6 +68,13 @@ const LAYERS: &[Layer] = &[
         name: "trace",
         may_depend_on: &["construct", "layout", "model", "paragraph", "style"],
     },
+    // The invariant harness reads only the layout and the paragraph it came from. It is
+    // deliberately not allowed to reach the pipeline: a checker that could see the
+    // composer would be a second composer, and its agreement would prove nothing.
+    Layer {
+        name: "verify",
+        may_depend_on: &["construct", "layout", "model", "paragraph", "style"],
+    },
     Layer {
         name: "pipeline",
         may_depend_on: &[
@@ -97,6 +104,7 @@ const LAYERS: &[Layer] = &[
             "spec",
             "style",
             "trace",
+            "verify",
         ],
     },
 ];

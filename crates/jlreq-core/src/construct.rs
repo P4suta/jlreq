@@ -213,6 +213,26 @@ pub(crate) enum ConstructKind {
 }
 
 impl Construct {
+    /// How long the annotation stream an attachment for this construct indexes is, or None
+    /// where the construct carries no stream and its attachments are repeated marks.
+    ///
+    /// [`crate::verify`] needs this and nothing else can supply it: an
+    /// [`Attachment`](crate::Attachment)'s range is into the annotation, never into the
+    /// paragraph, so the paragraph's own source says nothing about whether one is in bounds.
+    pub(crate) fn annotation_len(&self) -> Option<usize> {
+        match self.kind {
+            ConstructKind::Ruby(ref ruby) => Some(ruby.annotation().source().len()),
+            ConstructKind::ReferenceMark { ref mark, .. } => Some(mark.source().len()),
+            ConstructKind::Script { ref annotation, .. } => Some(annotation.source().len()),
+            ConstructKind::Emphasis { .. }
+            | ConstructKind::TateChuYoko(_)
+            | ConstructKind::Warichu(_)
+            | ConstructKind::Furawake { .. }
+            | ConstructKind::Jidori { .. }
+            | ConstructKind::Formula(_) => None,
+        }
+    }
+
     /// Construct ruby.
     #[must_use]
     pub const fn ruby(ruby: Ruby) -> Self {

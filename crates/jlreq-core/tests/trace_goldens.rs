@@ -347,6 +347,23 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
     Ok(())
 }
 
+/// The corpus was assembled to make the composer's reasoning branch, which makes it the
+/// widest set of composed layouts in the crate — every kinsoku level, both writing modes,
+/// hanging punctuation, ruby, warichu, furawake, and tate-chu-yoko. Holding every one of
+/// them against [`jlreq_core::verify`] costs nothing here and gives each invariant far more
+/// witnesses than its own unit tests can.
+#[test]
+fn every_scenario_composes_a_sound_layout() -> Result<(), Box<dyn Error>> {
+    for scenario in corpus()? {
+        let Ok(layout) = jlreq_core::compose(&scenario.paragraph, &scenario.style) else {
+            continue;
+        };
+        let report = jlreq_core::verify::inspect(&layout, &scenario.paragraph);
+        assert!(report.is_sound(), "{}: {report}", scenario.name);
+    }
+    Ok(())
+}
+
 /// Recording must not change the answer, on the same corpus the goldens are cut from.
 #[test]
 fn recording_does_not_change_the_layout_of_any_recorded_scenario() -> Result<(), Box<dyn Error>> {

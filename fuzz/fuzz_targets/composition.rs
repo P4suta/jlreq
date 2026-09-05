@@ -172,6 +172,11 @@ fuzz_target!(|data: &[u8]| {
                 black_box((line.range(), line.clusters(), line.attachments()));
             }
             black_box(layout.diagnostics());
+            // Reading the layout only proves it can be read. Every layout the composer
+            // returns must also be self-consistent, and a fuzzer is the only thing here
+            // that will try inputs nobody thought to write a test for.
+            let report = jlreq_core::verify::inspect(&layout, &paragraph);
+            assert!(report.is_sound(), "unsound layout: {report}");
         },
         Err(error) => {
             black_box((
