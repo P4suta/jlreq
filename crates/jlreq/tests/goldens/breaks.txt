@@ -1,0 +1,9 @@
+# breaks
+# the opportunities that actually reached the search, counted from the list handed over rather than from the sources it merged
+# lines=2
+jlreq.trace/1 document events=5 facade=0x0011 core=0x0002 truncated=0
+0000 doc text.segmented           b0..36 paragraphs=1 bytes=36 mode=horizontal-tb base=auto extent=7680 size=1024
+0001 P00 para.segment             b0..36 index=0 blank=0 extent=7680 align=justify indent=0 widow=allow
+0002 P00 text.breaks              b0..36 allowed=9 discretionary=1 mandatory=1
+0003 P00 search.chosen            L00 c0..5 b0..15 line=0 start=0 end=5 edge=6553600 3.1.1
+0004 P00 search.chosen            L01 c5..12 b15..36 line=1 start=5 end=12 edge=2621 3.1.1

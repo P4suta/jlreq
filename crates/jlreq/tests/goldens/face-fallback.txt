@@ -1,0 +1,14 @@
+# face-fallback
+# why each glyph came from the face it did: Japanese, Latin, Arabic, and an emoji no primary face covers
+# lines=1
+jlreq.trace/1 document events=10 facade=0x000e core=0x0000 truncated=0
+0000 P00 face.fallback            b0..3 face=0 family=Noto Sans JP candidates=4
+0001 P00 face.fallback            b3..6 face=0 family=Noto Sans JP candidates=4
+0002 P00 face.chosen              b6..7 face=0 family=Noto Sans JP position=1 candidates=4
+0003 P00 face.chosen              b7..9 face=1 family=Vazirmatn position=2 candidates=4
+0004 P00 face.chosen              b9..17 face=2 family=Noto Color Emoji position=3 candidates=4
+0005 P00 text.run                 b0..6 script=japanese direction=ltr level=0 face=0 glyphs=2 annotation=0
+0006 P00 text.run                 b6..7 script=latin direction=ltr level=0 face=0 glyphs=1 annotation=0
+0007 P00 text.run                 b7..9 script=rtl direction=rtl level=1 face=1 glyphs=2 annotation=0
+0008 P00 text.run                 b9..17 script=emoji direction=ltr level=0 face=2 glyphs=1 annotation=0
+0009 P00 text.itemized            b0..17 graphemes=5 runs=4 clusters=5 base-level=0 mixed=1 annotation=0

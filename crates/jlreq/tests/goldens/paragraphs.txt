@@ -1,0 +1,21 @@
+# paragraphs
+# three paragraphs, the middle one blank: each states its own resolved style, and a blank one never reaches the composer
+# lines=3
+jlreq.trace/1 document events=17 facade=0x003f core=0x0000 truncated=0
+0000 doc text.segmented           b0..38 paragraphs=3 bytes=38 mode=horizontal-tb base=auto extent=7680 size=1024
+0001 P00 para.segment             b0..18 index=0 blank=0 extent=7680 align=justify indent=0 widow=allow
+0002 P00 face.fallback            b0..3 face=0 family=Noto Sans JP candidates=4
+0003 P00 face.fallback            b3..6 face=0 family=Noto Sans JP candidates=4
+0004 P00 face.fallback            b6..9 face=0 family=Noto Sans JP candidates=4
+0005 P00 face.fallback            b9..12 face=0 family=Noto Sans JP candidates=4
+0006 P00 face.fallback            b12..15 face=0 family=Noto Sans JP candidates=4
+0007 P00 face.fallback            b15..18 face=0 family=Noto Sans JP candidates=4
+0008 P00 text.run                 b0..18 script=japanese direction=ltr level=0 face=0 glyphs=6 annotation=0
+0009 P00 text.itemized            b0..18 graphemes=6 runs=1 clusters=6 base-level=0 mixed=0 annotation=0
+0010 P00 text.breaks              b0..18 allowed=4 discretionary=0 mandatory=0
+0011 P01 para.segment             b19..19 index=1 blank=1 extent=7680 align=justify indent=0 widow=allow
+0012 P02 para.segment             b20..38 index=2 blank=0 extent=7680 align=justify indent=0 widow=allow
+0013 P02 face.fallback            b23..26 face=0 family=Noto Sans JP candidates=4
+0014 P02 text.run                 b20..38 script=japanese direction=ltr level=0 face=0 glyphs=6 annotation=0
+0015 P02 text.itemized            b20..38 graphemes=6 runs=1 clusters=6 base-level=0 mixed=0 annotation=0
+0016 P02 text.breaks              b20..38 allowed=4 discretionary=0 mandatory=0

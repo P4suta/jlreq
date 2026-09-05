@@ -14,6 +14,7 @@ use icu_segmenter::{GraphemeClusterSegmenter, LineSegmenter, options::LineBreakO
 use unicode_bidi::{BidiInfo, Level, ParagraphBidiInfo};
 
 use crate::document::{DocumentConstruct, TextRole};
+use crate::trace::{DocumentTrace, Fact, RunDirection, Script, Site};
 use crate::{
     Alignment, AnnotationSource, BaseDirection, Diagnostic, DiagnosticSeverity, Document,
     DocumentBuilder, FontId, FontLibrary, FontResource, FontSlant, FontStyle, FontVariation,
@@ -140,6 +141,7 @@ mod tests {
             .prepare_text(
                 PrepareRequest {
                     source: "AB",
+                    paragraph_index: 0,
                     global_offset: 0,
                     spans: &[],
                     fonts: &fonts,
@@ -147,6 +149,7 @@ mod tests {
                     diagnostic_range: None,
                 },
                 &mut call,
+                    &mut DocumentTrace::off(),
             )
             .unwrap();
         assert_eq!(call.runs, 1);
@@ -157,6 +160,7 @@ mod tests {
             .prepare_text(
                 PrepareRequest {
                     source: "A\tB",
+                    paragraph_index: 0,
                     global_offset: 0,
                     spans: &[],
                     fonts: &fonts,
@@ -164,6 +168,7 @@ mod tests {
                     diagnostic_range: None,
                 },
                 &mut call,
+                    &mut DocumentTrace::off(),
             )
             .unwrap();
         assert_eq!(call.runs, 2);
@@ -199,6 +204,7 @@ mod tests {
                 .prepare_text(
                     PrepareRequest {
                         source: "🇪🇨🇪🇨🇪🇨🇪🇨",
+                        paragraph_index: 0,
                         global_offset: 0,
                         spans: &[],
                         fonts: &fonts,
@@ -206,6 +212,7 @@ mod tests {
                         diagnostic_range: None,
                     },
                     &mut call,
+                        &mut DocumentTrace::off(),
                 )
                 .unwrap();
             assert_eq!(prepared.clusters.len(), 4);

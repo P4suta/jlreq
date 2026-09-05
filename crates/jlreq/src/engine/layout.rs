@@ -20,6 +20,7 @@ struct ShapeRequest<'a> {
 
 struct PrepareRequest<'a> {
     source: &'a str,
+    paragraph_index: usize,
     global_offset: usize,
     spans: &'a [(Range<usize>, SpanStyle)],
     fonts: &'a FontLibrary,
@@ -27,9 +28,70 @@ struct PrepareRequest<'a> {
     diagnostic_range: Option<Range<usize>>,
 }
 
+struct SelectRequest<'a> {
+    source: &'a str,
+    range: Range<usize>,
+    fonts: &'a FontLibrary,
+    style: &'a EffectiveStyle,
+    direction: Direction,
+    site: Site,
+}
+
+#[derive(Clone, Copy)]
+struct LowerRequest<'a> {
+    document: &'a Document,
+    prepared: &'a PreparedText,
+    fonts: &'a FontLibrary,
+    options: &'a LayoutOptions,
+}
+
 struct ConstructParagraph<'a> {
+    index: usize,
     range: &'a Range<usize>,
     next_construct: &'a mut usize,
+}
+
+/// Where a stretch of prepared text belongs in the document, for the trace.
+///
+/// A construct's annotation is exactly the text that carries its own diagnostic range: its
+/// offsets are into a string the document does not contain, so both a diagnostic and a
+/// trace site have to name the construct instead. The two travel on one carrier rather
+/// than as two flags that could disagree, which is [ADR 0019]'s rule applied here.
+///
+/// [ADR 0019]: https://github.com/jlreq/jlreq/blob/main/docs/adr/0019-one-fact-one-carrier.md
+#[derive(Debug, Clone)]
+struct TraceFrame {
+    paragraph: usize,
+    offset: usize,
+    attributed: Option<Range<usize>>,
+}
+
+impl TraceFrame {
+    fn new(paragraph: usize, offset: usize, attributed: Option<Range<usize>>) -> Self {
+        Self {
+            paragraph,
+            offset,
+            attributed,
+        }
+    }
+
+    /// The document site a paragraph-local byte range belongs to.
+    fn site(&self, local: &Range<usize>) -> Site {
+        self.attributed.clone().map_or_else(
+            || {
+                Site::in_paragraph(
+                    self.paragraph,
+                    local.start.saturating_add(self.offset)
+                        ..local.end.saturating_add(self.offset),
+                )
+            },
+            |range| Site::in_paragraph(self.paragraph, range),
+        )
+    }
+
+    const fn annotation(&self) -> bool {
+        self.attributed.is_some()
+    }
 }
 
 /// Reusable high-level layout engine.
@@ -83,12 +145,53 @@ impl LayoutEngine {
         self.layout_document(&document, fonts, options)
     }
 
+    /// Lay out plain UTF-8 text, recording why the result came out as it did.
+    ///
+    /// The trace is a runtime choice and never a second code path, so what it explains is
+    /// exactly what [`layout`](Self::layout) does. See [`crate::trace`] for the format and
+    /// for choosing which families to record.
+    pub fn layout_traced(
+        &mut self,
+        text: &str,
+        fonts: &FontLibrary,
+        options: LayoutOptions,
+        trace: &mut DocumentTrace,
+    ) -> Result<TextLayout, LayoutError> {
+        let document = DocumentBuilder::new(text).build()?;
+        self.layout_document_inner(&document, fonts, options, trace)
+    }
+
     /// Shape, compose, reorder, and physically place a typed document.
     pub fn layout_document(
         &mut self,
         document: &Document,
         fonts: &FontLibrary,
         options: LayoutOptions,
+    ) -> Result<TextLayout, LayoutError> {
+        self.layout_document_inner(document, fonts, options, &mut DocumentTrace::off())
+    }
+
+    /// Lay out a typed document, recording why the result came out as it did.
+    ///
+    /// A paragraph that refuses still leaves its reasoning behind: the core's trace is
+    /// absorbed before the refusal is returned, because that is the case a reader most
+    /// needs it for.
+    pub fn layout_document_traced(
+        &mut self,
+        document: &Document,
+        fonts: &FontLibrary,
+        options: LayoutOptions,
+        trace: &mut DocumentTrace,
+    ) -> Result<TextLayout, LayoutError> {
+        self.layout_document_inner(document, fonts, options, trace)
+    }
+
+    fn layout_document_inner(
+        &mut self,
+        document: &Document,
+        fonts: &FontLibrary,
+        options: LayoutOptions,
+        trace: &mut DocumentTrace,
     ) -> Result<TextLayout, LayoutError> {
         // The public API intentionally takes an owned option set so callers can configure and
         // submit it in one expression. Moving it through this single-element container makes
@@ -113,6 +216,17 @@ impl LayoutEngine {
             options.limits.paragraphs,
             segments.len(),
         )?;
+        trace.record(
+            Site::document(0..document.text.len()),
+            Fact::TextSegmented {
+                paragraphs: segments.len(),
+                bytes: document.text.len(),
+                writing_mode: options.writing_mode,
+                base_direction: options.base_direction,
+                line_extent: options.line_extent,
+                font_size: options.font_size,
+            },
+        );
         let mut call = CallState::new(options);
         let mut lines = Vec::new();
         let mut block_offset = 0_i32;
@@ -130,6 +244,20 @@ impl LayoutEngine {
             let first_line_indent = overrides
                 .and_then(|style| style.first_line_indent)
                 .unwrap_or(options.first_line_indent);
+            let widow = overrides
+                .and_then(|style| style.widow)
+                .unwrap_or(options.widow);
+            trace.record(
+                Site::in_paragraph(paragraph_index, segment.content.clone()),
+                Fact::ParagraphSegment {
+                    index: paragraph_index,
+                    blank: content.is_empty(),
+                    line_extent,
+                    alignment,
+                    first_line_indent,
+                    widow,
+                },
+            );
             if content.is_empty() {
                 // A blank paragraph has no clusters for the core to place, so
                 // the facade applies that paragraph's own indent and alignment
@@ -164,6 +292,7 @@ impl LayoutEngine {
             let prepared = self.prepare_text(
                 PrepareRequest {
                     source: content,
+                    paragraph_index,
                     global_offset: segment.content.start,
                     spans: &document.spans,
                     fonts,
@@ -171,25 +300,28 @@ impl LayoutEngine {
                     diagnostic_range: None,
                 },
                 &mut call,
+                trace,
             )?;
             let shaped = prepared.to_core(content, options.font_size)?;
             let mut construct_paragraph = ConstructParagraph {
+                index: paragraph_index,
                 range: &segment.content,
                 next_construct: &mut next_construct,
             };
             let (constructs, attachments, construct_globals) = self.lower_constructs(
-                document,
+                LowerRequest {
+                    document,
+                    prepared: &prepared,
+                    fonts,
+                    options,
+                },
                 &mut construct_paragraph,
-                &prepared,
-                fonts,
-                options,
                 &mut call,
+                trace,
             )?;
             let breaks =
                 collect_breaks(document, &segment.content, content, &prepared, &constructs);
-            let widow = overrides
-                .and_then(|style| style.widow)
-                .unwrap_or(options.widow);
+            trace_breaks(trace, paragraph_index, &segment.content, &breaks);
             let policy = overrides
                 .and_then(|style| style.style.as_ref())
                 .unwrap_or(&options.style);
@@ -214,10 +346,14 @@ impl LayoutEngine {
                 .with_max_tab_stops(options.limits.constructs)
                 .with_max_search_transitions(options.limits.core_operations);
             self.composer.set_limits(core_limits);
-            let core_layout = self
+            // Absorb before the refusal is raised: a paragraph the composer could not set
+            // is the case whose reasoning a reader most needs.
+            let mut core_trace = trace.core_trace();
+            let composed = self
                 .composer
-                .compose(&paragraph, policy)
-                .map_err(map_core_resource_error)?;
+                .compose_traced(&paragraph, policy, &mut core_trace);
+            trace.absorb(paragraph_index, segment.content.start, &mut core_trace);
+            let core_layout = composed.map_err(map_core_resource_error)?;
 
             for diagnostic in core_layout.diagnostics() {
                 call.diagnostics.push(Diagnostic {
@@ -378,9 +514,11 @@ impl LayoutEngine {
         &mut self,
         request: PrepareRequest<'_>,
         call: &mut CallState,
+        trace: &mut DocumentTrace,
     ) -> Result<PreparedText, LayoutError> {
         let PrepareRequest {
             source,
+            paragraph_index,
             global_offset,
             spans,
             fonts,
@@ -392,6 +530,7 @@ impl LayoutEngine {
                 clusters: Vec::new(),
             });
         }
+        let frame = TraceFrame::new(paragraph_index, global_offset, diagnostic_range.clone());
         let base_level = match options.base_direction {
             BaseDirection::Auto => None,
             BaseDirection::LeftToRight => Some(Level::ltr()),
@@ -432,7 +571,18 @@ impl LayoutEngine {
             let (font_id, missing) = if is_tab {
                 (fonts.primary().ok_or(LayoutError::NoFonts)?, false)
             } else {
-                self.select_font(source, range.clone(), fonts, &effective, direction, call)?
+                self.select_font(
+                    SelectRequest {
+                        source,
+                        range: range.clone(),
+                        fonts,
+                        style: &effective,
+                        direction,
+                        site: frame.site(&range),
+                    },
+                    call,
+                    trace,
+                )?
             };
             if missing {
                 call.diagnostics.push(Diagnostic {
@@ -456,6 +606,7 @@ impl LayoutEngine {
 
         let mut clusters = Vec::new();
         let mut index = 0;
+        let mut runs = 0_usize;
         while index < graphemes.len() {
             if graphemes[index].is_tab {
                 let item = &graphemes[index];
@@ -484,6 +635,7 @@ impl LayoutEngine {
                 index = index.saturating_add(1);
             }
             call.charge_run()?;
+            runs = runs.saturating_add(1);
             let first = &graphemes[start];
             let run_range = first.range.start..graphemes[index.saturating_sub(1)].range.end;
             let resource = fonts
@@ -504,6 +656,17 @@ impl LayoutEngine {
             })?;
             call.used_fonts.insert(first.font_id);
             call.charge_glyphs(raw.len())?;
+            trace.record(
+                frame.site(&run_range),
+                Fact::ShapingRun {
+                    script: trace_script(first.script),
+                    direction: trace_direction(first.direction),
+                    level: first.level.number(),
+                    face: first.font_id.get(),
+                    glyphs: raw.len(),
+                    annotation: frame.annotation(),
+                },
+            );
             clusters.extend(aggregate_run(
                 source,
                 run_range,
@@ -514,18 +677,36 @@ impl LayoutEngine {
                 &variations,
             ));
         }
+        trace.record(
+            frame.site(&(0..source.len())),
+            Fact::TextItemized {
+                graphemes: graphemes.len(),
+                runs,
+                clusters: clusters.len(),
+                base_level: bidi.paragraph_level.number(),
+                mixed_levels: graphemes
+                    .iter()
+                    .any(|item| item.level != bidi.paragraph_level),
+                annotation: frame.annotation(),
+            },
+        );
         Ok(PreparedText { clusters })
     }
 
     fn select_font(
         &mut self,
-        source: &str,
-        range: Range<usize>,
-        fonts: &FontLibrary,
-        style: &EffectiveStyle,
-        direction: Direction,
+        request: SelectRequest<'_>,
         call: &mut CallState,
+        trace: &mut DocumentTrace,
     ) -> Result<(FontId, bool), LayoutError> {
+        let SelectRequest {
+            source,
+            range,
+            fonts,
+            style,
+            direction,
+            site,
+        } = request;
         let candidate_key = FontCandidateKey::new(style);
         let selection_key = FontSelectionKey::new(
             &source[range.clone()],
@@ -547,7 +728,7 @@ impl LayoutEngine {
                 )
             })
             .clone();
-        for id in candidates.iter().copied() {
+        for (position, id) in candidates.iter().copied().enumerate() {
             let resource = fonts
                 .get(id)
                 .ok_or_else(crate::font::unknown_font_id)?;
@@ -566,24 +747,48 @@ impl LayoutEngine {
             })?;
             if !glyphs.is_empty() && glyphs.iter().all(|glyph| glyph.glyph_id != 0) {
                 let selection = (id, false);
+                trace.record(
+                    site,
+                    Fact::FaceChosen {
+                        face: id.get(),
+                        family: resource.family().to_owned(),
+                        position: position.saturating_add(1),
+                        candidates: candidates.len(),
+                    },
+                );
                 call.font_selections.insert(selection_key, selection);
                 return Ok(selection);
             }
         }
-        let selection = (fonts.primary().ok_or(LayoutError::NoFonts)?, true);
+        let primary = fonts.primary().ok_or(LayoutError::NoFonts)?;
+        trace.record(
+            site,
+            Fact::FaceFallback {
+                face: primary.get(),
+                family: fonts
+                    .get(primary)
+                    .map_or_else(String::new, |resource| resource.family().to_owned()),
+                candidates: candidates.len(),
+            },
+        );
+        let selection = (primary, true);
         call.font_selections.insert(selection_key, selection);
         Ok(selection)
     }
 
     fn lower_constructs(
         &mut self,
-        document: &Document,
+        request: LowerRequest<'_>,
         paragraph: &mut ConstructParagraph<'_>,
-        prepared: &PreparedText,
-        fonts: &FontLibrary,
-        options: &LayoutOptions,
         call: &mut CallState,
+        trace: &mut DocumentTrace,
     ) -> Result<LoweredConstructs, LayoutError> {
+        let LowerRequest {
+            document,
+            prepared,
+            fonts,
+            options,
+        } = request;
         let mut constructs = Vec::new();
         let mut attachments = Vec::new();
         let mut construct_globals = Vec::new();
@@ -621,6 +826,7 @@ impl LayoutEngine {
                     let annotation_prepared = self.prepare_text(
                         PrepareRequest {
                             source: annotation,
+                            paragraph_index: paragraph.index,
                             global_offset: 0,
                             spans: &[],
                             fonts,
@@ -628,6 +834,7 @@ impl LayoutEngine {
                             diagnostic_range: Some(global_range.clone()),
                         },
                         call,
+                            trace,
                     )?;
                     let shaped =
                         annotation_prepared.to_core(annotation, annotation_options.font_size)?;
@@ -659,6 +866,7 @@ impl LayoutEngine {
                     let mark_prepared = self.prepare_text(
                         PrepareRequest {
                             source: &mark_text,
+                            paragraph_index: paragraph.index,
                             global_offset: 0,
                             spans: &[],
                             fonts,
@@ -666,6 +874,7 @@ impl LayoutEngine {
                             diagnostic_range: Some(global_range.clone()),
                         },
                         call,
+                            trace,
                     )?;
                     attachments[local_ordinal] = Some(AttachmentShape {
                         global_ordinal,
@@ -693,6 +902,7 @@ impl LayoutEngine {
                     let annotation_prepared = self.prepare_text(
                         PrepareRequest {
                             source: mark,
+                            paragraph_index: paragraph.index,
                             global_offset: 0,
                             spans: &[],
                             fonts,
@@ -700,6 +910,7 @@ impl LayoutEngine {
                             diagnostic_range: Some(global_range.clone()),
                         },
                         call,
+                            trace,
                     )?;
                     let shaped = annotation_prepared.to_core(mark, annotation_options.font_size)?;
                     constructs.push(jlreq_core::Construct::reference_mark(local_range, shaped));
@@ -718,6 +929,7 @@ impl LayoutEngine {
                     let annotation_prepared = self.prepare_text(
                         PrepareRequest {
                             source: annotation,
+                            paragraph_index: paragraph.index,
                             global_offset: 0,
                             spans: &[],
                             fonts,
@@ -725,6 +937,7 @@ impl LayoutEngine {
                             diagnostic_range: Some(global_range.clone()),
                         },
                         call,
+                            trace,
                     )?;
                     let shaped =
                         annotation_prepared.to_core(annotation, annotation_options.font_size)?;
@@ -800,6 +1013,55 @@ fn empty_line_inline(line_extent: i32, first_line_indent: i32, alignment: Alignm
 ///
 /// A code this does not know is a core release ahead of this facade. It says so plainly
 /// rather than guessing, and the code itself remains the compatibility key.
+/// Say how many opportunities of each strength the composer was given.
+///
+/// Counted from the list that is actually handed over, not from the sources it was merged
+/// from, so the number a reader sees is the number the search searched.
+fn trace_breaks(
+    trace: &mut DocumentTrace,
+    paragraph: usize,
+    range: &Range<usize>,
+    breaks: &[jlreq_core::Break],
+) {
+    let mandatory = breaks.iter().filter(|entry| entry.is_mandatory()).count();
+    let discretionary = breaks
+        .iter()
+        .filter(|entry| entry.is_discretionary())
+        .count();
+    trace.record(
+        Site::in_paragraph(paragraph, range.clone()),
+        Fact::BreaksCollected {
+            allowed: breaks
+                .len()
+                .saturating_sub(mandatory)
+                .saturating_sub(discretionary),
+            discretionary,
+            mandatory,
+        },
+    );
+}
+
+/// The facade's own coarse script partition, as the trace names it.
+const fn trace_script(class: ScriptClass) -> Script {
+    match class {
+        ScriptClass::Japanese => Script::Japanese,
+        ScriptClass::Latin => Script::Latin,
+        ScriptClass::Rtl => Script::Rtl,
+        ScriptClass::Emoji => Script::Emoji,
+        ScriptClass::Other => Script::Other,
+    }
+}
+
+/// The direction a run was shaped in, as the trace names it.
+const fn trace_direction(direction: Direction) -> RunDirection {
+    match direction {
+        Direction::LeftToRight => RunDirection::LeftToRight,
+        Direction::RightToLeft => RunDirection::RightToLeft,
+        Direction::TopToBottom => RunDirection::TopToBottom,
+        Direction::BottomToTop | Direction::Invalid => RunDirection::Other,
+    }
+}
+
 fn core_diagnostic_message(code: &str) -> &'static str {
     match code {
         "layout.overfull" => {

@@ -63,6 +63,7 @@ items = [
   "core",
   "layout",
   "layout_document",
+  "trace",
 ]
 
 [[module]]
@@ -146,6 +147,21 @@ items = [
 [[module]]
 path = "jlreq_core::trace"
 items = ["Categories", "Event", "Fact", "RuleAddress", "Site", "Trace"]
+
+# The facade half of the same channel, and outside the compatibility promise for the same
+# reason. It answers what the core cannot see: how the document was cut up, how graphemes
+# became shaping runs, and which face was asked to cover each one.
+[[module]]
+path = "jlreq::trace"
+items = [
+  "Categories",
+  "DocumentTrace",
+  "Event",
+  "Fact",
+  "RunDirection",
+  "Script",
+  "Site",
+]
 
 # One dedicated enum for every alternative the generated JLReq 2020 policy inventory
 # records. The count is held against `spec/derived/questions.tsv` in both directions.

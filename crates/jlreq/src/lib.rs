@@ -15,6 +15,7 @@ mod font;
 mod options;
 mod result;
 mod sfnt;
+pub mod trace;
 mod units;
 
 pub use document::{

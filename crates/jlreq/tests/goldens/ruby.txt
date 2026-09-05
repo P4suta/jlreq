@@ -1,0 +1,36 @@
+# ruby
+# an annotation is itemized and shaped in its own right, and its trace sites name the construct rather than a string the document lacks
+# lines=1
+jlreq.trace/1 document events=32 facade=0x003f core=0x07fb truncated=0
+0000 doc text.segmented           b0..27 paragraphs=1 bytes=27 mode=horizontal-tb base=auto extent=10240 size=1024
+0001 P00 para.segment             b0..27 index=0 blank=0 extent=10240 align=justify indent=0 widow=allow
+0002 P00 face.fallback            b0..3 face=0 family=Noto Sans JP candidates=4
+0003 P00 face.fallback            b3..6 face=0 family=Noto Sans JP candidates=4
+0004 P00 face.fallback            b6..9 face=0 family=Noto Sans JP candidates=4
+0005 P00 face.fallback            b9..12 face=0 family=Noto Sans JP candidates=4
+0006 P00 face.fallback            b12..15 face=0 family=Noto Sans JP candidates=4
+0007 P00 face.fallback            b15..18 face=0 family=Noto Sans JP candidates=4
+0008 P00 face.fallback            b18..21 face=0 family=Noto Sans JP candidates=4
+0009 P00 face.fallback            b21..24 face=0 family=Noto Sans JP candidates=4
+0010 P00 face.fallback            b24..27 face=0 family=Noto Sans JP candidates=4
+0011 P00 text.run                 b0..27 script=japanese direction=ltr level=0 face=0 glyphs=9 annotation=0
+0012 P00 text.itemized            b0..27 graphemes=9 runs=1 clusters=9 base-level=0 mixed=0 annotation=0
+0013 P00 face.fallback            b0..9 face=0 family=Noto Sans JP candidates=4
+0014 P00 face.fallback            b0..9 face=0 family=Noto Sans JP candidates=4
+0015 P00 face.fallback            b0..9 face=0 family=Noto Sans JP candidates=4
+0016 P00 face.fallback            b0..9 face=0 family=Noto Sans JP candidates=4
+0017 P00 text.run                 b0..9 script=japanese direction=ltr level=0 face=0 glyphs=4 annotation=1
+0018 P00 text.itemized            b0..9 graphemes=4 runs=1 clusters=4 base-level=0 mixed=0 annotation=1
+0019 P00 text.breaks              b0..27 allowed=5 discretionary=0 mandatory=0
+0020 P00 prepare.paragraph        P   c0..9 b0..27 clusters=9 candidates=7 constructs=1 fast=0 extent=10240 mode=horizontal-tb align=justify
+0021 P00 search.chosen            L00 c0..9 b0..27 line=0 start=0 end=6 edge=2621 3.1.1
+0022 P00 line.fit                 L00 c0..9 b0..27 last=1 content=9728 avail=10240 remaining=512 clusters=9 justify=0 need=0 offset=0 3.8.1
+0023 P00 space.boundary           L00 c0 b0..3 before=22 after=22 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-22,cl-22
+0024 P00 space.boundary           L00 c1 b3..6 before=22 after=22 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-22,cl-22
+0025 P00 space.boundary           L00 c2 b6..9 before=22 after=15 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-22,cl-15
+0026 P00 space.boundary           L00 c3 b9..12 before=15 after=19 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-15,cl-19
+0027 P00 space.boundary           L00 c4 b12..15 before=19 after=15 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-15
+0028 P00 space.boundary           L00 c5 b15..18 before=15 after=19 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-15,cl-19
+0029 P00 space.boundary           L00 c6 b18..21 before=19 after=19 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0030 P00 space.boundary           L00 c7 b21..24 before=19 after=06 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-06
+0031 P00 line.finished            L00 c0..9 b0..27 inline=0 block=0 extent=9728 block_extent=1536 clusters=9 attachments=4 3.8.1
