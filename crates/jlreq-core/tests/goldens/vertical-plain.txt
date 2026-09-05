@@ -1,0 +1,9 @@
+# vertical-plain
+# the same text set vertically, which must reach the same decisions
+# lines=4 diagnostics=0
+jlreq.trace/1 events=5 categories=0x07fb truncated=0
+0000 prepare.paragraph        P   c0..10 b0..30 clusters=10 candidates=11 constructs=0 fast=1 extent=3000 mode=vertical-rl align=justify
+0001 search.chosen            L00 c0..3 b0..9 line=0 start=0 end=3 edge=0 3.1.1
+0002 search.chosen            L01 c3..6 b9..18 line=1 start=3 end=6 edge=0 3.1.1
+0003 search.chosen            L02 c6..9 b18..27 line=2 start=6 end=9 edge=0 3.1.1
+0004 search.chosen            L03 c9 b27..30 line=3 start=9 end=10 edge=40000 3.1.1

@@ -3045,7 +3045,7 @@ mod tests {
     /// Recording must not change the answer, and must not change the work charged for it.
     ///
     /// This is the census guard. The three-implementation census cannot be re-run without
-    /// the OCaml and Racket toolchains, so the standing invariant is that core behaviour
+    /// the OCaml and Racket toolchains, so the standing invariant is that core behavior
     /// on existing input does not move. `compose` and `compose_traced` share one body and
     /// this holds them to the same layout, the same error, and — the sharper of the two —
     /// the same charged transition count, which a changed search would move even where

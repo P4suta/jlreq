@@ -1,0 +1,10 @@
+# mixed-script
+# a Japanese/Western boundary, where the expansion opportunity lives
+# lines=5 diagnostics=0
+jlreq.trace/1 events=6 categories=0x07fb truncated=0
+0000 prepare.paragraph        P   c0..9 b0..17 clusters=9 candidates=10 constructs=0 fast=1 extent=2500 mode=horizontal-tb align=justify
+0001 search.chosen            L00 c0..2 b0..6 line=0 start=0 end=2 edge=250000 3.1.1
+0002 search.chosen            L01 c2..4 b6..8 line=1 start=2 end=4 edge=250000 3.1.1
+0003 search.chosen            L02 c4..6 b8..10 line=2 start=4 end=6 edge=250000 3.1.1
+0004 search.chosen            L03 c6..8 b10..14 line=3 start=6 end=8 edge=250000 3.1.1
+0005 search.chosen            L04 c8 b14..17 line=4 start=8 end=9 edge=22500 3.1.1

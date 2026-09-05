@@ -145,14 +145,7 @@ items = [
 # result and its diagnostics are not.
 [[module]]
 path = "jlreq_core::trace"
-items = [
-  "Categories",
-  "Event",
-  "Fact",
-  "RuleAddress",
-  "Site",
-  "Trace",
-]
+items = ["Categories", "Event", "Fact", "RuleAddress", "Site", "Trace"]
 
 # One dedicated enum for every alternative the generated JLReq 2020 policy inventory
 # records. The count is held against `spec/derived/questions.tsv` in both directions.

@@ -1,0 +1,8 @@
+# mono-ruby
+# a construct on the line, which stops the indexed fast measurement
+# lines=3 diagnostics=0
+jlreq.trace/1 events=4 categories=0x07fb truncated=0
+0000 prepare.paragraph        P   c0..5 b0..15 clusters=5 candidates=6 constructs=1 fast=0 extent=2000 mode=horizontal-tb align=justify
+0001 search.chosen            L00 c0 b0..3 line=0 start=0 end=1 edge=0 3.1.1
+0002 search.chosen            L01 c1..3 b3..9 line=1 start=1 end=3 edge=0 3.1.1
+0003 search.chosen            L02 c3..5 b9..15 line=2 start=3 end=5 edge=0 3.1.1

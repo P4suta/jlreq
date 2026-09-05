@@ -22,6 +22,8 @@
 use alloc::vec::Vec;
 use core::ops::Range;
 
+mod render;
+
 use crate::model::WritingMode;
 use crate::paragraph::Alignment;
 
