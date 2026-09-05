@@ -230,7 +230,7 @@ impl LayoutEngine {
                         range.start.saturating_add(segment.content.start)
                             ..range.end.saturating_add(segment.content.start)
                     }),
-                    message: "the core composer produced a recoverable layout diagnostic",
+                    message: core_diagnostic_message(diagnostic.code()),
                     jlreq: Some(diagnostic.jlreq()),
                 });
             }
@@ -788,4 +788,26 @@ fn empty_line_inline(line_extent: i32, first_line_indent: i32, alignment: Alignm
         Alignment::End => remaining,
     };
     first_line_indent.saturating_add(offset)
+}
+
+/// Say what a core diagnostic means, in the facade's own words.
+///
+/// `jlreq_core::Diagnostic` carries no message, so every core-originating diagnostic used
+/// to arrive at a caller wearing one constant sentence and could only be told apart by its
+/// code. The core's codes are already a closed set with a documented meaning each, so the
+/// sentence is derived here rather than added to a core output type: the seam gains the
+/// message and the core keeps the shape the census was run against.
+///
+/// A code this does not know is a core release ahead of this facade. It says so plainly
+/// rather than guessing, and the code itself remains the compatibility key.
+fn core_diagnostic_message(code: &str) -> &'static str {
+    match code {
+        "layout.overfull" => {
+            "the line could not be reduced to the measure; its extent exceeds the line extent"
+        },
+        "layout.widow" => {
+            "the final line holds fewer base clusters than the widow policy asks for"
+        },
+        _ => "the core composer produced a recoverable layout diagnostic this release does not name",
+    }
 }

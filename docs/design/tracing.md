@@ -57,6 +57,22 @@ let mut trace = Trace::with_categories(Categories::DEFAULT.with(Categories::SEAR
 A trace stops at `Trace::DEFAULT_MAX_EVENTS` and reports `is_truncated`. Truncation is not
 a `ComposeError`: a debugging aid must never turn a composable paragraph into a refusal.
 
+## What is recorded
+
+| family | kinds | answers |
+| --- | --- | --- |
+| `PREPARE` | `prepare.paragraph` | how big the problem was, and whether the indexed fast path applied |
+| `SEARCH` | `search.chosen`, `search.refused` | which breaks won, what each line cost, how far a refused search got |
+| `SEARCH_CANDIDATES` | `search.candidate`, `search.bound-stop` | every pair weighed, its cost broken out, and where the search stopped extending |
+| `KINSOKU` | `search.refused-candidate` | which boundaries kinsoku (禁則) refused outright |
+| `SPACING` | `space.boundary` | the class pair, the cell terms, and the amount used |
+| `REDUCE` | `reduce.site`, `reduce.stage` | what each boundary could give up, and what each rung took |
+| `EXPAND` | `expand.site`, `expand.stage`, `expand.residual` | the ceilings, the rungs, and what fell past all of them |
+| `HANGING` | `hang.line-end` | what was hung past the measure rather than absorbed |
+| `STRUCTURE` | `warichu.block`, `furawake.block`, `tcy.group` | how a stacked structure was cut, dealt, or set upright |
+| `PLACE` | `line.fit`, `line.finished` | what the line was asked to absorb, and what it came out as |
+| `PLACE_CLUSTERS` | `place.cluster` | every placement, with its local transform |
+
 ## The line format
 
 ```text
