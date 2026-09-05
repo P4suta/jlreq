@@ -273,6 +273,110 @@ pub enum Fact {
         /// The cost the search charged for this line alone.
         edge_cost: u128,
     },
+    /// How much a line has to give or take, and how it was allowed to.
+    LineFit {
+        /// Whether this line ends the paragraph, which decides whether it justifies.
+        is_last: bool,
+        /// What the line's content occupies before any adjustment.
+        content_width: i64,
+        /// The measure.
+        available: i64,
+        /// Measure minus content; negative when the line must be reduced.
+        remaining: i64,
+        /// Base clusters on the line.
+        cluster_count: usize,
+        /// Whether the line is justified rather than set at its natural width.
+        justify: bool,
+        /// What the ladder is asked to absorb: negative to reduce, positive to expand.
+        need: i64,
+        /// The offset the alignment applies before anything is placed.
+        alignment_offset: i64,
+    },
+    /// One boundary the reduction half of the ladder may take from.
+    ReductionSite {
+        /// The boundary's ordinal within the line.
+        boundary: usize,
+        /// The proportional weight this boundary carries.
+        weight: i32,
+        /// The most that may be taken here.
+        capacity: i32,
+        /// The rung of the ladder this site belongs to.
+        stage: u8,
+        /// Whether the site is taken whole rather than shared proportionally.
+        discrete: bool,
+    },
+    /// One rung of the reduction ladder, and what it absorbed.
+    ReductionStage {
+        /// The rung.
+        stage: u8,
+        /// What still had to be absorbed when the rung was reached.
+        need: i64,
+        /// What the rung's whole-site takes absorbed before anything was shared.
+        discrete_taken: i64,
+        /// What the rung's proportional sites could hold between them.
+        capacity: i64,
+        /// What the rung actually took.
+        taken: i64,
+        /// What was left for the next rung.
+        remaining: i64,
+    },
+    /// One boundary the expansion half of the ladder may give to.
+    ExpansionSite {
+        /// The boundary's ordinal within the line.
+        boundary: usize,
+        /// The proportional weight this boundary carries.
+        weight: i32,
+        /// The ceiling on this boundary, where the tables state one.
+        cap: Option<i32>,
+        /// The rung the ceiling belongs to, where there is one.
+        stage: Option<u8>,
+        /// Whether the boundary may take a share of what no ceiling absorbed.
+        residual: bool,
+    },
+    /// One rung of the expansion ladder, and what it absorbed.
+    ExpansionStage {
+        /// The rung.
+        stage: u8,
+        /// Boundaries the rung distributed across.
+        sites: usize,
+        /// What those boundaries could hold between them.
+        capacity: i64,
+        /// What the rung actually gave.
+        taken: i64,
+        /// What was left for the next rung.
+        remaining: i64,
+    },
+    /// What no ceiling could absorb, spread across the boundaries that accept a residue.
+    ExpansionResidual {
+        /// Boundaries the residue was spread across.
+        sites: usize,
+        /// The residue.
+        amount: i64,
+    },
+    /// Punctuation hung past the measure rather than forcing another rung.
+    Hanging {
+        /// What the line occupies before hanging.
+        occupied: i64,
+        /// The measure.
+        available: i64,
+        /// What was hung.
+        amount: i64,
+    },
+    /// One line's finished geometry.
+    LineFinished {
+        /// The line's logical inline origin.
+        inline_origin: i32,
+        /// The line's logical block origin.
+        block_origin: i32,
+        /// The occupied inline extent, excluding hanging punctuation.
+        inline_extent: i32,
+        /// The line's block-axis demand.
+        block_extent: i32,
+        /// Base cluster placements emitted.
+        clusters: usize,
+        /// Ruby, emphasis, reference-mark, and script attachments emitted.
+        attachments: usize,
+    },
 }
 
 impl Fact {
@@ -289,6 +393,14 @@ impl Fact {
             Self::SearchBoundStop { .. } => "search.bound-stop",
             Self::SearchRefused { .. } => "search.refused",
             Self::LineChosen { .. } => "search.chosen",
+            Self::LineFit { .. } => "line.fit",
+            Self::ReductionSite { .. } => "reduce.site",
+            Self::ReductionStage { .. } => "reduce.stage",
+            Self::ExpansionSite { .. } => "expand.site",
+            Self::ExpansionStage { .. } => "expand.stage",
+            Self::ExpansionResidual { .. } => "expand.residual",
+            Self::Hanging { .. } => "hang.line-end",
+            Self::LineFinished { .. } => "line.finished",
         }
     }
 
@@ -302,6 +414,12 @@ impl Fact {
             },
             Self::SearchCandidateRefused { .. } => Categories::KINSOKU,
             Self::SearchRefused { .. } | Self::LineChosen { .. } => Categories::SEARCH,
+            Self::LineFit { .. } | Self::LineFinished { .. } => Categories::PLACE,
+            Self::ReductionSite { .. } | Self::ReductionStage { .. } => Categories::REDUCE,
+            Self::ExpansionSite { .. }
+            | Self::ExpansionStage { .. }
+            | Self::ExpansionResidual { .. } => Categories::EXPAND,
+            Self::Hanging { .. } => Categories::HANGING,
         }
     }
 
@@ -318,6 +436,13 @@ impl Fact {
             },
             Self::SearchCandidateRefused { .. } => Some(RuleAddress::Section("3.1.9")),
             Self::LineChosen { .. } => Some(RuleAddress::Section("3.1.1")),
+            Self::LineFit { .. } | Self::LineFinished { .. } => Some(RuleAddress::Section("3.8.1")),
+            Self::ReductionSite { .. }
+            | Self::ReductionStage { .. }
+            | Self::ExpansionSite { .. }
+            | Self::ExpansionStage { .. }
+            | Self::ExpansionResidual { .. } => Some(RuleAddress::Section("3.8.3")),
+            Self::Hanging { .. } => Some(RuleAddress::Section("2.5.1")),
         }
     }
 }
@@ -532,7 +657,7 @@ mod tests {
 
     /// One instance of every variant, so a new one cannot be added without being named
     /// here, in `kind`, in `category`, and in `jlreq`.
-    fn every_fact() -> [Fact; 6] {
+    fn every_fact() -> [Fact; 14] {
         [
             prepared(),
             Fact::SearchCandidate {
@@ -565,6 +690,62 @@ mod tests {
                 limit: 64,
             },
             chosen(),
+            Fact::LineFit {
+                is_last: true,
+                content_width: 3_900,
+                available: 4_000,
+                remaining: 100,
+                cluster_count: 4,
+                justify: false,
+                need: 0,
+                alignment_offset: 0,
+            },
+            Fact::ReductionSite {
+                boundary: 2,
+                weight: 1_000,
+                capacity: 250,
+                stage: 3,
+                discrete: false,
+            },
+            Fact::ReductionStage {
+                stage: 3,
+                need: 300,
+                discrete_taken: 50,
+                capacity: 250,
+                taken: 250,
+                remaining: 0,
+            },
+            Fact::ExpansionSite {
+                boundary: 1,
+                weight: 1_000,
+                cap: Some(250),
+                stage: Some(2),
+                residual: false,
+            },
+            Fact::ExpansionStage {
+                stage: 2,
+                sites: 1,
+                capacity: 250,
+                taken: 250,
+                remaining: 0,
+            },
+            Fact::ExpansionResidual {
+                sites: 2,
+                amount: 40,
+            },
+            Fact::Hanging {
+                occupied: 4_250,
+                available: 4_000,
+                amount: 250,
+            },
+            Fact::LineFinished {
+                inline_origin: 0,
+                block_origin: 1_000,
+                inline_extent: 4_000,
+                block_extent: 1_000,
+                clusters: 4,
+                attachments: 1,
+            },
         ]
     }
 

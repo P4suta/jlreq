@@ -135,6 +135,17 @@ fn corpus() -> Result<Vec<Scenario>, InputError> {
             categories: Categories::DEFAULT,
         },
         Scenario {
+            name: "hanging-punctuation",
+            intent: "a comma at a line end under the book profile, which hangs it past the measure",
+            paragraph: plain(
+                "あいう、えおか、きくけ、こ",
+                3_000,
+                WritingMode::HorizontalTb,
+            )?,
+            style: Style::book_2020(),
+            categories: Categories::DEFAULT,
+        },
+        Scenario {
             name: "mono-ruby",
             intent: "a construct on the line, which stops the indexed fast measurement",
             paragraph: ruby_paragraph,
@@ -268,7 +279,15 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
     assert_eq!(
         seen,
         [
+            "expand.residual",
+            "expand.site",
+            "expand.stage",
+            "hang.line-end",
+            "line.finished",
+            "line.fit",
             "prepare.paragraph",
+            "reduce.site",
+            "reduce.stage",
             "search.bound-stop",
             "search.candidate",
             "search.chosen",

@@ -201,12 +201,17 @@ fn expansion_complex_at(paragraph: &Paragraph, ordinal: usize) -> Option<Complex
 fn prepare_line_adjustments_with_scratch(
     paragraph: &Paragraph,
     style: &Style,
-    line_start: usize,
-    line_end: usize,
     need: i64,
     adjustments: &mut Vec<i32>,
     scratch: &mut LineScratch,
+    recorder: LineRecorder<'_>,
 ) {
+    let LineRecorder {
+        line,
+        start: line_start,
+        end: line_end,
+        trace,
+    } = recorder;
     adjustments.clear();
     adjustments.resize(line_end.saturating_sub(line_start), 0);
     match need.cmp(&0) {
@@ -214,11 +219,15 @@ fn prepare_line_adjustments_with_scratch(
             prepare_line_reductions_with_scratch(
                 paragraph,
                 style,
-                line_start,
-                line_end,
                 need.saturating_abs(),
                 adjustments,
                 scratch,
+                LineRecorder {
+                    line,
+                    start: line_start,
+                    end: line_end,
+                    trace,
+                },
             );
             return;
         },
@@ -232,6 +241,27 @@ fn prepare_line_adjustments_with_scratch(
         .extend((line_start..line_end.saturating_sub(1)).map(|before| {
             boundary_expansion_site_on_line(paragraph, style, before, line_start, line_end)
         }));
+    if trace.wants(Categories::EXPAND) {
+        for (boundary, site) in scratch.expansion_sites.iter().enumerate() {
+            if let ExpansionSite::Site {
+                weight,
+                bounded,
+                residual,
+            } = *site
+            {
+                trace.push(
+                    boundary_site(paragraph, line, line_start, boundary),
+                    Fact::ExpansionSite {
+                        boundary,
+                        weight,
+                        cap: bounded.map(|(cap, _)| cap),
+                        stage: bounded.map(|(_, stage)| stage),
+                        residual,
+                    },
+                );
+            }
+        }
+    }
     let mut remaining = need;
     for stage in 1_u8..=3 {
         if remaining == 0 {
@@ -265,6 +295,18 @@ fn prepare_line_adjustments_with_scratch(
             &mut scratch.distribution,
         );
         remaining = remaining.saturating_sub(take);
+        if trace.wants(Categories::EXPAND) {
+            trace.push(
+                line_site(paragraph, line, line_start, line_end),
+                Fact::ExpansionStage {
+                    stage,
+                    sites: scratch.distribution_sites.len(),
+                    capacity,
+                    taken: take,
+                    remaining,
+                },
+            );
+        }
     }
 
     if remaining == 0 {
@@ -292,6 +334,60 @@ fn prepare_line_adjustments_with_scratch(
         adjustments,
         &mut scratch.distribution,
     );
+    if trace.wants(Categories::EXPAND) {
+        trace.push(
+            line_site(paragraph, line, line_start, line_end),
+            Fact::ExpansionResidual {
+                sites: scratch.distribution_sites.len(),
+                amount: remaining,
+            },
+        );
+    }
+}
+
+/// The line being set and the sink, carried together.
+///
+/// The span travels with the ordinal because a site event needs both, and two separate
+/// arguments are two things a caller can desynchronize — the defect ADR 0019 names.
+struct LineRecorder<'a> {
+    line: u32,
+    start: usize,
+    end: usize,
+    trace: &'a mut Trace,
+}
+
+/// The whole line, as a site.
+fn line_site(paragraph: &Paragraph, line: u32, line_start: usize, line_end: usize) -> Site {
+    Site::on_line(
+        line,
+        line_start..line_end,
+        cluster_range_bytes(paragraph, line_start, line_end),
+    )
+}
+
+/// One boundary within a line, as a site.
+///
+/// `boundary` is the ordinal the ladder uses — an offset from the line's first cluster —
+/// so it is resolved back to a paragraph position before it is recorded, because every
+/// core position a caller sees is a paragraph position.
+fn boundary_site(paragraph: &Paragraph, line: u32, line_start: usize, boundary: usize) -> Site {
+    let ordinal = line_start.saturating_add(boundary);
+    let end = ordinal.saturating_add(1);
+    Site::on_line(
+        line,
+        ordinal..end,
+        cluster_range_bytes(paragraph, ordinal, end),
+    )
+}
+
+fn cluster_range_bytes(paragraph: &Paragraph, start: usize, end: usize) -> Range<usize> {
+    let clusters = paragraph.text.clusters();
+    let first = clusters.get(start).map_or(0, |cluster| cluster.range().start);
+    let last = end
+        .checked_sub(1)
+        .and_then(|ordinal| clusters.get(ordinal))
+        .map_or(first, |cluster| cluster.range().end);
+    first..last
 }
 
 #[cfg(test)]
@@ -304,26 +400,38 @@ fn prepare_line_adjustments(
     adjustments: &mut Vec<i32>,
 ) {
     let mut scratch = LineScratch::new();
+    // The unit tests inspect the distribution rather than the recording, so they pass a
+    // sink that is off and keep the signature they had before the trace existed.
+    let mut trace = Trace::off();
     prepare_line_adjustments_with_scratch(
         paragraph,
         style,
-        line_start,
-        line_end,
         need,
         adjustments,
         &mut scratch,
+        LineRecorder {
+            line: 0,
+            start: line_start,
+            end: line_end,
+            trace: &mut trace,
+        },
     );
 }
 
 fn prepare_line_reductions_with_scratch(
     paragraph: &Paragraph,
     style: &Style,
-    line_start: usize,
-    line_end: usize,
     mut need: i64,
     adjustments: &mut [i32],
     scratch: &mut LineScratch,
+    recorder: LineRecorder<'_>,
 ) {
+    let LineRecorder {
+        line,
+        start: line_start,
+        end: line_end,
+        trace,
+    } = recorder;
     collect_reduction_sites(
         paragraph,
         style,
@@ -331,10 +439,27 @@ fn prepare_line_reductions_with_scratch(
         line_end,
         &mut scratch.reduction_sites,
     );
+    if trace.wants(Categories::REDUCE) {
+        for site in &scratch.reduction_sites {
+            trace.push(
+                boundary_site(paragraph, line, line_start, site.boundary),
+                Fact::ReductionSite {
+                    boundary: site.boundary,
+                    weight: site.weight,
+                    capacity: site.capacity,
+                    stage: site.stage,
+                    discrete: site.discrete,
+                },
+            );
+        }
+    }
     for stage in 1_u8..=6 {
         if need <= 0 {
             break;
         }
+        // Held so the rung can report what its whole-site takes absorbed. Without it the
+        // recorded `need` would drop between two rungs with nothing recorded taking it.
+        let stage_need = need;
         for site in scratch
             .reduction_sites
             .iter()
@@ -347,8 +472,22 @@ fn prepare_line_reductions_with_scratch(
             apply_reduction(site.boundary, i64::from(site.capacity), adjustments);
             need = need.saturating_sub(i64::from(site.capacity));
         }
+        let discrete_taken = stage_need.saturating_sub(need);
 
         if need <= 0 {
+            if trace.wants(Categories::REDUCE) {
+                trace.push(
+                    line_site(paragraph, line, line_start, line_end),
+                    Fact::ReductionStage {
+                        stage,
+                        need: stage_need,
+                        discrete_taken,
+                        capacity: 0,
+                        taken: 0,
+                        remaining: need,
+                    },
+                );
+            }
             break;
         }
         scratch.stage_reductions.clear();
@@ -371,6 +510,19 @@ fn prepare_line_reductions_with_scratch(
             &mut scratch.distribution,
         );
         need = need.saturating_sub(take);
+        if trace.wants(Categories::REDUCE) {
+            trace.push(
+                line_site(paragraph, line, line_start, line_end),
+                Fact::ReductionStage {
+                    stage,
+                    need: stage_need,
+                    discrete_taken,
+                    capacity,
+                    taken: take,
+                    remaining: need,
+                },
+            );
+        }
     }
 }
 

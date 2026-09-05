@@ -743,10 +743,14 @@ impl Composer {
             let line = self.place_line(
                 paragraph,
                 style,
-                start_cluster..end_cluster,
-                line_index,
+                LineContext {
+                    start: start_cluster,
+                    end: end_cluster,
+                    index: line_index,
+                },
                 block_origin,
                 is_last,
+                trace,
             );
             if i64::from(line.inline_extent) > i64::from(paragraph.line_extent) {
                 layout.diagnostics.push(Diagnostic {
@@ -795,13 +799,16 @@ impl Composer {
         &mut self,
         paragraph: &Paragraph,
         style: &Style,
-        cluster_range: Range<usize>,
-        line_index: usize,
+        context: LineContext,
         block_origin: i32,
         is_last: bool,
+        trace: &mut Trace,
     ) -> Line {
-        let start_cluster = cluster_range.start;
-        let end_cluster = cluster_range.end;
+        let LineContext {
+            start: start_cluster,
+            end: end_cluster,
+            index: line_index,
+        } = context;
         self.line_advances.clear();
         let clusters = &paragraph.text.clusters()[start_cluster..end_cluster];
         self.line_advances
@@ -838,14 +845,35 @@ impl Composer {
             Alignment::End => remaining.max(0),
         };
         let justify = line_should_justify(paragraph.alignment, is_last, remaining, clusters.len());
+        let need = line_adjustment_need(remaining, justify);
+        let line_ordinal = u32::try_from(line_index).unwrap_or(u32::MAX);
+        if trace.wants(Categories::PLACE) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::LineFit {
+                    is_last,
+                    content_width,
+                    available: i64::from(paragraph.line_extent),
+                    remaining,
+                    cluster_count: clusters.len(),
+                    justify,
+                    need,
+                    alignment_offset,
+                },
+            );
+        }
         prepare_line_adjustments_with_scratch(
             paragraph,
             style,
-            start_cluster,
-            end_cluster,
-            line_adjustment_need(remaining, justify),
+            need,
             &mut self.line_adjustments,
             &mut self.line_scratch,
+            LineRecorder {
+                line: line_ordinal,
+                start: start_cluster,
+                end: end_cluster,
+                trace,
+            },
         );
 
         let mut placed = Vec::with_capacity(clusters.len());
@@ -947,13 +975,18 @@ impl Composer {
             0..0
         };
         let occupied = cursor.saturating_sub(alignment_offset);
-        let hanging = hanging_amount(
-            paragraph,
-            style,
-            end_cluster,
-            occupied,
-            i64::from(paragraph.line_extent),
-        );
+        let available = i64::from(paragraph.line_extent);
+        let hanging = hanging_amount(paragraph, style, end_cluster, occupied, available);
+        if hanging != 0 && trace.wants(Categories::HANGING) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::Hanging {
+                    occupied,
+                    available,
+                    amount: hanging,
+                },
+            );
+        }
         let mut line = Line {
             range,
             inline_origin: clamp_i32(alignment_offset),
@@ -972,6 +1005,19 @@ impl Composer {
             &mut line,
             &mut self.line_scratch.construct_ordinals,
         );
+        if trace.wants(Categories::PLACE) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::LineFinished {
+                    inline_origin: line.inline_origin,
+                    block_origin: line.block_origin,
+                    inline_extent: line.inline_extent,
+                    block_extent: line.block_extent,
+                    clusters: line.clusters.len(),
+                    attachments: line.attachments.len(),
+                },
+            );
+        }
         line
     }
 }

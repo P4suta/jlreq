@@ -171,6 +171,95 @@ fn write_fields(fact: &Fact, formatter: &mut fmt::Formatter<'_>) -> fmt::Result 
             formatter,
             "line={line} start={start_candidate} end={end_candidate} edge={edge_cost}"
         ),
+        Fact::LineFit {
+            is_last,
+            content_width,
+            available,
+            remaining,
+            cluster_count,
+            justify,
+            need,
+            alignment_offset,
+        } => write!(
+            formatter,
+            "last={last} content={content_width} avail={available} remaining={remaining} \
+             clusters={cluster_count} justify={justify} need={need} offset={alignment_offset}",
+            last = flag(is_last),
+            justify = flag(justify),
+        ),
+        Fact::ReductionSite {
+            boundary,
+            weight,
+            capacity,
+            stage,
+            discrete,
+        } => write!(
+            formatter,
+            "boundary={boundary} weight={weight} capacity={capacity} stage={stage} \
+             discrete={discrete}",
+            discrete = flag(discrete),
+        ),
+        Fact::ReductionStage {
+            stage,
+            need,
+            discrete_taken,
+            capacity,
+            taken,
+            remaining,
+        } => write!(
+            formatter,
+            "stage={stage} need={need} discrete={discrete_taken} capacity={capacity} \
+             taken={taken} remaining={remaining}"
+        ),
+        Fact::ExpansionSite {
+            boundary,
+            weight,
+            cap,
+            stage,
+            residual,
+        } => {
+            write!(formatter, "boundary={boundary} weight={weight}")?;
+            if let Some(cap) = cap {
+                write!(formatter, " cap={cap}")?;
+            }
+            if let Some(stage) = stage {
+                write!(formatter, " stage={stage}")?;
+            }
+            write!(formatter, " residual={residual}", residual = flag(residual))
+        },
+        Fact::ExpansionStage {
+            stage,
+            sites,
+            capacity,
+            taken,
+            remaining,
+        } => write!(
+            formatter,
+            "stage={stage} sites={sites} capacity={capacity} taken={taken} remaining={remaining}"
+        ),
+        Fact::ExpansionResidual { sites, amount } => {
+            write!(formatter, "sites={sites} amount={amount}")
+        },
+        Fact::Hanging {
+            occupied,
+            available,
+            amount,
+        } => write!(
+            formatter,
+            "occupied={occupied} avail={available} amount={amount}"
+        ),
+        Fact::LineFinished {
+            inline_origin,
+            block_origin,
+            inline_extent,
+            block_extent,
+            clusters,
+            attachments,
+        } => write!(
+            formatter,
+            "inline={inline_origin} block={block_origin} extent={inline_extent} \
+             block_extent={block_extent} clusters={clusters} attachments={attachments}"
+        ),
     }
 }
 
@@ -263,6 +352,114 @@ mod tests {
                 },
                 "search.chosen            L03  c5 b15..18 line=3 start=2 end=5 edge=31 3.1.1",
             ),
+            (
+                Site::on_line(1, 0..5, 0..15),
+                Fact::LineFit {
+                    is_last: false,
+                    content_width: 4_307,
+                    available: 4_001,
+                    remaining: -306,
+                    cluster_count: 5,
+                    justify: false,
+                    need: -306,
+                    alignment_offset: 37,
+                },
+                "line.fit                 L01  c0..5 b0..15 last=0 content=4307 avail=4001 \
+                 remaining=-306 clusters=5 justify=0 need=-306 offset=37 3.8.1",
+            ),
+            (
+                Site::on_line(1, 2..3, 6..9),
+                Fact::ReductionSite {
+                    boundary: 2,
+                    weight: 1_009,
+                    capacity: 251,
+                    stage: 3,
+                    discrete: true,
+                },
+                "reduce.site              L01  c2 b6..9 boundary=2 weight=1009 capacity=251 \
+                 stage=3 discrete=1 3.8.3",
+            ),
+            (
+                Site::on_line(1, 0..5, 0..15),
+                Fact::ReductionStage {
+                    stage: 4,
+                    need: 306,
+                    discrete_taken: 41,
+                    capacity: 199,
+                    taken: 173,
+                    remaining: 92,
+                },
+                "reduce.stage             L01  c0..5 b0..15 stage=4 need=306 discrete=41 \
+                 capacity=199 taken=173 remaining=92 3.8.3",
+            ),
+            (
+                Site::on_line(2, 3..4, 9..12),
+                Fact::ExpansionSite {
+                    boundary: 3,
+                    weight: 1_013,
+                    cap: Some(257),
+                    stage: Some(2),
+                    residual: false,
+                },
+                "expand.site              L02  c3 b9..12 boundary=3 weight=1013 cap=257 stage=2 \
+                 residual=0 3.8.3",
+            ),
+            (
+                // A residual-only site states no ceiling and no rung, and the rendering
+                // omits both rather than printing a placeholder a reader could misread.
+                Site::on_line(2, 4..5, 12..15),
+                Fact::ExpansionSite {
+                    boundary: 4,
+                    weight: 1_019,
+                    cap: None,
+                    stage: None,
+                    residual: true,
+                },
+                "expand.site              L02  c4 b12..15 boundary=4 weight=1019 residual=1 3.8.3",
+            ),
+            (
+                Site::on_line(2, 0..6, 0..18),
+                Fact::ExpansionStage {
+                    stage: 3,
+                    sites: 2,
+                    capacity: 514,
+                    taken: 263,
+                    remaining: 269,
+                },
+                "expand.stage             L02  c0..6 b0..18 stage=3 sites=2 capacity=514 \
+                 taken=263 remaining=269 3.8.3",
+            ),
+            (
+                Site::on_line(2, 0..6, 0..18),
+                Fact::ExpansionResidual {
+                    sites: 3,
+                    amount: 269,
+                },
+                "expand.residual          L02  c0..6 b0..18 sites=3 amount=269 3.8.3",
+            ),
+            (
+                Site::on_line(4, 0..7, 0..21),
+                Fact::Hanging {
+                    occupied: 4_271,
+                    available: 4_001,
+                    amount: 271,
+                },
+                "hang.line-end            L04  c0..7 b0..21 occupied=4271 avail=4001 amount=271 \
+                 2.5.1",
+            ),
+            (
+                Site::on_line(5, 0..8, 0..24),
+                Fact::LineFinished {
+                    inline_origin: 37,
+                    block_origin: 1_009,
+                    inline_extent: 3_989,
+                    block_extent: 1_013,
+                    clusters: 8,
+                    attachments: 2,
+                },
+                "line.finished            L05  c0..8 b0..24 inline=37 block=1009 extent=3989 \
+                 block_extent=1013 clusters=8 attachments=2 3.8.1",
+            ),
         ]
     }
 
@@ -316,7 +513,7 @@ mod tests {
         let mut lines = rendered.lines();
         assert_eq!(
             lines.next(),
-            Some("jlreq.trace/1 events=6 categories=0x0fff truncated=0")
+            Some("jlreq.trace/1 events=15 categories=0x0fff truncated=0")
         );
         for (ordinal, line) in lines.enumerate() {
             let wanted = format!("{ordinal:04} ");

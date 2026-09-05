@@ -1,6 +1,8 @@
 # single-line
 # a measure wide enough that the search never rejects a candidate
 # lines=1 diagnostics=0
-jlreq.trace/1 events=2 categories=0x07fb truncated=0
+jlreq.trace/1 events=4 categories=0x07fb truncated=0
 0000 prepare.paragraph        P   c0..5 b0..15 clusters=5 candidates=6 constructs=0 fast=1 extent=60000 mode=horizontal-tb align=justify
 0001 search.chosen            L00 c0..5 b0..15 line=0 start=0 end=5 edge=30250000 3.1.1
+0002 line.fit                 L00 c0..5 b0..15 last=1 content=5000 avail=60000 remaining=55000 clusters=5 justify=0 need=0 offset=0 3.8.1
+0003 line.finished            L00 c0..5 b0..15 inline=0 block=0 extent=5000 block_extent=1000 clusters=5 attachments=0 3.8.1

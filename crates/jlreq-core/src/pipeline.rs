@@ -3131,10 +3131,19 @@ mod tests {
         assert!(!trace.is_truncated());
 
         for event in trace.events() {
-            // Only a decision taken while a line is being set can name one; everything
-            // the search and the preparation say is about the paragraph.
+            // Only a decision taken while a line is being set can name one; what the
+            // preparation and the search say is about the paragraph, because neither is
+            // composing a line when it says it.
             let names_a_line = event.site().line().is_some();
-            assert_eq!(names_a_line, event.kind() == "search.chosen");
+            let paragraph_scoped = matches!(
+                event.kind(),
+                "prepare.paragraph"
+                    | "search.candidate"
+                    | "search.bound-stop"
+                    | "search.refused-candidate"
+                    | "search.refused"
+            );
+            assert_eq!(names_a_line, !paragraph_scoped, "{}", event.kind());
         }
     }
 
