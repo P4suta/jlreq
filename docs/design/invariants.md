@@ -38,7 +38,7 @@ it; a renderer could refuse to draw and say why.
 | fault | the statement it holds |
 | --- | --- |
 | `extent-is-negative` | a line occupies a non-negative extent on both axes |
-| `block-progression-reverses` | lines progress in one direction and never turn back |
+| `block-progression-reverses` | the direction lines progress in, once established, never reverses |
 | `coverage-starts-late` | the first line starts at the start of the source |
 | `coverage-ends-early` | the last line reaches the end of the source |
 | `lines-do-not-meet` | consecutive lines meet end to end, leaving no gap and no overlap |
@@ -50,9 +50,15 @@ it; a renderer could refuse to draw and say why.
 | `attachment-names-no-construct` | an attachment names a construct that exists |
 | `attachment-escapes-its-annotation` | an attachment claims only bytes its annotation stream holds |
 
-Together the first six say the lines *partition the source* — the property that would break
-first if composition ever dropped or duplicated input, and the one nothing else in the
-workspace states.
+Together the coverage and meeting faults say the lines *partition the source* — the property
+that would break first if composition ever dropped or duplicated input, and the one nothing
+else in the workspace states.
+
+`block-progression-reverses` is deliberately the weaker of the two statements available. It
+holds that the sign of consecutive block-origin steps never flips once a non-zero step has
+established one; it does not require strict monotonicity, because no layout in the corpus
+witnesses two lines sharing a block origin and an invariant with no witness is a guess. If
+one ever appears, that is the moment to decide whether it is legal.
 
 Two of these are subtler than they look, and the golden corpus corrected both before they
 could ship as false assertions:

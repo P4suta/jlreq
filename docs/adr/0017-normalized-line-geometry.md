@@ -1,7 +1,20 @@
 # ADR-0017: a line is stated in normalized geometry, and every trim is reported
 
-- Status: accepted
+- Status: accepted; the trimming half is unimplemented in 0.1.0
 - Date: 2026-08-06
+
+> **Implementation note.** `Line::trims` does not exist and no path in the core subtracts a
+> conditional space from a caller's advance: `Frame` reaches only class narrowing, and
+> Table 1's amounts are only ever added. The decision below stands unchanged — what is
+> missing is the behavior, not the reasoning.
+>
+> It is deliberately not being implemented yet, because doing so moves the composed advance
+> of the five commonest punctuation classes across an entire corpus, and the census that
+> would catch a mistake in a change that size cannot be run from this repository.
+> [`docs/decisions/frame-normalization-unimplemented.md`](../decisions/frame-normalization-unimplemented.md)
+> records the measurements, the four places the gap shows, and what would resume the work.
+> `crates/jlreq-core/tests/frame_normalization.rs` pins the current behavior so the day this
+> changes is not a silent one.
 
 ## Context
 
