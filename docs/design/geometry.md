@@ -149,10 +149,16 @@ full-em clusters, each lane overhangs its line by half an em on the block axis, 
 say onto the line beside it. `jlreq::verify` reports both lanes as `cell-escapes-its-line`,
 and `crates/jlreq/tests/document_trace.rs` records exactly those two faults by name.
 
-Two consequences the checker does not name separately, because naming them would be a
-second report of the same defect: a lane's cell reaches into the *adjacent* line's cells,
-which nothing compares, and the lane order stays correct throughout — in `VerticalRl` the
-first lane is the right-hand one, as vertical reading order requires.
+One consequence the checker does not name separately, because naming it would be a second
+report of the same defect: the overhanging lane reaches into the *adjacent* line's cells,
+and nothing compares one line's cells against another's.
+
+What the size does **not** disturb is the order. In `VerticalRl` the first lane is the
+right-hand one, as vertical reading order requires, and each lane runs along the inline axis
+in source order; a full-size lane is drawn over its neighbour, not reversed.
+`a_warichu_reads_the_way_its_writing_mode_does` in
+[`crates/jlreq/tests/geometry.rs`](../../crates/jlreq/tests/geometry.rs) holds that, with
+four characters — two put one character in each lane, which looks the same either way round.
 
 **A tate-chu-yoko run widens its line.** The members of a 縦中横 stand side by side across
 the column at their own advances, and the line's block extent is the sum of them. Nothing
