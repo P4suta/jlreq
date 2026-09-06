@@ -14,6 +14,7 @@ fn map_core_lines(
     prepared: &PreparedText,
     mapping: &LineMapping<'_>,
     options: &LayoutOptions,
+    trace: &mut DocumentTrace,
 ) -> Vec<TextLine> {
     let LineMapping {
         attachments,
@@ -27,6 +28,8 @@ fn map_core_lines(
     for (line_index, line) in layout.lines().iter().enumerate() {
         let mut cells = Vec::new();
         let epoch = line_index.saturating_add(1);
+        let document_range = line.range().start.saturating_add(global_offset)
+            ..line.range().end.saturating_add(global_offset);
         for placement in line.clusters() {
             let range = placement.range();
             let cluster_indices = placement_cluster_indices(placement.origin(), prepared, &range);
@@ -85,8 +88,9 @@ fn map_core_lines(
             .map(|cell| cell.inline)
             .min()
             .unwrap_or_else(|| line.inline_origin());
+        let start_cursor = cursor;
         let mut glyphs = Vec::new();
-        for visual_index in visual {
+        for (ordinal, visual_index) in visual.into_iter().enumerate() {
             let cell = &cells[visual_index];
             let mut cluster_cursor = 0_i32;
             visit_logical_cluster_order(&cell.clusters, cell.level, |cluster_index| {
@@ -115,10 +119,35 @@ fn map_core_lines(
                 }
                 cluster_cursor = cluster_cursor.saturating_add(cluster.advance);
             });
-            cursor = cursor
-                .saturating_add(cell.advance.max(cluster_cursor))
+            let step = cell
+                .advance
+                .max(cluster_cursor)
                 .saturating_add(cell.trailing_gap);
+            // The composer's own coordinate, the advance it charged, and the
+            // distance the cursor actually moves are three different numbers,
+            // and nothing recorded the third. Both defects this channel was
+            // added for were a disagreement among them.
+            trace.record(
+                Site::in_paragraph(paragraph_index, document_range.clone()),
+                Fact::CellStepped {
+                    ordinal,
+                    inline: cell.inline,
+                    advance: cell.advance,
+                    step,
+                },
+            );
+            cursor = cursor.saturating_add(step);
         }
+        trace.record(
+            Site::in_paragraph(paragraph_index, document_range.clone()),
+            Fact::LinePlaced {
+                line: line_index,
+                cells: cells.len(),
+                cursor: start_cursor,
+                inline_extent: line.inline_extent(),
+                content_end: cursor,
+            },
+        );
         append_attachments(
             &mut glyphs,
             line,
@@ -227,6 +256,26 @@ struct Cell {
 /// the gap alongside the advance instead: the line keeps the core's total
 /// width, and each gap stays attached to the cell it followed. A lane that
 /// restarts behind its predecessor (warichu, furawake) yields no gap.
+/// Carry the core's own step from one placement to the next.
+///
+/// The visual cursor advances by `advance + trailing_gap`, so the gap is
+/// whatever makes that sum the step the composer actually took. It is *not* the
+/// empty space between two cells, and it is signed, because a cell's `advance`
+/// is what the composer charged it rather than the distance to its neighbor:
+///
+/// - A conditional space at a class boundary is charged to the boundary, so the
+///   next cluster begins **inside** the preceding advance and the step is
+///   shorter than it. `漢`+`A` places one quarter em and bills part of it to
+///   each side. Dropping that shortfall pushes the rest of the line along, and
+///   a line with two such boundaries draws a quarter em past where it was
+///   composed.
+/// - The two halves of a tate-chu-yoko run share **one** inline position and
+///   differ only in block, so their step is zero. Advancing anyway spends a
+///   whole em the line was never given.
+///
+/// A step backwards is different in kind: a warichu or furawake lane restarts
+/// near the line's start, which is a new lane rather than a shared coordinate,
+/// and the cursor must not follow it. That is the one case the clamp keeps.
 fn assign_trailing_gaps(cells: &mut [Cell]) {
     for index in 0..cells.len() {
         let Some(next) = cells.get(index.saturating_add(1)) else {
@@ -235,8 +284,8 @@ fn assign_trailing_gaps(cells: &mut [Cell]) {
         let Some(cell) = cells.get(index) else {
             break;
         };
-        let occupied = cell.inline.saturating_add(cell.advance);
-        let gap = next.inline.saturating_sub(occupied).max(0);
+        let step = next.inline.saturating_sub(cell.inline).max(0);
+        let gap = step.saturating_sub(cell.advance);
         if let Some(cell) = cells.get_mut(index) {
             cell.trailing_gap = gap;
         }
