@@ -354,17 +354,18 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
 fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> {
     // One known defect, stated rather than skipped. The facade never reduces a
     // warichu to the smaller size §3.4 sets it at, so its two lanes are placed
-    // at the paragraph's own em inside the one em the line reserved, and each
-    // overhangs by half of one. `crates/jlreq/tests/warichu_size.rs` pins the
-    // geometry and records why choosing the size is deferred. When it is
-    // chosen, this expectation is what tells whoever chose it to come here.
+    // at the paragraph's own em inside the one em the line reserved, so each
+    // overhangs its line by half an em along the block axis — onto the line
+    // beside it. `crates/jlreq/tests/construct_size.rs` pins the geometry and
+    // records why choosing the size is deferred. When it is chosen, this
+    // expectation is what tells whoever chose it to come here.
     //
     // Counted per (scenario, kind) and compared in sorted order rather than as
     // a positional list, so that adding a scenario to the corpus or reordering
     // the statements inside `inspect` cannot fail this test for a reason that
     // is not geometric. A genuinely new fault appears as its own row, naming
     // the scenario it came from.
-    let known: &[(&str, &str, usize)] = &[("constructs", "cell-escapes-the-measure-silently", 2)];
+    let known: &[(&str, &str, usize)] = &[("constructs", "cell-escapes-its-line", 2)];
 
     let mut counted: BTreeMap<(&str, &str), usize> = BTreeMap::new();
     for scenario in corpus()? {

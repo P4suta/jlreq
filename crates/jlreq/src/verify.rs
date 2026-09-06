@@ -56,15 +56,29 @@ use crate::{Affinity, Point, WritingMode};
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Fault {
-    /// A glyph's [`GlyphPlacement::cell_bounds`] leaves the line holding it.
+    /// A body glyph's [`GlyphPlacement::cell_bounds`] leaves its line along the
+    /// **block** axis — above or below the line in horizontal writing, left or
+    /// right of the column in vertical.
+    ///
+    /// This is the axis a line does not negotiate: its block extent is what the
+    /// composer reserved, and the next line begins where it ends, so a cell
+    /// past that edge is a cell drawn onto a neighbour. The measure is the
+    /// other axis and has its own statement, because it has exemptions this
+    /// one does not.
+    ///
+    /// Compared against the line's own composed box, never against
+    /// [`TextLine::bounds`](crate::TextLine::bounds): `bounds` is defined as
+    /// the union of the very cells it would be asked about, so a check against
+    /// it can have no witness, which `docs/design/invariants.md` rules out.
     CellEscapesItsLine {
         /// The line ordinal.
         line: usize,
         /// The bytes the glyph is attributed to.
         range: Range<usize>,
     },
-    /// A body glyph sits outside its line's own measure, and it is neither the
-    /// line's last cell nor covered by a `layout.overfull` diagnostic.
+    /// A body glyph sits outside its line's own measure — the **inline** axis —
+    /// and it is neither the line's last cell nor covered by a
+    /// `layout.overfull` diagnostic.
     ///
     /// Two things legitimately pass the measure. A line may hold more than it
     /// fits, which the diagnostic reports; and the last cell may hang past it,
@@ -394,7 +408,6 @@ fn check_line(
     overfull: &[Range<usize>],
     report: &mut Report,
 ) {
-    let bounds = line.bounds();
     let excused = overfull
         .iter()
         .any(|range| range.start < line.range().end && line.range().start < range.end);
@@ -410,20 +423,30 @@ fn check_line(
 
     for glyph in line.glyphs() {
         let cell = glyph.cell_bounds();
-        if !contains(bounds, cell) {
-            report.note(Fault::CellEscapesItsLine {
-                line: line.index(),
-                range: glyph.source_range(),
-            });
-        }
         if glyph.annotation().is_some() {
+            // An annotation is outside the body's block extent by design — that
+            // is what standing beside the text means — so it is asked the one
+            // question that distinguishes beside from over.
             if overlaps_block(mode, body, cell) {
                 report.note(Fault::AnnotationOverlapsItsBase {
                     line: line.index(),
                     range: glyph.source_range(),
                 });
             }
-        } else if !contains(body, cell) && !excused && hanging != Some(inline_start(mode, cell)) {
+            continue;
+        }
+        // The two axes are asked separately because they have different
+        // exemptions and different consequences: past the block edge is a cell
+        // on a neighbouring line, past the measure is a line holding more than
+        // it reports. Naming them apart is what makes a report say which.
+        if !within_block(mode, body, cell) {
+            report.note(Fault::CellEscapesItsLine {
+                line: line.index(),
+                range: glyph.source_range(),
+            });
+        }
+        if !within_inline(mode, body, cell) && !excused && hanging != Some(inline_start(mode, cell))
+        {
             report.note(Fault::CellEscapesTheMeasureSilently {
                 line: line.index(),
                 range: glyph.source_range(),
@@ -535,6 +558,26 @@ fn centre(cell: Rect) -> Option<Point> {
         x.checked_add(width / 2)?,
         y.checked_add(height / 2)?,
     ))
+}
+
+/// Does `inner` stay inside `outer` along the axis lines progress down?
+fn within_block(mode: WritingMode, outer: Rect, inner: Rect) -> bool {
+    let (ox, oy, ow, oh) = outer.as_26_6();
+    let (ix, iy, iw, ih) = inner.as_26_6();
+    match mode {
+        WritingMode::VerticalRl => ix >= ox && ix.saturating_add(iw) <= ox.saturating_add(ow),
+        _ => iy >= oy && iy.saturating_add(ih) <= oy.saturating_add(oh),
+    }
+}
+
+/// Does `inner` stay inside `outer` along the axis a line runs along?
+fn within_inline(mode: WritingMode, outer: Rect, inner: Rect) -> bool {
+    let (ox, oy, ow, oh) = outer.as_26_6();
+    let (ix, iy, iw, ih) = inner.as_26_6();
+    match mode {
+        WritingMode::VerticalRl => iy >= oy && iy.saturating_add(ih) <= oy.saturating_add(oh),
+        _ => ix >= ox && ix.saturating_add(iw) <= ox.saturating_add(ow),
+    }
 }
 
 fn contains(outer: Rect, inner: Rect) -> bool {
@@ -652,14 +695,28 @@ mod tests {
         assert_eq!(report.to_string(), "sound");
     }
 
+    /// Compared against the line's composed box, not against
+    /// [`TextLine::bounds`]. `bounds` unions in the cells of the very glyphs
+    /// this walks, so a check against it holds for every layout the engine can
+    /// build and would only ever have failed on a fixture whose `hit_bounds`
+    /// was left stale — which is what this test used to do.
     #[test]
     fn a_cell_outside_its_line_is_reported() {
         let mut broken = sound_layout();
-        broken.lines[0].glyphs[1].x = 10 * EM;
+        broken.lines[0].glyphs[1].y = 10 * EM;
         let report = inspect(&broken);
         assert!(
             kinds(&report).contains(&"cell-escapes-its-line"),
             "{report}"
+        );
+        // The block axis, and only it. Moving the same cell along the inline
+        // axis is the other statement, and this one must stay quiet about it.
+        let mut sideways = sound_layout();
+        sideways.lines[0].glyphs[1].x = 10 * EM;
+        assert!(
+            !kinds(&inspect(&sideways)).contains(&"cell-escapes-its-line"),
+            "{}",
+            inspect(&sideways)
         );
     }
 

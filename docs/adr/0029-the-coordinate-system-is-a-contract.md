@@ -62,6 +62,15 @@ that is its own decision to take.
    fault list, because `docs/design/invariants.md` already rules out invariants no input can
    violate.
 
+   The same rule caught a third statement after this decision was written. *A cell stays
+   inside its line* was asked against `TextLine::bounds`, which is the union of the very
+   cells being asked about, so no layout could break it either; its witness only failed
+   because it mutated a fixture after that union had been computed. It survives as a
+   statement about the line's *composed box*, split by axis: past the block edge is a cell
+   drawn onto a neighbouring line, past the measure is a line holding more than it reports.
+   Asking them together had been reporting every warichu overhang — a block-axis fault — as
+   a measure overrun.
+
 4. **A tate-chu-yoko run stands in its column.** The construct changes which way a glyph
    faces, not which way the column runs, so a member's coordinates are mapped from the
    paragraph's axes like every other cell on its line and its cell is its own reduced

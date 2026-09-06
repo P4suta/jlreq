@@ -47,8 +47,10 @@ cells. It is not the ink of an outline: a rasterizer derives ink bounds from the
 face, size, variations, and synthesis, and ink may sit inside the cell or overhang it.
 
 - `GlyphPlacement::cell_bounds` is one glyph's virtual body (仮想ボディ).
-- `TextLine::bounds` covers the line's own text cell **and** every annotation beside it, so
-  a ruby line's bounds are taller than its `block_extent`.
+- `TextLine::bounds` covers the line's own text cell **and every cell in the line**, so a
+  ruby line's bounds are taller than its `block_extent`, and so are the bounds of a line
+  holding a cell that escaped. It is a union, not a claim: ask it what to repaint, never
+  whether a cell is where it should be.
 - `TextLayout::bounds` is the union of the lines'.
 
 ## The corner a placement names
@@ -68,11 +70,11 @@ glyph's origin sits at the far end of its own.
 A tate-chu-yoko run is set upright inside vertical text, and that is all it changes. Its
 members stand in the column like every other cell on their line: the axes are the
 paragraph's, the corner rule is the same, and only the glyph's own orientation — reported as
-`GlyphTransform::TateChuYoko`, and the direction of its `advance_x` — differs. What the run
-does have is a cell narrower than an em: the composer gives each member its own reduced
-advance across the column and reserves the run's total rather than an em per member, so a
-two-digit run in a 16-unit em occupies about eleven units of column, side by side, in one
-em of it.
+`GlyphTransform::TateChuYoko`, and the direction of its `advance_x` — differs. Along the
+inline axis the whole run stands at **one** position and occupies one em of it, however many
+members it holds. Across the column each member gets its own advance and they sit side by
+side, and the line's block extent is their sum — not one em, and not fitted to one; see
+[What is not yet true](#what-is-not-yet-true) for what that costs.
 
 Mapping a member's coordinates from its *own* orientation instead of the paragraph's put
 the run at an `x` equal to its position down the column — clear of the column entirely —
@@ -134,24 +136,38 @@ states the line's composed extent beside the coordinate its last cell reached.
 
 ## What is not yet true
 
-One construct does not satisfy the statements above, and it is stated here rather than
-excused in the checker.
+The facade hands the composer the paragraph's own em for every cluster, and has no way to be
+told otherwise. Two constructs JLReq sets *smaller* therefore come out at full size. Both
+are stated here rather than excused in the checker, and both are pinned in
+[`crates/jlreq/tests/construct_size.rs`](../../crates/jlreq/tests/construct_size.rs), which
+fails the moment either is corrected.
 
 **A warichu is set at full size.** JLReq §3.4 sets a 割注 in smaller characters, two lanes
 inside the space one line takes, and `jlreq-core` places it that way — the lanes go half an
-em either side of the line's block origin and the line reserves one em for the pair. The
-facade never reduces the size: `DocumentBuilder::warichu` marks a range and the clusters in
-it reach the composer at the paragraph's own em, so two full-em lanes are placed in the em
-the line reserved and each overhangs by half of one.
+em either side of the line's block origin and the line reserves one em for the pair. Given
+full-em clusters, each lane overhangs its line by half an em on the block axis, which is to
+say onto the line beside it. `jlreq::verify` reports both lanes as `cell-escapes-its-line`,
+and `crates/jlreq/tests/document_trace.rs` records exactly those two faults by name.
 
-`jlreq::verify` reports both lanes as leaving their measure, and it is meant to.
-`crates/jlreq/tests/warichu_size.rs` pins the geometry as it is, and
-`crates/jlreq/tests/document_trace.rs` records exactly those two faults by name, so the
-expectation fails the moment either is fixed. Choosing the size is the same open question as
-the ruby size §3.3.3 leaves open and the anisotropic sizes
-[ADR 0027](../adr/0027-the-layout-is-the-editor-surface.md) defers: ADR 0019 settles that a
-size the caller measured is carried by the measurement, and the facade offers no way to
-state one for either.
+Two consequences the checker does not name separately, because naming them would be a
+second report of the same defect: a lane's cell reaches into the *adjacent* line's cells,
+which nothing compares, and the lane order stays correct throughout — in `VerticalRl` the
+first lane is the right-hand one, as vertical reading order requires.
+
+**A tate-chu-yoko run widens its line.** The members of a 縦中横 stand side by side across
+the column at their own advances, and the line's block extent is the sum of them. Nothing
+fits that sum to the em JLReq gives the construct, so a run of two digits makes its line
+wider than every other line in the paragraph — a whole em wider with a face that leaves the
+digits at `.notdef`, about a tenth of one with a face whose digits are proportional.
+
+This one produces no fault, and that is correct: nothing escapes anything, because the line
+really is that wide. It is visible as a column that bulges, and it is pinned by measuring
+the line against its neighbours.
+
+Choosing the sizes is the same open question as the ruby size §3.3.3 leaves open and the
+anisotropic sizes [ADR 0027](../adr/0027-the-layout-is-the-editor-surface.md) defers:
+ADR 0019 settles that a size the caller measured is carried by the measurement, and the
+facade offers no way to state one for any of them.
 
 ## Where each statement is enforced
 
@@ -159,8 +175,8 @@ state one for either.
 | --- | --- |
 | lines partition the source, separators excepted | `verify::inspect` — `coverage-*`, `lines-do-not-meet` |
 | lines never overlap and never reverse direction | `verify::inspect` — `lines-overlap`, `block-progression-reverses` |
-| a cell stays inside its line | `verify::inspect` — `cell-escapes-its-line` |
-| an interior cell stays inside the measure | `verify::inspect` — `cell-escapes-the-measure-silently` |
+| a cell stays inside its line on the block axis | `verify::inspect` — `cell-escapes-its-line` |
+| an interior cell stays inside the measure (inline axis) | `verify::inspect` — `cell-escapes-the-measure-silently` |
 | an annotation stands beside its base, not over it | `verify::inspect` — `annotation-overlaps-its-base` |
 | a caret stands on some line | `verify::inspect` — `caret-stands-on-no-line` |
 | a click in a cell answers with that cell's bytes | `verify::inspect` — `hit-test-misses-its-own-cell` |

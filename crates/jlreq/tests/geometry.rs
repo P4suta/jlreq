@@ -155,7 +155,15 @@ fn a_class_boundary_spends_its_conditional_space_once() -> Result<(), Box<dyn st
     Ok(())
 }
 
-/// A tate-chu-yoko run stands in one em, however many characters it holds.
+/// A tate-chu-yoko run stands at one position down its column, with its
+/// members side by side across it.
+///
+/// Not *in one em* across the column, which is what JLReq asks and what this
+/// test used to claim: the line's block extent is derived from the run, so the
+/// run spanning its column exactly is true of any run whatever its members
+/// measure, and asserting it checks nothing. What the em costs is pinned in
+/// `crates/jlreq/tests/construct_size.rs`, by measuring the line against its
+/// neighbours instead.
 #[test]
 fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;
@@ -181,8 +189,8 @@ fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std:
     assert_eq!(cells[0].1, cells[1].1, "both halves stand at one position");
     assert_eq!(cells[0].3, cells[1].3, "both occupy the same em");
 
-    // They sit side by side across the column, meeting edge to edge and
-    // leaving it neither early nor late.
+    // They sit side by side across the column, meeting edge to edge with no
+    // gap and no overlap.
     let mut across = [cells[0], cells[1]];
     across.sort_unstable_by_key(|cell| cell.0);
     assert_eq!(
@@ -191,13 +199,19 @@ fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std:
         "the halves meet edge to edge"
     );
 
+    // The run is flush with the block-end edge its line grew from. This says
+    // where the run is, not how wide it is allowed to be — the line took its
+    // width from the run, so the far edge is wherever the members reached.
     let line = &layout.lines()[0];
-    let column_start = line.origin().x_26_6() - line.block_extent_26_6();
-    assert_eq!(across[0].0, column_start, "the run starts at the column");
     assert_eq!(
         across[1].0 + across[1].2,
         line.origin().x_26_6(),
-        "and ends at it"
+        "the run starts at the line's block origin"
+    );
+    assert_eq!(
+        across[0].0,
+        line.origin().x_26_6() - line.block_extent_26_6(),
+        "and the line is as wide as the run made it"
     );
     Ok(())
 }
