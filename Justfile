@@ -156,13 +156,16 @@ wasm:
     rustup target add wasm32-unknown-unknown
     cargo check {{core_crates}} --target wasm32-unknown-unknown --no-default-features
 
-# Exercise input validation, composition/arithmetic, and protocol parsing separately under
-# libFuzzer. Curated seeds are copied below target/ so a run never dirties the source tree.
+# Exercise input validation, composition/arithmetic, protocol parsing, the whole facade,
+# and the handwritten SFNT table readers separately under libFuzzer. Each target is its own
+# failure domain, so a budget spent on one is not spent on another. Curated seeds are copied
+# below target/ so a run never dirties the source tree.
 fuzz-check:
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target input_validation 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target composition 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target protocol_parser 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target high_level_layout 30" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target font_name_table 30" } }}
 
 # The install-action cargo-fuzz binary is itself built for musl. cargo-fuzz 0.13.2
 # otherwise mistakes that build triple for the fuzz target, but ASan requires the
@@ -172,6 +175,7 @@ fuzz-check-linux-ci:
     just _fuzz-target-linux composition 30
     just _fuzz-target-linux protocol_parser 30
     just _fuzz-target-linux high_level_layout 30
+    just _fuzz-target-linux font_name_table 30
 
 # A single bounded fuzz target. Runtime corpora are disposable target/ state; only
 # fuzz/seeds is reviewed and committed.
@@ -191,6 +195,7 @@ fuzz-scheduled:
     just _fuzz-target-linux composition 900
     just _fuzz-target-linux protocol_parser 900
     just _fuzz-target-linux high_level_layout 900
+    just _fuzz-target-linux font_name_table 900
 
 # Each handwritten product must independently stay above both release thresholds. Generated
 # tables, test fixtures, xtask, and independent engines are covered by their own gates. The

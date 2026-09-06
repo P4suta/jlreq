@@ -14,6 +14,27 @@ use libfuzzer_sys::fuzz_target;
 
 const MAX_TEXT_BYTES: usize = 16 * 1024;
 
+/// The most lines this target will check the geometry of.
+///
+/// `jlreq::verify::inspect` asks `hit_test` and `caret_rect` once per glyph and
+/// per line edge, and each of those scans the layout, so a very tall layout is
+/// quadratic to check. Every layout is still composed; only the check is capped,
+/// and the cap is well above the shapes a wrapped paragraph actually produces.
+const MAX_VERIFIED_LINES: usize = 64;
+
+/// Every layout the facade returns must be geometrically self-consistent: the
+/// cells a renderer draws into are the cells hit testing measures against and
+/// the cells carets are cut from. A fuzzer is the only thing here that tries
+/// inputs nobody thought to write a test for.
+fn check_geometry(layout: &jlreq::TextLayout) {
+    if layout.lines().len() > MAX_VERIFIED_LINES {
+        return;
+    }
+    let report = jlreq::verify::inspect(layout);
+    assert!(report.is_sound(), "{:?}
+{report}", layout.source());
+}
+
 fuzz_target!(|data: &[u8]| {
     let controls = data.get(..8).unwrap_or(data);
     let body = data.get(controls.len()..).unwrap_or_default();
@@ -79,6 +100,7 @@ fuzz_target!(|data: &[u8]| {
     {
         let mut engine = LayoutEngine::new();
         if let Ok(layout) = black_box(engine.layout(&text, &valid_fonts, options.clone())) {
+            check_geometry(&layout);
             // Exercise the editing surface with arbitrary offsets: every call
             // must be total over any (offset, affinity) pair.
             let offset = usize::from(byte(1)).saturating_mul(usize::from(byte(3)));
@@ -113,7 +135,11 @@ fuzz_target!(|data: &[u8]| {
         let _ = builder.furawake(0..half.max(1), 2 + u16::from(byte(0) % 3), 0.5);
         let _ = builder.discretionary_break(usize::from(byte(4)));
         if let Ok(document) = builder.build() {
-            let _ = black_box(engine.layout_document(&document, &valid_fonts, options.clone()));
+            if let Ok(layout) =
+                black_box(engine.layout_document(&document, &valid_fonts, options.clone()))
+            {
+                check_geometry(&layout);
+            }
         }
     }
 
