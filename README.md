@@ -94,6 +94,55 @@ layout-cell boundaries. They deliberately retain whitespace and annotation cells
 not glyph ink bounds; a rasterizer must derive ink bounds from the selected outline and
 variation instance when clipping or painting decorations.
 
+## Coordinate system
+
+Physical coordinates are the screen's: **+x is right, +y is down**, with one origin per
+layout at the start of its first line. The inline axis runs along a line and the block axis
+from line to line; in `VerticalRl` the block axis is the only one that runs backwards, so a
+later column has a smaller `x`.
+
+`GlyphPlacement::origin` is its cell's **inline-start, block-end** corner, and
+`draw_origin` is that point plus the shaper's offset. **Neither is the baseline.** An
+outline placed there sits one descent too far along the block axis — about a tenth of an em
+for a typical Japanese face, enough to misalign every underline. `FontMetrics::descent` is
+em-relative and negative, which is exactly the correction:
+
+<!-- jlreq-example: baseline -->
+```rust
+use jlreq::{FontLibrary, FontMetrics, FontResource, LayoutOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let font_path = std::env::args()
+        .nth(1)
+        .ok_or("pass a font file, e.g. NotoSansJP-Regular.otf")?;
+
+    let mut fonts = FontLibrary::new();
+    fonts.register_font(std::fs::read(font_path)?)?;
+    let layout = jlreq::layout("日本語組版", &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
+
+    for glyph in layout.glyphs() {
+        let cell = glyph.cell_bounds();
+        let descent = layout
+            .font(glyph.font_id())
+            .and_then(FontResource::metrics)
+            .map_or(0.0, FontMetrics::descent);
+        // Where a rasterizer puts the outline's own origin.
+        let _baseline = (
+            cell.x(),
+            cell.y() + cell.height() + descent * glyph.font_size(),
+        );
+    }
+    Ok(())
+}
+```
+
+[`docs/design/geometry.md`](docs/design/geometry.md) states the whole contract, including
+why a cell's advance is not the distance to the next cell. `jlreq::verify::inspect` holds
+any layout to it and returns a typed report rather than panicking, so a test, a fuzz target,
+or an editor can ask. The [`render_svg`](crates/jlreq/examples/render_svg.rs) example draws
+a layout's cells and puts the text on the baseline this expression derives, so a wrong
+reading is visible rather than merely arguable.
+
 Use `LayoutEngine` instead of `jlreq::layout` for batches. It reuses parsed fonts, shaping
 data, Unicode services, and core-composer scratch space, remains reusable after an error,
 and produces bit-identical results to the one-shot call.

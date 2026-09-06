@@ -70,11 +70,73 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 行わないでください。別の `FontLibrary` で発行されたIDは、たとえ添字が範囲内でも
 `None` になります（取り違えは無音で誤フォントを返す代わりに検出されます）。
 
+## 座標系
+
+物理座標は画面の座標です。**+xが右、+yが下**で、原点はレイアウトごとに一つ、最初の行の
+先頭にあります。行に沿う軸をinline軸、行から行へ進む軸をblock軸と呼び、どちらが画面の
+どの軸になるかは書字方向で決まります。
+
+| | `HorizontalTb` | `VerticalRl` |
+| --- | --- | --- |
+| inline軸（行に沿う） | +x | +y |
+| block軸（行から行へ） | +y | **−x** |
+
+`VerticalRl` のblock軸だけが画面の軸を逆向きに進みます。後の行ほど `x` が小さくなります。
+
+`GlyphPlacement::origin` はそのセルの **inline始端・block終端** の角です。横組なら左辺と
+**下辺**、縦組なら**右辺**と上辺になります。`draw_origin` はそこにシェーパーのオフセットを
+足した点です。
+
+**どちらもベースラインではありません。** アウトラインをそのまま置くと、block方向に
+descent一つぶんずれます。日本語フォントなら概ね1em の1割で、ヒンティングの誤差に見える
+程度に小さく、下線をすべてずらす程度には大きい量です。`FontMetrics::descent` はem比の
+負値なので、それがそのまま補正になります。
+
+<!-- jlreq-example: baseline -->
+```rust
+use jlreq::{FontLibrary, FontMetrics, FontResource, LayoutOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let font_path = std::env::args()
+        .nth(1)
+        .ok_or("pass a font file, e.g. NotoSansJP-Regular.otf")?;
+
+    let mut fonts = FontLibrary::new();
+    fonts.register_font(std::fs::read(font_path)?)?;
+    let layout = jlreq::layout("日本語組版", &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
+
+    for glyph in layout.glyphs() {
+        let cell = glyph.cell_bounds();
+        let descent = layout
+            .font(glyph.font_id())
+            .and_then(FontResource::metrics)
+            .map_or(0.0, FontMetrics::descent);
+        // Where a rasterizer puts the outline's own origin.
+        let _baseline = (
+            cell.x(),
+            cell.y() + cell.height() + descent * glyph.font_size(),
+        );
+    }
+    Ok(())
+}
+```
+
+セルのadvanceは、隣のセルまでの距離とは別の数です。組版が境界に配分した四分アキは両側の
+advanceに分けて計上され、縦中横の2文字は同じinline座標を共有します。advanceを足し合わせて
+位置を求めると、前者は同じアキを二度置き、後者は与えられていない1emを使います。詳細は
+[`docs/design/geometry.md`](design/geometry.md) にあります。
+
+`jlreq::verify::inspect` はこの契約に対して任意のレイアウトを検査し、panicではなく型付きの
+違反リストを返します。テストからも、fuzzターゲットからも、エディタからも同じ問いを立てられます。
+[`render_svg`](../crates/jlreq/examples/render_svg.rs) の例は、セルを描いたうえで上の式が
+導くベースラインに実際の文字を置くので、読み違いが議論ではなく見た目で分かります。
+
 ## 描画契約
 
 レンダラーは、各グリフについて次の情報をそのまま利用できます。
 
-- `draw_origin`: シェーパーのオフセットを反映済みの物理描画原点
+- `draw_origin`: シェーパーのオフセットを反映済みの物理描画原点（ベースラインではありません。
+  上の「座標系」を参照）
 - `font_size` / `font_size_26_6`: シェーピングに用いた実効文字サイズ
 - `variations`: グローバル値、システムフォント既定値、span値をタグ単位で統合した軸
 - `FontResource::synthesis`: 可変軸では表せない合成太字と傾斜

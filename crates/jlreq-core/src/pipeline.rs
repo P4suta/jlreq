@@ -3270,7 +3270,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "the release performance gate runs this explicitly"]
+    #[ignore = "slow: `just test` runs it by name, in debug, on every platform"]
     fn ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget() {
         fn transitions(cluster_count: usize) -> usize {
             let source: String = "日".repeat(cluster_count);
@@ -3295,7 +3295,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "the release pathological-input gate runs this explicitly"]
+    #[ignore = "slow: `just test` runs it by name, under --release, on every platform"]
     fn zero_width_pathological_paragraph_stops_at_the_default_search_budget() {
         let source: String = "日".repeat(4_100);
         let clusters = source.char_indices().map(|(start, character)| {

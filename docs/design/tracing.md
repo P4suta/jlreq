@@ -199,7 +199,25 @@ keeps its own `DEFAULT` that excludes the two superlinear families.
 | `RUNS` | `text.run` | each shaping run's script, direction, level, face, and glyph count |
 | `FACES` | `face.chosen`, `face.fallback` | which face covered a grapheme, and how many were tried first |
 | `BREAKS` | `text.breaks` | how many opportunities of each strength reached the search |
+| `PLACEMENT` | `draw.cell`, `draw.line` | what the facade did with the composer's placements |
 | `CORE` | everything above | one paragraph's core trace, tagged with the paragraph it came from |
+
+`PLACEMENT` is the third recording point, and it exists because the first two could not see
+a whole class of defect. The core says where it put each cluster; the facade then re-derives
+physical cells from that, in visual order, and until this family that arithmetic was
+unrecorded. `draw.cell` states three numbers per cell — the coordinate the composer gave it,
+the `advance` the composer *charged* it, and the `step` the cursor actually took — because
+the three differ on purpose and a disagreement among them is a bug:
+
+- a conditional space at a class boundary is billed to the boundary, so each side's advance
+  holds part of it and the step is shorter than the advance;
+- the two halves of a tate-chu-yoko run share one inline coordinate, so their step is zero;
+- a warichu or furawake lane restarts near the line's start, and the cursor does not follow.
+
+`draw.line` then states the line's composed `extent` beside the `content` coordinate its
+last cell reached. Where those differ by a hung full stop, the line is doing ぶら下げ; where
+they differ for any other reason, something is wrong. `docs/design/geometry.md` states the
+contract these numbers are about, and `jlreq::verify` holds a finished layout to it.
 
 Two things a reader has to know about the columns:
 
