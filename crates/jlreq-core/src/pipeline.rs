@@ -2467,17 +2467,20 @@ mod tests {
         assert_eq!(segment.block_extent, 2_100);
         assert_eq!(segment.advance, 3_500);
         let mut placed = Vec::new();
-        super::place_furawake_segment(&paragraph, &segment, 100, 0, &mut placed);
+        // The line extent the composer would pass: max(em 1000, segment 2100).
+        // Centred in 2100 the two lanes are flush, so the first is at the block
+        // origin and the second one lane plus one gap along.
+        super::place_furawake_segment(&paragraph, &segment, 100, 0, 2_100, &mut placed);
         assert_eq!(
             placed
                 .iter()
                 .map(|item| (item.inline, item.block, item.advance))
                 .collect::<Vec<_>>(),
             [
-                (100, -550, 1_000),
-                (100, 550, 1_250),
-                (1_350, 550, 1_250),
-                (2_600, 550, 1_000)
+                (100, 0, 1_000),
+                (100, 1_100, 1_250),
+                (1_350, 1_100, 1_250),
+                (2_600, 1_100, 1_000)
             ]
         );
 
@@ -2588,7 +2591,9 @@ mod tests {
             .expect("valid two-member warichu fixture");
         let two_segment = super::warichu_segment(&two, 0..2, 0, 2);
         let mut placed = Vec::new();
-        super::place_warichu_segment(&two, &two_segment, 50, 0, &mut placed);
+        // A warichu reserves no more than the paragraph em, so the line extent
+        // the composer passes is that em and the lanes are unmoved by centring.
+        super::place_warichu_segment(&two, &two_segment, 50, 0, 1_000, &mut placed);
         assert_eq!(
             placed
                 .iter()
@@ -2608,6 +2613,7 @@ mod tests {
             &vertical_segment,
             50,
             0,
+            1_000,
             &mut vertical_placed,
         );
         assert_eq!(

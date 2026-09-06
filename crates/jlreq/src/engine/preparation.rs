@@ -284,6 +284,37 @@ impl PreparedText {
         )?)
     }
 
+    /// Set every cluster inside `range` to half the size it was shaped at.
+    ///
+    /// JLReq §3.4 sets a 割注 in characters smaller than the text around it, two
+    /// lanes inside the space one line takes, and `jlreq-core` reserves exactly
+    /// one em for the pair. Handing it full-em clusters put two em in that one
+    /// and each lane on the line beside it.
+    ///
+    /// Halving is a linear scale of the same outlines, so the cluster's size,
+    /// its advance, and each glyph's own advance and offset all halve together;
+    /// a renderer draws the glyph at the reported `font_size` and lands on the
+    /// reported cell. It is not a reshape: a face whose half-size metrics differ
+    /// from half its full-size metrics — a hinted bitmap strike, an optical size
+    /// axis — is measured at the size the caller asked for, which
+    /// [ADR 0002](../../../docs/adr/0002-caller-supplied-metrics.md) makes the
+    /// caller's to state. Odd units truncate.
+    fn reduce_to_half(&mut self, range: &Range<usize>) {
+        for cluster in &mut self.clusters {
+            if cluster.range.start < range.start || cluster.range.end > range.end {
+                continue;
+            }
+            cluster.advance /= 2;
+            cluster.size = (cluster.size / 2).max(1);
+            for glyph in &mut cluster.glyphs {
+                glyph.x_advance /= 2;
+                glyph.y_advance /= 2;
+                glyph.x_offset /= 2;
+                glyph.y_offset /= 2;
+            }
+        }
+    }
+
     fn is_boundary(&self, offset: usize, source_len: usize) -> bool {
         offset == 0
             || offset == source_len

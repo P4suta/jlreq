@@ -284,7 +284,17 @@ fn assign_trailing_gaps(cells: &mut [Cell]) {
         let Some(cell) = cells.get(index) else {
             break;
         };
-        let step = next.inline.saturating_sub(cell.inline).max(0);
+        let raw = next.inline.saturating_sub(cell.inline);
+        // A lane of a warichu or a furawake restarts at the construct's own
+        // inline origin, and that step back is real: the lanes stand side by
+        // side, so the cursor has to take it. Clamping it at zero laid the
+        // lanes end to end and carried the error into everything after them.
+        //
+        // Everywhere else a backwards step is visual reordering rather than a
+        // restart — the composer's coordinate is logical and these cells are
+        // walked in visual order — and the cursor holds its place instead.
+        let restart = cell.construct.is_some() && cell.construct == next.construct;
+        let step = if restart { raw } else { raw.max(0) };
         let gap = step.saturating_sub(cell.advance);
         if let Some(cell) = cells.get_mut(index) {
             cell.trailing_gap = gap;

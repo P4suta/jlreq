@@ -142,45 +142,27 @@ fn range(clusters: usize) -> std::ops::Range<usize> {
 
 /// The lengths a construct refuses outright, which is an answer rather than a
 /// hole in the sweep: a furawake cannot split two columns out of one cluster.
+/// Combinations whose geometry holds at one measure and not the other. A
+/// construct that only breaks when its line wraps is a different finding from
+/// one that breaks outright, so the two are pinned apart.
+const MEASURE_DEPENDENT: &[(&str, usize, &str)] = &[];
+
 const REFUSED: &[(&str, usize)] = &[("furawake-2", 1), ("furawake-3", 1), ("furawake-3", 2)];
 
 /// The combinations that do not hold, and nothing else.
 ///
-/// Deleting a row is how a correction announces itself; adding one without a
-/// diagnosis in `construct_geometry.rs` is how a regression does.
-const KNOWN_BROKEN: &[(&str, usize, &str)] = &[
-    ("furawake-2", 2, "HorizontalTb"),
-    ("furawake-2", 2, "VerticalRl"),
-    ("furawake-2", 3, "HorizontalTb"),
-    ("furawake-2", 3, "VerticalRl"),
-    ("furawake-2", 4, "HorizontalTb"),
-    ("furawake-2", 4, "VerticalRl"),
-    ("furawake-2", 5, "HorizontalTb"),
-    ("furawake-2", 5, "VerticalRl"),
-    ("furawake-3", 3, "HorizontalTb"),
-    ("furawake-3", 3, "VerticalRl"),
-    ("furawake-3", 4, "HorizontalTb"),
-    ("furawake-3", 4, "VerticalRl"),
-    ("furawake-3", 5, "HorizontalTb"),
-    ("furawake-3", 5, "VerticalRl"),
-    ("tate-chu-yoko", 3, "VerticalRl"),
-    ("tate-chu-yoko", 4, "VerticalRl"),
-    ("tate-chu-yoko", 5, "VerticalRl"),
-    ("warichu", 2, "HorizontalTb"),
-    ("warichu", 2, "VerticalRl"),
-    ("warichu", 3, "HorizontalTb"),
-    ("warichu", 3, "VerticalRl"),
-    ("warichu", 4, "HorizontalTb"),
-    ("warichu", 4, "VerticalRl"),
-    ("warichu", 5, "HorizontalTb"),
-    ("warichu", 5, "VerticalRl"),
-];
+/// Empty since `docs/adr/0030`. It is kept rather than replaced by a bare
+/// `assert!(broken.is_empty())` because the shape is the point: a regression
+/// arrives as a row naming the construct, the length and the writing mode, and
+/// a deliberate deferral has somewhere to be written down and explained.
+const KNOWN_BROKEN: &[(&str, usize, &str)] = &[];
 
 #[test]
 fn every_construct_holds_its_geometry_at_every_length() -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;
     let mut broken: Vec<(&str, usize, &str)> = Vec::new();
     let mut refused: Vec<(&str, usize)> = Vec::new();
+    let mut measure_dependent: Vec<(&str, usize, &str)> = Vec::new();
 
     for (name, attach) in constructs() {
         for clusters in 1..=5usize {
@@ -214,13 +196,11 @@ fn every_construct_holds_its_geometry_at_every_length() -> Result<(), Box<dyn st
                     WritingMode::VerticalRl => "VerticalRl",
                     _ => "HorizontalTb",
                 };
-                assert!(
-                    soundness.windows(2).all(|pair| pair[0] == pair[1]),
-                    "{name} × {clusters} × {label}: the measure decides whether the geometry \
-                     holds, which is a finding of its own"
-                );
-                if soundness.first() == Some(&false) {
+                if soundness.iter().any(|sound| !sound) {
                     broken.push((name, clusters, label));
+                }
+                if soundness.windows(2).any(|pair| pair[0] != pair[1]) {
+                    measure_dependent.push((name, clusters, label));
                 }
             }
         }
@@ -231,6 +211,12 @@ fn every_construct_holds_its_geometry_at_every_length() -> Result<(), Box<dyn st
     assert_eq!(
         refused, REFUSED,
         "the set of construct lengths the builder refuses moved"
+    );
+
+    measure_dependent.sort_unstable();
+    assert_eq!(
+        measure_dependent, MEASURE_DEPENDENT,
+        "the measure decides whether a construct's geometry holds, which is a finding of its own"
     );
 
     broken.sort_unstable();

@@ -267,9 +267,13 @@ fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
     assert_eq!(digits[0].inline(), 1_500);
     assert_eq!(digits[1].inline(), 1_500);
     assert_eq!(digits[2].inline(), 1_500);
-    assert_eq!(digits[0].block(), -600);
-    assert_eq!(digits[1].block(), -200);
-    assert_eq!(digits[2].block(), 200);
+    // Centred in the line, which the run widened to 1_200: the group fills it,
+    // so the three members name the block-start edges -800, -400 and 0 of a
+    // column that runs from -1_200 to 0. Centring on the line's *origin* — its
+    // edge — instead put the run 200 past the far side of its own line.
+    assert_eq!(digits[0].block(), -800);
+    assert_eq!(digits[1].block(), -400);
+    assert_eq!(digits[2].block(), 0);
     assert!(digits.iter().all(|cluster| {
         cluster.writing_mode() == WritingMode::HorizontalTb
             && cluster.transform() == CoordinateTransform::TateChuYoko
@@ -1023,10 +1027,14 @@ fn furawake_aligns_declared_sublines_and_never_becomes_an_outer_break() {
                 .iter()
                 .map(jlreq_core::ClusterPlacement::block)
                 .collect::<Vec<_>>(),
+            // The line reserves 2_200 for two lanes and one 200 gap, and the
+            // segment fills it: the first lane starts at the block origin and
+            // the second one lane plus one gap along. Vertical writing runs the
+            // block axis backwards, so the same arrangement counts down.
             if mode == WritingMode::HorizontalTb {
-                vec![-600, 600, 600]
+                vec![0, 1_200, 1_200]
             } else {
-                vec![600, -600, -600]
+                vec![0, -1_200, -1_200]
             }
         );
     }

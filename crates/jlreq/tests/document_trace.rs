@@ -365,7 +365,7 @@ fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> 
     // the statements inside `inspect` cannot fail this test for a reason that
     // is not geometric. A genuinely new fault appears as its own row, naming
     // the scenario it came from.
-    let known: &[(&str, &str, usize)] = &[("constructs", "cell-escapes-its-line", 2)];
+    let known: &[(&str, &str, usize)] = &[];
 
     let mut counted: BTreeMap<(&str, &str), usize> = BTreeMap::new();
     for scenario in corpus()? {

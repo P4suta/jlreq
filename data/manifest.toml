@@ -19,7 +19,7 @@ sha256 = "18b9799b32a8aaa857bd7a632394e116e444ea2923071e0741c884f343eff42c"
 
 [[file]]
 path = "crates/jlreq-conformance/suite.ndjson"
-sha256 = "8f8f70b5f193a140994c8ca42bde5e46a445f55465b6b098012f7ffd0ccbadcf"
+sha256 = "87d85077d4acb40ab4cfb96e040d8bd95414a496bebd00af5da9ebfe3b44ec08"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/appendix_a.rs"

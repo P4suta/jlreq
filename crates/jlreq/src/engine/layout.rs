@@ -308,7 +308,7 @@ impl LayoutEngine {
                 continue;
             }
 
-            let prepared = self.prepare_text(
+            let mut prepared = self.prepare_text(
                 PrepareRequest {
                     source: content,
                     paragraph_index,
@@ -321,6 +321,14 @@ impl LayoutEngine {
                 &mut call,
                 trace,
             )?;
+            // A warichu is body text the builder only marks, so it reaches the
+            // composer through this run rather than as its own shaped stream —
+            // which is why nothing had ever reduced it. The composer reserves
+            // one em for the two lanes, so the clusters in one have to be the
+            // half size §3.4 asks for before they are handed over.
+            for range in warichu_ranges(document, &segment.content) {
+                prepared.reduce_to_half(&range);
+            }
             let shaped = prepared.to_core(content, options.font_size)?;
             let mut construct_paragraph = ConstructParagraph {
                 index: paragraph_index,
@@ -1092,4 +1100,23 @@ fn core_diagnostic_message(code: &str) -> &'static str {
         },
         _ => "the core composer produced a recoverable layout diagnostic this release does not name",
     }
+}
+
+/// Every warichu in this paragraph, as byte ranges local to its content.
+///
+/// Read from the document rather than from the lowered constructs because the
+/// clusters have to carry the reduced size *before* they are handed to the
+/// composer, and the constructs are lowered after that.
+fn warichu_ranges(document: &Document, content: &Range<usize>) -> Vec<Range<usize>> {
+    document
+        .constructs()
+        .filter_map(|construct| match construct {
+            crate::InlineConstruct::Warichu { range } => Some(range),
+            _ => None,
+        })
+        .filter(|range| content.start <= range.start && range.end <= content.end)
+        .map(|range| {
+            range.start.saturating_sub(content.start)..range.end.saturating_sub(content.start)
+        })
+        .collect()
 }
