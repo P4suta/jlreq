@@ -63,7 +63,9 @@ items = [
   "core",
   "layout",
   "layout_document",
+  "style",
   "trace",
+  "verify",
 ]
 
 [[module]]
@@ -170,6 +172,14 @@ items = [
   "Script",
   "Site",
 ]
+
+# The facade half of the invariant harness, outside the compatibility promise for the same
+# reason as the core's. It states what must be true of the physical geometry a renderer is
+# handed — that the cells a glyph is drawn into, the ones hit testing measures against, and
+# the ones carets are cut from are the same cells — and that set is expected to grow.
+[[module]]
+path = "jlreq::verify"
+items = ["Fault", "Report", "inspect"]
 
 # One dedicated enum for every alternative the generated JLReq 2020 policy inventory
 # records. The count is held against `spec/derived/questions.tsv` in both directions.

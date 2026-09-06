@@ -6,6 +6,12 @@
 
 /// Dependency-free `no_std + alloc` composition API for already-shaped text.
 pub use jlreq_core as core;
+/// The 22 JLReq 2020 policy alternatives, as the typed values [`StyleBuilder`] takes.
+///
+/// [`Style`] is the knob and this module is its vocabulary, so choosing anything
+/// other than the default reading needs no second crate in `Cargo.toml`:
+/// `jlreq::style::KinsokuLevel` is the same type as `jlreq_core::style::KinsokuLevel`.
+pub use jlreq_core::style;
 pub use jlreq_core::{Style, StyleBuilder, StyleError};
 
 mod document;
@@ -17,6 +23,7 @@ mod result;
 mod sfnt;
 pub mod trace;
 mod units;
+pub mod verify;
 
 pub use document::{
     Document, DocumentBuilder, InlineConstruct, MetricsFrame, ParagraphStyle, RubyKind, RubyRun,

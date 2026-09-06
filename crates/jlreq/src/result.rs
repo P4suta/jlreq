@@ -106,14 +106,28 @@ impl Rect {
         (self.x, self.y, self.width, self.height)
     }
 
-    fn contains(self, point: Point) -> bool {
+    /// Whether the point lies in this rectangle, edges included.
+    ///
+    /// Every rectangle this crate returns is a layout cell, and cells meet edge
+    /// to edge, so a point on a shared edge belongs to both. Hit testing here
+    /// resolves that by order rather than by exclusion, and a caller comparing
+    /// a cursor against [`Self::contains`] gets the same answer this crate does.
+    #[must_use]
+    pub fn contains(self, point: Point) -> bool {
         point.x >= self.x
             && point.y >= self.y
             && point.x <= self.x.saturating_add(self.width)
             && point.y <= self.y.saturating_add(self.height)
     }
 
-    fn union(self, other: Self) -> Self {
+    /// The smallest rectangle holding both, in the same quantized units.
+    ///
+    /// [`TextLayout::selection_rects`] returns one rectangle per visually
+    /// contiguous run, so a caller that wants a single repaint region folds
+    /// them with this rather than reimplementing saturating fixed-point
+    /// arithmetic.
+    #[must_use]
+    pub fn union(self, other: Self) -> Self {
         let min_x = self.x.min(other.x);
         let min_y = self.y.min(other.y);
         let max_x = self
@@ -231,7 +245,12 @@ impl GlyphPlacement {
         self.construct
     }
 
-    /// Physical glyph origin.
+    /// Physical glyph origin: the cell's inline-start, block-end corner.
+    ///
+    /// In horizontal text that is the cell's left and bottom edges; in vertical
+    /// text its **right** and top, because the block axis runs in −x. It is the
+    /// corner, not the baseline — see [`Self::draw_origin`] — and it is the
+    /// unoffset one, so a shaper offset moves `draw_origin` and not this.
     #[must_use]
     pub const fn origin(&self) -> Point {
         Point::from_fixed(self.x, self.y)
@@ -239,9 +258,27 @@ impl GlyphPlacement {
 
     /// Physical draw origin after applying the shaper's glyph offset.
     ///
-    /// Renderers should place the glyph outline at this point, then apply
-    /// [`Self::transform`]. [`Self::origin`] remains the unoffset advance-cell
-    /// origin.
+    /// **This is not the baseline.** It is [`Self::origin`] — the cell's
+    /// inline-start, block-end corner — moved by the shaper's own offset for
+    /// this glyph. An outline placed here sits one descent too far along the
+    /// block axis, which for a typical Japanese face is about a tenth of an em:
+    /// small enough to look like hinting, wrong enough to misalign every
+    /// underline. The baseline is one em-relative descent back from the cell's
+    /// block-end edge, and [`FontMetrics::descent`](crate::FontMetrics::descent)
+    /// is negative, which is exactly the correction:
+    ///
+    /// ```rust,ignore
+    /// let cell = glyph.cell_bounds();
+    /// let descent = layout
+    ///     .font(glyph.font_id())
+    ///     .and_then(jlreq::FontResource::metrics)
+    ///     .map_or(0.0, |metrics| metrics.descent());
+    /// let baseline_y = cell.y() + cell.height() + descent * glyph.font_size();
+    /// ```
+    ///
+    /// Apply [`Self::transform`] after positioning. `docs/design/geometry.md`
+    /// states the whole coordinate system, and `examples/render_svg.rs` draws a
+    /// layout using this expression so a wrong reading is visible.
     #[must_use]
     pub const fn draw_origin(&self) -> Point {
         Point::from_fixed(
@@ -323,6 +360,18 @@ impl GlyphPlacement {
     #[must_use]
     pub const fn transform(&self) -> GlyphTransform {
         self.transform
+    }
+
+    /// The writing mode this glyph's own cell is measured in.
+    ///
+    /// A glyph reached through [`TextLayout::glyphs`] has no line to ask, and
+    /// the block axis it advances along decides where its baseline sits and
+    /// which way [`Self::cell_bounds`] extends. This is normally the layout's
+    /// mode; a tate-chu-yoko run reports the mode its own short horizontal run
+    /// is set in.
+    #[must_use]
+    pub const fn writing_mode(&self) -> WritingMode {
+        self.writing_mode
     }
 
     /// Resolved UAX #9 embedding level.
@@ -473,7 +522,16 @@ impl TextLine {
         self.origin
     }
 
-    /// Occupied inline length.
+    /// Occupied inline length, excluding hanging punctuation.
+    ///
+    /// A line that hangs a full stop or comma past its measure — JLReq's
+    /// `ぶら下げ`, selected by
+    /// [`HangingPunctuation`](jlreq_core::style::HangingPunctuation) — reports
+    /// the length without it, because that is the length the measure was met
+    /// at. The hung glyph is still placed and still has a cell, so
+    /// [`Self::bounds`] covers it and this does not. A renderer painting a line
+    /// background wants the bounds; a caller checking whether the measure was
+    /// met wants this.
     #[must_use]
     pub fn inline_extent(&self) -> f32 {
         to_f32(self.inline_extent)
@@ -483,6 +541,24 @@ impl TextLine {
     #[must_use]
     pub fn block_extent(&self) -> f32 {
         to_f32(self.block_extent)
+    }
+
+    /// Inline-axis demand in signed 26.6 fixed point.
+    ///
+    /// Everything else that carries geometry offers its exact units —
+    /// [`Point::x_26_6`], [`Rect::as_26_6`], [`GlyphPlacement::font_size_26_6`]
+    /// — because comparing a layout against another layout, or against a cell
+    /// this crate returned, is comparing integers. The `f32` forms are for
+    /// arithmetic a renderer does in its own space.
+    #[must_use]
+    pub const fn inline_extent_26_6(&self) -> i32 {
+        self.inline_extent
+    }
+
+    /// Block-axis demand in signed 26.6 fixed point.
+    #[must_use]
+    pub const fn block_extent_26_6(&self) -> i32 {
+        self.block_extent
     }
 
     /// Glyphs in visual draw order, including automatically shaped annotations.
@@ -1295,7 +1371,11 @@ impl std::fmt::Display for GlyphPlacement {
             write!(formatter, " {transform}")?;
         }
         if let Some(annotation) = self.annotation.as_ref() {
-            write!(formatter, " annotating construct {}", annotation.construct())?;
+            write!(
+                formatter,
+                " annotating construct {}",
+                annotation.construct()
+            )?;
         }
         Ok(())
     }
