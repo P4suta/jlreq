@@ -3232,6 +3232,11 @@ mod tests {
     /// range — the same reasoning the goldens rest on. A change here is a change in how much
     /// the search explores, and it belongs in the commit message either way.
     ///
+    /// A moved integer says only *that* the search changed, never what. The trace goldens say
+    /// what: `search.candidate` records every pair weighed with its whole cost breakdown and
+    /// whether it was accepted, and `search.bound` records where the search stopped extending
+    /// a line. Read that diff first — the number here is the alarm, not the report.
+    ///
     /// These paragraphs are small enough that the whole test is imperceptible.
     #[test]
     fn a_fixed_corpus_costs_exactly_this_much_search() {
