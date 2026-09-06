@@ -98,6 +98,21 @@ pub enum Fault {
         /// The bytes the annotation is attributed to.
         range: Range<usize>,
     },
+    /// An annotation's cell overlaps the body text of a **different** line.
+    ///
+    /// Standing beside its own base is what an annotation is for; standing on
+    /// the line before it is ruby printed over somebody else's characters.
+    /// [`AnnotationOverlapsItsBase`](Self::AnnotationOverlapsItsBase) cannot
+    /// see this — it compares an annotation against its own line only — which
+    /// is why a layout that does it reported itself sound until this existed.
+    AnnotationOverlapsAnotherLine {
+        /// The line the annotation belongs to.
+        line: usize,
+        /// The line whose body text it landed on.
+        other: usize,
+        /// The bytes the annotation is attributed to.
+        range: Range<usize>,
+    },
     /// Two consecutive lines occupy the same block-axis coordinates.
     LinesOverlap {
         /// The later line.
@@ -180,6 +195,7 @@ impl Fault {
             Self::CellEscapesItsLine { .. } => "cell-escapes-its-line",
             Self::CellEscapesTheMeasureSilently { .. } => "cell-escapes-the-measure-silently",
             Self::AnnotationOverlapsItsBase { .. } => "annotation-overlaps-its-base",
+            Self::AnnotationOverlapsAnotherLine { .. } => "annotation-overlaps-another-line",
             Self::LinesOverlap { .. } => "lines-overlap",
             Self::BlockProgressionReverses { .. } => "block-progression-reverses",
             Self::CoverageStartsLate { .. } => "coverage-starts-late",
@@ -202,6 +218,7 @@ impl Fault {
             | Self::CellEscapesItsLine { line, .. }
             | Self::CellEscapesTheMeasureSilently { line, .. }
             | Self::AnnotationOverlapsItsBase { line, .. }
+            | Self::AnnotationOverlapsAnotherLine { line, .. }
             | Self::HitTestMissesItsOwnCell { line, .. } => Some(line),
             Self::CoverageStartsLate { .. }
             | Self::CoverageEndsEarly { .. }
@@ -222,6 +239,11 @@ impl fmt::Display for Fault {
             | Self::AnnotationOverlapsItsBase { range, .. } => {
                 write!(formatter, " at bytes {}..{}", range.start, range.end)
             },
+            Self::AnnotationOverlapsAnotherLine { other, range, .. } => write!(
+                formatter,
+                " at bytes {}..{}, over line {other}",
+                range.start, range.end
+            ),
             Self::HitTestMissesItsOwnCell {
                 range, answered, ..
             } => write!(
@@ -314,10 +336,17 @@ pub fn inspect(layout: &TextLayout) -> Report {
         .collect();
 
     let mode = layout.writing_mode();
+    // The text of each line, as its glyphs actually landed. Every annotation is
+    // asked about all of them, not only its own, because a line reserves the
+    // room for an annotation on one side of itself and the annotation is drawn
+    // on the other — so the question of whose text it is standing on is not
+    // answerable one line at a time.
+    let bases: Vec<Option<Rect>> = layout.lines().iter().map(body_glyphs).collect();
     let mut previous_body: Option<Rect> = None;
     for line in layout.lines() {
         let body = body_cell(line);
         check_line(line, body, mode, &overfull, &mut report);
+        check_annotations_against_other_lines(layout, line, &bases, mode, &mut report);
         if let Some(previous) = previous_body
             && overlaps_block(mode, previous, body)
         {
@@ -432,12 +461,7 @@ fn check_line(
     // reserve room for its annotations, so a subscript standing correctly in
     // the room reserved for it is inside the line's box and outside every text
     // cell — asking the box rather than the text called that an overlap.
-    let base = line
-        .glyphs()
-        .iter()
-        .filter(|glyph| glyph.annotation().is_none())
-        .map(GlyphPlacement::cell_bounds)
-        .reduce(Rect::union);
+    let base = body_glyphs(line);
 
     for glyph in line.glyphs() {
         let cell = glyph.cell_bounds();
@@ -469,6 +493,43 @@ fn check_line(
                 line: line.index(),
                 range: glyph.source_range(),
             });
+        }
+    }
+}
+
+/// Ask one line's annotations whether they landed on anybody else's text.
+///
+/// Its own line is skipped: standing beside its base is what an annotation is
+/// for, and [`Fault::AnnotationOverlapsItsBase`] is the check that asks about
+/// that one. Everything else in the layout is fair game, and only the block
+/// axis is asked — two lines share the whole inline axis by construction, so
+/// overlapping there says nothing.
+fn check_annotations_against_other_lines(
+    layout: &TextLayout,
+    line: &TextLine,
+    bases: &[Option<Rect>],
+    mode: WritingMode,
+    report: &mut Report,
+) {
+    for glyph in line.glyphs() {
+        if glyph.annotation().is_none() {
+            continue;
+        }
+        let cell = glyph.cell_bounds();
+        for (ordinal, other) in layout.lines().iter().enumerate() {
+            if other.index() == line.index() {
+                continue;
+            }
+            let Some(Some(base)) = bases.get(ordinal) else {
+                continue;
+            };
+            if overlaps_block(mode, *base, cell) {
+                report.note(Fault::AnnotationOverlapsAnotherLine {
+                    line: line.index(),
+                    other: other.index(),
+                    range: glyph.source_range(),
+                });
+            }
         }
     }
 }
@@ -535,6 +596,16 @@ fn check_hit_tests(layout: &TextLayout, report: &mut Report) {
             }
         }
     }
+}
+
+/// The union of a line's body glyph cells — its text, rather than the box the
+/// composition reserved around it. `None` for a line that holds no text.
+fn body_glyphs(line: &TextLine) -> Option<Rect> {
+    line.glyphs()
+        .iter()
+        .filter(|glyph| glyph.annotation().is_none())
+        .map(GlyphPlacement::cell_bounds)
+        .reduce(Rect::union)
 }
 
 /// The rectangle a line's own origin and extents describe, before an annotation
@@ -757,6 +828,30 @@ mod tests {
         broken
     }
 
+    /// Two lines, the second carrying an annotation that stands on the first
+    /// line's text rather than in the room reserved for it. This is the shape
+    /// `docs/adr/0031` records: a ruby drawn on the block-start side of a line
+    /// whose predecessor reserved nothing for it.
+    fn annotation_over_another_line() -> TextLayout {
+        let mut broken = layout(
+            "日本語版",
+            vec![
+                line(0, 0..6, vec![glyph(0..3, 0, EM), glyph(3..6, EM, EM)]),
+                line(
+                    1,
+                    6..12,
+                    vec![glyph(6..9, 0, 2 * EM), glyph(9..12, EM, 2 * EM)],
+                ),
+            ],
+        );
+        // Half an em tall, sitting in the lower half of line 0's cells.
+        let mut annotation = glyph(6..9, 0, EM);
+        annotation.font_size = EM / 2;
+        annotation.annotation = Some(AnnotationSource::new(0, 0..2));
+        broken.lines[1].glyphs.push(annotation);
+        broken
+    }
+
     fn lines_at_one_place() -> TextLayout {
         let mut broken = layout(
             "日本",
@@ -821,6 +916,7 @@ mod tests {
             cell_outside_its_line(),
             cell_past_the_measure(),
             annotation_over_its_base(),
+            annotation_over_another_line(),
             lines_at_one_place(),
             progression_that_reverses(),
             lines_that_miss_the_source(),
@@ -1023,19 +1119,20 @@ mod tests {
 
     #[test]
     fn the_fixture_holds_one_of_every_fault() {
-        let mut seen = [false; 10];
+        let mut seen = [false; 11];
         for fault in every_fault() {
             let index = match fault {
                 Fault::CellEscapesItsLine { .. } => 0,
                 Fault::CellEscapesTheMeasureSilently { .. } => 1,
                 Fault::AnnotationOverlapsItsBase { .. } => 2,
-                Fault::LinesOverlap { .. } => 3,
-                Fault::BlockProgressionReverses { .. } => 4,
-                Fault::CoverageStartsLate { .. } => 5,
-                Fault::CoverageEndsEarly { .. } => 6,
-                Fault::LinesDoNotMeet { .. } => 7,
-                Fault::CaretStandsOnNoLine { .. } => 8,
-                Fault::HitTestMissesItsOwnCell { .. } => 9,
+                Fault::AnnotationOverlapsAnotherLine { .. } => 3,
+                Fault::LinesOverlap { .. } => 4,
+                Fault::BlockProgressionReverses { .. } => 5,
+                Fault::CoverageStartsLate { .. } => 6,
+                Fault::CoverageEndsEarly { .. } => 7,
+                Fault::LinesDoNotMeet { .. } => 8,
+                Fault::CaretStandsOnNoLine { .. } => 9,
+                Fault::HitTestMissesItsOwnCell { .. } => 10,
             };
             seen[index] = true;
         }
@@ -1077,6 +1174,11 @@ mod tests {
             Fault::AnnotationOverlapsItsBase {
                 line: 2,
                 range: 0..6,
+            },
+            Fault::AnnotationOverlapsAnotherLine {
+                line: 1,
+                other: 0,
+                range: 6..9,
             },
             Fault::LinesOverlap { line: 3 },
             Fault::BlockProgressionReverses {

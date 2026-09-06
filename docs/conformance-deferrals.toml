@@ -145,7 +145,7 @@ why = "The unified paragraph pipeline lowers a declared warichu range into one l
 [[owned]]
 rule = "3.4.3"
 milestone = "M4"
-why = "Long warichu participate in the same whole-paragraph dynamic program as ordinary clusters. A declared internal opportunity may become a main-line break; each resulting segment is balanced independently, the opening and closing brackets stay with the outer segments, and every original shaped cluster is emitted exactly once. Protocol-v1 case 3.4.3/warichu-straddles-balanced-main-lines forces a ten-cluster note over two equal main-line segments, while the public Rust acceptance test verifies the ranges and original-source order."
+why = "Long warichu participate in the same whole-paragraph dynamic program as ordinary clusters. A declared internal opportunity may become a main-line break; each resulting segment is balanced independently, the opening and closing brackets stay with the outer segments, and every original shaped cluster is emitted exactly once. Protocol-v1 case 3.4.3/warichu-straddles-balanced-main-lines forces a ten-cluster note over two equal main-line segments, while the public Rust acceptance test verifies the ranges and original-source order. “Declared” is the operative word at the facade: automatic break opportunities are suppressed inside every construct range, so jlreq::DocumentBuilder::warichu takes the split from a caller-supplied discretionary break and a note with none stays on one line and reports layout.overfull. a_long_warichu_straddles_two_lines_only_when_a_break_is_declared asserts both halves."
 
 [[owned]]
 rule = "3.7.2"

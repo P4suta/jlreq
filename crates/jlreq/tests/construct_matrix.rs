@@ -48,11 +48,22 @@
 //! - **Tate-chu-yoko.** Displaced by `(members − 2) × advance / 2`, which is
 //!   zero at the two members every fixture in the workspace used.
 //!
-//! Everything else — mono, group and jukugo ruby, emphasis dots, jidori,
-//! reference marks, superscripts, subscripts and formulas — is sound at every
-//! length asked and in both modes, and this file is what keeps that true. Asked
-//! is not the same as sound: `REFUSED` names the lengths a construct declines to
-//! lay out at all, and those were never measured.
+//! Then a fourth, once `jlreq::verify` learned to ask an annotation about the
+//! lines it does *not* belong to:
+//!
+//! - **Every annotation.** A line reserves its annotation's room on the
+//!   block-end side and draws the annotation on the block-start side, so the
+//!   moment a bare line is followed by an annotated one the annotation lands on
+//!   the bare line's characters. `ANNOTATION_ON_A_WRAPPED_LINE` names the
+//!   twenty-four combinations, and [ADR
+//!   0031](../../../docs/adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md)
+//!   says why they are recorded here rather than corrected.
+//!
+//! Everything else — jidori, formulas and subscripts, whose room is reserved on
+//! the side they are drawn on — is sound at every length asked and in both
+//! modes, and this file is what keeps that true. Asked is not the same as
+//! sound: `REFUSED` names the lengths a construct declines to lay out at all,
+//! and those were never measured.
 
 use std::sync::Arc;
 
@@ -137,22 +148,67 @@ fn range(clusters: usize) -> std::ops::Range<usize> {
     START..START.saturating_add(clusters.saturating_mul(3))
 }
 
-/// The lengths a construct refuses outright, which is an answer rather than a
-/// hole in the sweep: a furawake cannot split two columns out of one cluster.
+/// Every construct that hangs an annotation beside the text, at the lengths
+/// that make the fixture paragraph wrap.
+///
+/// A line's block extent is grown to hold its annotations, but the annotation
+/// is drawn on the block-**start** side while the room is reserved on the
+/// block-**end** side. That is self-consistent only while consecutive lines
+/// carry equal annotation extent — the case every fixture in this workspace and
+/// every conformance case with attachments happens to be in. When a line
+/// without ruby is followed by a line with it, the second line's ruby is
+/// painted over the first line's characters.
+///
+/// Found by this sweep together with `annotation-overlaps-another-line`, and
+/// **not fixed**: the correction moves body and annotation coordinates on all
+/// 27 attachment-bearing conformance cases, and the differential census that
+/// would check it cannot be run here.
+/// [ADR 0031](../../../docs/adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md)
+/// records the defect, both candidate models, and what it waits on.
+const ANNOTATION_ON_A_WRAPPED_LINE: &[(&str, usize, &str)] = &[
+    ("emphasis", 4, "HorizontalTb"),
+    ("emphasis", 4, "VerticalRl"),
+    ("emphasis", 5, "HorizontalTb"),
+    ("emphasis", 5, "VerticalRl"),
+    ("group-ruby", 4, "HorizontalTb"),
+    ("group-ruby", 4, "VerticalRl"),
+    ("group-ruby", 5, "HorizontalTb"),
+    ("group-ruby", 5, "VerticalRl"),
+    ("jukugo-ruby", 4, "HorizontalTb"),
+    ("jukugo-ruby", 4, "VerticalRl"),
+    ("jukugo-ruby", 5, "HorizontalTb"),
+    ("jukugo-ruby", 5, "VerticalRl"),
+    ("mono-ruby", 4, "HorizontalTb"),
+    ("mono-ruby", 4, "VerticalRl"),
+    ("mono-ruby", 5, "HorizontalTb"),
+    ("mono-ruby", 5, "VerticalRl"),
+    ("reference-mark", 4, "HorizontalTb"),
+    ("reference-mark", 4, "VerticalRl"),
+    ("reference-mark", 5, "HorizontalTb"),
+    ("reference-mark", 5, "VerticalRl"),
+    ("superscript", 4, "HorizontalTb"),
+    ("superscript", 4, "VerticalRl"),
+    ("superscript", 5, "HorizontalTb"),
+    ("superscript", 5, "VerticalRl"),
+];
+
 /// Combinations whose geometry holds at one measure and not the other. A
 /// construct that only breaks when its line wraps is a different finding from
 /// one that breaks outright, so the two are pinned apart.
-const MEASURE_DEPENDENT: &[(&str, usize, &str)] = &[];
+const MEASURE_DEPENDENT: &[(&str, usize, &str)] = ANNOTATION_ON_A_WRAPPED_LINE;
 
+/// The lengths a construct refuses outright, which is an answer rather than a
+/// hole in the sweep: a furawake cannot split two columns out of one cluster.
 const REFUSED: &[(&str, usize)] = &[("furawake-2", 1), ("furawake-3", 1), ("furawake-3", 2)];
 
 /// The combinations that do not hold, and nothing else.
 ///
-/// Empty since `docs/adr/0030`. It is kept rather than replaced by a bare
-/// `assert!(broken.is_empty())` because the shape is the point: a regression
-/// arrives as a row naming the construct, the length and the writing mode, and
-/// a deliberate deferral has somewhere to be written down and explained.
-const KNOWN_BROKEN: &[(&str, usize, &str)] = &[];
+/// The three defects `docs/adr/0030` corrected are gone from it; what remains
+/// is the one `docs/adr/0031` records and does not correct. The shape is the
+/// point: a regression arrives as a row naming the construct, the length and
+/// the writing mode, and a deliberate deferral has somewhere to be written
+/// down and explained.
+const KNOWN_BROKEN: &[(&str, usize, &str)] = ANNOTATION_ON_A_WRAPPED_LINE;
 
 #[test]
 fn every_construct_holds_its_geometry_at_every_length() -> Result<(), Box<dyn std::error::Error>> {

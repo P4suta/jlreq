@@ -234,3 +234,63 @@ fn a_furawake_fills_the_columns_its_line_reserved() -> Result<(), Box<dyn std::e
     }
     Ok(())
 }
+
+/// A note too long for its measure straddles two main lines when — and only
+/// when — the document says where it may split.
+///
+/// JLReq §3.4.3 allows the straddle and `jlreq-core` composes it; the facade
+/// suppresses automatic break opportunities inside every construct, so from
+/// here it takes a `discretionary_break`. Both halves of that statement are
+/// asserted, because the interesting one is the default: a long note that
+/// silently overflows its measure is what a caller gets if they do not know
+/// about the break, and `layout.overfull` is how they find out.
+///
+/// `construct_matrix.rs` sweeps single-line constructs and cannot reach this;
+/// nothing else in the facade had a straddling note at all.
+#[test]
+fn a_long_warichu_straddles_two_lines_only_when_a_break_is_declared()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fonts = fixture()?;
+    // Twenty clusters of note between `前と` and `後。`: ten per lane at half
+    // size is 80 pt of the 56 pt measure, so it cannot be set on one line.
+    let note = "一二三四五六七八九十甲乙丙丁戊己庚辛壬癸";
+    let text = format!("前と{note}後。");
+    let note_range = 6..66;
+
+    for declared in [None, Some(36)] {
+        let mut builder = DocumentBuilder::new(text.clone());
+        builder.warichu(note_range.clone())?;
+        if let Some(offset) = declared {
+            builder.discretionary_break(offset)?;
+        }
+        let document = builder.build()?;
+        let layout =
+            jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(56.0, 16.0)?)?;
+
+        let lines = layout
+            .lines()
+            .iter()
+            .filter(|line| {
+                line.glyphs().iter().any(|glyph| {
+                    let range = glyph.source_range();
+                    range.start >= note_range.start && range.end <= note_range.end
+                })
+            })
+            .count();
+        let overfull = layout
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.code() == "layout.overfull");
+
+        if declared.is_some() {
+            assert_eq!(lines, 2, "a declared split must be taken");
+            assert!(!overfull, "and must leave both lines within the measure");
+        } else {
+            assert_eq!(lines, 1, "an undeclared note must stay on one line");
+            assert!(overfull, "and must say that it did not fit");
+        }
+        let report = jlreq::verify::inspect(&layout);
+        assert!(report.is_sound(), "{declared:?}: {report}");
+    }
+    Ok(())
+}

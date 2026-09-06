@@ -929,6 +929,24 @@ impl DocumentBuilder {
     }
 
     /// Add an inline cutting note (割注).
+    ///
+    /// The note is indivisible unless you say otherwise. Automatic break
+    /// opportunities are suppressed inside every construct's range, so a note
+    /// too long for the measure stays on one line and reports
+    /// `layout.overfull` rather than wrapping into it.
+    ///
+    /// JLReq §3.4.3 does allow a long note to straddle main lines, and this is
+    /// how you ask for it: put a
+    /// [`discretionary_break`](Self::discretionary_break) at the cluster
+    /// boundary the note may split at. Layout then balances each resulting
+    /// segment on its own, keeps the opening and closing brackets with the
+    /// outer segments, and emits every shaped cluster exactly once. Several
+    /// breaks offer several places to split; the line search picks among them.
+    ///
+    /// The reason it is not automatic is that a split inside a note is a
+    /// typographic decision about that note — §3.4.3 states the case with two
+    /// figures and no rule — and the facade has no basis for making it. See
+    /// `docs/decisions/stacked-structure-geometry.md`.
     pub fn warichu(&mut self, range: Range<usize>) -> Result<&mut Self, LayoutError> {
         self.push_range_construct(range, DocumentConstruct::Warichu)
     }

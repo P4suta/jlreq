@@ -115,6 +115,26 @@ A line may also hold more than its measure without hanging anything, when nothin
 adjustment ladder can give the remainder back. That is not silent: it is the
 `layout.overfull` diagnostic.
 
+`TextLine::block_extent` is the line's own text **plus the room reserved for its
+annotations** — ruby, emphasis dots, a reference mark, a superscript, a subscript. The next
+line begins where that extent ends.
+
+Which side of the line the room is on is the part worth stating, because the two sides
+disagree. A subscript is reserved *and drawn* after the line's text, inside the box. Every
+other annotation is reserved after the line's text and **drawn before its origin**, on the
+opposite side — so an annotated line's box is offset from its own content by the annotation's
+extent, and the room it reserved is filled by whatever the *next* line draws backwards into
+it. That closes only while consecutive lines carry equal annotation extent. When a bare line
+is followed by an annotated one, the annotation lands on the bare line's characters.
+
+That is a defect, it is reproducible, and it is not fixed:
+[ADR 0031](../adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md) records it, the
+two models that would correct it, and why neither can be checked here.
+`verify::inspect` reports it as `annotation-overlaps-another-line`, and
+`ANNOTATION_ON_A_WRAPPED_LINE` in
+[`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs) pins
+the combinations it fires on.
+
 ## The step between two cells is not an advance
 
 Two of the three defects lived here, so it is stated rather than left to be inferred.
@@ -169,9 +189,10 @@ Exact coordinates are in
 [`crates/jlreq/tests/construct_geometry.rs`](../../crates/jlreq/tests/construct_geometry.rs);
 [`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs)
 sweeps every construct the builder offers at every length from one cluster to five in both
-writing modes and holds the set of unsound combinations empty. That sweep is what found two
+writing modes and pins the set of unsound combinations exactly. That sweep is what found two
 of the three defects: each construct had been tested at exactly one length, and for
-tate-chu-yoko that length was the one where its displacement cancels.
+tate-chu-yoko that length was the one where its displacement cancels. Its list is not empty —
+it holds the annotation combinations of ADR 0031 above.
 
 ## Where each statement is enforced
 
@@ -182,6 +203,7 @@ tate-chu-yoko that length was the one where its displacement cancels.
 | a cell stays inside its line on the block axis | `verify::inspect` — `cell-escapes-its-line` |
 | an interior cell stays inside the measure (inline axis) | `verify::inspect` — `cell-escapes-the-measure-silently` |
 | an annotation stands beside its base, not over it | `verify::inspect` — `annotation-overlaps-its-base` |
+| an annotation stands on no other line's text | `verify::inspect` — `annotation-overlaps-another-line`, which today reports the open defect of [ADR 0031](../adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md) |
 | a caret stands on some line | `verify::inspect` — `caret-stands-on-no-line` |
 | a click in a cell answers with that cell's bytes | `verify::inspect` — `hit-test-misses-its-own-cell` |
 | `origin` is the cell's inline-start, block-end corner | a unit test, because both sides are derived from the same fields and a check with no possible witness is a guess |
