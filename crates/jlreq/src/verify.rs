@@ -12,11 +12,13 @@
 //! It exists because nothing else in this workspace compared one physical
 //! answer against another. The trace channel records the composer's reasoning
 //! and the core's checker holds the logical layout together, but every
-//! rectangle the facade derives from them was only ever returned. Two defects
-//! lived in that gap: a class boundary's shared conditional space was counted
-//! twice, and the two halves of a tate-chu-yoko run — which share one inline
-//! coordinate — were advanced past each other. Both moved drawn text away from
-//! the layout that hit testing was still using.
+//! rectangle the facade derives from them was only ever returned. Three
+//! defects lived in that gap: a class boundary's shared conditional space was
+//! counted twice; the two halves of a tate-chu-yoko run — which share one
+//! inline coordinate — were advanced past each other; and that run's members
+//! were mapped onto the page from their own upright orientation rather than
+//! the paragraph's, which placed them clear of the column. All three moved
+//! drawn text away from the layout that hit testing was still using.
 //!
 //! It reports rather than panics, for the reason [`jlreq_core::verify`] gives:
 //! an invariant is a typed value the caller decides what to do with. A test

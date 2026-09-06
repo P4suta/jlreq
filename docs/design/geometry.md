@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 The only thing `jlreq` returns is coordinates, and until this document existed it never said
 what they meant. Where the origin is, which way each axis grows, what point a glyph's origin
 names, and whether that point is a baseline were all readable from the source and stated
-nowhere. Two defects lived in that silence long enough to ship — both of them a disagreement
-between the cells a renderer would draw into and the cells hit testing was measuring against
-— and neither was visible to any gate, because nothing in the repository drew anything or
-compared one rectangle to another.
+nowhere. Three defects lived in that silence long enough to ship — each of them a
+disagreement between the cells a renderer would draw into and the cells hit testing was
+measuring against — and none was visible to any gate, because nothing in the repository drew
+anything or compared one rectangle to another.
 
 So: the statements below are the contract. [`jlreq::verify`](../../crates/jlreq/src/verify.rs)
 holds every layout to them, [`crates/jlreq/tests/geometry.rs`](../../crates/jlreq/tests/geometry.rs)
@@ -114,7 +114,7 @@ adjustment ladder can give the remainder back. That is not silent: it is the
 
 ## The step between two cells is not an advance
 
-This is where both defects lived, so it is stated rather than left to be inferred.
+Two of the three defects lived here, so it is stated rather than left to be inferred.
 
 A cell's advance is what the composer **charged** it. The distance to the next cell is a
 different number, and the composer is the authority on it:

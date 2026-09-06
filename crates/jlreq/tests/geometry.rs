@@ -9,10 +9,12 @@
 //! constructs whose cells are not the paragraph's own — ruby beside the line,
 //! emphasis marks repeated along it, and a tate-chu-yoko run set across it.
 //!
-//! Two defects were found by exactly this sweep, both of them invisible to
+//! Three defects were found by exactly this sweep, all of them invisible to
 //! every other gate because nothing else compared the cells to each other:
-//! a class boundary's shared conditional space was spent twice, and the two
-//! halves of a tate-chu-yoko run were advanced past each other.
+//! a class boundary's shared conditional space was spent twice, the two
+//! halves of a tate-chu-yoko run were advanced past each other, and the run
+//! was mapped onto the page from its own upright orientation rather than its
+//! paragraph's, which placed it clear of the column.
 
 use std::fmt::Write as _;
 use std::sync::Arc;

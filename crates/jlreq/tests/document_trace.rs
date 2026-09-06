@@ -25,7 +25,7 @@
 //! before committing it. A golden that changes without a reason stated in the commit
 //! message is the finding, not the noise.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -358,21 +358,28 @@ fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> 
     // overhangs by half of one. `crates/jlreq/tests/warichu_size.rs` pins the
     // geometry and records why choosing the size is deferred. When it is
     // chosen, this expectation is what tells whoever chose it to come here.
-    let known: &[(&str, &str)] = &[
-        ("constructs", "cell-escapes-the-measure-silently"),
-        ("constructs", "cell-escapes-the-measure-silently"),
-    ];
+    //
+    // Counted per (scenario, kind) and compared in sorted order rather than as
+    // a positional list, so that adding a scenario to the corpus or reordering
+    // the statements inside `inspect` cannot fail this test for a reason that
+    // is not geometric. A genuinely new fault appears as its own row, naming
+    // the scenario it came from.
+    let known: &[(&str, &str, usize)] = &[("constructs", "cell-escapes-the-measure-silently", 2)];
 
-    let mut observed = Vec::new();
+    let mut counted: BTreeMap<(&str, &str), usize> = BTreeMap::new();
     for scenario in corpus()? {
         let fonts = fixture_fonts()?;
         let mut engine = LayoutEngine::new();
         let layout =
             engine.layout_document(&scenario.document, &fonts, scenario.options.clone())?;
         for fault in jlreq::verify::inspect(&layout).faults() {
-            observed.push((scenario.name, fault.kind()));
+            *counted.entry((scenario.name, fault.kind())).or_default() += 1;
         }
     }
+    let observed: Vec<(&str, &str, usize)> = counted
+        .into_iter()
+        .map(|((scenario, kind), count)| (scenario, kind, count))
+        .collect();
     assert_eq!(observed, known, "the set of known geometric defects moved");
     Ok(())
 }

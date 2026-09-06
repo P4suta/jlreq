@@ -42,6 +42,19 @@
 //! Until then this file states the geometry, and `jlreq::verify` reports the two
 //! lanes as leaving their line, which
 //! `crates/jlreq/tests/document_trace.rs` records as a known fault by name.
+//!
+//! # About the fixture
+//!
+//! One face, registered alone, and a document that is nothing but the warichu
+//! and the text around it. That is deliberate: the exact 26.6 coordinates below
+//! belong to *this* fixture, and the same construct measured against a
+//! different set of faces gives different numbers — `document_trace.rs`
+//! registers four faces and its `constructs` scenario is composed at a
+//! different measure, so its lanes land elsewhere. That file therefore records
+//! the defect by *kind* and *count*, which survives a fixture change, while
+//! this one pins the coordinates, which does not. A failure here means either
+//! the size was chosen at last or the fixture moved; a failure there means the
+//! set of geometric defects moved.
 
 use std::sync::Arc;
 
