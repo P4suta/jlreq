@@ -44,7 +44,7 @@ use std::ops::Range;
 
 #[cfg(test)]
 use crate::result::GlyphPlacement;
-use crate::result::{GlyphTransform, Rect, TextLayout, TextLine};
+use crate::result::{Rect, TextLayout, TextLine};
 use crate::{Affinity, Point, WritingMode};
 
 /// One way a layout's geometry failed to agree with itself.
@@ -421,11 +421,7 @@ fn check_line(
                     range: glyph.source_range(),
                 });
             }
-        } else if glyph.transform() != GlyphTransform::TateChuYoko
-            && !contains(body, cell)
-            && !excused
-            && hanging != Some(inline_start(mode, cell))
-        {
+        } else if !contains(body, cell) && !excused && hanging != Some(inline_start(mode, cell)) {
             report.note(Fault::CellEscapesTheMeasureSilently {
                 line: line.index(),
                 range: glyph.source_range(),
@@ -504,9 +500,11 @@ fn block_origin(line: &TextLine, mode: WritingMode) -> i32 {
     }
 }
 
-/// The corner [`GlyphPlacement::origin`] is defined to be. The pairing repeats
-/// [`GlyphPlacement::cell_bounds`]' own, because the axes are the glyph's: a
-/// tate-chu-yoko run is set horizontally whatever the paragraph is doing.
+/// The corner [`GlyphPlacement::origin`] is defined to be.
+///
+/// The axes are the *paragraph's*, for every cell on the line including a
+/// tate-chu-yoko member: the construct changes which way the glyph faces, not
+/// which way the column runs.
 ///
 /// This is not a [`Fault`]: both sides are derived from the same fields, so no
 /// layout can break it and a check with no possible witness is a guess. It is
@@ -515,9 +513,8 @@ fn block_origin(line: &TextLine, mode: WritingMode) -> i32 {
 #[cfg(test)]
 fn cell_corner(glyph: &GlyphPlacement) -> (i32, i32) {
     let (x, y, width, height) = glyph.cell_bounds().as_26_6();
-    match (glyph.writing_mode(), glyph.transform()) {
-        (WritingMode::VerticalRl, GlyphTransform::TateChuYoko) => (x, y.saturating_add(height)),
-        (WritingMode::VerticalRl, _) => (x.saturating_add(width), y),
+    match glyph.writing_mode() {
+        WritingMode::VerticalRl => (x.saturating_add(width), y),
         _ => (x, y.saturating_add(height)),
     }
 }

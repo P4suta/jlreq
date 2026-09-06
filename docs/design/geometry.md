@@ -65,10 +65,18 @@ is the same corner of the line's text cell — inline-start, block-**start** —
 the same convention, because a line grows away from its origin along the block axis while a
 glyph's origin sits at the far end of its own.
 
-A tate-chu-yoko run is set horizontally inside vertical text, so its glyphs report
-`GlyphPlacement::writing_mode` as the paragraph's while their cells are measured on the
-horizontal axes. `cell_bounds` pairs the mode with the transform for exactly this reason,
-and anything deriving a corner has to pair them the same way.
+A tate-chu-yoko run is set upright inside vertical text, and that is all it changes. Its
+members stand in the column like every other cell on their line: the axes are the
+paragraph's, the corner rule is the same, and only the glyph's own orientation — reported as
+`GlyphTransform::TateChuYoko`, and the direction of its `advance_x` — differs. What the run
+does have is a cell narrower than an em: the composer gives each member its own reduced
+advance across the column and reserves the run's total rather than an em per member, so a
+two-digit run in a 16-unit em occupies about eleven units of column, side by side, in one
+em of it.
+
+Mapping a member's coordinates from its *own* orientation instead of the paragraph's put
+the run at an `x` equal to its position down the column — clear of the column entirely —
+until `docs/adr/0029` settled that the paragraph decides the axes.
 
 ## The one thing `draw_origin` is not
 
@@ -123,6 +131,27 @@ The `draw.cell` trace family records all three numbers — the composer's coordi
 advance it charged, and the step actually taken — for every cell, precisely so that a
 disagreement among them is visible in a diff rather than only on screen. `draw.line` then
 states the line's composed extent beside the coordinate its last cell reached.
+
+## What is not yet true
+
+One construct does not satisfy the statements above, and it is stated here rather than
+excused in the checker.
+
+**A warichu is set at full size.** JLReq §3.4 sets a 割注 in smaller characters, two lanes
+inside the space one line takes, and `jlreq-core` places it that way — the lanes go half an
+em either side of the line's block origin and the line reserves one em for the pair. The
+facade never reduces the size: `DocumentBuilder::warichu` marks a range and the clusters in
+it reach the composer at the paragraph's own em, so two full-em lanes are placed in the em
+the line reserved and each overhangs by half of one.
+
+`jlreq::verify` reports both lanes as leaving their measure, and it is meant to.
+`crates/jlreq/tests/warichu_size.rs` pins the geometry as it is, and
+`crates/jlreq/tests/document_trace.rs` records exactly those two faults by name, so the
+expectation fails the moment either is fixed. Choosing the size is the same open question as
+the ruby size §3.3.3 leaves open and the anisotropic sizes
+[ADR 0027](../adr/0027-the-layout-is-the-editor-surface.md) defers: ADR 0019 settles that a
+size the caller measured is carried by the measurement, and the facade offers no way to
+state one for either.
 
 ## Where each statement is enforced
 

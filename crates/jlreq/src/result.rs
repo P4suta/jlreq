@@ -386,7 +386,17 @@ impl GlyphPlacement {
     #[must_use]
     pub fn cell_bounds(&self) -> Rect {
         match (self.writing_mode, self.transform) {
-            (WritingMode::HorizontalTb, _) | (_, GlyphTransform::TateChuYoko) => {
+            // A tate-chu-yoko member stands upright, but it stands in the
+            // column like everything else on its line. Its cell is the width
+            // the composer gave it *across* the column — its own reduced
+            // advance, which is why the line reserves the run's total rather
+            // than an em per member — by one em *down* the column, which is the
+            // one em of column the whole run occupies.
+            (WritingMode::VerticalRl, GlyphTransform::TateChuYoko) => {
+                let width = self.advance_x.abs().max(1);
+                Rect::from_fixed(self.x.saturating_sub(width), self.y, width, self.font_size)
+            },
+            (WritingMode::HorizontalTb, _) => {
                 let width = self.advance_x.abs().max(1);
                 Rect::from_fixed(
                     self.x,
@@ -1736,9 +1746,12 @@ mod tests {
 
         let vertical = glyph(WritingMode::VerticalRl);
         assert_eq!(vertical.cell_bounds().as_26_6(), (-64, 320, 192, 384));
+        // A tate-chu-yoko member stands in the column like everything else on
+        // its line: the cell is a square em at the block-end edge, not the
+        // horizontal cell the run's own upright orientation might suggest.
         let mut tate_chu_yoko = vertical;
         tate_chu_yoko.transform = GlyphTransform::TateChuYoko;
-        assert_eq!(tate_chu_yoko.cell_bounds().as_26_6(), (128, 128, 256, 192));
+        assert_eq!(tate_chu_yoko.cell_bounds().as_26_6(), (-128, 320, 256, 192));
     }
 
     #[test]

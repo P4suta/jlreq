@@ -344,6 +344,39 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
     Ok(())
 }
 
+/// The corpus is here to make the *trace* branch, which makes it the widest set
+/// of composed documents in the crate — bidi, emoji fallback, warichu, stacked
+/// structures, a blank paragraph, a measure barely wider than two em. Asking
+/// `jlreq::verify` about each one costs nothing and gives every geometric
+/// statement far more witnesses than `tests/geometry.rs` can assemble on its
+/// own. `jlreq-core`'s own goldens do exactly this with the core's checker.
+#[test]
+fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> {
+    // One known defect, stated rather than skipped. The facade never reduces a
+    // warichu to the smaller size §3.4 sets it at, so its two lanes are placed
+    // at the paragraph's own em inside the one em the line reserved, and each
+    // overhangs by half of one. `crates/jlreq/tests/warichu_size.rs` pins the
+    // geometry and records why choosing the size is deferred. When it is
+    // chosen, this expectation is what tells whoever chose it to come here.
+    let known: &[(&str, &str)] = &[
+        ("constructs", "cell-escapes-the-measure-silently"),
+        ("constructs", "cell-escapes-the-measure-silently"),
+    ];
+
+    let mut observed = Vec::new();
+    for scenario in corpus()? {
+        let fonts = fixture_fonts()?;
+        let mut engine = LayoutEngine::new();
+        let layout =
+            engine.layout_document(&scenario.document, &fonts, scenario.options.clone())?;
+        for fault in jlreq::verify::inspect(&layout).faults() {
+            observed.push((scenario.name, fault.kind()));
+        }
+    }
+    assert_eq!(observed, known, "the set of known geometric defects moved");
+    Ok(())
+}
+
 #[test]
 fn recording_changes_neither_the_layout_nor_the_engine() -> Result<(), Box<dyn Error>> {
     for scenario in corpus()? {

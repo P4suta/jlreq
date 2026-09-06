@@ -316,27 +316,32 @@ fn place_raw_glyph(
         writing_mode,
         construct,
     } = placement;
-    let horizontal =
-        writing_mode == WritingMode::HorizontalTb || transform == GlyphTransform::TateChuYoko;
-    let (x, y, advance_x, advance_y, offset_x, offset_y) = if horizontal {
-        (
-            inline,
-            block.saturating_add(cluster.size),
-            raw.x_advance.abs(),
-            0,
-            raw.x_offset,
-            raw.y_offset.saturating_neg(),
-        )
-    } else {
-        (
-            block,
-            inline,
-            0,
-            raw.y_advance.abs().max(raw.x_advance.abs()),
-            raw.x_offset,
-            raw.y_offset.saturating_neg(),
-        )
+    // Two different questions, and one flag used to answer both.
+    //
+    // Which physical axis is the inline one is the *paragraph's* to say: every
+    // cell on a line has to agree about that or they are not on the same line.
+    // Which way the glyph itself runs is the *cluster's*, and a tate-chu-yoko
+    // run legitimately differs — that is what the construct is.
+    //
+    // Deciding the coordinate mapping from the cluster gave a tate-chu-yoko run
+    // its own frame, with its axes swapped against every other cell on its own
+    // line, so the run was placed at an `x` equal to its position down the
+    // column and drawn clear of the column entirely. The composer had already
+    // said where it goes: it reserves a full em of column per member and places
+    // them at consecutive block coordinates, which lands exactly in the column
+    // once the paragraph's mapping is the one used.
+    let upright = transform == GlyphTransform::TateChuYoko;
+    let (x, y) = match writing_mode {
+        WritingMode::VerticalRl => (block, inline),
+        _ => (inline, block.saturating_add(cluster.size)),
     };
+    let along_x = writing_mode == WritingMode::HorizontalTb || upright;
+    let (advance_x, advance_y) = if along_x {
+        (raw.x_advance.abs(), 0)
+    } else {
+        (0, raw.y_advance.abs().max(raw.x_advance.abs()))
+    };
+    let (offset_x, offset_y) = (raw.x_offset, raw.y_offset.saturating_neg());
     GlyphPlacement {
         font_id: raw.font_id,
         glyph_id: raw.glyph_id,

@@ -27,12 +27,17 @@ returned. The acceptance suite called `line.bounds()` and `glyph.cell_bounds()` 
 layouts and discarded the values; the unit tests pinned each formula against a hand-built
 fixture, which fixes the expression and never compares the two.
 
-Two defects lived there. A conditional space at a class boundary is billed to the boundary,
+Three defects lived there. A conditional space at a class boundary is billed to the boundary,
 so a cell's advance is larger than the step to its neighbour; clamping that shortfall at zero
 spent the space twice and pushed the rest of the line an eighth of an em per boundary. The
 two halves of a tate-chu-yoko run share one inline coordinate; advancing past the first spent
-a whole em the line never had. Both moved drawn text away from the geometry hit testing was
-still using, in ordinary Japanese text, and no gate could see either.
+a whole em the line never had. And the run's members were mapped onto the page from their own
+upright orientation rather than the paragraph's, which placed them off the column entirely —
+in the one writing mode the construct exists for. All three moved drawn text away from the
+geometry hit testing was still using, in ordinary Japanese text, and no gate could see any of
+them. A fourth, a warichu set at full size in the em the composer reserved for two reduced
+lanes, is recorded rather than fixed: it is a size the facade never lets a caller state, and
+that is its own decision to take.
 
 ## Decision
 
@@ -57,7 +62,14 @@ still using, in ordinary Japanese text, and no gate could see either.
    fault list, because `docs/design/invariants.md` already rules out invariants no input can
    violate.
 
-4. **The trace gains a third recording point.** `draw.cell` and `draw.line` record what the
+4. **A tate-chu-yoko run stands in its column.** The construct changes which way a glyph
+   faces, not which way the column runs, so a member's coordinates are mapped from the
+   paragraph's axes like every other cell on its line and its cell is its own reduced
+   advance across the column by one em down it. Deciding the mapping from the member's own
+   upright orientation put the run at an `x` equal to its position down the column, clear
+   of the column entirely.
+
+5. **The trace gains a third recording point.** `draw.cell` and `draw.line` record what the
    facade did with the composer's placements: the coordinate it was given, the advance it
    was charged, and the step actually taken. The core channel could not have shown either
    defect, because both were in arithmetic that happens after the core has finished.

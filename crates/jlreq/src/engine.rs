@@ -928,7 +928,11 @@ mod tests {
                 construct: None,
             },
         );
-        assert_eq!(tate_chu_yoko.geometry_26_6(), (320, 832, 256, 0, 64, 128));
+        // The paragraph decides which physical axis is the inline one, so a
+        // tate-chu-yoko member maps `(inline, block)` to `(block, inline)` like
+        // every other cell on its vertical line. Only its advance stays along
+        // x, because that is the direction the upright glyph itself runs.
+        assert_eq!(tate_chu_yoko.geometry_26_6(), (640, 320, 256, 0, 64, 128));
     }
 
     #[test]

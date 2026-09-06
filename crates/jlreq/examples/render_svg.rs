@@ -29,9 +29,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut fonts = FontLibrary::new();
     fonts.register_font(face.clone())?;
 
-    let text = "日本語組版の座標系\n漢字とLatinの混在";
+    // 27 bytes of kanji, a separator, then three kanji, two digits set as a
+    // tate-chu-yoko run, and a warichu. Every construct whose cells are not the
+    // paragraph's own is on the page, because those are the ones a wrong
+    // reading of the contract puts somewhere else entirely.
+    let text = "日本語組版の座標系\n漢字と12と割注。";
     let mut document = DocumentBuilder::new(text);
     document.group_ruby(0..9, "にほんご")?;
+    document.tate_chu_yoko(37..39)?;
+    document.warichu(42..48)?;
     let document = document.build()?;
 
     let options = LayoutOptions::try_new(180.0, 24.0)?.with_line_gap(8.0)?;

@@ -167,15 +167,35 @@ fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std:
         LayoutOptions::try_new(180.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
     )?;
 
-    let inline: Vec<i32> = layout
+    let cells: Vec<(i32, i32, i32, i32)> = layout
         .glyphs()
         .filter(|glyph| glyph.transform() == jlreq::GlyphTransform::TateChuYoko)
-        .map(|glyph| glyph.cell_bounds().as_26_6().0)
+        .map(|glyph| glyph.cell_bounds().as_26_6())
         .collect();
-    assert_eq!(inline.len(), 2, "the run holds both digits");
+    assert_eq!(cells.len(), 2, "the run holds both digits");
+
+    // The inline axis is y in a vertical column: both halves stand at one
+    // position down the column, and take one em of it between them.
+    assert_eq!(cells[0].1, cells[1].1, "both halves stand at one position");
+    assert_eq!(cells[0].3, cells[1].3, "both occupy the same em");
+
+    // They sit side by side across the column, meeting edge to edge and
+    // leaving it neither early nor late.
+    let mut across = [cells[0], cells[1]];
+    across.sort_unstable_by_key(|cell| cell.0);
     assert_eq!(
-        inline[0], inline[1],
-        "both halves stand at the same inline coordinate"
+        across[0].0 + across[0].2,
+        across[1].0,
+        "the halves meet edge to edge"
+    );
+
+    let line = &layout.lines()[0];
+    let column_start = line.origin().x_26_6() - line.block_extent_26_6();
+    assert_eq!(across[0].0, column_start, "the run starts at the column");
+    assert_eq!(
+        across[1].0 + across[1].2,
+        line.origin().x_26_6(),
+        "and ends at it"
     );
     Ok(())
 }
