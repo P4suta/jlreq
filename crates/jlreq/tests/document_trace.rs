@@ -356,7 +356,7 @@ fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> 
     // warichu to the smaller size §3.4 sets it at, so its two lanes are placed
     // at the paragraph's own em inside the one em the line reserved, so each
     // overhangs its line by half an em along the block axis — onto the line
-    // beside it. `crates/jlreq/tests/construct_size.rs` pins the geometry and
+    // beside it. `crates/jlreq/tests/construct_geometry.rs` pins the geometry and
     // records why choosing the size is deferred. When it is chosen, this
     // expectation is what tells whoever chose it to come here.
     //

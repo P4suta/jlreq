@@ -44,9 +44,7 @@
 use core::fmt;
 use std::ops::Range;
 
-#[cfg(test)]
-use crate::result::GlyphPlacement;
-use crate::result::{Rect, TextLayout, TextLine};
+use crate::result::{GlyphPlacement, Rect, TextLayout, TextLine};
 use crate::{Affinity, Point, WritingMode};
 
 /// One way a layout's geometry failed to agree with itself.
@@ -430,14 +428,24 @@ fn check_line(
         .filter(|glyph| glyph.annotation().is_none())
         .map(|glyph| inline_start(mode, glyph.cell_bounds()))
         .max();
+    // The base is the text, not the line. A line's block extent is grown to
+    // reserve room for its annotations, so a subscript standing correctly in
+    // the room reserved for it is inside the line's box and outside every text
+    // cell — asking the box rather than the text called that an overlap.
+    let base = line
+        .glyphs()
+        .iter()
+        .filter(|glyph| glyph.annotation().is_none())
+        .map(GlyphPlacement::cell_bounds)
+        .reduce(Rect::union);
 
     for glyph in line.glyphs() {
         let cell = glyph.cell_bounds();
         if glyph.annotation().is_some() {
-            // An annotation is outside the body's block extent by design — that
+            // An annotation is outside its base's block extent by design — that
             // is what standing beside the text means — so it is asked the one
             // question that distinguishes beside from over.
-            if overlaps_block(mode, body, cell) {
+            if base.is_some_and(|base| overlaps_block(mode, base, cell)) {
                 report.note(Fault::AnnotationOverlapsItsBase {
                     line: line.index(),
                     range: glyph.source_range(),

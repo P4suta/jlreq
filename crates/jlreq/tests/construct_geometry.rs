@@ -11,8 +11,15 @@
 //!
 //! # The finding
 //!
-//! Two constructs come out wrong, for two different reasons, and the second is
-//! not the facade's:
+//! Three constructs come out wrong. Two of the three share one cause, and it is
+//! not the facade's: `jlreq-core` positions a multi-lane construct against **the
+//! paragraph's em** and then lets the line's block extent grow to hold it,
+//! without re-centring it in what it grew to.
+//! [`place_furawake_segment`](../../../crates/jlreq-core/src/pipeline/special.rs)
+//! says so in one line — it offsets by `(main_block_extent − segment.block_extent) / 2`,
+//! where `main_block_extent` is `paragraph.text.size().block()`. While the em
+//! and the line agree the construct is centred; once the line is wider it is
+//! not, and the surplus is drawn onto the line beside it.
 //!
 //! - **A warichu is set at full size.** JLReq §3.4 sets a 割注 in characters
 //!   smaller than the surrounding text, two lanes inside the space one line
@@ -31,6 +38,13 @@
 //!   `(members − 2) × advance / 2`. At two members that is zero, which is the
 //!   count every other test in this workspace uses; at one, three, four and
 //!   five the run leaves its own line, and `jlreq::verify` says so.
+//! - **A furawake is placed half an em short per extra column.** The line
+//!   reserves one em per column and the facade's full-em clusters fill exactly
+//!   that, so unlike the warichu the *size* is right. The segment is centred in
+//!   one em rather than in the line, so with two columns of a 16-unit em the
+//!   lanes land at −8‥8 and 8‥24 of a line that runs 0‥32, and the first lane
+//!   is half an em above the line it belongs to. Nothing in this workspace had
+//!   a geometric test for a furawake at any length; it is wrong at all of them.
 //!
 //! Ruby is not affected by the first — `annotation_options` halves the size for
 //! every annotation stream — because ruby text is an annotation the builder
@@ -251,6 +265,62 @@ fn a_tate_chu_yoko_run_is_centred_only_when_it_holds_two_members()
             "{members} member(s): {}",
             jlreq::verify::inspect(&layout)
         );
+    }
+    Ok(())
+}
+
+/// A furawake's lanes are the right size and in the wrong place: the segment is
+/// centred in one em while the line reserves one em per column.
+#[test]
+fn a_furawake_is_centred_in_an_em_rather_than_in_its_line() -> Result<(), Box<dyn std::error::Error>>
+{
+    let fonts = fixture()?;
+    for (columns, lanes) in [
+        // (columns, each lane's block-axis start, in the order the lanes read)
+        (2_u16, vec![-EM / 2, EM / 2]),
+        (3, vec![-EM, 0, EM]),
+    ] {
+        let reserved = EM * i32::from(columns);
+        // 前(0..3) と(3..6) then four kanji, so every column holds content.
+        let mut builder = DocumentBuilder::new("前と一二三四後。");
+        builder.furawake(6..18, columns, 0.0)?;
+        let document = builder.build()?;
+        let layout =
+            jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(300.0, 16.0)?)?;
+
+        let line = &layout.lines()[0];
+        assert_eq!(
+            (line.origin().y_26_6(), line.block_extent_26_6()),
+            (0, reserved),
+            "{columns} columns: the line reserves an em per column"
+        );
+
+        let mut starts: Vec<i32> = line
+            .glyphs()
+            .iter()
+            .filter(|glyph| {
+                let range = glyph.source_range();
+                range.start >= 6 && range.end <= 18
+            })
+            .map(|glyph| glyph.cell_bounds().as_26_6().1)
+            .collect();
+        starts.sort_unstable();
+        starts.dedup();
+        assert_eq!(starts, lanes, "{columns} columns: the lanes moved");
+
+        // Centred in the line, the lanes would start at 0, EM, 2·EM …; they
+        // start half the reserved surplus earlier, on every column.
+        let centred: Vec<i32> = (0..i32::from(columns)).map(|lane| lane * EM).collect();
+        assert_eq!(
+            starts
+                .iter()
+                .zip(&centred)
+                .map(|(at, want)| want - at)
+                .collect::<Vec<_>>(),
+            vec![(reserved - EM) / 2; usize::from(columns)],
+            "{columns} columns: the displacement is no longer half the surplus"
+        );
+        assert!(!jlreq::verify::inspect(&layout).is_sound());
     }
     Ok(())
 }

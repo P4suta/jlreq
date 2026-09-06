@@ -171,12 +171,12 @@ fn a_class_boundary_spends_its_conditional_space_once() -> Result<(), Box<dyn st
 /// A tate-chu-yoko run stands at one position down its column, with its
 /// members side by side across it.
 ///
-/// Not *in one em* across the column, which is what JLReq asks and what this
-/// test used to claim: the line's block extent is derived from the run, so the
-/// run spanning its column exactly is true of any run whatever its members
-/// measure, and asserting it checks nothing. What the em costs is pinned in
-/// `crates/jlreq/tests/construct_size.rs`, by measuring the line against its
-/// neighbours instead.
+/// Not *in one em* across the column, which this test used to claim: the line's
+/// block extent is derived from the run, so the run spanning its column exactly
+/// is true of any run whatever its members measure, and asserting it checks
+/// nothing. §3.2.5 asks for the run to be *centred* in the line, which is a
+/// different statement and one the run does not satisfy at any member count but
+/// two — `crates/jlreq/tests/construct_geometry.rs` measures that.
 #[test]
 fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;

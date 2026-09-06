@@ -137,10 +137,21 @@ states the line's composed extent beside the coordinate its last cell reached.
 
 ## What is not yet true
 
-Two constructs that are not plain body text come out wrong, for two different reasons. Both
-are stated here rather than excused in the checker, and both are pinned in
-[`crates/jlreq/tests/construct_size.rs`](../../crates/jlreq/tests/construct_size.rs), which
-fails the moment either is corrected.
+Three constructs that are not plain body text come out wrong. All three are stated here
+rather than excused in the checker; the coordinates are pinned in
+[`crates/jlreq/tests/construct_geometry.rs`](../../crates/jlreq/tests/construct_geometry.rs)
+and the set of broken combinations in
+[`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs),
+which sweeps every construct the builder offers at every length from one cluster to five in
+both writing modes. That sweep is what found two of the three: each construct had been
+tested at exactly one length, and for tate-chu-yoko that length was the one where its defect
+cancels.
+
+Two of the three share a cause, and it is `jlreq-core`'s. A multi-lane construct is
+positioned against **the paragraph's em**, and the line's block extent is then grown to hold
+it without the construct being re-centred in what it grew to. While the em and the line agree
+the construct is centred; once the line is wider it is not, and the surplus is drawn onto the
+line beside it.
 
 **A warichu is set at full size.** The facade hands the composer the paragraph's own em for
 every cluster and has no way to be told otherwise. JLReq §3.4 sets a 割注 in smaller
@@ -183,6 +194,13 @@ was, on a requirement §3.2.5 does not state. The section asks for solid setting
 and nothing narrower. Getting two digits into one em is a matter of using their half-width
 forms, which is shaping, which [ADR 0001](../adr/0001-no-std-no-io-no-font-in-core.md) and
 [ADR 0002](../adr/0002-caller-supplied-metrics.md) place with the caller.
+
+**A furawake is placed half an em short per extra column.** The line reserves one em per
+column and the facade's full-em clusters fill exactly that, so unlike the warichu the size is
+right. `place_furawake_segment` centres the segment inside `paragraph.text.size().block()` —
+one em — so with two columns the lanes land half an em before where the line put them, and
+the first lane sits on the line above. Nothing in this workspace had a geometric test for a
+furawake at any length; it is wrong at all of them, in both writing modes.
 
 Choosing the warichu's size is the same open question as the ruby size §3.3.3 leaves open
 and the anisotropic sizes [ADR 0027](../adr/0027-the-layout-is-the-editor-surface.md)
