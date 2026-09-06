@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! What the constructs JLReq sets *smaller* are actually set at, pinned as it
-//! is rather than as it should be.
+//! What the constructs that are not plain body text are actually set at and
+//! placed at, pinned as it is rather than as it should be.
 //!
 //! `crates/jlreq-core/tests/frame_normalization.rs` does this for ADR 0017's
 //! unimplemented half, and for the same reason: a defect nobody can see is
@@ -11,41 +11,57 @@
 //!
 //! # The finding
 //!
-//! The facade hands `jlreq-core` the paragraph's own em for every cluster it
-//! composes, and it has no way to be told otherwise. Two constructs JLReq sets
-//! at a reduced size therefore come out at full size, in two different shapes:
+//! Two constructs come out wrong, for two different reasons, and the second is
+//! not the facade's:
 //!
 //! - **A warichu is set at full size.** JLReq §3.4 sets a 割注 in characters
 //!   smaller than the surrounding text, two lanes inside the space one line
 //!   takes, and `jlreq-core` places it that way: `place_warichu_segment` puts
 //!   the two lanes half an em to either side of the line's block origin, and
-//!   the line reserves one em of block extent for the pair. Given full-em
-//!   clusters, each lane overhangs its line by half an em — onto the line
-//!   beside it. `jlreq::verify` reports both lanes as leaving their line, and
-//!   it is meant to.
-//! - **A tate-chu-yoko run widens its line.** The members of a 縦中横 stand
-//!   side by side across the column at their own advances, and the line's block
-//!   extent is the sum of them. Nothing fits that sum to the em, so a run of
-//!   two digits makes its line wider than every other line in the paragraph.
-//!   Nothing escapes anything, so `verify` is silent about it: the line really
-//!   is that wide. It is visible only as a column that bulges, which is why it
-//!   is pinned here by measurement rather than by fault.
+//!   the line reserves one em of block extent for the pair. The facade hands
+//!   `jlreq-core` the paragraph's own em for every cluster it composes and has
+//!   no way to be told otherwise, so each lane overhangs its line by half an em
+//!   — onto the line beside it. `jlreq::verify` reports both lanes as leaving
+//!   their line, and it is meant to.
+//! - **A tate-chu-yoko run is not centred in its line.** JLReq §3.2.5 asks for
+//!   the string to be set solid left to right and then centred in the vertical
+//!   line. The line's block extent is `max(em, members × advance)`, which is
+//!   right; the run's position in it is not. The group is centred on the line's
+//!   block *origin* rather than on its centre, which displaces it by
+//!   `(members − 2) × advance / 2`. At two members that is zero, which is the
+//!   count every other test in this workspace uses; at one, three, four and
+//!   five the run leaves its own line, and `jlreq::verify` says so.
 //!
-//! Ruby is not affected — `annotation_options` halves the size for every
-//! annotation stream — because ruby text is an annotation the builder shapes,
-//! while a warichu's and a tate-chu-yoko's text is body text the builder only
-//! marks.
+//! Ruby is not affected by the first — `annotation_options` halves the size for
+//! every annotation stream — because ruby text is an annotation the builder
+//! shapes, while a warichu's and a tate-chu-yoko's text is body text the
+//! builder only marks.
+//!
+//! A run *widening* its line is not among the findings. It is what §3.2.5's own
+//! deferral-ledger entry records as owned, conformance-measured behaviour, and
+//! the section asks for nothing narrower; an earlier revision of this file said
+//! JLReq requires the run to fit one em, which the primary text does not say.
+//! A typesetter would reach for half-width digit forms, and choosing those is
+//! shaping, which ADR 0001 and ADR 0002 place with the caller.
 //!
 //! # Why they are pinned rather than fixed
 //!
-//! Choosing the size is the same open question as
+//! **The size.** Choosing it is the same open question as
 //! [ADR 0027](../../../docs/adr/0027-the-layout-is-the-editor-surface.md)'s
 //! deferred anisotropic sizes and the ruby size §3.3.3 leaves open: ADR 0019
 //! settles that a size the caller measured is carried by the measurement, and
-//! the facade offers no way to state one for either construct. It hard-codes an
+//! the facade offers no way to state one for a warichu at all. It hard-codes an
 //! em, the way it hard-codes half an em for every annotation. Giving the caller
-//! that knob is a design with its own consequences for the draw contract, and
-//! all of it belongs in one piece of work.
+//! that knob is a design with its own consequences for the draw contract.
+//!
+//! **The centring.** It is `jlreq-core`'s, not the facade's: the block
+//! coordinates arrive displaced and the facade maps them faithfully. Correcting
+//! it changes composed output, which the 122,199-request differential census
+//! cannot be re-run here to clear, and the current coordinates are what
+//! conformance case `3.2.5/tate-chu-yoko-solid-centered-group` and
+//! `tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line` both expect —
+//! at three members, with the same displacement. Changing a case is a claim
+//! about conformance and belongs to whoever owns that claim.
 //!
 //! # About the fixture
 //!
@@ -60,12 +76,10 @@
 //!
 //! The subset face covers none of this text, so every advance here is a
 //! `.notdef` advance — a square em for Noto Sans JP. That is what makes the
-//! numbers so round, and it is why the tate-chu-yoko test also states the
-//! finding in the font-independent form: the line's block extent is the sum of
-//! the run's member advances, whatever those advances happen to be. Measured
-//! against a face that really covers ASCII digits the sum is smaller — about
-//! 1.1 em for two digits of Yu Gothic — and still not the one em the construct
-//! is supposed to occupy.
+//! numbers so round. It is not what makes the findings: measured against Yu
+//! Gothic, whose digits advance about 0.556 em, the warichu overhang and the
+//! tate-chu-yoko displacement are both the same fractions of the advances that
+//! face supplies.
 
 use std::sync::Arc;
 
@@ -148,46 +162,95 @@ fn a_warichu_is_set_at_full_size_and_overhangs_its_line() -> Result<(), Box<dyn 
     Ok(())
 }
 
-/// The run's members stand side by side at their own advances and the line
-/// grows to hold them, so a paragraph whose other lines are one em wide gets
-/// one line that is two.
+/// A tate-chu-yoko run is centred in its column only when it holds exactly two
+/// members. Every other count puts part of the run outside its own line.
+///
+/// JLReq §3.2.5: "first set from left to right using solid setting, then align
+/// the whole string to the center of the vertical line". The line's block
+/// extent is `max(em, members × advance)`, which is right — a run wider than
+/// the em widens the line, and the deferral ledger records that as owned,
+/// conformance-measured behaviour. What is not right is where the run is put in
+/// it: the group is centred on the line's block **origin** rather than on its
+/// centre, so it is displaced by `(members − 2) × advance / 2`. That is zero at
+/// two members, which is what every test in this workspace used, and it is one
+/// whole member at four.
+///
+/// `jlreq::verify` reports the escape, so the numbers below are stated as
+/// coordinates *and* as a soundness expectation: at two members the layout is
+/// sound, at every other count it is not. Nothing here needs a font with real
+/// metrics — the subset face's square `.notdef` advance makes the arithmetic
+/// plain, and a face whose digits are proportional shows the same displacement
+/// scaled to its own advance.
 #[test]
-fn a_tate_chu_yoko_run_widens_its_line_instead_of_fitting_the_em()
+fn a_tate_chu_yoko_run_is_centred_only_when_it_holds_two_members()
 -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;
-    let mut builder = DocumentBuilder::new("あ12あ\nああ");
-    builder.tate_chu_yoko(3..5)?;
-    let document = builder.build()?;
-    let layout = jlreq::layout_document(
-        &document,
-        &fonts,
-        LayoutOptions::try_new(200.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
-    )?;
+    for (members, group) in [
+        // (members, the run's cells from first edge to last, in x)
+        (1_i32, (-3 * EM / 2, -EM / 2)),
+        (2, (-2 * EM, 0)),
+        (3, (-5 * EM / 2, EM / 2)),
+        (4, (-3 * EM, EM)),
+    ] {
+        let count = usize::try_from(members)?;
+        let digits: String = "1234".chars().take(count).collect();
+        let text = format!("あ{digits}あ");
+        let mut builder = DocumentBuilder::new(&text);
+        builder.tate_chu_yoko(3..3 + count)?;
+        let document = builder.build()?;
+        let layout = jlreq::layout_document(
+            &document,
+            &fonts,
+            LayoutOptions::try_new(300.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
+        )?;
 
-    let (run, plain) = (&layout.lines()[0], &layout.lines()[1]);
-    assert_eq!(
-        plain.block_extent_26_6(),
-        EM,
-        "a line of body text is an em"
-    );
-    assert_eq!(run.block_extent_26_6(), 2 * EM, "the run doubled its line");
+        // The line is as wide as the run needs, which is the part that is right.
+        let line = &layout.lines()[0];
+        assert_eq!(
+            line.block_extent_26_6(),
+            EM.max(members.saturating_mul(EM)),
+            "{members} member(s): the line no longer takes its width from the run"
+        );
+        assert_eq!(
+            (line.origin().x_26_6() - line.block_extent_26_6()),
+            -EM.max(members.saturating_mul(EM)),
+            "{members} member(s): the line moved"
+        );
 
-    // The font-independent half of the finding: the line is exactly as wide as
-    // the run's members are, summed. Nothing fitted the run to the em.
-    let run_total: i32 = run
-        .glyphs()
-        .iter()
-        .filter(|glyph| glyph.transform() == jlreq::GlyphTransform::TateChuYoko)
-        .map(|glyph| glyph.geometry_26_6().2.abs())
-        .sum();
-    assert_eq!(run_total, run.block_extent_26_6());
-    assert!(
-        run_total > EM,
-        "the run fits the em now, so this file is out of date"
-    );
+        let cells: Vec<(i32, i32)> = line
+            .glyphs()
+            .iter()
+            .filter(|glyph| glyph.transform() == jlreq::GlyphTransform::TateChuYoko)
+            .map(|glyph| {
+                let (x, _, width, _) = glyph.cell_bounds().as_26_6();
+                (x, x.saturating_add(width))
+            })
+            .collect();
+        assert_eq!(cells.len(), count, "{members} member(s)");
+        assert_eq!(
+            (cells[0].0, cells[count - 1].1),
+            group,
+            "{members} member(s): the run moved"
+        );
 
-    // Nothing escapes: the line is honestly that wide, which is why this
-    // finding needs a measurement rather than a fault.
-    assert!(jlreq::verify::inspect(&layout).is_sound());
+        // What §3.2.5 asks for, stated beside what happens, so the correction
+        // has a number to reach rather than only a direction.
+        let extent = EM.max(members.saturating_mul(EM));
+        let centred = (
+            -extent / 2 - members * EM / 2,
+            -extent / 2 + members * EM / 2,
+        );
+        assert_eq!(
+            centred == group,
+            members == 2,
+            "{members} member(s): centred would be {centred:?}, the run is at {group:?}"
+        );
+        assert_eq!(
+            jlreq::verify::inspect(&layout).is_sound(),
+            members == 2,
+            "{members} member(s): {}",
+            jlreq::verify::inspect(&layout)
+        );
+    }
     Ok(())
 }
