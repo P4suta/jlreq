@@ -3224,6 +3224,47 @@ mod tests {
         }
     }
 
+    /// The exact work a fixed corpus costs, pinned.
+    ///
+    /// The two budget tests below are the real thing and are too slow to run on every push,
+    /// so nothing stood between a commit and an algorithmic regression. Composition is
+    /// integer-only and deterministic, so the work a fixed input costs is a number, not a
+    /// range — the same reasoning the goldens rest on. A change here is a change in how much
+    /// the search explores, and it belongs in the commit message either way.
+    ///
+    /// These paragraphs are small enough that the whole test is imperceptible.
+    #[test]
+    fn a_fixed_corpus_costs_exactly_this_much_search() {
+        fn transitions(cluster_count: usize, extent: i32, style: &Style) -> usize {
+            let source: String = "日".repeat(cluster_count);
+            let paragraph = break_everywhere(&source, extent, WritingMode::HorizontalTb);
+            let mut composer = super::Composer::new();
+            composer
+                .compose(&paragraph, style)
+                .expect("the pinned corpus composes");
+            composer.transitions
+        }
+
+        let default = Style::default();
+        let observed = [
+            transitions(64, 20_000, &default),
+            transitions(128, 20_000, &default),
+            transitions(256, 20_000, &default),
+            transitions(256, 4_000, &default),
+            transitions(256, 20_000, &Style::book_2020()),
+        ];
+        // 64 -> 128 -> 256 clusters roughly doubles the work rather than quadrupling it:
+        // the search bounds itself, and that shape is what these numbers hold. A narrower
+        // measure costs less because more candidates are refused outright, and the book
+        // profile costs exactly what the default does because the two differ in what a line
+        // is worth, not in how many the search weighs.
+        assert_eq!(observed, [1_177, 2_585, 5_401, 1_521, 5_401]);
+        assert!(
+            observed[2] < observed[0].saturating_mul(8),
+            "the search stopped bounding itself: {observed:?}"
+        );
+    }
+
     #[test]
     #[ignore = "the release performance gate runs this explicitly"]
     fn ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget() {
