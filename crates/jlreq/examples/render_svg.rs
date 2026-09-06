@@ -8,6 +8,14 @@
 //! Every rectangle is a cell the layout reported and every glyph is placed at the
 //! point [`baseline_origin`] derives, so a wrong reading of the contract is visible
 //! rather than merely arguable: the text would sit off its own cells.
+//!
+//! Each line is drawn twice. The solid box is the line's **composed box** — its
+//! origin plus the extents it reports — which is the claim, and the dashed one,
+//! drawn only when it differs, is [`jlreq::TextLine::bounds`], the union of every
+//! cell in the line. Drawing only the union would hide the very thing this file
+//! exists to show: a union contains every cell by construction, so a cell that
+//! left its line would still look enclosed. Ruby stands outside the solid box on
+//! purpose; a body cell outside it is a defect, and `jlreq::verify` names it.
 
 use std::error::Error;
 use std::fmt::Write as _;
@@ -76,6 +84,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// The box a line claims: its origin plus the extents it reports, in 26.6.
+///
+/// Not [`jlreq::TextLine::bounds`], which unions in every cell it is asked
+/// about and so can never show one leaving.
+fn composed_box(line: &jlreq::TextLine) -> (i32, i32, i32, i32) {
+    let (x, y) = (line.origin().x_26_6(), line.origin().y_26_6());
+    let (inline, block) = (line.inline_extent_26_6(), line.block_extent_26_6());
+    match line.writing_mode() {
+        WritingMode::VerticalRl => (x.saturating_sub(block), y, block, inline),
+        _ => (x, y, inline, block),
+    }
+}
+
+/// 26.6 fixed point as the number an SVG attribute takes.
+fn fixed(value: i32) -> f64 {
+    f64::from(value) / 64.0
+}
+
 /// Translate one layout's own coordinates onto the page and draw every cell, then
 /// the text itself at the point the drawing contract names.
 fn draw(
@@ -93,16 +119,28 @@ fn draw(
     )?;
 
     for line in layout.lines() {
-        let bounds = line.bounds();
+        let claimed = composed_box(line);
         writeln!(
             svg,
             "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"none\" \
              stroke=\"#7fa8d0\" stroke-width=\"1\"/>",
-            bounds.x(),
-            bounds.y(),
-            bounds.width(),
-            bounds.height()
+            fixed(claimed.0),
+            fixed(claimed.1),
+            fixed(claimed.2),
+            fixed(claimed.3)
         )?;
+        let bounds = line.bounds().as_26_6();
+        if bounds != claimed {
+            writeln!(
+                svg,
+                "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"none\" \
+                 stroke=\"#b9b9c8\" stroke-width=\"0.7\" stroke-dasharray=\"3 2\"/>",
+                fixed(bounds.0),
+                fixed(bounds.1),
+                fixed(bounds.2),
+                fixed(bounds.3)
+            )?;
+        }
     }
 
     for glyph in layout.glyphs() {

@@ -139,7 +139,17 @@ pub enum Fault {
     ///
     /// It is not required to stand on the line that holds its offset: at a wrap
     /// the two [`Affinity`] answers deliberately name different lines. What must
-    /// hold is that it stands on one of them.
+    /// hold is that it stands on one of them — and that there is one at all,
+    /// since every offset asked is a line edge the layout named itself.
+    ///
+    /// The weaker of this module's statements, and deliberately so.
+    /// [`TextLayout::caret_rect`](crate::TextLayout::caret_rect) builds the
+    /// caret from a cell of the line it found it on, and a line's `bounds`
+    /// contain its cells, so today only the missing-caret half can fail. It is
+    /// kept rather than reduced to a unit test because the two halves are
+    /// reached through `caret_rect`'s own search, affinity and bidi handling
+    /// rather than through the fields it is compared against — a caret that
+    /// stopped being derived from a cell would be caught here and nowhere else.
     CaretStandsOnNoLine {
         /// The byte offset asked for.
         offset: usize,
@@ -467,10 +477,17 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
     offsets.dedup();
 
     for offset in offsets {
+        // One affinity legitimately has no answer: nothing ends at the start of
+        // the document and nothing starts at its end. Both having none is the
+        // failure, and it is the same failure as a caret nowhere — an editor
+        // cannot put the cursor there either — so it is reported rather than
+        // skipped, which is what asking each affinity in isolation did.
+        let mut placed = false;
         for (upstream, affinity) in [(false, Affinity::Downstream), (true, Affinity::Upstream)] {
             let Some(caret) = layout.caret_rect(offset, affinity) else {
                 continue;
             };
+            placed = true;
             // A caret marks a position and is one quantized unit thick so that
             // it can be filled. At a line's end that unit lies on the trailing
             // edge, and a blank paragraph's caret is a whole em standing on a
@@ -480,6 +497,12 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
             if !bounds.iter().any(|line| contains(*line, position)) {
                 report.note(Fault::CaretStandsOnNoLine { offset, upstream });
             }
+        }
+        if !placed {
+            report.note(Fault::CaretStandsOnNoLine {
+                offset,
+                upstream: false,
+            });
         }
     }
 }
@@ -612,7 +635,9 @@ mod tests {
     use std::sync::Arc;
 
     use super::{Fault, Report, cell_corner, inspect};
-    use crate::result::{GlyphPlacement, GlyphTransform, Point, Rect, TextLayout, TextLine};
+    use crate::result::{
+        AnnotationSource, GlyphPlacement, GlyphTransform, Point, Rect, TextLayout, TextLine,
+    };
     use crate::{FontId, FontLibrary, LayoutOptions, WritingMode};
 
     const EM: i32 = 1024;
@@ -688,6 +713,115 @@ mod tests {
         report.faults().iter().map(Fault::kind).collect()
     }
 
+    // One layout per statement, each breaking exactly the thing its name says.
+    // They are named rather than inlined so that
+    // `every_fault_kind_is_produced_by_some_layout` can hold the whole set to
+    // the rule the module states: a fault nobody can witness is a guess.
+
+    fn cell_outside_its_line() -> TextLayout {
+        let mut broken = sound_layout();
+        broken.lines[0].glyphs[1].y = 10 * EM;
+        broken
+    }
+
+    /// Three cells and a measure of one, so the fault is an *interior* cell:
+    /// the last one past the measure is hanging punctuation and is exempt.
+    fn cell_past_the_measure() -> TextLayout {
+        let mut broken = layout(
+            "日本語",
+            vec![line(
+                0,
+                0..9,
+                vec![
+                    glyph(0..3, 0, EM),
+                    glyph(3..6, EM, EM),
+                    glyph(6..9, 2 * EM, EM),
+                ],
+            )],
+        );
+        broken.lines[0].inline_extent = EM;
+        broken
+    }
+
+    fn annotation_over_its_base() -> TextLayout {
+        let mut broken = sound_layout();
+        broken.lines[0].glyphs[1].annotation = Some(AnnotationSource::new(0, 0..4));
+        broken
+    }
+
+    fn lines_at_one_place() -> TextLayout {
+        let mut broken = layout(
+            "日本",
+            vec![
+                line(0, 0..3, vec![glyph(0..3, 0, EM)]),
+                line(1, 3..6, vec![glyph(3..6, 0, 2 * EM)]),
+            ],
+        );
+        broken.lines[1].origin = Point::from_fixed(0, 0);
+        broken
+    }
+
+    /// Three lines, the third stepping back the way it came.
+    fn progression_that_reverses() -> TextLayout {
+        let mut broken = layout(
+            "日本語",
+            vec![
+                line(0, 0..3, vec![glyph(0..3, 0, EM)]),
+                line(1, 3..6, vec![glyph(3..6, 0, 2 * EM)]),
+                line(2, 6..9, vec![glyph(6..9, 0, 3 * EM)]),
+            ],
+        );
+        broken.lines[2].origin = Point::from_fixed(0, -2 * EM);
+        broken.lines[2].glyphs[0].y = -EM;
+        broken.lines[2].hit_bounds = TextLine::hit_bounds_for(&broken.lines[2].glyphs);
+        broken
+    }
+
+    fn lines_that_miss_the_source() -> TextLayout {
+        layout("日本語", vec![line(0, 3..6, vec![glyph(3..6, 0, EM)])])
+    }
+
+    /// A gap between two lines that the source does not hold a separator in.
+    fn lines_with_a_gap() -> TextLayout {
+        layout(
+            "日本語語",
+            vec![
+                line(0, 0..6, vec![glyph(0..3, 0, EM), glyph(3..6, EM, EM)]),
+                line(1, 9..12, vec![glyph(9..12, 0, 2 * EM)]),
+            ],
+        )
+    }
+
+    /// Two cells at one place, attributed to bytes far enough apart that the
+    /// answer for one cannot also be an answer for the other.
+    fn cell_the_hit_test_cannot_reach() -> TextLayout {
+        layout(
+            "日本語",
+            vec![line(0, 0..9, vec![glyph(0..3, 0, EM), glyph(6..9, 0, EM)])],
+        )
+    }
+
+    /// A line whose glyph is attributed to bytes the line's own range does not
+    /// end at: `caret_rect` finds no glyph edge at the line's end and no empty
+    /// line to fall back to, so neither affinity places a caret there.
+    fn line_edge_with_no_caret() -> TextLayout {
+        layout("日本語", vec![line(0, 0..9, vec![glyph(0..3, 0, EM)])])
+    }
+
+    fn witness_layouts() -> Vec<TextLayout> {
+        vec![
+            cell_outside_its_line(),
+            cell_past_the_measure(),
+            annotation_over_its_base(),
+            lines_at_one_place(),
+            progression_that_reverses(),
+            lines_that_miss_the_source(),
+            lines_with_a_gap(),
+            cell_the_hit_test_cannot_reach(),
+            line_edge_with_no_caret(),
+        ]
+    }
+
     #[test]
     fn a_layout_this_crate_would_produce_is_sound() {
         let report = inspect(&sound_layout());
@@ -702,8 +836,7 @@ mod tests {
     /// was left stale — which is what this test used to do.
     #[test]
     fn a_cell_outside_its_line_is_reported() {
-        let mut broken = sound_layout();
-        broken.lines[0].glyphs[1].y = 10 * EM;
+        let broken = cell_outside_its_line();
         let report = inspect(&broken);
         assert!(
             kinds(&report).contains(&"cell-escapes-its-line"),
@@ -749,13 +882,7 @@ mod tests {
     /// hanging punctuation and is exempt, so the witness needs three cells.
     #[test]
     fn an_interior_cell_past_the_measure_is_reported_and_a_hanging_one_is_not() {
-        let three = vec![
-            glyph(0..3, 0, EM),
-            glyph(3..6, EM, EM),
-            glyph(6..9, 2 * EM, EM),
-        ];
-        let mut broken = layout("日本語", vec![line(0, 0..9, three)]);
-        broken.lines[0].inline_extent = EM;
+        let mut broken = cell_past_the_measure();
         let report = inspect(&broken);
         assert_eq!(
             report
@@ -779,23 +906,14 @@ mod tests {
 
     #[test]
     fn lines_sharing_block_coordinates_are_reported() {
-        let mut broken = layout(
-            "日本",
-            vec![
-                line(0, 0..3, vec![glyph(0..3, 0, EM)]),
-                line(1, 3..6, vec![glyph(3..6, 0, 2 * EM)]),
-            ],
-        );
-        broken.lines[1].origin = Point::from_fixed(0, 0);
-        let report = inspect(&broken);
+        let report = inspect(&lines_at_one_place());
         assert!(kinds(&report).contains(&"lines-overlap"), "{report}");
     }
 
     #[test]
     fn lines_that_start_late_or_stop_early_are_reported() {
-        let short = layout("日本語", vec![line(0, 3..6, vec![glyph(3..6, 0, EM)])]);
         assert_eq!(
-            kinds(&inspect(&short)),
+            kinds(&inspect(&lines_that_miss_the_source())),
             ["coverage-starts-late", "coverage-ends-early"]
         );
     }
@@ -812,15 +930,51 @@ mod tests {
         let report = inspect(&separated);
         assert!(!kinds(&report).contains(&"lines-do-not-meet"), "{report}");
 
-        let swallowed = layout(
-            "日本語語",
-            vec![
-                line(0, 0..6, vec![glyph(0..3, 0, EM), glyph(3..6, EM, EM)]),
-                line(1, 9..12, vec![glyph(9..12, 0, 2 * EM)]),
-            ],
-        );
-        let report = inspect(&swallowed);
+        let report = inspect(&lines_with_a_gap());
         assert!(kinds(&report).contains(&"lines-do-not-meet"), "{report}");
+    }
+
+    /// Ruby stands beside the body; a cell that shares the body's block range
+    /// is printed over the text it annotates.
+    #[test]
+    fn an_annotation_over_its_base_is_reported() {
+        let broken = annotation_over_its_base();
+        assert!(
+            kinds(&inspect(&broken)).contains(&"annotation-overlaps-its-base"),
+            "{}",
+            inspect(&broken)
+        );
+    }
+
+    /// Three lines, the third stepping back the way it came.
+    #[test]
+    fn a_line_that_steps_back_up_the_block_axis_is_reported() {
+        let broken = progression_that_reverses();
+        assert!(
+            kinds(&inspect(&broken)).contains(&"block-progression-reverses"),
+            "{}",
+            inspect(&broken)
+        );
+    }
+
+    /// Two cells at one place, attributed to bytes far enough apart that the
+    /// answer for one cannot also be an answer for the other.
+    #[test]
+    fn a_cell_the_hit_test_cannot_reach_is_reported() {
+        let broken = cell_the_hit_test_cannot_reach();
+        assert!(
+            kinds(&inspect(&broken)).contains(&"hit-test-misses-its-own-cell"),
+            "{}",
+            inspect(&broken)
+        );
+    }
+
+    /// A line edge with no caret is the same failure as a caret nowhere, and
+    /// used to be skipped in silence.
+    #[test]
+    fn a_line_edge_with_no_caret_is_reported() {
+        let kinds = kinds(&inspect(&line_edge_with_no_caret()));
+        assert!(kinds.contains(&"caret-stands-on-no-line"), "{kinds:?}");
     }
 
     #[test]
@@ -833,6 +987,30 @@ mod tests {
                 None => assert!(!rendered.contains(" on line "), "{rendered}"),
             }
         }
+    }
+
+    /// Every kind is produced by a layout, not merely constructible by hand.
+    ///
+    /// `the_fixture_holds_one_of_every_fault` walks a list of `Fault` values
+    /// built with struct literals, which is what the rendering tests need and
+    /// what cannot tell a live statement from dead code. Four kinds had only
+    /// that, and one of the four turned out to be a statement no layout could
+    /// break. This is the guard: a new `Fault` needs a layout that produces it
+    /// before it can be added, which is what `docs/design/invariants.md` asks.
+    #[test]
+    fn every_fault_kind_is_produced_by_some_layout() {
+        let mut produced: Vec<&'static str> = witness_layouts()
+            .iter()
+            .flat_map(|layout| kinds(&inspect(layout)))
+            .collect();
+        produced.sort_unstable();
+        produced.dedup();
+
+        let mut declared: Vec<&'static str> = every_fault().iter().map(Fault::kind).collect();
+        declared.sort_unstable();
+        declared.dedup();
+
+        assert_eq!(produced, declared, "a fault has no layout that produces it");
     }
 
     #[test]
