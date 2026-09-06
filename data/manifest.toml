@@ -63,7 +63,7 @@ sha256 = "427eb11a74775b95524a244f6ca80811154561ace2694d90c0793ad4c5051c9c"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"
-sha256 = "e75e3651a359f3886308b0a01867d18538d4e62423498f405c9b5e1e8c204221"
+sha256 = "e8eedcb8d027a241933ad54b3de6f27041db6ecb9643e0e17bb9967b8a148013"
 
 [[file]]
 path = "docs/public-api.toml"

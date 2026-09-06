@@ -74,8 +74,8 @@ paragraph's, the corner rule is the same, and only the glyph's own orientation �
 inline axis the whole run stands at **one** position and occupies one em of it, however many
 members it holds. Across the column each member gets its own advance and they sit side by
 side, and the line's block extent is `max(em, members × advance)` — a run wider than the em
-widens its line, which is intended. Where the run sits inside that line is not yet right; see
-[What is not yet true](#what-is-not-yet-true).
+widens its line, which is intended. The run then stands centred in whatever that comes to;
+see [Constructs that are not plain body text](#constructs-that-are-not-plain-body-text).
 
 Mapping a member's coordinates from its *own* orientation instead of the paragraph's put
 the run at an `x` equal to its position down the column — clear of the column entirely —
@@ -127,85 +127,51 @@ different number, and the composer is the authority on it:
   `漢`+`A` places one quarter em; deriving positions by summing advances places it twice.
 - The two halves of a tate-chu-yoko run share **one** inline coordinate and differ only in
   block, so the step between them is zero. Advancing anyway spends an em the line never had.
-- A warichu or furawake lane restarts near the line's start. That step is backwards, and it
-  is a new lane rather than a shared coordinate, so the cursor does not follow it.
+- A warichu or furawake lane restarts at the construct's own inline origin. That step is
+  backwards and it is real: the lanes stand side by side, so the cursor takes it. Clamping it
+  at zero laid the lanes end to end and carried the error into every cell after them.
+  Everywhere *else* a backwards step is visual reordering rather than a restart — the
+  composer's coordinate is logical and the cells are walked in visual order — and there the
+  cursor holds its place.
 
 The `draw.cell` trace family records all three numbers — the composer's coordinate, the
 advance it charged, and the step actually taken — for every cell, precisely so that a
 disagreement among them is visible in a diff rather than only on screen. `draw.line` then
 states the line's composed extent beside the coordinate its last cell reached.
 
-## What is not yet true
+## Constructs that are not plain body text
 
-Three constructs that are not plain body text come out wrong. All three are stated here
-rather than excused in the checker; the coordinates are pinned in
-[`crates/jlreq/tests/construct_geometry.rs`](../../crates/jlreq/tests/construct_geometry.rs)
-and the set of broken combinations in
-[`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs),
-which sweeps every construct the builder offers at every length from one cluster to five in
-both writing modes. That sweep is what found two of the three: each construct had been
-tested at exactly one length, and for tate-chu-yoko that length was the one where its defect
-cancels.
+A warichu, a furawake and a tate-chu-yoko each occupy their line differently from a run of
+ordinary clusters, and each was wrong until [ADR 0030](../adr/0030-a-construct-is-centred-in-its-line.md).
+The rule they now share is one sentence: **a construct is centred in the block extent of the
+line that holds it.** The line is as wide as its widest construct, so that extent is settled
+before anything is placed rather than accumulated while placing.
 
-Two of the three share a cause, and it is `jlreq-core`'s. A multi-lane construct is
-positioned against **the paragraph's em**, and the line's block extent is then grown to hold
-it without the construct being re-centred in what it grew to. While the em and the line agree
-the construct is centred; once the line is wider it is not, and the surplus is drawn onto the
-line beside it.
+- **A warichu is set at half the paragraph's size.** JLReq §3.4 sets a 割注 in characters
+  smaller than the text around it, two lanes inside the space one line takes, and the
+  composer reserves exactly one em for the pair. The facade halves the size, the advance and
+  each glyph's own metrics for the clusters in a warichu before handing them over.
+- **A furawake fills the columns its line reserved**, one em per column, its lanes flush and
+  side by side rather than end to end.
+- **A tate-chu-yoko run is centred across its column** at every member count. The line's
+  block extent is `max(em, members × advance)` — a run wider than the em widens its line,
+  which §3.2.5 permits and `docs/conformance-deferrals.toml` records as owned behaviour —
+  and the run stands centred in whatever that comes to.
 
-**A warichu is set at full size.** The facade hands the composer the paragraph's own em for
-every cluster and has no way to be told otherwise. JLReq §3.4 sets a 割注 in smaller
-characters, two lanes inside the space one line takes, and `jlreq-core` places it that
-way — the lanes go half an
-em either side of the line's block origin and the line reserves one em for the pair. Given
-full-em clusters, each lane overhangs its line by half an em on the block axis, which is to
-say onto the line beside it. `jlreq::verify` reports both lanes as `cell-escapes-its-line`,
-and `crates/jlreq/tests/document_trace.rs` records exactly those two faults by name.
-
-One consequence the checker does not name separately, because naming it would be a second
-report of the same defect: the overhanging lane reaches into the *adjacent* line's cells,
-and nothing compares one line's cells against another's.
-
-What the size does **not** disturb is the order. In `VerticalRl` the first lane is the
-right-hand one, as vertical reading order requires, and each lane runs along the inline axis
-in source order; a full-size lane is drawn over its neighbour, not reversed.
+The reading order is a separate statement and was never disturbed: in `VerticalRl` a
+warichu's first lane is the right-hand one, as vertical reading order requires, and each lane
+runs along the inline axis in source order.
 `a_warichu_reads_the_way_its_writing_mode_does` in
-[`crates/jlreq/tests/geometry.rs`](../../crates/jlreq/tests/geometry.rs) holds that, with
-four characters — two put one character in each lane, which looks the same either way round.
+[`crates/jlreq/tests/geometry.rs`](../../crates/jlreq/tests/geometry.rs) holds that with four
+characters, because two put one character in each lane and look the same either way round.
 
-**A tate-chu-yoko run is not centred in its line.** JLReq §3.2.5 asks for the string to be
-set solid from left to right and then centred in the vertical line. The line's block extent
-is `max(em, members × advance)`, which is right — a run wider than the em widens the line,
-and `docs/conformance-deferrals.toml` records that as owned, conformance-measured behaviour.
-The run's *position* in that line is not: the group is centred on the line's block **origin**
-rather than on its centre, so it is displaced by `(members − 2) × advance / 2`. At two
-members that is zero — which is the count every test in this workspace used — and at one,
-three, four and five members the run leaves its own line, which `jlreq::verify` reports.
-
-This one is not the facade's. The displacement is in the block coordinates `jlreq-core`
-emits, and the facade maps them faithfully; the coordinates conformance case
-`3.2.5/tate-chu-yoko-solid-centered-group` expects carry the same displacement at three
-members. It is recorded rather than corrected because correcting it changes composed output,
-and because a conformance case is a claim about the specification rather than an
-implementation detail to edit in passing.
-
-A run widening its line is **not** a defect, and an earlier revision of this document said it
-was, on a requirement §3.2.5 does not state. The section asks for solid setting and centring
-and nothing narrower. Getting two digits into one em is a matter of using their half-width
-forms, which is shaping, which [ADR 0001](../adr/0001-no-std-no-io-no-font-in-core.md) and
-[ADR 0002](../adr/0002-caller-supplied-metrics.md) place with the caller.
-
-**A furawake is placed half an em short per extra column.** The line reserves one em per
-column and the facade's full-em clusters fill exactly that, so unlike the warichu the size is
-right. `place_furawake_segment` centres the segment inside `paragraph.text.size().block()` —
-one em — so with two columns the lanes land half an em before where the line put them, and
-the first lane sits on the line above. Nothing in this workspace had a geometric test for a
-furawake at any length; it is wrong at all of them, in both writing modes.
-
-Choosing the warichu's size is the same open question as the ruby size §3.3.3 leaves open
-and the anisotropic sizes [ADR 0027](../adr/0027-the-layout-is-the-editor-surface.md)
-defers: ADR 0019 settles that a size the caller measured is carried by the measurement, and
-the facade offers no way to state one for a warichu at all.
+Exact coordinates are in
+[`crates/jlreq/tests/construct_geometry.rs`](../../crates/jlreq/tests/construct_geometry.rs);
+[`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs)
+sweeps every construct the builder offers at every length from one cluster to five in both
+writing modes and holds the set of unsound combinations empty. That sweep is what found two
+of the three defects: each construct had been tested at exactly one length, and for
+tate-chu-yoko that length was the one where its displacement cancels.
 
 ## Where each statement is enforced
 

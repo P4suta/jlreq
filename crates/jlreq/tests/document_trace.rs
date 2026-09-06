@@ -352,13 +352,10 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
 /// own. `jlreq-core`'s own goldens do exactly this with the core's checker.
 #[test]
 fn every_recorded_layout_is_geometrically_sound() -> Result<(), Box<dyn Error>> {
-    // One known defect, stated rather than skipped. The facade never reduces a
-    // warichu to the smaller size §3.4 sets it at, so its two lanes are placed
-    // at the paragraph's own em inside the one em the line reserved, so each
-    // overhangs its line by half an em along the block axis — onto the line
-    // beside it. `crates/jlreq/tests/construct_geometry.rs` pins the geometry and
-    // records why choosing the size is deferred. When it is chosen, this
-    // expectation is what tells whoever chose it to come here.
+    // Empty since `docs/adr/0030`, and kept as a list rather than replaced by an
+    // `is_empty` assertion because the shape is the point: a defect arrives here
+    // as a row naming the scenario and the fault, and one deliberately left in
+    // place has somewhere to be written down and explained.
     //
     // Counted per (scenario, kind) and compared in sorted order rather than as
     // a positional list, so that adding a scenario to the corpus or reordering

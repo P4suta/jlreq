@@ -22,7 +22,7 @@
 //! The set of `(construct, clusters, writing mode)` triples whose layout
 //! `jlreq::verify` calls unsound. Soundness, not coordinates: the coordinates
 //! belong to `construct_geometry.rs`, which states them exactly for the three
-//! constructs whose defects are diagnosed. A row here says only *that* a
+//! constructs that once had defects. A row here says only *that* a
 //! combination is broken, which survives a change of fixture or measure and
 //! fails the moment one is fixed or a new one breaks.
 //!
@@ -30,26 +30,23 @@
 //! enough to wrap it, and a construct whose soundness depends on which is a
 //! finding in itself — so that is asserted rather than collapsed.
 //!
-//! # The findings
+//! # What it found
 //!
-//! All three are recorded rather than corrected, for the reasons
-//! `construct_geometry.rs` gives. Two of them have one shape: a construct is
-//! positioned against **the paragraph's em** rather than against the line's own
-//! block extent, and the line's extent is then grown to hold it. While the two
-//! agree the construct is centred; once the line is wider than an em it is not,
-//! and part of the construct is drawn onto the line beside it.
+//! Three defects, all corrected in
+//! [ADR 0030](../../../docs/adr/0030-a-construct-is-centred-in-its-line.md), and
+//! all of one shape: a construct was positioned against **the paragraph's em**
+//! rather than against the line's own block extent, which the line then grew
+//! without re-centring what it grew around.
 //!
-//! - **Warichu.** The lanes are placed for the reduced size §3.4 asks for and
-//!   the facade supplies full-em clusters, so the pair is twice the em the line
-//!   reserved. Broken at every length.
-//! - **Furawake.** `place_furawake_segment` centres the segment inside
-//!   `paragraph.text.size().block()` — one em — and the line reserves one em
-//!   per column. Two columns of full-em clusters are two em in a two-em line,
-//!   so the size is right and the position is out by half an em per extra
-//!   column. Broken at every length that fills every column.
-//! - **Tate-chu-yoko.** The same, displaced by `(members − 2) × advance / 2`.
-//!   Sound at two members and at one — where the run is narrower than the em
-//!   and the displacement does not reach the edge — and broken above that.
+//! - **Warichu.** Set at full size in the one em its line reserves for two
+//!   lanes, so the pair was twice what the line held. Broken at every length.
+//! - **Furawake.** `place_furawake_segment` centred the segment inside
+//!   `paragraph.text.size().block()` — one em — while the line reserves one em
+//!   per column, so every lane landed half the surplus early. Broken at every
+//!   length that fills every column, in both writing modes, and nothing in the
+//!   workspace had a geometric test for one.
+//! - **Tate-chu-yoko.** Displaced by `(members − 2) × advance / 2`, which is
+//!   zero at the two members every fixture in the workspace used.
 //!
 //! Everything else — mono, group and jukugo ruby, emphasis dots, jidori,
 //! reference marks, superscripts, subscripts and formulas — is sound at every
