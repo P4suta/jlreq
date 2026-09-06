@@ -380,8 +380,7 @@ fn check_line(
                 end: range.end,
             });
         }
-        if cluster.writing_mode() != mode
-            && cluster.transform() != CoordinateTransform::TateChuYoko
+        if cluster.writing_mode() != mode && cluster.transform() != CoordinateTransform::TateChuYoko
         {
             report.note(Fault::ClusterOrientationUnexplained {
                 line: ordinal,
@@ -719,10 +718,7 @@ mod tests {
         let gapped = layout(vec![line(3..6, 0), line(9..9, 1_000)], Vec::new());
         let report = inspect(&gapped, &paragraph);
         let kinds: Vec<_> = report.faults().iter().map(Fault::kind).collect();
-        assert_eq!(
-            kinds,
-["coverage-starts-late", "lines-do-not-meet"]
-        );
+        assert_eq!(kinds, ["coverage-starts-late", "lines-do-not-meet"]);
     }
 
     #[test]
@@ -782,7 +778,10 @@ mod tests {
         only.clusters = vec![stray, orphan];
         let report = inspect(&layout(vec![only], Vec::new()), &paragraph);
         let kinds: Vec<_> = report.faults().iter().map(Fault::kind).collect();
-        assert_eq!(kinds, ["placement-names-nothing", "placement-names-nothing"]);
+        assert_eq!(
+            kinds,
+            ["placement-names-nothing", "placement-names-nothing"]
+        );
     }
 
     #[test]
@@ -813,7 +812,10 @@ mod tests {
         let kinds: Vec<_> = report.faults().iter().map(Fault::kind).collect();
         assert_eq!(
             kinds,
-            ["block-progression-reverses", "diagnostic-escapes-the-source"]
+            [
+                "block-progression-reverses",
+                "diagnostic-escapes-the-source"
+            ]
         );
     }
 

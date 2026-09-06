@@ -168,7 +168,7 @@ mod tests {
                     diagnostic_range: None,
                 },
                 &mut call,
-                    &mut DocumentTrace::off(),
+                &mut DocumentTrace::off(),
             )
             .unwrap();
         assert_eq!(call.runs, 1);
@@ -187,7 +187,7 @@ mod tests {
                     diagnostic_range: None,
                 },
                 &mut call,
-                    &mut DocumentTrace::off(),
+                &mut DocumentTrace::off(),
             )
             .unwrap();
         assert_eq!(call.runs, 2);
@@ -231,7 +231,7 @@ mod tests {
                         diagnostic_range: None,
                     },
                     &mut call,
-                        &mut DocumentTrace::off(),
+                    &mut DocumentTrace::off(),
                 )
                 .unwrap();
             assert_eq!(prepared.clusters.len(), 4);

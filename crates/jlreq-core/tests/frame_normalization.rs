@@ -68,7 +68,10 @@ fn every_frame_reports_the_same_advances_today() -> Result<(), Box<dyn Error>> {
     let half = advances(Frame::HalfEm)?;
     let proportional = advances(Frame::Proportional)?;
 
-    assert_eq!(full, half, "FullEm and HalfEm already differ; read ADR 0017");
+    assert_eq!(
+        full, half,
+        "FullEm and HalfEm already differ; read ADR 0017"
+    );
     assert_eq!(
         full, proportional,
         "Proportional already differs; read ADR 0017"

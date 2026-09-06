@@ -145,9 +145,7 @@ mod tests {
             if super::is_western_word_space(paragraph, ordinal) {
                 continue;
             }
-            sum = sum.saturating_add(i64::from(
-                paragraph.text.clusters()[ordinal].advance(),
-            ));
+            sum = sum.saturating_add(i64::from(paragraph.text.clusters()[ordinal].advance()));
         }
         sum
     }
@@ -401,15 +399,16 @@ mod tests {
                     let Some(last) = end.checked_sub(1).filter(|_| start < end) else {
                         continue;
                     };
-                    let indexed = super::range_sum(&composer.prepared.reduction_prefix, start, last)
-                        .saturating_add(
-                            composer
-                                .prepared
-                                .line_end_reduction
-                                .get(last)
-                                .copied()
-                                .unwrap_or(0),
-                        );
+                    let indexed =
+                        super::range_sum(&composer.prepared.reduction_prefix, start, last)
+                            .saturating_add(
+                                composer
+                                    .prepared
+                                    .line_end_reduction
+                                    .get(last)
+                                    .copied()
+                                    .unwrap_or(0),
+                            );
                     assert_eq!(
                         indexed,
                         oracle_reduction_capacity(&paragraph, &style, start, end),

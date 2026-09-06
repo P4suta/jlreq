@@ -21,17 +21,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     // stream. `layout` and `layout_traced` run one body, so this explains what
     // an untraced call does rather than a second code path.
     let mut trace = DocumentTrace::new();
-    let layout = engine.layout_traced(text, &fonts, LayoutOptions::try_new(240.0, 16.0)?, &mut trace)?;
-    println!("{} line(s), {} event(s)", layout.lines().len(), trace.events().len());
+    let layout = engine.layout_traced(
+        text,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?,
+        &mut trace,
+    )?;
+    println!(
+        "{} line(s), {} event(s)",
+        layout.lines().len(),
+        trace.events().len()
+    );
     print!("{trace}");
 
     // Or ask one question. Narrowing the families keeps the answer short: this
     // records nothing but face decisions, in both channels.
-    let mut faces = DocumentTrace::with_categories(
-        Categories::FACES,
-        jlreq::core::trace::Categories::NONE,
-    );
-    let _ = engine.layout_traced(text, &fonts, LayoutOptions::try_new(240.0, 16.0)?, &mut faces)?;
+    let mut faces =
+        DocumentTrace::with_categories(Categories::FACES, jlreq::core::trace::Categories::NONE);
+    let _ = engine.layout_traced(
+        text,
+        &fonts,
+        LayoutOptions::try_new(240.0, 16.0)?,
+        &mut faces,
+    )?;
     for event in faces.events() {
         let source = &text[event.site().bytes()];
         match event.fact() {
