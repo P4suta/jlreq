@@ -343,10 +343,10 @@ pub fn inspect(layout: &TextLayout) -> Report {
     // answerable one line at a time.
     let bases: Vec<Option<Rect>> = layout.lines().iter().map(body_glyphs).collect();
     let mut previous_body: Option<Rect> = None;
-    for line in layout.lines() {
+    for (ordinal, line) in layout.lines().iter().enumerate() {
         let body = body_cell(line);
         check_line(line, body, mode, &overfull, &mut report);
-        check_annotations_against_other_lines(layout, line, &bases, mode, &mut report);
+        check_annotations_against_other_lines(layout, line, ordinal, &bases, mode, &mut report);
         if let Some(previous) = previous_body
             && overlaps_block(mode, previous, body)
         {
@@ -499,14 +499,16 @@ fn check_line(
 
 /// Ask one line's annotations whether they landed on anybody else's text.
 ///
-/// Its own line is skipped: standing beside its base is what an annotation is
-/// for, and [`Fault::AnnotationOverlapsItsBase`] is the check that asks about
-/// that one. Everything else in the layout is fair game, and only the block
+/// Its own line is skipped, by position rather than by the index the line
+/// reports, so that the skip cannot widen if those ever stop agreeing: standing
+/// beside its base is what an annotation is for, and
+/// [`Fault::AnnotationOverlapsItsBase`] is the check that asks about that one. Everything else in the layout is fair game, and only the block
 /// axis is asked — two lines share the whole inline axis by construction, so
 /// overlapping there says nothing.
 fn check_annotations_against_other_lines(
     layout: &TextLayout,
     line: &TextLine,
+    ordinal: usize,
     bases: &[Option<Rect>],
     mode: WritingMode,
     report: &mut Report,
@@ -516,11 +518,11 @@ fn check_annotations_against_other_lines(
             continue;
         }
         let cell = glyph.cell_bounds();
-        for (ordinal, other) in layout.lines().iter().enumerate() {
-            if other.index() == line.index() {
+        for (other_ordinal, other) in layout.lines().iter().enumerate() {
+            if other_ordinal == ordinal {
                 continue;
             }
-            let Some(Some(base)) = bases.get(ordinal) else {
+            let Some(Some(base)) = bases.get(other_ordinal) else {
                 continue;
             };
             if overlaps_block(mode, *base, cell) {

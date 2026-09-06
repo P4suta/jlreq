@@ -49,6 +49,18 @@ unchanged, and `jlreq::verify::inspect` called the layout sound, because
 `annotation-overlaps-its-base` compares an annotation against the body of **its own** line —
 the one line it is guaranteed not to be standing on.
 
+The facade reaches the same state through ordinary wrapping. Mono ruby on the fixture
+paragraph of `crates/jlreq/tests/construct_matrix.rs`, at the narrow measure:
+
+| clusters | the construct lands on | its ruby | that line's predecessor | sound |
+| --- | --- | --- | --- | --- |
+| 3 | line 0 | `[-512, 0]` | none | yes |
+| 4 | line 1 | `[512, 1024]` | line 0's text, `[0, 1024]` | no |
+
+Three clusters and four differ only in which line the wrap puts the construct on. That is
+the whole defect: an annotation on the first line has nothing to land on, and an annotation
+on any later line lands on whatever the line before it did not reserve.
+
 `docs/design/geometry.md` never said which side the reservation is on, so nothing was
 contradicted. That silence is what let the two halves disagree.
 

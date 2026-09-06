@@ -159,6 +159,14 @@ fn range(clusters: usize) -> std::ops::Range<usize> {
 /// without ruby is followed by a line with it, the second line's ruby is
 /// painted over the first line's characters.
 ///
+/// Which is why the list starts at four clusters rather than at the length the
+/// paragraph starts wrapping. Shorter than that the construct still sits on the
+/// first line, which has no predecessor to land on; at four the wrap pushes it
+/// onto the second, whose predecessor reserved nothing for it. Measured for
+/// `mono-ruby` at the narrow measure: at three clusters the ruby is on line 0 at
+/// `[-512, 0]` and hits nothing, at four it is on line 1 at `[512, 1024]` and
+/// line 0's text is `[0, 1024]`.
+///
 /// Found by this sweep together with `annotation-overlaps-another-line`, and
 /// **not fixed**: the correction moves body and annotation coordinates on all
 /// 27 attachment-bearing conformance cases, and the differential census that
