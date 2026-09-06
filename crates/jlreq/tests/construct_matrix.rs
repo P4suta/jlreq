@@ -53,7 +53,9 @@
 //!
 //! Everything else — mono, group and jukugo ruby, emphasis dots, jidori,
 //! reference marks, superscripts, subscripts and formulas — is sound at every
-//! length and in both modes, and this file is what keeps that true.
+//! length asked and in both modes, and this file is what keeps that true. Asked
+//! is not the same as sound: `REFUSED` names the lengths a construct declines to
+//! lay out at all, and those were never measured.
 
 use std::sync::Arc;
 
