@@ -103,7 +103,8 @@ fn corpus() -> Result<Vec<Scenario>, Box<dyn Error>> {
             intent: "the same text set vertically: the run direction and the core's \
                      placement transforms both change",
             document: DocumentBuilder::new("日本語の組版、その理由。").build()?,
-            options: LayoutOptions::try_new(120.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
+            options: LayoutOptions::try_new(120.0, 16.0)?
+                .with_writing_mode(WritingMode::VerticalRl),
             categories: Categories::ALL,
             core_categories: default_core,
         },
@@ -165,6 +166,22 @@ fn corpus() -> Result<Vec<Scenario>, Box<dyn Error>> {
             core_categories: default_core,
         },
         Scenario {
+            name: "shared-space",
+            intent: "the two places a cell's charged advance is not the step to its \
+                     neighbour: a Japanese-Latin boundary bills its quarter em to both \
+                     sides, and a tate-chu-yoko run's halves share one coordinate. \
+                     Deriving positions from advances alone was wrong at both, and no \
+                     golden reached either until this one",
+            document: shared_space_document()?,
+            // Tight enough that the adjustment ladder must give the line back its
+            // remainder, which is what makes a boundary space shrink below the
+            // advance it was charged to.
+            options: LayoutOptions::try_new(165.0, 16.0)?
+                .with_writing_mode(WritingMode::VerticalRl),
+            categories: Categories::PLACEMENT.with(Categories::PARAGRAPHS),
+            core_categories: default_core.with(jlreq::core::trace::Categories::PLACE_CLUSTERS),
+        },
+        Scenario {
             name: "constructs",
             intent: "stacked structures and every placed cluster, so a document trace can \
                      answer where one glyph ended up and under which local transform",
@@ -172,8 +189,7 @@ fn corpus() -> Result<Vec<Scenario>, Box<dyn Error>> {
             options: LayoutOptions::try_new(160.0, 16.0)?
                 .with_writing_mode(WritingMode::VerticalRl),
             categories: Categories::PARAGRAPHS,
-            core_categories: default_core
-                .with(jlreq::core::trace::Categories::PLACE_CLUSTERS),
+            core_categories: default_core.with(jlreq::core::trace::Categories::PLACE_CLUSTERS),
         },
     ])
 }
@@ -189,6 +205,18 @@ fn construct_document() -> Result<Document, Box<dyn Error>> {
     let mut builder = DocumentBuilder::new(text);
     builder.tate_chu_yoko(6..8)?;
     builder.warichu(11..17)?;
+    Ok(builder.build()?)
+}
+
+/// Both places where a cell's charged advance is not the step to its neighbour.
+///
+/// `語A` and `A語` each place one quarter em that §3.1 bills to the boundary, so
+/// the following cluster begins inside the preceding advance; the two digits of
+/// the tate-chu-yoko run share one inline coordinate and differ only in block.
+fn shared_space_document() -> Result<Document, Box<dyn Error>> {
+    let text = "日本語Aと縦中横12。";
+    let mut builder = DocumentBuilder::new(text);
+    builder.tate_chu_yoko(22..24)?;
     Ok(builder.build()?)
 }
 
@@ -288,6 +316,8 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
     assert_eq!(
         reached,
         [
+            "draw.cell",
+            "draw.line",
             "expand.residual",
             "expand.site",
             "expand.stage",
@@ -298,6 +328,8 @@ fn the_corpus_still_reaches_every_family_it_names() -> Result<(), Box<dyn Error>
             "para.segment",
             "place.cluster",
             "prepare.paragraph",
+            "reduce.site",
+            "reduce.stage",
             "search.chosen",
             "space.boundary",
             "tcy.group",
@@ -318,8 +350,7 @@ fn recording_changes_neither_the_layout_nor_the_engine() -> Result<(), Box<dyn E
         let fonts = fixture_fonts()?;
 
         let mut plain = LayoutEngine::new();
-        let untraced =
-            plain.layout_document(&scenario.document, &fonts, scenario.options.clone());
+        let untraced = plain.layout_document(&scenario.document, &fonts, scenario.options.clone());
 
         let mut recorded = LayoutEngine::new();
         let mut trace = DocumentTrace::new();
@@ -355,7 +386,9 @@ fn recording_changes_neither_the_layout_nor_the_engine() -> Result<(), Box<dyn E
 /// A layout compares exactly; a refusal compares by the sentence a caller would read.
 /// Pairing them means a scenario that stops refusing, or starts, fails on the same
 /// assertion as one whose geometry moved rather than slipping through a match arm.
-fn outcome(result: &Result<jlreq::TextLayout, LayoutError>) -> (Option<&jlreq::TextLayout>, String) {
+fn outcome(
+    result: &Result<jlreq::TextLayout, LayoutError>,
+) -> (Option<&jlreq::TextLayout>, String) {
     match result {
         Ok(layout) => (Some(layout), String::new()),
         Err(error) => (None, error.to_string()),
@@ -373,10 +406,8 @@ fn a_narrowed_trace_records_only_what_it_names() -> Result<(), Box<dyn Error>> {
     let _ = engine.layout_document_traced(&document, &fonts, options.clone(), &mut everything)?;
 
     let mut engine = LayoutEngine::new();
-    let mut faces_only = DocumentTrace::with_categories(
-        Categories::FACES,
-        jlreq::core::trace::Categories::NONE,
-    );
+    let mut faces_only =
+        DocumentTrace::with_categories(Categories::FACES, jlreq::core::trace::Categories::NONE);
     let _ = engine.layout_document_traced(&document, &fonts, options, &mut faces_only)?;
 
     assert!(everything.events().len() > faces_only.events().len());
@@ -392,8 +423,7 @@ fn a_narrowed_trace_records_only_what_it_names() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn the_ceiling_bounds_the_whole_document_rather_than_one_paragraph()
--> Result<(), Box<dyn Error>> {
+fn the_ceiling_bounds_the_whole_document_rather_than_one_paragraph() -> Result<(), Box<dyn Error>> {
     let fonts = fixture_fonts()?;
     let document = DocumentBuilder::new("最初の段落。\n二つ目の段落。\n三つ目の段落。").build()?;
     let options = LayoutOptions::try_new(120.0, 16.0)?;

@@ -76,8 +76,13 @@ impl Categories {
     pub const BREAKS: Self = Self(0x0010);
     /// The core's own composition events, tagged with the paragraph they came from.
     pub const CORE: Self = Self(0x0020);
+    /// How the composer's logical placements became physical cells.
+    ///
+    /// The core says where it put each cluster; this says what the facade then
+    /// did with that, which is a separate arithmetic and had its own defects.
+    pub const PLACEMENT: Self = Self(0x0040);
     /// Every family this release names.
-    pub const ALL: Self = Self(0x003f);
+    pub const ALL: Self = Self(0x007f);
 
     /// The union of two sets.
     #[must_use]
@@ -278,6 +283,36 @@ pub enum Fact {
         /// Author-declared breaks the search must take.
         mandatory: usize,
     },
+    /// One line, after the facade turned the composer's placements into cells.
+    LinePlaced {
+        /// The line ordinal within its paragraph.
+        line: usize,
+        /// Cells the line's placements produced, after bidi reordering.
+        cells: usize,
+        /// Where the visual cursor started, in caller units.
+        cursor: i32,
+        /// The inline extent the composer reported, in caller units.
+        inline_extent: i32,
+        /// Where the last cell ended, in caller units.
+        content_end: i32,
+    },
+    /// One cell's step, in the order the cells are visited.
+    ///
+    /// `advance` is what the composer charged the cell and `step` is how far the
+    /// cursor actually moved. The two differ on purpose — a conditional space at
+    /// a class boundary is billed to both sides, and a tate-chu-yoko run's halves
+    /// share one coordinate — and both defects this channel was added for were a
+    /// disagreement between them that nothing recorded.
+    CellStepped {
+        /// The cell's position in the visual order.
+        ordinal: usize,
+        /// The inline coordinate the composer placed it at, in caller units.
+        inline: i32,
+        /// The advance the composer charged it, in caller units.
+        advance: i32,
+        /// How far the cursor moved past it, in caller units.
+        step: i32,
+    },
     /// One decision the core recorded while composing a paragraph.
     Core {
         /// The core's own event, in the core's own frame of reference.
@@ -303,6 +338,8 @@ impl Fact {
             Self::FaceChosen { .. } => "face.chosen",
             Self::FaceFallback { .. } => "face.fallback",
             Self::BreaksCollected { .. } => "text.breaks",
+            Self::LinePlaced { .. } => "draw.line",
+            Self::CellStepped { .. } => "draw.cell",
             Self::Core { ref event } => event.kind(),
         }
     }
@@ -318,6 +355,7 @@ impl Fact {
             Self::ShapingRun { .. } => Categories::RUNS,
             Self::FaceChosen { .. } | Self::FaceFallback { .. } => Categories::FACES,
             Self::BreaksCollected { .. } => Categories::BREAKS,
+            Self::LinePlaced { .. } | Self::CellStepped { .. } => Categories::PLACEMENT,
             Self::Core { .. } => Categories::CORE,
         }
     }
@@ -382,10 +420,7 @@ impl DocumentTrace {
     /// A trace recording every facade family and [`jlreq_core::trace::Categories::DEFAULT`].
     #[must_use]
     pub const fn new() -> Self {
-        Self::with_categories(
-            Categories::ALL,
-            jlreq_core::trace::Categories::DEFAULT,
-        )
+        Self::with_categories(Categories::ALL, jlreq_core::trace::Categories::DEFAULT)
     }
 
     /// A trace recording exactly the named facade and core families.
@@ -753,6 +788,32 @@ fn write_body(site: &Site, fact: &Fact, formatter: &mut fmt::Formatter<'_>) -> f
                  mandatory={mandatory}"
             )
         },
+        Fact::LinePlaced {
+            line,
+            cells,
+            cursor,
+            inline_extent,
+            content_end,
+        } => {
+            write_head(site, fact, formatter)?;
+            write!(
+                formatter,
+                "line={line} cells={cells} cursor={cursor} \
+                 extent={inline_extent} content={content_end}"
+            )
+        },
+        Fact::CellStepped {
+            ordinal,
+            inline,
+            advance,
+            step,
+        } => {
+            write_head(site, fact, formatter)?;
+            write!(
+                formatter,
+                "ordinal={ordinal} inline={inline} advance={advance} step={step}"
+            )
+        },
     }
 }
 
@@ -815,6 +876,19 @@ mod tests {
                 discretionary: 1,
                 mandatory: 0,
             },
+            Fact::LinePlaced {
+                line: 0,
+                cells: 9,
+                cursor: 0,
+                inline_extent: 11_520,
+                content_end: 11_520,
+            },
+            Fact::CellStepped {
+                ordinal: 2,
+                inline: 2_048,
+                advance: 1_280,
+                step: 1_152,
+            },
             Fact::Core {
                 event: core_event(),
             },
@@ -826,7 +900,11 @@ mod tests {
     fn core_event() -> CoreEvent {
         let mut trace = CoreTrace::new();
         compose_fixture(&mut trace);
-        trace.events().first().cloned().expect("core records a prepare event for any paragraph")
+        trace
+            .events()
+            .first()
+            .cloned()
+            .expect("core records a prepare event for any paragraph")
     }
 
     /// A real two-cluster composition, so the absorbed events are what the core actually
@@ -846,14 +924,13 @@ mod tests {
         let paragraph = jlreq_core::Paragraph::builder(text, 2_000)
             .build()
             .expect("a two-cluster paragraph builds");
-        let composed =
-            jlreq_core::compose_traced(&paragraph, &jlreq_core::Style::default(), trace);
+        let composed = jlreq_core::compose_traced(&paragraph, &jlreq_core::Style::default(), trace);
         assert!(composed.is_ok(), "the fixture paragraph composes");
     }
 
     #[test]
     fn the_fixture_holds_one_of_every_variant() {
-        let mut seen = [false; 8];
+        let mut seen = [false; 10];
         for fact in every_fact() {
             let index = match fact {
                 Fact::TextSegmented { .. } => 0,
@@ -863,6 +940,8 @@ mod tests {
                 Fact::FaceChosen { .. } => 4,
                 Fact::FaceFallback { .. } => 5,
                 Fact::BreaksCollected { .. } => 6,
+                Fact::LinePlaced { .. } => 8,
+                Fact::CellStepped { .. } => 9,
                 Fact::Core { .. } => 7,
             };
             seen[index] = true;
@@ -874,7 +953,13 @@ mod tests {
     fn no_kind_collides_with_a_product_error_code_namespace() {
         for fact in every_fact() {
             for prefix in [
-                "input.", "style.", "compose.", "layout.", "font.", "document.", "limit.",
+                "input.",
+                "style.",
+                "compose.",
+                "layout.",
+                "font.",
+                "document.",
+                "limit.",
             ] {
                 assert!(
                     !fact.kind().starts_with(prefix),
@@ -919,10 +1004,8 @@ mod tests {
 
     #[test]
     fn categories_select_one_family_at_a_time() {
-        let mut trace = DocumentTrace::with_categories(
-            Categories::FACES,
-            jlreq_core::trace::Categories::NONE,
-        );
+        let mut trace =
+            DocumentTrace::with_categories(Categories::FACES, jlreq_core::trace::Categories::NONE);
         for fact in every_fact() {
             trace.record(site(), fact);
         }
@@ -938,7 +1021,7 @@ mod tests {
         assert!(!both.without(Categories::FACES).contains(Categories::FACES));
         assert!(Categories::NONE.is_empty());
         assert!(!Categories::ALL.is_empty());
-        assert_eq!(Categories::ALL.bits(), 0x003f);
+        assert_eq!(Categories::ALL.bits(), 0x007f);
     }
 
     #[test]
@@ -1004,7 +1087,7 @@ mod tests {
         let header = rendered.lines().next().unwrap_or_default();
         assert_eq!(
             header,
-            "jlreq.trace/1 document events=1 facade=0x003f core=0x07fb truncated=0"
+            "jlreq.trace/1 document events=1 facade=0x007f core=0x07fb truncated=0"
         );
         assert!(rendered.contains("0000 P00 text.breaks"), "{rendered}");
     }

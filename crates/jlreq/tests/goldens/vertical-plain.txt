@@ -1,7 +1,7 @@
 # vertical-plain
 # the same text set vertically: the run direction and the core's placement transforms both change
 # lines=2
-jlreq.trace/1 document events=33 facade=0x003f core=0x07fb truncated=0
+jlreq.trace/1 document events=47 facade=0x007f core=0x07fb truncated=0
 0000 doc text.segmented           b0..36 paragraphs=1 bytes=36 mode=vertical-rl base=auto extent=7680 size=1024
 0001 P00 para.segment             b0..36 index=0 blank=0 extent=7680 align=justify indent=0 widow=allow
 0002 P00 face.fallback            b0..3 face=0 family=Noto Sans JP candidates=4
@@ -35,3 +35,17 @@ jlreq.trace/1 document events=33 facade=0x003f core=0x07fb truncated=0
 0030 P00 space.boundary           L01 c9 b27..30 before=19 after=19 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
 0031 P00 space.boundary           L01 c10 b30..33 before=19 after=06 bsize=1024 asize=1024 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-06
 0032 P00 line.finished            L01 c7..12 b21..36 inline=0 block=-1024 extent=5632 block_extent=1024 clusters=5 attachments=0 3.8.1
+0033 P00 draw.cell                b0..21 ordinal=0 inline=0 advance=1024 step=1024
+0034 P00 draw.cell                b0..21 ordinal=1 inline=1024 advance=1024 step=1024
+0035 P00 draw.cell                b0..21 ordinal=2 inline=2048 advance=1024 step=1024
+0036 P00 draw.cell                b0..21 ordinal=3 inline=3072 advance=1024 step=1024
+0037 P00 draw.cell                b0..21 ordinal=4 inline=4096 advance=1024 step=1024
+0038 P00 draw.cell                b0..21 ordinal=5 inline=5120 advance=1024 step=1024
+0039 P00 draw.cell                b0..21 ordinal=6 inline=6144 advance=1536 step=1536
+0040 P00 draw.line                b0..21 line=0 cells=7 cursor=0 extent=7680 content=7680
+0041 P00 draw.cell                b21..36 ordinal=0 inline=0 advance=1024 step=1024
+0042 P00 draw.cell                b21..36 ordinal=1 inline=1024 advance=1024 step=1024
+0043 P00 draw.cell                b21..36 ordinal=2 inline=2048 advance=1024 step=1024
+0044 P00 draw.cell                b21..36 ordinal=3 inline=3072 advance=1024 step=1024
+0045 P00 draw.cell                b21..36 ordinal=4 inline=4096 advance=1536 step=1536
+0046 P00 draw.line                b21..36 line=1 cells=5 cursor=0 extent=5632 content=5632

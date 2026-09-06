@@ -401,6 +401,7 @@ impl LayoutEngine {
                     paragraph_index,
                 },
                 options,
+                trace,
             );
             let next_block_offset = next_paragraph_block_offset(
                 &paragraph_lines,
