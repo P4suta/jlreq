@@ -9,17 +9,30 @@
 //! constructs whose cells are not the paragraph's own — ruby beside the line,
 //! emphasis marks repeated along it, and a tate-chu-yoko run set across it.
 //!
-//! Three defects were found by exactly this sweep, all of them invisible to
-//! every other gate because nothing else compared the cells to each other:
-//! a class boundary's shared conditional space was spent twice, the two
-//! halves of a tate-chu-yoko run were advanced past each other, and the run
-//! was mapped onto the page from its own upright orientation rather than its
-//! paragraph's, which placed it clear of the column.
+//! Two defects were found by exactly this sweep, both invisible to every other
+//! gate because nothing else compared the cells to each other: a class
+//! boundary's shared conditional space was spent twice, and the two halves of a
+//! tate-chu-yoko run were advanced past each other. The third — the run mapped
+//! onto the page from its own upright orientation rather than its paragraph's,
+//! which placed it clear of the column — was found by looking at
+//! `examples/render_svg.rs`, and no assertion here had noticed it.
+//!
+//! One thing to read past rather than chase: the fixture face is a subset that
+//! covers none of this text, so every advance is a `.notdef` advance, a square
+//! em. The relationships asserted here hold whatever the advances are; the
+//! exact coordinates in `a_plain_horizontal_line_has_exactly_these_coordinates`
+//! are the fixture's.
 
 use std::fmt::Write as _;
 use std::sync::Arc;
 
 use jlreq::{DocumentBuilder, FontLibrary, FontStyle, LayoutOptions, TextLayout, WritingMode};
+
+/// A cell as [`jlreq::Rect::as_26_6`] reports it: x, y, width, height.
+type Cell = (i32, i32, i32, i32);
+
+/// One of a cell's coordinates, picked by text axis rather than by screen name.
+type Axis = fn(Cell) -> i32;
 
 fn fixture() -> Result<FontLibrary, Box<dyn std::error::Error>> {
     let mut fonts = FontLibrary::new();
@@ -213,5 +226,87 @@ fn a_tate_chu_yoko_run_occupies_one_inline_position() -> Result<(), Box<dyn std:
         line.origin().x_26_6() - line.block_extent_26_6(),
         "and the line is as wide as the run made it"
     );
+    Ok(())
+}
+
+/// A warichu's two lanes read in the order the writing mode requires, and each
+/// lane reads along the inline axis.
+///
+/// Worth stating because the mistake is invisible in the common case: a
+/// two-character 割注 puts one character in each lane, and one character per
+/// lane looks the same whichever way round the lanes are. Four characters is
+/// the smallest document that can tell them apart, and the smallest that shows
+/// each lane running the way its own line runs.
+///
+/// In `VerticalRl` the first lane is the **right-hand** one, because that is
+/// where vertical text begins; in `HorizontalTb` it is the upper one. Reading a
+/// vertical warichu left to right is the misreading this pins against.
+#[test]
+fn a_warichu_reads_the_way_its_writing_mode_does() -> Result<(), Box<dyn std::error::Error>> {
+    let fonts = fixture()?;
+    // 前(0..3) と(3..6) 割(6..9) 注(9..12) 四(12..15) 文(15..18) 。(18..21)
+    let text = "前と割注四文。";
+    let mut document = DocumentBuilder::new(text);
+    document.warichu(6..18)?;
+    let document = document.build()?;
+
+    for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+        let layout = jlreq::layout_document(
+            &document,
+            &fonts,
+            LayoutOptions::try_new(200.0, 16.0)?.with_writing_mode(mode),
+        )?;
+        let cell = |range: std::ops::Range<usize>| -> Cell {
+            layout
+                .glyphs()
+                .find(|glyph| glyph.source_range() == range)
+                .map_or_else(
+                    || panic!("{mode:?}: no glyph for {range:?}"),
+                    |glyph| glyph.cell_bounds().as_26_6(),
+                )
+        };
+        let (first_lane, second_lane) = ((cell(6..9), cell(9..12)), (cell(12..15), cell(15..18)));
+
+        // The lanes are one construct: each holds two characters, and the two
+        // characters of a lane stand at one place along the block axis.
+        let (block, inline): (Axis, Axis) = match mode {
+            WritingMode::VerticalRl => (|cell| cell.0, |cell| cell.1),
+            _ => (|cell| cell.1, |cell| cell.0),
+        };
+        assert_eq!(
+            block(first_lane.0),
+            block(first_lane.1),
+            "{mode:?} lane one"
+        );
+        assert_eq!(
+            block(second_lane.0),
+            block(second_lane.1),
+            "{mode:?} lane two"
+        );
+
+        // Each lane reads along the inline axis, in source order.
+        assert!(
+            inline(first_lane.0) < inline(first_lane.1),
+            "{mode:?}: lane one reads backwards"
+        );
+        assert!(
+            inline(second_lane.0) < inline(second_lane.1),
+            "{mode:?}: lane two reads backwards"
+        );
+
+        // And the lanes themselves are in block order: the second lane is the
+        // one further along the block axis, which is *leftwards* in VerticalRl
+        // because that axis runs −x.
+        match mode {
+            WritingMode::VerticalRl => assert!(
+                block(second_lane.0) < block(first_lane.0),
+                "{mode:?}: the first lane must be the right-hand one"
+            ),
+            _ => assert!(
+                block(first_lane.0) < block(second_lane.0),
+                "{mode:?}: the first lane must be the upper one"
+            ),
+        }
+    }
     Ok(())
 }
