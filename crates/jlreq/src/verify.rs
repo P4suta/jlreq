@@ -38,8 +38,11 @@
 //! Cost: the structural statements are linear in glyphs, but the two
 //! interaction statements ask [`TextLayout::hit_test`] and
 //! [`TextLayout::caret_rect`] once per glyph and per line edge, and each of
-//! those scans the layout. Checking a very large layout is therefore quadratic.
-//! It is a diagnostic, not a step in laying text out.
+//! those scans the layout; the hit-test statement also asks each cell whether
+//! any other cell in the layout holds its middle, which is a second pass of the
+//! same shape. Checking a very large layout is therefore quadratic. It is a
+//! diagnostic, not a step in laying text out, and sorting the cells to make
+//! that one pass near-linear would not change the class the other two set.
 
 use core::fmt;
 use std::ops::Range;
