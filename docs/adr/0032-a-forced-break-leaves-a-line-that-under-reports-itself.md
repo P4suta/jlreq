@@ -86,7 +86,7 @@ third condition on a rule that would then be fitted to three points.
 `Fault::HitTestMissesItsOwnCell` asked, for every cluster, whether the middle of its cell
 hit-tests back to its own bytes. Over arbitrary text that is not an invariant. A cell is one
 em along the inline axis while an advance is whatever the font says, so a proportional
-cluster's cell reaches over its neighbour by construction; a hung comma, a control character
+cluster's cell reaches over its neighbor by construction; a hung comma, a control character
 whose advance the composer collapsed, and a construct's own lanes all put cells on top of
 each other on purpose. Where two cells hold the same point there is no single owner to
 demand. Which of them answers is `better_hit`'s tie-break — ordinary, specified, and tested

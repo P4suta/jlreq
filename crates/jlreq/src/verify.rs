@@ -686,7 +686,7 @@ fn check_hit_tests(layout: &TextLayout, mode: WritingMode, report: &mut Report) 
             continue;
         };
         // A cell is one em along the inline axis while an advance is whatever
-        // the font says, so a proportional cluster reaches over its neighbour
+        // the font says, so a proportional cluster reaches over its neighbor
         // by construction — and a hung comma, a collapsed control character and
         // a construct's own lanes all put cells on top of each other on
         // purpose. Where two cells hold the same point there is no single owner
@@ -1188,6 +1188,44 @@ mod tests {
         let report = inspect(&broken);
         assert!(
             !kinds(&report).contains(&"cell-escapes-the-measure-silently"),
+            "{report}"
+        );
+
+        // Both end runs at once, which is the shape `docs/adr/0032` excuses,
+        // and an interior cell between them, which nothing excuses. Sorted
+        // along the inline axis the line escapes, fits, escapes, fits,
+        // escapes — so each of the two guards has to hold the cell it is for
+        // and let the middle one through.
+        let mut wide = glyph(6..9, EM, EM);
+        wide.font_size = 3 * EM;
+        wide.advance_x = 3 * EM;
+        let mut both_ends = layout(
+            "日本語漢字",
+            vec![line(
+                0,
+                0..15,
+                vec![
+                    glyph(0..3, -EM, EM),
+                    glyph(3..6, 0, EM),
+                    wide,
+                    glyph(9..12, 2 * EM, EM),
+                    glyph(12..15, 3 * EM, EM),
+                ],
+            )],
+        );
+        both_ends.lines[0].inline_extent = 3 * EM;
+        let report = inspect(&both_ends);
+        let escaping: Vec<&Fault> = report
+            .faults()
+            .iter()
+            .filter(|fault| fault.kind() == "cell-escapes-the-measure-silently")
+            .collect();
+        assert_eq!(
+            escaping,
+            [&Fault::CellEscapesTheMeasureSilently {
+                line: 0,
+                range: 6..9
+            }],
             "{report}"
         );
     }
