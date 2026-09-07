@@ -33,14 +33,14 @@
 //! # What it found
 //!
 //! Three defects, all corrected in
-//! [ADR 0030](../../../docs/adr/0030-a-construct-is-centred-in-its-line.md), and
+//! [ADR 0030](../../../docs/adr/0030-a-construct-is-centered-in-its-line.md), and
 //! all of one shape: a construct was positioned against **the paragraph's em**
 //! rather than against the line's own block extent, which the line then grew
-//! without re-centring what it grew around.
+//! without re-centering what it grew around.
 //!
 //! - **Warichu.** Set at full size in the one em its line reserves for two
 //!   lanes, so the pair was twice what the line held. Broken at every length.
-//! - **Furawake.** `place_furawake_segment` centred the segment inside
+//! - **Furawake.** `place_furawake_segment` centered the segment inside
 //!   `paragraph.text.size().block()` — one em — while the line reserves one em
 //!   per column, so every lane landed half the surplus early. Broken at every
 //!   length that fills every column, in both writing modes, and nothing in the

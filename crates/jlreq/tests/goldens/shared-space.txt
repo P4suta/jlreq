@@ -1,5 +1,5 @@
 # shared-space
-# the two places a cell's charged advance is not the step to its neighbour: a Japanese-Latin boundary bills its quarter em to both sides, and a tate-chu-yoko run's halves share one coordinate. Deriving positions from advances alone was wrong at both, and no golden reached either until this one
+# the two places a cell's charged advance is not the step to its neighbor: a Japanese-Latin boundary bills its quarter em to both sides, and a tate-chu-yoko run's halves share one coordinate. Deriving positions from advances alone was wrong at both, and no golden reached either until this one
 # lines=1
 jlreq.trace/1 document events=45 facade=0x0041 core=0x0ffb truncated=0
 0000 doc text.segmented           b0..27 paragraphs=1 bytes=27 mode=vertical-rl base=auto extent=10560 size=1024

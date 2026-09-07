@@ -8,14 +8,14 @@
 //! which the defect cancels. `construct_matrix.rs` sweeps the parameter; this
 //! file states what the sweep is sweeping *for*, in exact 26.6 units.
 //!
-//! - **A tate-chu-yoko run is centred in its line.** JLReq §3.2.5 sets the
+//! - **A tate-chu-yoko run is centered in its line.** JLReq §3.2.5 sets the
 //!   string solid from left to right and then aligns it to the centre of the
-//!   vertical line. The run was centred on the line's block *origin* instead,
+//!   vertical line. The run was centered on the line's block *origin* instead,
 //!   which is its edge, so it was displaced by `(members − 2) × advance / 2` —
 //!   zero at two members, and enough at three to put a member on the line
 //!   beside it.
-//! - **A furawake is centred in its line.** The line reserves one em per
-//!   column; the segment was centred inside a single em, so every lane landed
+//! - **A furawake is centered in its line.** The line reserves one em per
+//!   column; the segment was centered inside a single em, so every lane landed
 //!   half the surplus early and the first sat on the line above.
 //! - **A warichu is set at half the paragraph's size.** JLReq §3.4 sets a 割注
 //!   in characters smaller than the text around it, two lanes inside the space
@@ -23,8 +23,8 @@
 //!   facade handed it full-em clusters, so the pair was two em in that one.
 //!
 //! A run *widening* its line is not a defect and never was: §3.2.5 asks for
-//! solid setting and centring and nothing narrower, and
-//! `docs/conformance-deferrals.toml` records the widening as owned behaviour.
+//! solid setting and centering and nothing narrower, and
+//! `docs/conformance-deferrals.toml` records the widening as owned behavior.
 //! Getting two digits into one em is a matter of their half-width forms, which
 //! is shaping, which ADR 0001 and ADR 0002 place with the caller.
 //!
@@ -115,10 +115,10 @@ fn a_warichu_is_half_size_and_fills_the_em_its_line_reserved()
     Ok(())
 }
 
-/// However many members it holds, the run stands centred across its column, and
+/// However many members it holds, the run stands centered across its column, and
 /// the line is as wide as the run needs.
 #[test]
-fn a_tate_chu_yoko_run_is_centred_in_its_line_at_every_member_count()
+fn a_tate_chu_yoko_run_is_centered_in_its_line_at_every_member_count()
 -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;
     for members in 1..=5_i32 {
@@ -153,7 +153,7 @@ fn a_tate_chu_yoko_run_is_centred_in_its_line_at_every_member_count()
             .collect();
         assert_eq!(cells.len(), count, "{members} member(s)");
 
-        // Centred: the surplus over the run is split evenly between the two
+        // Centered: the surplus over the run is split evenly between the two
         // sides of the column. The line runs from its origin backwards along
         // −x, so the run's far edge is the origin less half the surplus.
         let surplus = extent.saturating_sub(run);
@@ -164,7 +164,7 @@ fn a_tate_chu_yoko_run_is_centred_in_its_line_at_every_member_count()
         assert_eq!(
             (cells[0].0, cells[count - 1].1),
             expected,
-            "{members} member(s): the run is not centred in its column"
+            "{members} member(s): the run is not centered in its column"
         );
         assert!(jlreq::verify::inspect(&layout).is_sound());
     }
@@ -292,5 +292,59 @@ fn a_long_warichu_straddles_two_lines_only_when_a_break_is_declared()
         let report = jlreq::verify::inspect(&layout);
         assert!(report.is_sound(), "{declared:?}: {report}");
     }
+    Ok(())
+}
+
+/// A furawake in a line that bidi reordering shuffled still runs past the
+/// measure, and this is what says so.
+///
+/// The facade walks a line's cells in visual order with a cumulative cursor. A
+/// lane restarts behind its predecessor, and the cursor can only take that step
+/// back when the two cells are still adjacent in the walk. Reordering separates
+/// them, the lanes go end to end, and the second one leaves the measure — which
+/// is what every furawake did before `docs/adr/0030` and what only this case
+/// still does.
+///
+/// Pinned rather than fixed: `docs/adr/0031` records both attempts that made it
+/// worse — computing the gaps in visual order breaks every ordinary bidi line,
+/// and giving a construct one bidi level throughout breaks more columns than it
+/// fixes — and neither is a change to make at merge time. The facade fuzz target
+/// carries the matching exemption, keyed to the same condition, and this test is
+/// what keeps that exemption honest: fix the defect and this test fails.
+#[test]
+fn a_furawake_in_a_reordered_line_is_still_wrong() -> Result<(), Box<dyn std::error::Error>> {
+    let fonts = fixture()?;
+    // Latin letters between neutrals: with a right-to-left base direction the
+    // runs interleave, so the construct's lanes do not stay together.
+    let text = "\u{fffd}\u{fffd}Aba\u{fffd}\u{fffd}ir\u{fffd}\u{fffd}Ar";
+    let mut builder = DocumentBuilder::new(text);
+    builder.furawake(0..text.len() / 2, 2, 0.5)?;
+    let document = builder.build()?;
+    let layout = jlreq::layout_document(
+        &document,
+        &fonts,
+        // Wide enough that nothing wraps: the lanes leave the measure because
+        // they were laid end to end, not because the line was short.
+        LayoutOptions::try_new(2056.0, 16.0)?
+            .with_writing_mode(WritingMode::HorizontalTb)
+            .with_base_direction(jlreq::BaseDirection::RightToLeft),
+    )?;
+
+    let reordered = layout
+        .glyphs()
+        .any(|glyph| glyph.bidi_level() % 2 == 1 && glyph.construct().is_some());
+    assert!(reordered, "the fixture no longer reorders the construct");
+
+    let kinds: Vec<&str> = jlreq::verify::inspect(&layout)
+        .faults()
+        .iter()
+        .map(jlreq::verify::Fault::kind)
+        .collect();
+    assert_eq!(
+        kinds,
+        vec!["cell-escapes-the-measure-silently"; kinds.len()],
+        "the only thing wrong here is the lane that went past the measure"
+    );
+    assert!(!kinds.is_empty(), "docs/adr/0031's furawake case is fixed");
     Ok(())
 }

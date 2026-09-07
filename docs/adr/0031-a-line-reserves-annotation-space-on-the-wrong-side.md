@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 - Status: accepted — the defect is recorded, not corrected
 - Date: 2026-09-06
 - Builds on [ADR 0029](0029-the-coordinate-system-is-a-contract.md) and
-  [ADR 0030](0030-a-construct-is-centred-in-its-line.md).
+  [ADR 0030](0030-a-construct-is-centered-in-its-line.md).
 
 ## Context
 
@@ -82,7 +82,7 @@ Two models would correct it, and both move coordinates that a differential censu
 
 Either way all twenty-seven attachment-bearing conformance cases change, body coordinates
 included. §3.3 gives no inter-line box model to derive the new values from — unlike
-[ADR 0030](0030-a-construct-is-centred-in-its-line.md), where §3.2.5's "align the whole string
+[ADR 0030](0030-a-construct-is-centered-in-its-line.md), where §3.2.5's "align the whole string
 to the center of the vertical line" named the answer — so every value would be a new
 unverifiable claim, and the 122,199-request OCaml/Racket census that would check them cannot
 be run in this environment.
@@ -102,6 +102,33 @@ correction it cannot check.
   on one line, which is why the sweep asks two measures.
 - `docs/design/geometry.md` now states which side the room is reserved on and that the
   annotation is drawn on the other, so the contract says what the code does.
+
+## A second thing this records: a furawake in a reordered line
+
+The facade lays a line out by walking its cells in visual order with a cumulative
+cursor. A warichu or furawake lane restarts behind its predecessor, and the cursor can
+only take that step back when the two cells are still adjacent in the walk. Bidi
+reordering is free to separate them, and then the lanes sit end to end and the second
+one leaves the measure -- which is what every furawake did before
+[ADR 0030](0030-a-construct-is-centered-in-its-line.md) and what only this case still
+does. A facade fuzz case of a furawake in a right-to-left paragraph found it.
+
+One half of it was a regression and is fixed: the backwards step used to be handed to a
+cell the walk reached somewhere else entirely, moving an em of text sideways and making
+`hit_test` answer with the wrong bytes. A restart is now taken only when the cursor
+really goes from the one cell to the other.
+
+The other half is the pre-correction behaviour surviving where the fix cannot reach, and
+it is left alone. Two models were tried and both were worse: computing the gaps in
+visual order breaks every ordinary bidi line, because the difference between two logical
+coordinates means nothing for cells the composer did not place next to each other; and
+giving a construct one bidi level throughout, so that it reorders as the inline object it
+is, broke more column counts than it fixed. Expressing a lane restart in a reordered line
+needs the cursor model replaced by absolute placement, which is not a merge-time change.
+
+`a_furawake_in_a_reordered_line_is_still_wrong` pins it, and the fuzz target carries the
+matching exemption -- keyed on a reordered line holding a construct, not on
+`BaseDirection::RightToLeft`, which `Auto` would walk straight around.
 
 ## Consequences
 

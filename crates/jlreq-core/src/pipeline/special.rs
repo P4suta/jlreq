@@ -96,8 +96,8 @@ fn place_furawake_segment(
     line_extent: i32,
     placed: &mut Vec<ClusterPlacement>,
 ) {
-    // Centred in the line, not in the paragraph em: the line reserves one em
-    // per column, so centring against one em put every lane half the surplus
+    // Centered in the line, not in the paragraph em: the line reserves one em
+    // per column, so centering against one em put every lane half the surplus
     // early and the first lane onto the line above.
     let mut block = construct_block_start(paragraph, block_origin, line_extent, segment.block_extent);
     if paragraph.writing_mode == WritingMode::VerticalRl {
@@ -490,7 +490,7 @@ fn is_middle_dot(character: char) -> bool {
 ///
 /// §3.2.5 sets the string solid from left to right and then aligns it to the
 /// centre of the vertical line. The line is the block extent, not the
-/// paragraph's em: centring on `block_origin` put the run half its own width
+/// paragraph's em: centering on `block_origin` put the run half its own width
 /// before the line began, which lands inside the line only when the run is
 /// exactly two members wide.
 fn place_tate_chu_yoko_group(

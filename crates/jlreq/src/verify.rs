@@ -60,7 +60,7 @@ pub enum Fault {
     ///
     /// This is the axis a line does not negotiate: its block extent is what the
     /// composer reserved, and the next line begins where it ends, so a cell
-    /// past that edge is a cell drawn onto a neighbour. The measure is the
+    /// past that edge is a cell drawn onto a neighbor. The measure is the
     /// other axis and has its own statement, because it has exemptions this
     /// one does not.
     ///
@@ -479,7 +479,7 @@ fn check_line(
         }
         // The two axes are asked separately because they have different
         // exemptions and different consequences: past the block edge is a cell
-        // on a neighbouring line, past the measure is a line holding more than
+        // on a neighboring line, past the measure is a line holding more than
         // it reports. Naming them apart is what makes a report say which.
         if !within_block(mode, body, cell) {
             report.note(Fault::CellEscapesItsLine {

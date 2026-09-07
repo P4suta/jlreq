@@ -168,7 +168,7 @@ fn corpus() -> Result<Vec<Scenario>, Box<dyn Error>> {
         Scenario {
             name: "shared-space",
             intent: "the two places a cell's charged advance is not the step to its \
-                     neighbour: a Japanese-Latin boundary bills its quarter em to both \
+                     neighbor: a Japanese-Latin boundary bills its quarter em to both \
                      sides, and a tate-chu-yoko run's halves share one coordinate. \
                      Deriving positions from advances alone was wrong at both, and no \
                      golden reached either until this one",
@@ -208,7 +208,7 @@ fn construct_document() -> Result<Document, Box<dyn Error>> {
     Ok(builder.build()?)
 }
 
-/// Both places where a cell's charged advance is not the step to its neighbour.
+/// Both places where a cell's charged advance is not the step to its neighbor.
 ///
 /// `語A` and `A語` each place one quarter em that §3.1 bills to the boundary, so
 /// the following cluster begins inside the preceding advance; the two digits of

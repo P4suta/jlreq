@@ -267,9 +267,9 @@ fn tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line() {
     assert_eq!(digits[0].inline(), 1_500);
     assert_eq!(digits[1].inline(), 1_500);
     assert_eq!(digits[2].inline(), 1_500);
-    // Centred in the line, which the run widened to 1_200: the group fills it,
+    // Centered in the line, which the run widened to 1_200: the group fills it,
     // so the three members name the block-start edges -800, -400 and 0 of a
-    // column that runs from -1_200 to 0. Centring on the line's *origin* — its
+    // column that runs from -1_200 to 0. Centering on the line's *origin* — its
     // edge — instead put the run 200 past the far side of its own line.
     assert_eq!(digits[0].block(), -800);
     assert_eq!(digits[1].block(), -400);

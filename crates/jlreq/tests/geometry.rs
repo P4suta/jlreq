@@ -172,8 +172,8 @@ fn a_class_boundary_spends_its_conditional_space_once() -> Result<(), Box<dyn st
 /// members side by side across it.
 ///
 /// Not *in one em* across the column, which this test used to claim: §3.2.5 asks
-/// for the run to be set solid and then *centred* in its line, and the line's
-/// block extent is `max(em, members × advance)`. Centring is measured at every
+/// for the run to be set solid and then *centered* in its line, and the line's
+/// block extent is `max(em, members × advance)`. Centering is measured at every
 /// member count in `crates/jlreq/tests/construct_geometry.rs`; this file states
 /// where the run sits along the inline axis, which is one position however many
 /// members it holds.

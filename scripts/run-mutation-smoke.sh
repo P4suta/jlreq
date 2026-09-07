@@ -27,10 +27,14 @@ if [ ! -s "$diff_file" ]; then
     exit 0
 fi
 
+# `--minimum-test-timeout` is a floor, not a cap: cargo-mutants still derives the
+# real timeout from the baseline run. It was raised from 120 when the geometry
+# sweeps joined the suite and four mutants a slower test would have caught timed
+# out instead of being reported either way.
 set -- cargo mutants -p jlreq -p jlreq-core -p jlreq-conformance --in-diff "$diff_file" \
     --all-features \
     --test-tool cargo \
-    --minimum-test-timeout 120 \
+    --minimum-test-timeout 300 \
     --no-times \
     --colors=never \
     -j 4

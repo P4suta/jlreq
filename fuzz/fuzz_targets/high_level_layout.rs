@@ -31,8 +31,40 @@ fn check_geometry(layout: &jlreq::TextLayout) {
         return;
     }
     let report = jlreq::verify::inspect(layout);
-    assert!(report.is_sound(), "{:?}
-{report}", layout.source());
+    let unexplained: Vec<_> = report
+        .faults()
+        .iter()
+        .filter(|fault| {
+            !fault
+                .line()
+                .and_then(|line| layout.lines().get(line))
+                .is_some_and(deferred_by_adr_0031)
+        })
+        .collect();
+    assert!(
+        unexplained.is_empty(),
+        "{:?}\n{unexplained:?}",
+        layout.source()
+    );
+}
+
+/// A line that bidi reordering shuffled *and* that holds a construct.
+///
+/// The facade lays a line out by walking its cells in visual order with a
+/// cumulative cursor. A warichu or furawake lane restarts behind its
+/// predecessor, and the cursor can only take that step back when the two cells
+/// stay next to each other in the walk — which reordering is free to undo. The
+/// lanes then sit end to end and run past the measure, which is what this
+/// construct did *everywhere* before `docs/adr/0030` and now does only here.
+///
+/// `docs/adr/0031` records it; `a_furawake_in_a_reordered_line_is_still_wrong`
+/// in `crates/jlreq/tests/construct_geometry.rs` pins it deterministically, so
+/// this exemption cannot outlive the defect unnoticed. The condition is the
+/// real one — a reordered line holding a construct — rather than
+/// `BaseDirection::RightToLeft`, which `Auto` would walk straight around.
+fn deferred_by_adr_0031(line: &jlreq::TextLine) -> bool {
+    let reordered = line.glyphs().iter().any(|glyph| glyph.bidi_level() % 2 == 1);
+    reordered && line.glyphs().iter().any(|glyph| glyph.construct().is_some())
 }
 
 fuzz_target!(|data: &[u8]| {

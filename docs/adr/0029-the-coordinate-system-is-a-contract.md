@@ -28,7 +28,7 @@ layouts and discarded the values; the unit tests pinned each formula against a h
 fixture, which fixes the expression and never compares the two.
 
 Three defects lived there. A conditional space at a class boundary is billed to the boundary,
-so a cell's advance is larger than the step to its neighbour; clamping that shortfall at zero
+so a cell's advance is larger than the step to its neighbor; clamping that shortfall at zero
 spent the space twice and pushed the rest of the line an eighth of an em per boundary. The
 two halves of a tate-chu-yoko run share one inline coordinate; advancing past the first spent
 a whole em the line never had. And the run's members were mapped onto the page from their own
@@ -45,7 +45,7 @@ that is its own decision to take.
    [`docs/design/geometry.md`](../design/geometry.md) states the axes, the cell model, the
    corner `GlyphPlacement::origin` names, that `draw_origin` is not the baseline and what
    converts it, what `TextLine::inline_extent` excludes, and why a cell's advance is not the
-   step to its neighbour. The rustdoc on the types carries the same statements, because a
+   step to its neighbor. The rustdoc on the types carries the same statements, because a
    consumer reads docs.rs and not `docs/`.
 
 2. **`jlreq::verify` is the facade's half of the invariant harness**, in the shape
@@ -67,7 +67,7 @@ that is its own decision to take.
    cells being asked about, so no layout could break it either; its witness only failed
    because it mutated a fixture after that union had been computed. It survives as a
    statement about the line's *composed box*, split by axis: past the block edge is a cell
-   drawn onto a neighbouring line, past the measure is a line holding more than it reports.
+   drawn onto a neighboring line, past the measure is a line holding more than it reports.
    Asking them together had been reporting every warichu overhang — a block-axis fault — as
    a measure overrun.
 

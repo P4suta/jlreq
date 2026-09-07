@@ -255,14 +255,15 @@ pub fn inspect(layout: &Layout, paragraph: &Paragraph) -> Report {
         check_line(ordinal, line, mode, constructs, paragraph, &mut report);
     }
     for (ordinal, diagnostic) in layout.diagnostics().iter().enumerate() {
-        if let Some(range) = diagnostic.range()
-            && range.end > source
-        {
-            report.note(Fault::DiagnosticEscapesTheSource {
-                diagnostic: ordinal,
-                end: range.end,
-                source,
-            });
+        // Not a `let` chain: this crate's MSRV is 1.85 and they landed in 1.88.
+        if let Some(range) = diagnostic.range() {
+            if range.end > source {
+                report.note(Fault::DiagnosticEscapesTheSource {
+                    diagnostic: ordinal,
+                    end: range.end,
+                    source,
+                });
+            }
         }
     }
     report

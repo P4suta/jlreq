@@ -28,6 +28,15 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 jlreq contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
+# The trace goldens. Every byte of one is the output a test blesses with
+# `JLREQ_BLESS=1`, so a notice cannot be written into them: the next blessing
+# would take it straight back out again (docs/design/trace.md).
+[[annotations]]
+path = ["**/tests/goldens/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 jlreq contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
 # The conformance suite. JSON has no comments, so the format contract and the cases
 # that validate against it carry their notice here. They are a published deliverable
 # rather than a fixture, which is why they are named separately from the block above

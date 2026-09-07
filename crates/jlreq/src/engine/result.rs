@@ -72,12 +72,12 @@ fn map_core_lines(
                 trailing_gap: 0,
             });
         }
-        assign_trailing_gaps(&mut cells);
         let levels: Vec<_> = cells
             .iter()
             .map(|cell| Level::new(cell.level).unwrap_or_else(|_| Level::ltr()))
             .collect();
         let visual = BidiInfo::reorder_visual(&levels);
+        assign_trailing_gaps(&mut cells, &visual);
         // The physical run starts where the core placed its first cluster,
         // which folds in alignment, first-line indent, and ruby leading
         // separation; `inline_origin` alone carries only the alignment
@@ -275,13 +275,25 @@ struct Cell {
 ///
 /// A step backwards is different in kind: a warichu or furawake lane restarts
 /// near the line's start, which is a new lane rather than a shared coordinate,
-/// and the cursor must not follow it. That is the one case the clamp keeps.
-fn assign_trailing_gaps(cells: &mut [Cell]) {
+/// and the cursor does follow that one.
+///
+/// The pairs are the logical ones, because the composer's coordinates are
+/// logical and the difference between two of them only means something for
+/// cells it placed next to each other. Whether the cursor *traverses* a pair is
+/// a separate question, and one the restart above has to ask.
+fn assign_trailing_gaps(cells: &mut [Cell], visual: &[usize]) {
+    // Where each cell stands in the walk, so that a pair the cursor will not
+    // actually traverse cannot hand it a step.
+    let mut walked = vec![0_usize; cells.len()];
+    for (position, &index) in visual.iter().enumerate() {
+        if let Some(slot) = walked.get_mut(index) {
+            *slot = position;
+        }
+    }
+
     for index in 0..cells.len() {
-        let Some(next) = cells.get(index.saturating_add(1)) else {
-            break;
-        };
-        let Some(cell) = cells.get(index) else {
+        let successor = index.saturating_add(1);
+        let (Some(cell), Some(next)) = (cells.get(index), cells.get(successor)) else {
             break;
         };
         let raw = next.inline.saturating_sub(cell.inline);
@@ -293,7 +305,19 @@ fn assign_trailing_gaps(cells: &mut [Cell]) {
         // Everywhere else a backwards step is visual reordering rather than a
         // restart — the composer's coordinate is logical and these cells are
         // walked in visual order — and the cursor holds its place instead.
-        let restart = cell.construct.is_some() && cell.construct == next.construct;
+        //
+        // Which is also why a restart is taken only when the cursor really goes
+        // from this cell to that one. Bidi reordering can put a lane's last cell
+        // and the next lane's first anywhere relative to each other, and a
+        // backwards step handed to a cell the walk reaches somewhere else moves
+        // an em of text sideways. It was invisible while every gap was clamped
+        // non-negative, and it is what a fuzz case of a furawake in a
+        // right-to-left paragraph found.
+        let traversed = walked
+            .get(successor)
+            .zip(walked.get(index))
+            .is_some_and(|(after, before)| *after == before.saturating_add(1));
+        let restart = traversed && cell.construct.is_some() && cell.construct == next.construct;
         let step = if restart { raw } else { raw.max(0) };
         let gap = step.saturating_sub(cell.advance);
         if let Some(cell) = cells.get_mut(index) {

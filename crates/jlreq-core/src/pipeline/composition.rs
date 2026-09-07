@@ -881,8 +881,8 @@ impl Composer {
         let mut cursor = i64::from(indent)
             .saturating_add(i64::from(ruby_leading))
             .saturating_add(alignment_offset);
-        // Decided before anything is placed, because a construct is centred in
-        // the line and the line is as wide as its widest construct: centring
+        // Decided before anything is placed, because a construct is centered in
+        // the line and the line is as wide as its widest construct: centering
         // against the extent known *so far* centres against a number a later
         // construct can still raise. `docs/adr/0030` records what that cost.
         let mut block_extent = line_block_extent(paragraph, start_cluster, end_cluster);
@@ -1063,15 +1063,15 @@ impl Composer {
 
 /// The block extent a line takes, decided before anything on it is placed.
 ///
-/// A construct is centred in its line and the line is as wide as its widest
+/// A construct is centered in its line and the line is as wide as its widest
 /// construct, so the two cannot be settled in one pass: a construct placed
-/// against the extent known so far is centred against a number that a later
+/// against the extent known so far is centered against a number that a later
 /// construct on the same line can still raise. This walks the same branches the
 /// placement loop does and answers only the extent question, so the placement
 /// loop can start from the answer.
 ///
 /// Annotations are not counted. They are reserved after the body is placed and
-/// stand beside it, so a construct is centred in the body the line composed,
+/// stand beside it, so a construct is centered in the body the line composed,
 /// not in the room its ruby needed.
 fn line_block_extent(paragraph: &Paragraph, start_cluster: usize, end_cluster: usize) -> i32 {
     let mut extent = paragraph.text.size().block();
@@ -1111,7 +1111,7 @@ fn line_block_extent(paragraph: &Paragraph, start_cluster: usize, end_cluster: u
     extent
 }
 
-/// Where a construct of `construct_extent` starts, centred in a line of
+/// Where a construct of `construct_extent` starts, centered in a line of
 /// `line_extent` whose block origin is `block_origin`.
 ///
 /// The answer is the construct's **low** edge along the physical block axis,
@@ -1123,7 +1123,7 @@ fn line_block_extent(paragraph: &Paragraph, start_cluster: usize, end_cluster: u
 ///
 /// When the construct is wider than the line the surplus is split evenly, which
 /// is the same expression: a line already grew to hold anything that could be
-/// wider, so this is centring, not clamping.
+/// wider, so this is centering, not clamping.
 fn construct_block_start(
     paragraph: &Paragraph,
     block_origin: i32,

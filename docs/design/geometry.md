@@ -74,7 +74,7 @@ paragraph's, the corner rule is the same, and only the glyph's own orientation �
 inline axis the whole run stands at **one** position and occupies one em of it, however many
 members it holds. Across the column each member gets its own advance and they sit side by
 side, and the line's block extent is `max(em, members × advance)` — a run wider than the em
-widens its line, which is intended. The run then stands centred in whatever that comes to;
+widens its line, which is intended. The run then stands centered in whatever that comes to;
 see [Constructs that are not plain body text](#constructs-that-are-not-plain-body-text).
 
 Mapping a member's coordinates from its *own* orientation instead of the paragraph's put
@@ -162,8 +162,8 @@ states the line's composed extent beside the coordinate its last cell reached.
 ## Constructs that are not plain body text
 
 A warichu, a furawake and a tate-chu-yoko each occupy their line differently from a run of
-ordinary clusters, and each was wrong until [ADR 0030](../adr/0030-a-construct-is-centred-in-its-line.md).
-The rule they now share is one sentence: **a construct is centred in the block extent of the
+ordinary clusters, and each was wrong until [ADR 0030](../adr/0030-a-construct-is-centered-in-its-line.md).
+The rule they now share is one sentence: **a construct is centered in the block extent of the
 line that holds it.** The line is as wide as its widest construct, so that extent is settled
 before anything is placed rather than accumulated while placing.
 
@@ -173,10 +173,10 @@ before anything is placed rather than accumulated while placing.
   each glyph's own metrics for the clusters in a warichu before handing them over.
 - **A furawake fills the columns its line reserved**, one em per column, its lanes flush and
   side by side rather than end to end.
-- **A tate-chu-yoko run is centred across its column** at every member count. The line's
+- **A tate-chu-yoko run is centered across its column** at every member count. The line's
   block extent is `max(em, members × advance)` — a run wider than the em widens its line,
-  which §3.2.5 permits and `docs/conformance-deferrals.toml` records as owned behaviour —
-  and the run stands centred in whatever that comes to.
+  which §3.2.5 permits and `docs/conformance-deferrals.toml` records as owned behavior —
+  and the run stands centered in whatever that comes to.
 
 The reading order is a separate statement and was never disturbed: in `VerticalRl` a
 warichu's first lane is the right-hand one, as vertical reading order requires, and each lane

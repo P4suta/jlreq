@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 jlreq contributors
 SPDX-License-Identifier: MIT OR Apache-2.0
 -->
 
-# ADR-0030: a construct is centred in its line, not in an em
+# ADR-0030: a construct is centered in its line, not in an em
 
 - Status: accepted
 - Date: 2026-09-06
@@ -22,8 +22,8 @@ defect.
 `compose_line` settled two questions in one pass. It accumulated the line's block extent
 while it placed, and it placed each construct against `paragraph.text.size().block()` — the
 paragraph's em — because that was the only extent available when the construct came up. The
-line was then grown around the construct without the construct being re-centred in what it
-grew to. While the em and the line agree, centring against either gives the same answer;
+line was then grown around the construct without the construct being re-centered in what it
+grew to. While the em and the line agree, centering against either gives the same answer;
 once the line is wider than an em they diverge, and the surplus is drawn onto the line
 beside it.
 
@@ -31,7 +31,7 @@ beside it.
   members**, and two is what every fixture in this workspace used: the geometry corpus, the
   `shared-space` trace golden, the SVG example, `tate_chu_yoko_is_one_centered_solid_item_in_a_vertical_line`,
   and conformance case `3.2.5/tate-chu-yoko-solid-centered-group`. At three members a member
-  is drawn on the neighbouring column.
+  is drawn on the neighboring column.
 - A furawake was displaced by half the surplus for every column past the first, at every
   length, in both writing modes. Nothing in the workspace had a geometric test for one.
 - A warichu was set at the paragraph's own em. §3.4 sets a 割注 in smaller characters and the
@@ -49,18 +49,18 @@ at one length and a fixture at one length is a fixture at one length.
 
 ## Decision
 
-1. **A construct is centred in the block extent of the line that holds it.**
+1. **A construct is centered in the block extent of the line that holds it.**
    `construct_block_start` is the one expression that answers where a construct of a given
    extent begins in a line of a given extent, and the tate-chu-yoko, warichu and furawake
    placements all call it. When the construct is wider than the line the surplus splits
    evenly, which is the same expression — a line already grew to hold anything that could be
-   wider, so this is centring rather than clamping.
+   wider, so this is centering rather than clamping.
 
 2. **A line's block extent is decided before anything on it is placed.** `line_block_extent`
    walks the same branches the placement loop does and answers only the extent question.
    Placing against the extent known *so far* is what made the two questions circular.
    Annotations are excluded: they are reserved after the body is placed and stand beside it,
-   so a construct is centred in the body the line composed, not in the room its ruby needed.
+   so a construct is centered in the body the line composed, not in the room its ruby needed.
 
 3. **A warichu is reduced by the facade, not by the composer.** JLReq §3.4 states a size;
    the composer's job is to reserve one em for the pair, which it already did. The facade
@@ -74,7 +74,7 @@ at one length and a fixture at one length is a fixture at one length.
 4. **A backwards step inside one construct is a lane restart and the cursor takes it.**
    Everywhere else a backwards step is visual reordering — the composer's coordinate is
    logical and the facade walks cells in visual order — and there the cursor holds its
-   place. The two cases are told apart by whether the neighbouring cells belong to the same
+   place. The two cases are told apart by whether the neighboring cells belong to the same
    construct.
 
 5. **Expected outputs were derived, not re-blessed.** Five committed expectations moved:
