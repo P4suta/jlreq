@@ -412,7 +412,7 @@ impl Composer {
             .any(core::convert::identity)
             && paragraph.constructs.iter().all(|construct| {
                 matches!(
-                    construct.kind(),
+                    construct.structure(),
                     ConstructKind::TateChuYoko(_)
                         | ConstructKind::Emphasis { .. }
                         | ConstructKind::ReferenceMark { .. }

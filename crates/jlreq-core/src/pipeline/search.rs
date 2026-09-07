@@ -158,9 +158,9 @@ fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<
     }
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::TateChuYoko(_))
+        matches!(construct.structure(), ConstructKind::TateChuYoko(_))
     })?;
-    let ConstructKind::TateChuYoko(range) = construct.kind() else {
+    let ConstructKind::TateChuYoko(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -172,9 +172,9 @@ fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<
 fn warichu_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Warichu(_))
+        matches!(construct.structure(), ConstructKind::Warichu(_))
     })?;
-    let ConstructKind::Warichu(range) = construct.kind() else {
+    let ConstructKind::Warichu(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -189,13 +189,13 @@ fn furawake_cluster_range(
 ) -> Option<(Range<usize>, u16, i32)> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Furawake { .. })
+        matches!(construct.structure(), ConstructKind::Furawake { .. })
     })?;
     let ConstructKind::Furawake {
         range,
         columns,
         line_gap,
-    } = construct.kind()
+    } = construct.structure()
     else {
         return None;
     };
@@ -210,9 +210,9 @@ fn furawake_cluster_range(
 fn jidori_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<(Range<usize>, u16)> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Jidori { .. })
+        matches!(construct.structure(), ConstructKind::Jidori { .. })
     })?;
-    let ConstructKind::Jidori { range, cells } = construct.kind() else {
+    let ConstructKind::Jidori { range, cells } = construct.structure() else {
         return None;
     };
     Some((
@@ -229,7 +229,7 @@ fn is_internal_jidori_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
     let boundary = cluster.range().end;
     paragraph
         .find_construct_containing(ordinal, |construct| {
-            matches!(construct.kind(), ConstructKind::Jidori { range, .. }
+            matches!(construct.structure(), ConstructKind::Jidori { range, .. }
                 if range.start < boundary && boundary < range.end)
         })
         .is_some()
@@ -252,7 +252,7 @@ fn is_internal_stacked_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
     paragraph
         .find_construct_containing(ordinal, |construct| {
             matches!(
-                construct.kind(),
+                construct.structure(),
                 ConstructKind::Warichu(range) | ConstructKind::Furawake { range, .. }
                     if range.start < boundary && boundary < range.end
             )
@@ -263,9 +263,9 @@ fn is_internal_stacked_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
 fn formula_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Formula(_))
+        matches!(construct.structure(), ConstructKind::Formula(_))
     })?;
-    let ConstructKind::Formula(range) = construct.kind() else {
+    let ConstructKind::Formula(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -279,7 +279,7 @@ fn is_internal_furawake_offset(paragraph: &Paragraph, offset: usize) -> bool {
     boundary.checked_sub(1).is_some_and(|ordinal| {
         paragraph
             .find_construct_containing(ordinal, |construct| {
-                matches!(construct.kind(), ConstructKind::Furawake { range, .. }
+                matches!(construct.structure(), ConstructKind::Furawake { range, .. }
                     if range.start < offset && offset < range.end)
             })
             .is_some()

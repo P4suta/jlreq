@@ -434,7 +434,7 @@ fn local_orientation(
     }
     if paragraph
         .find_construct_containing(ordinal, |construct| {
-            matches!(construct.kind(), ConstructKind::TateChuYoko(_))
+            matches!(construct.structure(), ConstructKind::TateChuYoko(_))
         })
         .is_some()
     {
@@ -466,7 +466,7 @@ fn place_attachments(
         let Some(construct) = paragraph.constructs.get(ordinal) else {
             continue;
         };
-        match construct.kind() {
+        match construct.structure() {
             ConstructKind::Ruby(ruby) => {
                 place_ruby_attachments(
                     paragraph,

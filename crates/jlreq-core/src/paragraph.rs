@@ -542,7 +542,7 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
                 "construct endpoints must be shaped-cluster boundaries",
             ));
         }
-        if let ConstructKind::Ruby(ruby) = construct.kind() {
+        if let ConstructKind::Ruby(ruby) = construct.structure() {
             for run in ruby.runs() {
                 if !text.cluster_boundary(run.base().start)
                     || !text.cluster_boundary(run.base().end)
@@ -570,7 +570,7 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
                 }
             }
         }
-        match construct.kind() {
+        match construct.structure() {
             ConstructKind::Furawake { columns, .. } if *columns == 0 => {
                 return Err(InputError::new(
                     "input.invalid-furawake-columns",
@@ -632,7 +632,7 @@ fn validate_constructs(text: &ShapedText, constructs: &[Construct]) -> Result<()
 /// along the line like any other text, which is what the rest of this engine reads it
 /// as (`docs/decisions/tab-line-correspondence.md`).
 fn stacks_text_off_the_line(construct: &Construct, writing_mode: WritingMode) -> bool {
-    match construct.kind() {
+    match construct.structure() {
         ConstructKind::TateChuYoko(_) => writing_mode == WritingMode::VerticalRl,
         ConstructKind::Warichu(_) | ConstructKind::Furawake { .. } => true,
         _ => false,
@@ -717,7 +717,7 @@ fn blocked_break_boundaries(text: &ShapedText, constructs: &[Construct]) -> Vec<
         ) else {
             continue;
         };
-        match construct.kind() {
+        match construct.structure() {
             ConstructKind::Emphasis { .. }
             | ConstructKind::Warichu(_)
             | ConstructKind::Furawake { .. } => {},
@@ -782,7 +782,7 @@ fn validate_construct_breaks(
     breaks: &[Break],
 ) -> Result<(), InputError> {
     for construct in constructs {
-        let ConstructKind::Furawake { range, columns, .. } = construct.kind() else {
+        let ConstructKind::Furawake { range, columns, .. } = construct.structure() else {
             continue;
         };
         let first_split = breaks.partition_point(|opportunity| opportunity.offset <= range.start);
@@ -1091,7 +1091,7 @@ mod tests {
         assert_eq!(first, 0);
         let (inner, _) = indexed
             .find_construct_containing(2, |construct| {
-                matches!(construct.kind(), ConstructKind::ReferenceMark { .. })
+                matches!(construct.structure(), ConstructKind::ReferenceMark { .. })
             })
             .expect("the inner reference mark contains the cluster");
         assert_eq!(inner, 1);

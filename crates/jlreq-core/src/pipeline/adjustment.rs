@@ -37,7 +37,7 @@ fn boundary_expansion_site(paragraph: &Paragraph, style: &Style, before: usize) 
 
     let boundary = cluster.range().end;
     if paragraph
-        .find_construct_containing(before, |construct| match construct.kind() {
+        .find_construct_containing(before, |construct| match construct.structure() {
             ConstructKind::TateChuYoko(range)
             | ConstructKind::Warichu(range)
             | ConstructKind::Formula(range)
@@ -157,12 +157,12 @@ fn expansion_complex_at(paragraph: &Paragraph, ordinal: usize) -> Option<Complex
     let cluster = paragraph.text.clusters().get(ordinal)?.range();
     let (construct, candidate) = paragraph.find_construct_containing(ordinal, |candidate| {
         matches!(
-            candidate.kind(),
+            candidate.structure(),
             ConstructKind::Script { .. } | ConstructKind::Ruby(_)
         ) || (paragraph.writing_mode == WritingMode::VerticalRl
-            && matches!(candidate.kind(), ConstructKind::TateChuYoko(_)))
+            && matches!(candidate.structure(), ConstructKind::TateChuYoko(_)))
     })?;
-    match candidate.kind() {
+    match candidate.structure() {
         ConstructKind::Script { .. } => Some(ComplexIdentity {
             kind: ComplexKind::Ornamented,
             construct,

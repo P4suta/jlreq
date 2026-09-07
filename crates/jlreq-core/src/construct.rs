@@ -352,8 +352,37 @@ impl Construct {
         }
     }
 
-    pub(crate) const fn kind(&self) -> &ConstructKind {
+    pub(crate) const fn structure(&self) -> &ConstructKind {
         &self.kind
+    }
+
+    /// Which of the nine structures this is, as a stable name.
+    ///
+    /// A `Construct` could be built and never asked anything but its
+    /// [`range`](Self::range): the representation is private, deliberately, so
+    /// a paragraph handed back to its caller — or to a debugger, a serializer,
+    /// or a renderer deciding what to draw differently — could say where a
+    /// construct is and not what it is.
+    ///
+    /// A name rather than the enum, for the reason
+    /// [ADR 0012](https://github.com/jlreq/jlreq) gives and
+    /// [`crate::verify::Fault::kind`] and [`crate::trace::Fact::kind`] already
+    /// follow: a projection that is frozen is one callers can match on without
+    /// the representation becoming the contract. There is no wildcard arm, so a
+    /// tenth structure does not compile until it is named here.
+    #[must_use]
+    pub const fn kind(&self) -> &'static str {
+        match self.kind {
+            ConstructKind::Ruby(_) => "ruby",
+            ConstructKind::TateChuYoko(_) => "tate-chu-yoko",
+            ConstructKind::Emphasis { .. } => "emphasis",
+            ConstructKind::Warichu(_) => "warichu",
+            ConstructKind::Furawake { .. } => "furawake",
+            ConstructKind::Jidori { .. } => "jidori",
+            ConstructKind::ReferenceMark { .. } => "reference-mark",
+            ConstructKind::Script { .. } => "script",
+            ConstructKind::Formula(_) => "formula",
+        }
     }
 }
 
@@ -367,4 +396,70 @@ pub(crate) fn is_math_operator(character: char) -> bool {
 
 pub(crate) fn is_math_token(character: char) -> bool {
     is_math_symbol(character) || is_math_operator(character)
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use super::{Construct, Ruby, RubyKind, RubyRun, ScriptPosition};
+    use crate::model::{Cluster, Frame, ShapedText, Size};
+
+    fn shaped(source: &str) -> ShapedText {
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            vec![Cluster::new(0..source.len(), 1_000)],
+        )
+        .expect("a one-cluster text")
+    }
+
+    /// Every structure names itself, and no two share a name.
+    ///
+    /// The list is the projection `Construct::kind` freezes; a tenth structure
+    /// does not compile until it is in the match, and this is what says the
+    /// names stay distinct once it is.
+    #[test]
+    fn each_of_the_nine_structures_has_its_own_name() {
+        let ruby = Ruby::new(
+            RubyKind::Group,
+            0..3,
+            shaped("あ"),
+            vec![RubyRun::new(0..3, 0..3)],
+        )
+        .expect("valid ruby");
+        let all = [
+            Construct::ruby(ruby),
+            Construct::tate_chu_yoko(0..2),
+            Construct::emphasis_dots(0..3, '\u{fe45}'),
+            Construct::warichu(0..6),
+            Construct::furawake(0..6, 2, 0),
+            Construct::jidori(0..6, 4),
+            Construct::reference_mark(0..3, shaped("※")),
+            Construct::script_at(0..3, shaped("2"), ScriptPosition::Superscript),
+            Construct::formula(0..3),
+        ];
+
+        let names: alloc::vec::Vec<&'static str> = all.iter().map(Construct::kind).collect();
+        assert_eq!(
+            names,
+            [
+                "ruby",
+                "tate-chu-yoko",
+                "emphasis",
+                "warichu",
+                "furawake",
+                "jidori",
+                "reference-mark",
+                "script",
+                "formula",
+            ]
+        );
+
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), names.len(), "two structures share a name");
+    }
 }

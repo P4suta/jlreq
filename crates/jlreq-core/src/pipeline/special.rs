@@ -395,7 +395,7 @@ fn warichu_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
     };
     let mut penalty = 0_i64;
     paragraph.visit_constructs_containing(cluster, |_, construct| {
-        let ConstructKind::Warichu(range) = construct.kind() else {
+        let ConstructKind::Warichu(range) = construct.structure() else {
             return;
         };
         if !(range.start < offset && offset < range.end) {
@@ -421,7 +421,7 @@ fn formula_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
         paragraph
             .find_construct_containing(ordinal, |construct| {
                 matches!(
-                    construct.kind(),
+                    construct.structure(),
                     ConstructKind::Formula(range)
                         if range.start == 0
                             && range.end == paragraph.text.source().len()
