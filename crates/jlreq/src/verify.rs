@@ -360,7 +360,7 @@ pub fn inspect(layout: &TextLayout) -> Report {
     }
 
     check_carets(layout, &mut report);
-    check_hit_tests(layout, &mut report);
+    check_hit_tests(layout, mode, &mut report);
     report
 }
 
@@ -607,6 +607,13 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
 /// A click in the middle of what some bytes were drawn into answers with those
 /// bytes.
 ///
+/// Two kinds of cell are not asked, and for the same reason: there is no point
+/// that belongs to them alone. A cluster the shaper gave no advance -- a
+/// combining mark -- has a cell with no interior along the inline axis, and
+/// `Rect::contains` includes edges, so every point in it is a point of its
+/// neighbor too. Where the mark shares its bytes with a base, the union of the
+/// two is asked instead; where it is a cluster of its own, nothing is.
+///
 /// The question is asked of the **bytes**, not of each glyph. One cluster can
 /// shape to several glyphs — a base and a combining mark — and the mark carries
 /// no advance, so its cell is a sliver one unit wide whose middle is a point it
@@ -614,7 +621,7 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
 /// asks which of two touching cells owns their common edge, which is a question
 /// about `Rect::contains` rather than about the layout. The union of the cells
 /// the bytes were drawn into has a middle that belongs to nobody else.
-fn check_hit_tests(layout: &TextLayout, report: &mut Report) {
+fn check_hit_tests(layout: &TextLayout, mode: WritingMode, report: &mut Report) {
     for line in layout.lines() {
         let mut cells: Vec<(Range<usize>, Rect)> = Vec::new();
         for glyph in line.glyphs() {
@@ -631,6 +638,14 @@ fn check_hit_tests(layout: &TextLayout, report: &mut Report) {
         }
 
         for (range, cell) in cells {
+            // A cluster the shaper gave no advance — a combining mark standing
+            // on its own — has a cell with no interior along the inline axis.
+            // Every point in it is a point of the cell beside it too, because
+            // `Rect::contains` includes edges, so there is no position that
+            // could answer with these bytes and no question to ask.
+            if inline_size(mode, cell) <= 1 {
+                continue;
+            }
             let Some(point) = center(cell) else {
                 continue;
             };
@@ -741,6 +756,15 @@ fn contains(outer: Rect, inner: Rect) -> bool {
         && inner_y >= oy
         && inner_x.saturating_add(inner_width) <= ox.saturating_add(ow)
         && inner_y.saturating_add(inner_height) <= oy.saturating_add(oh)
+}
+
+/// How far a cell reaches along the inline axis, whichever axis that is.
+fn inline_size(mode: WritingMode, cell: Rect) -> i32 {
+    let (_, _, width, height) = cell.as_26_6();
+    match mode {
+        WritingMode::VerticalRl => height,
+        _ => width,
+    }
 }
 
 /// A cell's coordinate along the inline axis, whichever axis that is.
