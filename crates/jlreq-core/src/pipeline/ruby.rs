@@ -75,7 +75,7 @@ fn visit_ruby_spans(
     mut visit: impl FnMut(&Ruby, Range<usize>, Range<usize>),
 ) {
     for construct in &paragraph.constructs {
-        let ConstructKind::Ruby(ruby) = construct.kind() else {
+        let ConstructKind::Ruby(ruby) = construct.structure() else {
             continue;
         };
         visit_ruby_spans_for(style, ruby, &mut visit);
@@ -121,7 +121,7 @@ fn visit_ruby_spans_overlapping(
     mut visit: impl FnMut(&Ruby, Range<usize>, Range<usize>),
 ) {
     paragraph.visit_constructs_overlapping(start, end, |_, construct| {
-        if let ConstructKind::Ruby(ruby) = construct.kind() {
+        if let ConstructKind::Ruby(ruby) = construct.structure() {
             visit_ruby_spans_for(style, ruby, &mut visit);
         }
     });
@@ -134,7 +134,7 @@ fn visit_rubies_overlapping(
     mut visit: impl FnMut(&Ruby),
 ) {
     paragraph.visit_constructs_overlapping(start, end, |_, construct| {
-        if let ConstructKind::Ruby(ruby) = construct.kind() {
+        if let ConstructKind::Ruby(ruby) = construct.structure() {
             visit(ruby);
         }
     });
@@ -976,14 +976,14 @@ fn class_of_cluster_impl(paragraph: &Paragraph, style: Option<&Style>, ordinal: 
     let range = cluster.range();
     if let Some((_, construct)) = paragraph.find_construct_containing(ordinal, |construct| {
         matches!(
-            construct.kind(),
+            construct.structure(),
             ConstructKind::Ruby(_)
                 | ConstructKind::Emphasis { .. }
                 | ConstructKind::Script { .. }
                 | ConstructKind::ReferenceMark { .. }
         )
     }) {
-        return match construct.kind() {
+        return match construct.structure() {
             ConstructKind::Ruby(ruby) if ruby.kind() == RubyKind::Jukugo => 23,
             ConstructKind::Ruby(_) => 22,
             ConstructKind::Emphasis { .. } | ConstructKind::Script { .. } => 21,

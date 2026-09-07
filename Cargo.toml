@@ -41,6 +41,8 @@ missing_errors_doc = "allow"
 missing_docs = "warn"
 missing_debug_implementations = "warn"
 unreachable_pub = "warn"
+# docs.rs builds pass `--cfg docsrs` to enable doc(cfg) feature badges.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(docsrs)"] }
 
 [profile.release]
 lto = "thin"

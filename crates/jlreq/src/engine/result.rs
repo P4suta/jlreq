@@ -1,19 +1,35 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+struct LineMapping<'a> {
+    attachments: &'a [Option<AttachmentShape>],
+    construct_globals: &'a [(Range<usize>, usize)],
+    global_offset: usize,
+    block_offset: i32,
+    paragraph_index: usize,
+}
+
 fn map_core_lines(
     layout: &jlreq_core::Layout,
     prepared: &PreparedText,
-    attachments: &[Option<AttachmentShape>],
-    global_offset: usize,
-    block_offset: i32,
+    mapping: &LineMapping<'_>,
     options: &LayoutOptions,
+    trace: &mut DocumentTrace,
 ) -> Vec<TextLine> {
+    let LineMapping {
+        attachments,
+        construct_globals,
+        global_offset,
+        block_offset,
+        paragraph_index,
+    } = *mapping;
     let mut result = Vec::with_capacity(layout.lines().len());
     let mut used_clusters = vec![0_usize; prepared.clusters.len()];
     for (line_index, line) in layout.lines().iter().enumerate() {
         let mut cells = Vec::new();
         let epoch = line_index.saturating_add(1);
+        let document_range = line.range().start.saturating_add(global_offset)
+            ..line.range().end.saturating_add(global_offset);
         for placement in line.clusters() {
             let range = placement.range();
             let cluster_indices = placement_cluster_indices(placement.origin(), prepared, &range);
@@ -35,12 +51,25 @@ fn map_core_lines(
                 continue;
             }
             let level = prepared.clusters[cluster_indices[0]].bidi_level;
+            let construct = match placement.origin() {
+                jlreq_core::PlacementOrigin::Construct(local) => construct_globals
+                    .get(local)
+                    .map(|(_, global)| *global),
+                jlreq_core::PlacementOrigin::Cluster(_) => cluster_indices
+                    .first()
+                    .and_then(|index| prepared.clusters.get(*index))
+                    .and_then(|cluster| covering_construct(construct_globals, &cluster.range)),
+                _ => None,
+            };
             cells.push(Cell {
                 clusters: cluster_indices,
+                inline: placement.inline(),
                 block: placement.block(),
                 advance: placement.advance().max(0),
                 level,
                 transform: core_transform(placement.transform()),
+                construct,
+                trailing_gap: 0,
             });
         }
         let levels: Vec<_> = cells
@@ -48,9 +77,20 @@ fn map_core_lines(
             .map(|cell| Level::new(cell.level).unwrap_or_else(|_| Level::ltr()))
             .collect();
         let visual = BidiInfo::reorder_visual(&levels);
-        let mut cursor = line.inline_origin();
+        assign_trailing_gaps(&mut cells, &visual);
+        // The physical run starts where the core placed its first cluster,
+        // which folds in alignment, first-line indent, and ruby leading
+        // separation; `inline_origin` alone carries only the alignment
+        // offset. Warichu and furawake lanes restart inside the line, so the
+        // minimum placement inline — not the first one — is that start.
+        let mut cursor = cells
+            .iter()
+            .map(|cell| cell.inline)
+            .min()
+            .unwrap_or_else(|| line.inline_origin());
+        let start_cursor = cursor;
         let mut glyphs = Vec::new();
-        for visual_index in visual {
+        for (ordinal, visual_index) in visual.into_iter().enumerate() {
             let cell = &cells[visual_index];
             let mut cluster_cursor = 0_i32;
             visit_logical_cluster_order(&cell.clusters, cell.level, |cluster_index| {
@@ -70,6 +110,7 @@ fn map_core_lines(
                             block: adjusted_block(cell.block, line_index, block_offset, options),
                             transform: cell.transform,
                             writing_mode: options.writing_mode,
+                            construct: cell.construct,
                         },
                     ));
                     glyph_cursor = glyph_cursor.saturating_add(raw.inline_advance(
@@ -78,8 +119,35 @@ fn map_core_lines(
                 }
                 cluster_cursor = cluster_cursor.saturating_add(cluster.advance);
             });
-            cursor = cursor.saturating_add(cell.advance.max(cluster_cursor));
+            let step = cell
+                .advance
+                .max(cluster_cursor)
+                .saturating_add(cell.trailing_gap);
+            // The composer's own coordinate, the advance it charged, and the
+            // distance the cursor actually moves are three different numbers,
+            // and nothing recorded the third. Both defects this channel was
+            // added for were a disagreement among them.
+            trace.record(
+                Site::in_paragraph(paragraph_index, document_range.clone()),
+                Fact::CellStepped {
+                    ordinal,
+                    inline: cell.inline,
+                    advance: cell.advance,
+                    step,
+                },
+            );
+            cursor = cursor.saturating_add(step);
         }
+        trace.record(
+            Site::in_paragraph(paragraph_index, document_range.clone()),
+            Fact::LinePlaced {
+                line: line_index,
+                cells: cells.len(),
+                cursor: start_cursor,
+                inline_extent: line.inline_extent(),
+                content_end: cursor,
+            },
+        );
         append_attachments(
             &mut glyphs,
             line,
@@ -108,9 +176,30 @@ fn map_core_lines(
             writing_mode: options.writing_mode,
             glyphs,
             hit_bounds,
+            index: 0,
+            paragraph_index,
+            first_in_paragraph: false,
+            last_in_paragraph: false,
         });
     }
     result
+}
+
+/// The document ordinal of the innermost construct covering a cluster range.
+fn covering_construct(
+    construct_globals: &[(Range<usize>, usize)],
+    cluster: &Range<usize>,
+) -> Option<usize> {
+    let mut best: Option<(usize, usize)> = None;
+    for (range, global) in construct_globals {
+        if range.start <= cluster.start && cluster.end <= range.end {
+            let span = range.end.saturating_sub(range.start);
+            if best.is_none_or(|(kept, _)| span < kept) {
+                best = Some((span, *global));
+            }
+        }
+    }
+    best.map(|(_, global)| global)
 }
 
 fn placement_cluster_indices(
@@ -149,10 +238,92 @@ fn logical_cluster_order(indices: &[usize], level: u8) -> Vec<usize> {
 #[derive(Debug)]
 struct Cell {
     clusters: Vec<usize>,
+    inline: i32,
     block: i32,
     advance: i32,
     level: u8,
     transform: GlyphTransform,
+    construct: Option<usize>,
+    trailing_gap: i32,
+}
+
+/// Record the inline space the core inserted after each cell.
+///
+/// The core applies alignment adjustment and JLReq spacing to its own cursor
+/// rather than to a cluster's advance, so the space lives in the distance
+/// between consecutive placements. Physical layout reorders cells visually
+/// and cannot simply reuse each placement's inline position, so it carries
+/// the gap alongside the advance instead: the line keeps the core's total
+/// width, and each gap stays attached to the cell it followed. A lane that
+/// restarts behind its predecessor (warichu, furawake) yields no gap.
+/// Carry the core's own step from one placement to the next.
+///
+/// The visual cursor advances by `advance + trailing_gap`, so the gap is
+/// whatever makes that sum the step the composer actually took. It is *not* the
+/// empty space between two cells, and it is signed, because a cell's `advance`
+/// is what the composer charged it rather than the distance to its neighbor:
+///
+/// - A conditional space at a class boundary is charged to the boundary, so the
+///   next cluster begins **inside** the preceding advance and the step is
+///   shorter than it. `漢`+`A` places one quarter em and bills part of it to
+///   each side. Dropping that shortfall pushes the rest of the line along, and
+///   a line with two such boundaries draws a quarter em past where it was
+///   composed.
+/// - The two halves of a tate-chu-yoko run share **one** inline position and
+///   differ only in block, so their step is zero. Advancing anyway spends a
+///   whole em the line was never given.
+///
+/// A step backwards is different in kind: a warichu or furawake lane restarts
+/// near the line's start, which is a new lane rather than a shared coordinate,
+/// and the cursor does follow that one.
+///
+/// The pairs are the logical ones, because the composer's coordinates are
+/// logical and the difference between two of them only means something for
+/// cells it placed next to each other. Whether the cursor *traverses* a pair is
+/// a separate question, and one the restart above has to ask.
+fn assign_trailing_gaps(cells: &mut [Cell], visual: &[usize]) {
+    // Where each cell stands in the walk, so that a pair the cursor will not
+    // actually traverse cannot hand it a step.
+    let mut walked = vec![0_usize; cells.len()];
+    for (position, &index) in visual.iter().enumerate() {
+        if let Some(slot) = walked.get_mut(index) {
+            *slot = position;
+        }
+    }
+
+    for index in 0..cells.len() {
+        let successor = index.saturating_add(1);
+        let (Some(cell), Some(next)) = (cells.get(index), cells.get(successor)) else {
+            break;
+        };
+        let raw = next.inline.saturating_sub(cell.inline);
+        // A lane of a warichu or a furawake restarts at the construct's own
+        // inline origin, and that step back is real: the lanes stand side by
+        // side, so the cursor has to take it. Clamping it at zero laid the
+        // lanes end to end and carried the error into everything after them.
+        //
+        // Everywhere else a backwards step is visual reordering rather than a
+        // restart — the composer's coordinate is logical and these cells are
+        // walked in visual order — and the cursor holds its place instead.
+        //
+        // Which is also why a restart is taken only when the cursor really goes
+        // from this cell to that one. Bidi reordering can put a lane's last cell
+        // and the next lane's first anywhere relative to each other, and a
+        // backwards step handed to a cell the walk reaches somewhere else moves
+        // an em of text sideways. It was invisible while every gap was clamped
+        // non-negative, and it is what a fuzz case of a furawake in a
+        // right-to-left paragraph found.
+        let traversed = walked
+            .get(successor)
+            .zip(walked.get(index))
+            .is_some_and(|(after, before)| *after == before.saturating_add(1));
+        let restart = traversed && cell.construct.is_some() && cell.construct == next.construct;
+        let step = if restart { raw } else { raw.max(0) };
+        let gap = step.saturating_sub(cell.advance);
+        if let Some(cell) = cells.get_mut(index) {
+            cell.trailing_gap = gap;
+        }
+    }
 }
 
 struct PlacementContext {
@@ -162,6 +333,7 @@ struct PlacementContext {
     block: i32,
     transform: GlyphTransform,
     writing_mode: WritingMode,
+    construct: Option<usize>,
 }
 
 fn place_raw_glyph(
@@ -176,28 +348,34 @@ fn place_raw_glyph(
         block,
         transform,
         writing_mode,
+        construct,
     } = placement;
-    let horizontal =
-        writing_mode == WritingMode::HorizontalTb || transform == GlyphTransform::TateChuYoko;
-    let (x, y, advance_x, advance_y, offset_x, offset_y) = if horizontal {
-        (
-            inline,
-            block.saturating_add(cluster.size),
-            raw.x_advance.abs(),
-            0,
-            raw.x_offset,
-            raw.y_offset.saturating_neg(),
-        )
-    } else {
-        (
-            block,
-            inline,
-            0,
-            raw.y_advance.abs().max(raw.x_advance.abs()),
-            raw.x_offset,
-            raw.y_offset.saturating_neg(),
-        )
+    // Two different questions, and one flag used to answer both.
+    //
+    // Which physical axis is the inline one is the *paragraph's* to say: every
+    // cell on a line has to agree about that or they are not on the same line.
+    // Which way the glyph itself runs is the *cluster's*, and a tate-chu-yoko
+    // run legitimately differs — that is what the construct is.
+    //
+    // Deciding the coordinate mapping from the cluster gave a tate-chu-yoko run
+    // its own frame, with its axes swapped against every other cell on its own
+    // line, so the run was placed at an `x` equal to its position down the
+    // column and drawn clear of the column entirely. The composer had already
+    // said where it goes: it reserves a full em of column per member and places
+    // them at consecutive block coordinates, which lands exactly in the column
+    // once the paragraph's mapping is the one used.
+    let upright = transform == GlyphTransform::TateChuYoko;
+    let (x, y) = match writing_mode {
+        WritingMode::VerticalRl => (block, inline),
+        _ => (inline, block.saturating_add(cluster.size)),
     };
+    let along_x = writing_mode == WritingMode::HorizontalTb || upright;
+    let (advance_x, advance_y) = if along_x {
+        (raw.x_advance.abs(), 0)
+    } else {
+        (0, raw.y_advance.abs().max(raw.x_advance.abs()))
+    };
+    let (offset_x, offset_y) = (raw.x_offset, raw.y_offset.saturating_neg());
     GlyphPlacement {
         font_id: raw.font_id,
         glyph_id: raw.glyph_id,
@@ -210,10 +388,12 @@ fn place_raw_glyph(
         offset_x,
         offset_y,
         font_size: cluster.size,
+        inline_size: cluster.inline_size,
         variations: Arc::clone(&cluster.variations),
         transform,
         bidi_level: cluster.bidi_level,
         writing_mode,
+        construct,
     }
 }
 
@@ -258,6 +438,7 @@ fn append_attachments(
                         ),
                         transform,
                         writing_mode: options.writing_mode,
+                        construct: Some(shape.global_ordinal),
                     },
                 ));
                 glyph_cursor = glyph_cursor.saturating_add(raw.inline_advance(
@@ -353,6 +534,8 @@ fn diagnostic_severity(value: jlreq_core::Severity) -> DiagnosticSeverity {
     match value {
         jlreq_core::Severity::Info => DiagnosticSeverity::Info,
         jlreq_core::Severity::Error => DiagnosticSeverity::Error,
+        // Severity is non_exhaustive: Warning doubles as the conservative
+        // mapping for any severity introduced by a future core.
         _ => DiagnosticSeverity::Warning,
     }
 }

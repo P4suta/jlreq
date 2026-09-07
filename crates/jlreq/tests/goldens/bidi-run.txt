@@ -1,0 +1,10 @@
+# bidi-run
+# a declared right-to-left base direction: the itemization reports the resolved paragraph level and that the levels are mixed
+# lines=1
+jlreq.trace/1 document events=6 facade=0x0006 core=0x0000 truncated=0
+0000 P00 text.run                 b0..16 script=rtl direction=rtl level=1 face=1 glyphs=12 annotation=0
+0001 P00 text.run                 b16..17 script=other direction=rtl level=1 face=1 glyphs=1 annotation=0
+0002 P00 text.run                 b17..20 script=latin direction=ltr level=2 face=1 glyphs=3 annotation=0
+0003 P00 text.run                 b20..21 script=other direction=ltr level=2 face=1 glyphs=1 annotation=0
+0004 P00 text.run                 b21..26 script=latin direction=ltr level=2 face=1 glyphs=5 annotation=0
+0005 P00 text.itemized            b0..26 graphemes=18 runs=5 clusters=18 base-level=1 mixed=1 annotation=0

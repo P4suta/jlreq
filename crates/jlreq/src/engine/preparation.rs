@@ -11,6 +11,7 @@ struct CallState {
     diagnostics: Vec<Diagnostic>,
     font_candidates: BTreeMap<FontCandidateKey, Arc<[FontId]>>,
     font_selections: BTreeMap<FontSelectionKey, (FontId, bool)>,
+    reported_families: BTreeSet<String>,
     #[cfg(test)]
     shape_calls: usize,
 }
@@ -26,6 +27,7 @@ impl CallState {
             diagnostics: Vec::new(),
             font_candidates: BTreeMap::new(),
             font_selections: BTreeMap::new(),
+            reported_families: BTreeSet::new(),
             #[cfg(test)]
             shape_calls: 0,
         }
@@ -132,6 +134,7 @@ struct EffectiveStyle {
     global_variations: Vec<FontVariation>,
     span_variations: Vec<FontVariation>,
     role: TextRole,
+    frame: crate::MetricsFrame,
 }
 
 struct StyleResolver<'a> {
@@ -174,6 +177,7 @@ impl<'a> StyleResolver<'a> {
             return Err(LayoutError::invalid_document(
                 "document.span-splits-grapheme",
                 Some(global.clone()),
+                "a span boundary must not split a grapheme cluster",
             ));
         }
         if let Some((index, selected)) = &self.selected
@@ -242,6 +246,9 @@ struct PreparedCluster {
     range: Range<usize>,
     advance: i32,
     size: i32,
+    /// The em across the inline axis, which is `size` unless a `RubyScale`
+    /// condensed this cluster. `docs/adr/0033`.
+    inline_size: i32,
     frame: jlreq_core::Frame,
     role: Option<jlreq_core::ClusterRole>,
     bidi_level: u8,
@@ -260,10 +267,18 @@ impl PreparedText {
         source: &str,
         default_size: i32,
     ) -> Result<jlreq_core::ShapedText, LayoutError> {
-        let size = jlreq_core::Size::square(default_size)?;
+        self.to_core_with(source, jlreq_core::Size::square(default_size)?)
+    }
+
+    /// The core text at a stated default em, which `to_core` makes square.
+    fn to_core_with(
+        &self,
+        source: &str,
+        size: jlreq_core::Size,
+    ) -> Result<jlreq_core::ShapedText, LayoutError> {
         let mut clusters = Vec::with_capacity(self.clusters.len());
         for cluster in &self.clusters {
-            let local_size = jlreq_core::Size::square(cluster.size)?;
+            let local_size = jlreq_core::Size::new(cluster.inline_size, cluster.size)?;
             let mut core = jlreq_core::Cluster::new(cluster.range.clone(), cluster.advance)
                 .with_size(local_size)
                 .with_frame(cluster.frame);
@@ -280,6 +295,90 @@ impl PreparedText {
         )?)
     }
 
+    /// Set every cluster inside `range` to half the size it was shaped at.
+    ///
+    /// JLReq §3.4 sets a 割注 in characters smaller than the text around it, two
+    /// lanes inside the space one line takes, and `jlreq-core` reserves exactly
+    /// one em for the pair. Handing it full-em clusters put two em in that one
+    /// and each lane on the line beside it.
+    ///
+    /// Halving is a linear scale of the same outlines, so the cluster's size,
+    /// its advance, and each glyph's own advance and offset all halve together;
+    /// a renderer draws the glyph at the reported `font_size` and lands on the
+    /// reported cell. It is not a reshape: a face whose half-size metrics differ
+    /// from half its full-size metrics — a hinted bitmap strike, an optical size
+    /// axis — is measured at the size the caller asked for, which
+    /// [ADR 0002](../../../docs/adr/0002-caller-supplied-metrics.md) makes the
+    /// caller's to state. Odd units truncate.
+    fn reduce_to_half(&mut self, range: &Range<usize>) {
+        for cluster in &mut self.clusters {
+            if cluster.range.start < range.start || cluster.range.end > range.end {
+                continue;
+            }
+            cluster.advance /= 2;
+            cluster.size = (cluster.size / 2).max(1);
+            cluster.inline_size = (cluster.inline_size / 2).max(1);
+            for glyph in &mut cluster.glyphs {
+                glyph.x_advance /= 2;
+                glyph.y_advance /= 2;
+                glyph.x_offset /= 2;
+                glyph.y_offset /= 2;
+            }
+        }
+    }
+
+
+    /// Condense every cluster across the **inline** axis to `inline` per em,
+    /// having been shaped at `block` per em.
+    ///
+    /// JLReq §3.3.3's 三分ルビ is a reading whose block extent is half the base
+    /// em and whose inline extent is a third: the same outlines set at the
+    /// block size and then narrowed, which is what `Frame` and the cluster's
+    /// advance have to agree on. Only the inline component moves — the axis is
+    /// the text's, not the screen's, so it is x in horizontal writing and y in
+    /// vertical — and `inline_size` records where it landed so a renderer can
+    /// apply the same factor to the outline it draws.
+    ///
+    /// A no-op at [`RubyScale::HALF`](crate::RubyScale::HALF), where the two
+    /// ems are equal. Odd units truncate, as halving does.
+    fn condense_inline(&mut self, inline: i32, block: i32, mode: WritingMode) {
+        if inline == block || block <= 0 {
+            return;
+        }
+        let scale = |value: i32| -> i32 {
+            let scaled = i64::from(value)
+                .saturating_mul(i64::from(inline))
+                .checked_div(i64::from(block))
+                .unwrap_or_default();
+            i32::try_from(scaled).unwrap_or(i32::MAX)
+        };
+        for cluster in &mut self.clusters {
+            cluster.inline_size = scale(cluster.inline_size).max(1);
+            cluster.advance = scale(cluster.advance);
+            for glyph in &mut cluster.glyphs {
+                match mode {
+                    WritingMode::VerticalRl => {
+                        glyph.y_advance = scale(glyph.y_advance);
+                        glyph.y_offset = scale(glyph.y_offset);
+                    },
+                    WritingMode::HorizontalTb => {
+                        glyph.x_advance = scale(glyph.x_advance);
+                        glyph.x_offset = scale(glyph.x_offset);
+                    },
+                }
+            }
+        }
+    }
+
+    /// The core text, with an axis-specific default em rather than a square one.
+    fn to_core_sized(
+        &self,
+        source: &str,
+        inline: i32,
+        block: i32,
+    ) -> Result<jlreq_core::ShapedText, LayoutError> {
+        self.to_core_with(source, jlreq_core::Size::new(inline, block)?)
+    }
     fn is_boundary(&self, offset: usize, source_len: usize) -> bool {
         offset == 0
             || offset == source_len
@@ -378,6 +477,7 @@ fn effective_style(
                 return Err(LayoutError::invalid_document(
                     "document.span-splits-grapheme",
                     Some(global.clone()),
+                    "a span boundary must not split a grapheme cluster",
                 ));
             }
             selected = Some(style);
@@ -398,6 +498,7 @@ fn base_effective_style(options: &LayoutOptions) -> EffectiveStyle {
         global_variations: options.variations.clone(),
         span_variations: Vec::new(),
         role: TextRole::Text,
+        frame: crate::MetricsFrame::Auto,
     }
 }
 
@@ -412,6 +513,7 @@ fn span_effective_style(base: &EffectiveStyle, style: &SpanStyle) -> EffectiveSt
     result.features.extend_from_slice(&style.features);
     result.span_variations.clone_from(&style.variations);
     result.role = style.role;
+    result.frame = style.frame;
     result
 }
 

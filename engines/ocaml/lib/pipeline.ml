@@ -126,20 +126,40 @@ let tate_chu_yoko_run_width (paragraph : Paragraph.t) ~(first : int) ~(last : in
     line's own block origin.
 
     §3.2.5: "set from left to right using solid setting, then align the whole string
-    to the center of the vertical line". Centering the string on the line puts its
-    first member half the run's width back from where an ordinary cluster of the
-    line would sit, and every member after that follows the one before it by that
-    one's own advance. Half is taken toward zero, so a run of an odd total width
-    leans by one unit toward the line's own origin rather than away from it. *)
+    to the center of the vertical line". The line is [extent] deep, the string is as
+    wide as its members' advances come to, and what the string does not fill is
+    split between the two sides -- half taken toward zero, so a surplus that does
+    not divide leans by one unit toward the line's own origin.
+
+    The string used to be centered on the block origin itself, which is the line's
+    edge rather than its middle, and that put the run half an extent out of place
+    wherever the line was deeper than the string. See docs/adr/0030.
+
+    In vertical composition a placement names its box's far edge along the block
+    axis, so a member's coordinate is one of its own advances past the edge it is
+    laid from; in horizontal composition it names the near edge and is that edge. *)
 let tate_chu_yoko_member_offset (paragraph : Paragraph.t) (ordinal : int) ~(first : int)
-    ~(last : int) : int =
+    ~(last : int) ~(extent : int) : int =
   let preceding = ref 0 in
   for member = first to ordinal - 1 do
     match cluster_at paragraph member with
     | Some cluster -> preceding := Num.i32_add !preceding cluster.advance
     | None -> ()
   done;
-  Num.i32_sub !preceding (tate_chu_yoko_run_width paragraph ~first ~last / 2)
+  let across = tate_chu_yoko_run_width paragraph ~first ~last in
+  let surplus = Num.i32_sub extent across / 2 in
+  let edge =
+    match paragraph.Paragraph.writing_mode with
+    | Model.Horizontal_tb -> surplus
+    | Model.Vertical_rl -> Num.i32_add (Num.i32_sub 0 extent) surplus
+  in
+  let own =
+    match paragraph.Paragraph.writing_mode with
+    | Model.Horizontal_tb -> 0
+    | Model.Vertical_rl -> (
+      match cluster_at paragraph ordinal with Some cluster -> cluster.advance | None -> 0)
+  in
+  Num.i32_add (Num.i32_add edge !preceding) own
 
 let is_internal_jidori_boundary (paragraph : Paragraph.t) (ordinal : int) : bool =
   match cluster_at paragraph ordinal with
@@ -931,13 +951,18 @@ let stack_height (paragraph : Paragraph.t) (stack : stack) : int =
 (** Where each subline's own edge sits, measured from the line's block origin toward
     the side the next line is on.
 
-    The structure is centered on the line's own em box rather than on whatever the
-    line turned out to be as tall as, which is what makes a warichu taller than the
-    line overhang it equally on both sides (§3.4.2) and a furawake with a gap sit
-    symmetrically about the text (§3.7.2). *)
-let stack_offsets (paragraph : Paragraph.t) (stack : stack) : int array =
+    The structure is centered in [extent], the block extent of the LINE that holds
+    it, which is what makes a warichu taller than the line overhang it equally on
+    both sides (§3.4.2) and a furawake with a gap sit symmetrically about the text
+    (§3.7.2).
+
+    It used to be centered in the paragraph's own em, which is the same answer only
+    while the line is an em deep. A line is as deep as its deepest item, and where
+    the two differed the structure was drawn half the surplus away from where it
+    belongs -- onto the line beside it. See docs/adr/0030. *)
+let stack_offsets (paragraph : Paragraph.t) ~(extent : int) (stack : stack) : int array =
   let count = Array.length stack.stack_sublines in
-  let top = Num.i32_sub paragraph.Paragraph.text.size.Model.block (stack_height paragraph stack) / 2 in
+  let top = Num.i32_sub extent (stack_height paragraph stack) / 2 in
   let out = Array.make (max count 1) top in
   let cursor = ref top in
   Array.iteri
@@ -2951,6 +2976,43 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
      steps once past the whole block and the clusters inside it are placed at offsets
      of their own. *)
   let steps = line_steps paragraph style advances ~stacks ~line_start ~line_end in
+  (* The extent the line comes out at, decided before anything is placed.
+
+     A construct is centered in the block extent of the line that holds it, and the
+     line is as deep as its deepest item, so centering against the extent known so
+     far centers against a number a later item can still raise. docs/adr/0030
+     records what that cost. *)
+  let line_extent =
+    let extent = ref text.size.Model.block in
+    List.iter
+      (fun stack ->
+        if stack.stack_in_extent then begin
+          let height = stack_height paragraph stack in
+          if height > !extent then extent := height
+        end)
+      stacks;
+    let inside ordinal =
+      List.exists
+        (fun stack -> ordinal >= stack.stack_body_first && ordinal < stack.stack_body_last)
+        stacks
+    in
+    for ordinal = line_start to line_end - 1 do
+      if not (inside ordinal) then
+        match tate_chu_yoko_range paragraph ordinal with
+        | Some (first, last) ->
+          if ordinal = first then begin
+            let width = tate_chu_yoko_run_width paragraph ~first ~last in
+            if width > !extent then extent := width
+          end
+        | None -> (
+          match cluster_at paragraph ordinal with
+          | Some cluster ->
+            let size = size_of paragraph cluster in
+            if size.Model.block > !extent then extent := size.Model.block
+          | None -> ())
+    done;
+    !extent
+  in
   let stack_inline = Array.make (max count 1) 0 in
   let stack_block = Array.make (max count 1) 0 in
   let in_stack = Array.make (max count 1) false in
@@ -2959,7 +3021,7 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
     (fun stack ->
       let head = stack.stack_body_first - line_start in
       if head >= 0 && head < count then stack_head.(head) <- true;
-      let offsets = stack_offsets paragraph stack in
+      let offsets = stack_offsets paragraph ~extent:line_extent stack in
       Array.iteri
         (fun index (first, last) ->
           let offset = ref 0 in
@@ -3045,7 +3107,8 @@ let place_line (paragraph : Paragraph.t) (style : Style.t) ~(line_start : int) ~
             let width = tate_chu_yoko_run_width paragraph ~first ~last in
             if width > !block_extent then block_extent := width
           end;
-          ( Num.i32_add block_origin (tate_chu_yoko_member_offset paragraph ordinal ~first ~last),
+          ( Num.i32_add block_origin
+              (tate_chu_yoko_member_offset paragraph ordinal ~first ~last ~extent:line_extent),
             cluster.advance )
         | None ->
           if size.block > !block_extent then block_extent := size.block;

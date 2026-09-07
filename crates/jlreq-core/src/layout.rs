@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use alloc::vec::Vec;
+use core::fmt;
 use core::ops::Range;
 
 use crate::model::{Frame, Size, WritingMode};
@@ -277,6 +278,21 @@ impl Diagnostic {
     }
 }
 
+impl fmt::Display for Diagnostic {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let severity = match self.severity {
+            Severity::Info => "info",
+            Severity::Warning => "warning",
+            Severity::Error => "error",
+        };
+        write!(formatter, "{severity}: {}", self.code)?;
+        if let Some(range) = self.range.as_ref() {
+            write!(formatter, " at bytes {}..{}", range.start, range.end)?;
+        }
+        write!(formatter, " (JLReq {})", self.jlreq)
+    }
+}
+
 /// Complete paragraph layout and diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 #[non_exhaustive]
@@ -299,9 +315,249 @@ impl Layout {
     }
 }
 
+/// The writing mode as the traces and the second oracles spell it.
+const fn mode_name(mode: WritingMode) -> &'static str {
+    match mode {
+        WritingMode::HorizontalTb => "horizontal-tb",
+        WritingMode::VerticalRl => "vertical-rl",
+    }
+}
+
+impl fmt::Display for ClusterPlacement {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let origin = match self.origin {
+            PlacementOrigin::Cluster(ordinal) => ("cluster", ordinal),
+            PlacementOrigin::Construct(ordinal) => ("construct", ordinal),
+        };
+        write!(
+            formatter,
+            "{kind} {ordinal} for bytes {start}..{end} at ({inline}, {block}) advance {advance} \
+             size {inline_size}x{block_size} {mode}",
+            kind = origin.0,
+            ordinal = origin.1,
+            start = self.range.start,
+            end = self.range.end,
+            inline = self.inline,
+            block = self.block,
+            advance = self.advance,
+            inline_size = self.size.inline(),
+            block_size = self.size.block(),
+            mode = mode_name(self.writing_mode),
+        )?;
+        if self.transform != CoordinateTransform::Identity {
+            let transform = match self.transform {
+                CoordinateTransform::Identity => "identity",
+                CoordinateTransform::RotateClockwise => "rotate-clockwise",
+                CoordinateTransform::TateChuYoko => "tate-chu-yoko",
+            };
+            write!(formatter, " {transform}")?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Attachment {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "attachment on construct {construct} for annotation bytes {start}..{end} \
+             at ({inline}, {block}) advance {advance} size {inline_size}x{block_size} {mode}",
+            construct = self.construct,
+            start = self.range.start,
+            end = self.range.end,
+            inline = self.inline,
+            block = self.block,
+            advance = self.advance,
+            inline_size = self.size.inline(),
+            block_size = self.size.block(),
+            mode = mode_name(self.writing_mode),
+        )?;
+        if let Some(symbol) = self.symbol {
+            write!(formatter, " mark {symbol:?}")?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Line {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "line bytes {start}..{end} at ({inline}, {block}) {inline_extent}x{block_extent} \
+             {clusters} cluster(s)",
+            start = self.range.start,
+            end = self.range.end,
+            inline = self.inline_origin,
+            block = self.block_origin,
+            inline_extent = self.inline_extent,
+            block_extent = self.block_extent,
+            clusters = self.clusters.len(),
+        )?;
+        if !self.attachments.is_empty() {
+            write!(formatter, ", {} attachment(s)", self.attachments.len())?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Layout {
+    /// One line per line, then the diagnostics, which already print themselves.
+    ///
+    /// The composer's own answer, in the form a person reading a failing test
+    /// or a differential run wants it: `jlreq::TextLayout` prints the physical
+    /// geometry and this prints the logical layout it was derived from, so the
+    /// two can be put side by side when they disagree.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.lines.is_empty() && self.diagnostics.is_empty() {
+            return formatter.write_str("empty layout");
+        }
+        for (ordinal, line) in self.lines.iter().enumerate() {
+            if ordinal > 0 {
+                formatter.write_str("\n")?;
+            }
+            write!(formatter, "{ordinal}: {line}")?;
+        }
+        for diagnostic in &self.diagnostics {
+            if !self.lines.is_empty() || diagnostic != &self.diagnostics[0] {
+                formatter.write_str("\n")?;
+            }
+            write!(formatter, "{diagnostic}")?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString as _;
+
     use super::*;
+
+    /// The composer's own answer, printed the way a person reads it.
+    ///
+    /// Pinned exactly rather than probed for substrings, for the reason the
+    /// facade's `the_result_types_read_without_help` gives: the readable
+    /// defaults exist so nobody hand-assembles these strings again, and a
+    /// default nobody pinned is a default that drifts.
+    #[test]
+    fn the_composer_result_types_read_without_help() {
+        let attachment = Attachment {
+            construct: 7,
+            range: 3..9,
+            inline: 11,
+            block: -13,
+            advance: 17,
+            size: Size::new(19, 23).expect("positive size"),
+            writing_mode: WritingMode::VerticalRl,
+            transform: CoordinateTransform::TateChuYoko,
+            symbol: Some('・'),
+        };
+        assert_eq!(
+            attachment.to_string(),
+            "attachment on construct 7 for annotation bytes 3..9 at (11, -13) advance 17 \
+             size 19x23 vertical-rl mark '・'"
+        );
+
+        let placement = ClusterPlacement {
+            origin: PlacementOrigin::Construct(2),
+            range: 0..3,
+            inline: 5,
+            block: 7,
+            advance: 11,
+            size: Size::new(13, 13).expect("positive size"),
+            frame: Frame::FullEm,
+            writing_mode: WritingMode::HorizontalTb,
+            transform: CoordinateTransform::RotateClockwise,
+        };
+        assert_eq!(
+            placement.to_string(),
+            "construct 2 for bytes 0..3 at (5, 7) advance 11 size 13x13 horizontal-tb \
+             rotate-clockwise"
+        );
+
+        // An identity transform is not printed, and neither is an absent mark:
+        // the readable default says what there is to say and stops.
+        let plain = ClusterPlacement {
+            origin: PlacementOrigin::Cluster(0),
+            transform: CoordinateTransform::Identity,
+            ..placement.clone()
+        };
+        assert_eq!(
+            plain.to_string(),
+            "cluster 0 for bytes 0..3 at (5, 7) advance 11 size 13x13 horizontal-tb"
+        );
+
+        let diagnostic = Diagnostic {
+            code: "layout.overfull",
+            severity: Severity::Warning,
+            range: Some(4..9),
+            jlreq: "3.8.1",
+        };
+        assert_eq!(
+            diagnostic.to_string(),
+            "warning: layout.overfull at bytes 4..9 (JLReq 3.8.1)"
+        );
+        let bare = Diagnostic {
+            range: None,
+            severity: Severity::Error,
+            ..diagnostic.clone()
+        };
+        assert_eq!(bare.to_string(), "error: layout.overfull (JLReq 3.8.1)");
+
+        let line = Line {
+            range: 0..3,
+            inline_origin: 0,
+            block_origin: 0,
+            inline_extent: 1_000,
+            block_extent: 1_000,
+            clusters: alloc::vec![plain.clone()],
+            attachments: alloc::vec![attachment.clone()],
+        };
+        assert_eq!(
+            line.to_string(),
+            "line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s), 1 attachment(s)"
+        );
+
+        let layout = Layout {
+            lines: alloc::vec![line.clone()],
+            diagnostics: alloc::vec![diagnostic.clone()],
+        };
+        assert_eq!(
+            layout.to_string(),
+            "0: line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s), 1 attachment(s)\n\
+             warning: layout.overfull at bytes 4..9 (JLReq 3.8.1)"
+        );
+        assert_eq!(Layout::default().to_string(), "empty layout");
+
+        // Two lines, so the separator between them is exercised rather than
+        // only the one before the diagnostics: a single line never asks which
+        // ordinals get a newline in front of them.
+        let without_attachments = Line {
+            attachments: alloc::vec![],
+            ..line.clone()
+        };
+        let two = Layout {
+            lines: alloc::vec![line.clone(), without_attachments],
+            diagnostics: alloc::vec![],
+        };
+        assert_eq!(
+            two.to_string(),
+            "0: line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s), 1 attachment(s)\n\
+             1: line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s)"
+        );
+
+        // Diagnostics with no lines still print one per line rather than
+        // running together, which is the case the leading separator is for.
+        let diagnostics_only = Layout {
+            lines: alloc::vec![],
+            diagnostics: alloc::vec![diagnostic, bare],
+        };
+        assert_eq!(
+            diagnostics_only.to_string(),
+            "warning: layout.overfull at bytes 4..9 (JLReq 3.8.1)\n\
+             error: layout.overfull (JLReq 3.8.1)"
+        );
+    }
 
     #[test]
     fn attachment_and_diagnostic_accessors_preserve_all_fields() {

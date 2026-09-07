@@ -159,6 +159,19 @@ impl Ruby {
     }
 }
 
+/// Placement side for a script attachment relative to its base text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum ScriptPosition {
+    /// The annotation side: above the line in horizontal writing, right of
+    /// the line in vertical writing.
+    #[default]
+    Superscript,
+    /// The mirrored side: below the line in horizontal writing, left of the
+    /// line in vertical writing.
+    Subscript,
+}
+
 /// One of the nine public inline structures.
 ///
 /// Its representation and lowering data are private. Named constructors carry only
@@ -194,11 +207,32 @@ pub(crate) enum ConstructKind {
     Script {
         range: Range<usize>,
         annotation: ShapedText,
+        position: ScriptPosition,
     },
     Formula(Range<usize>),
 }
 
 impl Construct {
+    /// How long the annotation stream an attachment for this construct indexes is, or None
+    /// where the construct carries no stream and its attachments are repeated marks.
+    ///
+    /// [`crate::verify`] needs this and nothing else can supply it: an
+    /// [`Attachment`](crate::Attachment)'s range is into the annotation, never into the
+    /// paragraph, so the paragraph's own source says nothing about whether one is in bounds.
+    pub(crate) fn annotation_len(&self) -> Option<usize> {
+        match self.kind {
+            ConstructKind::Ruby(ref ruby) => Some(ruby.annotation().source().len()),
+            ConstructKind::ReferenceMark { ref mark, .. } => Some(mark.source().len()),
+            ConstructKind::Script { ref annotation, .. } => Some(annotation.source().len()),
+            ConstructKind::Emphasis { .. }
+            | ConstructKind::TateChuYoko(_)
+            | ConstructKind::Warichu(_)
+            | ConstructKind::Furawake { .. }
+            | ConstructKind::Jidori { .. }
+            | ConstructKind::Formula(_) => None,
+        }
+    }
+
     /// Construct ruby.
     #[must_use]
     pub const fn ruby(ruby: Ruby) -> Self {
@@ -263,11 +297,32 @@ impl Construct {
         }
     }
 
-    /// Attach a pre-shaped subscript/superscript complex to a base range.
+    /// Attach a pre-shaped script complex on the superscript side.
+    ///
+    /// Equivalent to [`script_at`](Self::script_at) with
+    /// [`ScriptPosition::Superscript`].
     #[must_use]
     pub const fn script(range: Range<usize>, annotation: ShapedText) -> Self {
+        Self::script_at(range, annotation, ScriptPosition::Superscript)
+    }
+
+    /// Attach a pre-shaped script complex on an explicit side.
+    ///
+    /// [`ScriptPosition::Superscript`] places the annotation on the same side
+    /// as ruby; [`ScriptPosition::Subscript`] mirrors it to the opposite
+    /// block side, and the line reserves space there.
+    #[must_use]
+    pub const fn script_at(
+        range: Range<usize>,
+        annotation: ShapedText,
+        position: ScriptPosition,
+    ) -> Self {
         Self {
-            kind: ConstructKind::Script { range, annotation },
+            kind: ConstructKind::Script {
+                range,
+                annotation,
+                position,
+            },
         }
     }
 
@@ -297,8 +352,37 @@ impl Construct {
         }
     }
 
-    pub(crate) const fn kind(&self) -> &ConstructKind {
+    pub(crate) const fn structure(&self) -> &ConstructKind {
         &self.kind
+    }
+
+    /// Which of the nine structures this is, as a stable name.
+    ///
+    /// A `Construct` could be built and never asked anything but its
+    /// [`range`](Self::range): the representation is private, deliberately, so
+    /// a paragraph handed back to its caller — or to a debugger, a serializer,
+    /// or a renderer deciding what to draw differently — could say where a
+    /// construct is and not what it is.
+    ///
+    /// A name rather than the enum, for the reason
+    /// [ADR 0012](https://github.com/jlreq/jlreq) gives and
+    /// [`crate::verify::Fault::kind`] and [`crate::trace::Fact::kind`] already
+    /// follow: a projection that is frozen is one callers can match on without
+    /// the representation becoming the contract. There is no wildcard arm, so a
+    /// tenth structure does not compile until it is named here.
+    #[must_use]
+    pub const fn kind(&self) -> &'static str {
+        match self.kind {
+            ConstructKind::Ruby(_) => "ruby",
+            ConstructKind::TateChuYoko(_) => "tate-chu-yoko",
+            ConstructKind::Emphasis { .. } => "emphasis",
+            ConstructKind::Warichu(_) => "warichu",
+            ConstructKind::Furawake { .. } => "furawake",
+            ConstructKind::Jidori { .. } => "jidori",
+            ConstructKind::ReferenceMark { .. } => "reference-mark",
+            ConstructKind::Script { .. } => "script",
+            ConstructKind::Formula(_) => "formula",
+        }
     }
 }
 
@@ -312,4 +396,70 @@ pub(crate) fn is_math_operator(character: char) -> bool {
 
 pub(crate) fn is_math_token(character: char) -> bool {
     is_math_symbol(character) || is_math_operator(character)
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use super::{Construct, Ruby, RubyKind, RubyRun, ScriptPosition};
+    use crate::model::{Cluster, Frame, ShapedText, Size};
+
+    fn shaped(source: &str) -> ShapedText {
+        ShapedText::new(
+            source,
+            Size::square(1_000).expect("positive size"),
+            Frame::FullEm,
+            vec![Cluster::new(0..source.len(), 1_000)],
+        )
+        .expect("a one-cluster text")
+    }
+
+    /// Every structure names itself, and no two share a name.
+    ///
+    /// The list is the projection `Construct::kind` freezes; a tenth structure
+    /// does not compile until it is in the match, and this is what says the
+    /// names stay distinct once it is.
+    #[test]
+    fn each_of_the_nine_structures_has_its_own_name() {
+        let ruby = Ruby::new(
+            RubyKind::Group,
+            0..3,
+            shaped("あ"),
+            vec![RubyRun::new(0..3, 0..3)],
+        )
+        .expect("valid ruby");
+        let all = [
+            Construct::ruby(ruby),
+            Construct::tate_chu_yoko(0..2),
+            Construct::emphasis_dots(0..3, '\u{fe45}'),
+            Construct::warichu(0..6),
+            Construct::furawake(0..6, 2, 0),
+            Construct::jidori(0..6, 4),
+            Construct::reference_mark(0..3, shaped("※")),
+            Construct::script_at(0..3, shaped("2"), ScriptPosition::Superscript),
+            Construct::formula(0..3),
+        ];
+
+        let names: alloc::vec::Vec<&'static str> = all.iter().map(Construct::kind).collect();
+        assert_eq!(
+            names,
+            [
+                "ruby",
+                "tate-chu-yoko",
+                "emphasis",
+                "warichu",
+                "furawake",
+                "jidori",
+                "reference-mark",
+                "script",
+                "formula",
+            ]
+        );
+
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), names.len(), "two structures share a name");
+    }
 }

@@ -44,6 +44,12 @@ name = "high_level_layout"
 path = "fuzz_targets/high_level_layout.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "font_name_table"
+path = "fuzz_targets/font_name_table.rs"
+test = false
+doc = false
 bench = false
 
 [workspace]

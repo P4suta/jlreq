@@ -11,6 +11,10 @@ already-shaped text. Callers provide UTF-8 byte ranges, cluster advances, and li
 opportunities; the core returns integer logical placements without loading fonts, shaping,
 running bidi, rendering, or discovering UAX #14 breaks.
 
+Install with `cargo add jlreq-core` (MSRV 1.85, `no_std + alloc`, zero dependencies).
+Most applications want the high-level [`jlreq`](https://crates.io/crates/jlreq) facade
+instead; this crate is for engines that already shape their own text.
+
 ```rust
 use jlreq_core::{Break, Cluster, Frame, Paragraph, ShapedText, Size, Style};
 

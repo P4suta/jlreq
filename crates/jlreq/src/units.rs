@@ -56,7 +56,7 @@ pub(crate) fn to_f32(value: i32) -> f32 {
     f32::from(high).mul_add(65_536.0, f32::from(low)) / SUBPIXELS_PER_UNIT
 }
 
-fn rounded_f32_to_i32(value: f32) -> i32 {
+pub(crate) fn rounded_f32_to_i32(value: f32) -> i32 {
     if value == 0.0 {
         return 0;
     }

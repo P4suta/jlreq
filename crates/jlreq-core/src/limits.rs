@@ -190,9 +190,21 @@ impl ComposeError {
     }
 }
 
+/// Say which limit stopped composition **and by how much**.
+///
+/// The two numbers are the whole of the actionable content: a caller reading "too many
+/// break candidates" cannot tell whether to raise the limit by ten or by ten thousand.
+/// [`LayoutError::ResourceLimit`](https://docs.rs/jlreq) already states both, and the two
+/// error types are read side by side.
 impl core::fmt::Display for ComposeError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        formatter.write_str(self.resource.description())
+        write!(
+            formatter,
+            "{description}: limit {limit}, observed {observed}",
+            description = self.resource.description(),
+            limit = self.limit,
+            observed = self.observed,
+        )
     }
 }
 
@@ -236,7 +248,12 @@ mod tests {
             let error = ComposeError::new(resource, 13, 17);
             assert_eq!(error.code(), code);
             assert_eq!(resource.description(), message);
-            assert_eq!(format!("{error}"), message);
+            // The rendered message states the numbers, because a caller reading only the
+            // description cannot tell whether to raise the limit by ten or ten thousand.
+            assert_eq!(
+                format!("{error}"),
+                format!("{message}: limit 13, observed 17")
+            );
             assert_eq!(error.resource(), resource);
             assert_eq!(error.limit(), 13);
             assert_eq!(error.observed(), 17);

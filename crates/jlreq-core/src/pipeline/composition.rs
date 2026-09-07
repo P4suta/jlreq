@@ -256,16 +256,68 @@ impl Composer {
         paragraph: &Paragraph,
         style: &Style,
     ) -> Result<Layout, ComposeError> {
+        let mut trace = Trace::off();
+        self.compose_inner(paragraph, style, &mut trace)
+    }
+
+    /// Compose one validated paragraph and record why it came out that way.
+    ///
+    /// The answer is the answer [`compose`](Self::compose) gives: both call one
+    /// implementation, and the sink the untraced entry passes records nothing. Events are
+    /// appended, so one buffer may serve a whole document, and a
+    /// [`ComposeError`] still leaves behind the decisions taken before it.
+    pub fn compose_traced(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<Layout, ComposeError> {
+        self.compose_inner(paragraph, style, trace)
+    }
+
+    fn compose_inner(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<Layout, ComposeError> {
         self.reset_for_call();
         if paragraph.text.clusters().is_empty() {
             return Ok(Layout::default());
         }
         self.check_static_limits(paragraph)?;
         self.prepare_candidates(paragraph);
+        trace.enter(Phase::Prepare);
         self.prepare_indexes(paragraph, style);
-        self.search(paragraph, style)?;
+        self.trace_paragraph(paragraph, trace);
+        trace.enter(Phase::Search);
+        if let Err(refusal) = self.search(paragraph, style, trace) {
+            self.trace_refusal(paragraph, &refusal, trace);
+            return Err(refusal);
+        }
         self.backtrack();
-        Ok(self.place(paragraph, style))
+        trace.enter(Phase::Placement);
+        Ok(self.place(paragraph, style, trace))
+    }
+
+    fn trace_paragraph(&self, paragraph: &Paragraph, trace: &mut Trace) {
+        if trace.wants(Categories::PREPARE) {
+            trace.push(
+                Site::paragraph(
+                    0..paragraph.text.clusters().len(),
+                    0..paragraph.text.source().len(),
+                ),
+                Fact::ParagraphPrepared {
+                    clusters: paragraph.text.clusters().len(),
+                    candidates: self.candidates.len(),
+                    constructs: paragraph.constructs.len(),
+                    fast_measure: self.prepared.fast_measure,
+                    line_extent: paragraph.line_extent,
+                    writing_mode: paragraph.writing_mode,
+                    alignment: paragraph.alignment,
+                },
+            );
+        }
     }
 
     fn reset_for_call(&mut self) {
@@ -360,7 +412,7 @@ impl Composer {
             .any(core::convert::identity)
             && paragraph.constructs.iter().all(|construct| {
                 matches!(
-                    construct.kind(),
+                    construct.structure(),
                     ConstructKind::TateChuYoko(_)
                         | ConstructKind::Emphasis { .. }
                         | ConstructKind::ReferenceMark { .. }
@@ -467,7 +519,31 @@ impl Composer {
         }
     }
 
-    fn search(&mut self, paragraph: &Paragraph, style: &Style) -> Result<(), ComposeError> {
+    /// Say that the paragraph was refused, and how much work had been charged for it.
+    ///
+    /// The refusal itself is the caller's `ComposeError`; what a reader cannot recover
+    /// from that is how far the search had got, so that is what this records.
+    fn trace_refusal(&self, paragraph: &Paragraph, refusal: &ComposeError, trace: &mut Trace) {
+        if trace.wants(Categories::SEARCH) {
+            trace.push(
+                Site::paragraph(
+                    0..paragraph.text.clusters().len(),
+                    0..paragraph.text.source().len(),
+                ),
+                Fact::SearchRefused {
+                    charged: self.transitions,
+                    limit: refusal.limit(),
+                },
+            );
+        }
+    }
+
+    fn search(
+        &mut self,
+        paragraph: &Paragraph,
+        style: &Style,
+        trace: &mut Trace,
+    ) -> Result<(), ComposeError> {
         self.nodes.clear();
         self.nodes.resize(
             self.candidates.len(),
@@ -487,6 +563,13 @@ impl Composer {
         for end in 1..self.candidates.len() {
             let candidate = self.candidates[end];
             if !self.prepared.legal_candidates[end] {
+                if trace.wants(Categories::KINSOKU) {
+                    let ordinal = self.prepared.candidate_ordinals[end];
+                    trace.push(
+                        Site::paragraph(ordinal..ordinal, candidate.offset..candidate.offset),
+                        Fact::SearchCandidateRefused { candidate: end },
+                    );
+                }
                 continue;
             }
             for start in (mandatory_partition_start..end).rev() {
@@ -546,33 +629,53 @@ impl Composer {
                 };
                 let delta = available.saturating_sub(width);
                 let is_last = end.saturating_add(1) == self.candidates.len();
-                let mut edge_cost =
-                    non_negative_cost(line_badness(delta, is_last, style.adjustment_preference()));
-                if candidate.discretionary {
-                    edge_cost = edge_cost.saturating_add(100_000);
-                }
-                edge_cost = edge_cost.saturating_add(non_negative_cost(warichu_break_penalty(
-                    paragraph,
-                    candidate.offset,
-                )));
-                edge_cost = edge_cost.saturating_add(non_negative_cost(formula_break_penalty(
-                    paragraph,
-                    candidate.offset,
-                )));
-                if is_last {
-                    edge_cost = edge_cost.saturating_add(non_negative_cost(widow_penalty(
-                        paragraph,
-                        self.candidates[start].offset,
-                        candidate.offset,
-                    )));
-                }
+                let badness = line_badness(delta, is_last, style.adjustment_preference());
+                let discretionary = if candidate.discretionary { 100_000 } else { 0 };
+                let warichu = warichu_break_penalty(paragraph, candidate.offset);
+                let formula = formula_break_penalty(paragraph, candidate.offset);
+                let widow = if is_last {
+                    widow_penalty(paragraph, self.candidates[start].offset, candidate.offset)
+                } else {
+                    0
+                };
+                let mut edge_cost = non_negative_cost(badness);
+                edge_cost = edge_cost.saturating_add(non_negative_cost(discretionary));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(warichu));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(formula));
+                edge_cost = edge_cost.saturating_add(non_negative_cost(widow));
                 let cost = edge_cost.saturating_add(self.nodes[start].cost);
-                if search_candidate_precedes(cost, start, self.nodes[end]) {
+                let accepted = search_candidate_precedes(cost, start, self.nodes[end]);
+                if accepted {
                     self.nodes[end] = Node {
                         cost,
                         previous: start,
                         line_count: line_number.saturating_add(1),
                     };
+                }
+                if trace.wants(Categories::SEARCH_CANDIDATES) {
+                    trace.push(
+                        Site::paragraph(
+                            start_ordinal..end_ordinal,
+                            self.candidates[start].offset..candidate.offset,
+                        ),
+                        Fact::SearchCandidate {
+                            start_candidate: start,
+                            end_candidate: end,
+                            natural_width: measured_width,
+                            reduced_width: width,
+                            available,
+                            delta,
+                            badness,
+                            discretionary,
+                            warichu,
+                            formula,
+                            widow,
+                            edge_cost,
+                            total_cost: cost,
+                            is_last,
+                            accepted,
+                        },
+                    );
                 }
 
                 if self.prepared.regular {
@@ -585,6 +688,21 @@ impl Composer {
                         style.adjustment_preference(),
                         self.nodes[end].cost,
                     ) {
+                        if trace.wants(Categories::SEARCH_CANDIDATES) {
+                            trace.push(
+                                Site::paragraph(
+                                    start_ordinal..end_ordinal,
+                                    self.candidates[start].offset..candidate.offset,
+                                ),
+                                Fact::SearchBoundStop {
+                                    start_candidate: start,
+                                    end_candidate: end,
+                                    minimum_width,
+                                    available,
+                                    best_cost: self.nodes[end].cost,
+                                },
+                            );
+                        }
                         break;
                     }
                 }
@@ -607,7 +725,7 @@ impl Composer {
         self.chosen.reverse();
     }
 
-    fn place(&mut self, paragraph: &Paragraph, style: &Style) -> Layout {
+    fn place(&mut self, paragraph: &Paragraph, style: &Style, trace: &mut Trace) -> Layout {
         let mut layout = Layout::default();
         let mut block_cursor = 0_i64;
         for line_index in 0..self.chosen.len().saturating_sub(1) {
@@ -617,6 +735,7 @@ impl Composer {
             let start_cluster = cluster_index_at_or_after(paragraph, start_offset);
             let end_cluster = cluster_index_at_or_after(paragraph, end_offset);
             let is_last = line_index.saturating_add(2) == self.chosen.len();
+            self.trace_line_choice(line_index, start_cluster..end_cluster, trace);
             let block_origin = match paragraph.writing_mode {
                 WritingMode::HorizontalTb => clamp_i32(block_cursor),
                 WritingMode::VerticalRl => clamp_i32(block_cursor.saturating_neg()),
@@ -624,10 +743,14 @@ impl Composer {
             let line = self.place_line(
                 paragraph,
                 style,
-                start_cluster..end_cluster,
-                line_index,
+                LineContext {
+                    start: start_cluster,
+                    end: end_cluster,
+                    index: line_index,
+                },
                 block_origin,
                 is_last,
+                trace,
             );
             if i64::from(line.inline_extent) > i64::from(paragraph.line_extent) {
                 layout.diagnostics.push(Diagnostic {
@@ -644,17 +767,48 @@ impl Composer {
         layout
     }
 
+    /// Report one line the search settled on, and what that line alone cost.
+    ///
+    /// The edge cost is the difference between the two nodes the backtrack walked
+    /// through, which is the quantity the search actually compared; the running total is
+    /// recoverable by addition and is not restated here.
+    fn trace_line_choice(&self, line_index: usize, clusters: Range<usize>, trace: &mut Trace) {
+        if !trace.wants(Categories::SEARCH) {
+            return;
+        }
+        let next_line = line_index.saturating_add(1);
+        let start_candidate = self.chosen[line_index];
+        let end_candidate = self.chosen[next_line];
+        let edge_cost = self.nodes[end_candidate]
+            .cost
+            .saturating_sub(self.nodes[start_candidate].cost);
+        let bytes = self.candidates[start_candidate].offset..self.candidates[end_candidate].offset;
+        let line = u32::try_from(line_index).unwrap_or(u32::MAX);
+        trace.push(
+            Site::on_line(line, clusters, bytes),
+            Fact::LineChosen {
+                line,
+                start_candidate,
+                end_candidate,
+                edge_cost,
+            },
+        );
+    }
+
     fn place_line(
         &mut self,
         paragraph: &Paragraph,
         style: &Style,
-        cluster_range: Range<usize>,
-        line_index: usize,
+        context: LineContext,
         block_origin: i32,
         is_last: bool,
+        trace: &mut Trace,
     ) -> Line {
-        let start_cluster = cluster_range.start;
-        let end_cluster = cluster_range.end;
+        let LineContext {
+            start: start_cluster,
+            end: end_cluster,
+            index: line_index,
+        } = context;
         self.line_advances.clear();
         let clusters = &paragraph.text.clusters()[start_cluster..end_cluster];
         self.line_advances
@@ -691,21 +845,47 @@ impl Composer {
             Alignment::End => remaining.max(0),
         };
         let justify = line_should_justify(paragraph.alignment, is_last, remaining, clusters.len());
+        let need = line_adjustment_need(remaining, justify);
+        let line_ordinal = u32::try_from(line_index).unwrap_or(u32::MAX);
+        if trace.wants(Categories::PLACE) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::LineFit {
+                    is_last,
+                    content_width,
+                    available: i64::from(paragraph.line_extent),
+                    remaining,
+                    cluster_count: clusters.len(),
+                    justify,
+                    need,
+                    alignment_offset,
+                },
+            );
+        }
+        trace_line_spacing(paragraph, style, line_ordinal, start_cluster, end_cluster, trace);
         prepare_line_adjustments_with_scratch(
             paragraph,
             style,
-            start_cluster,
-            end_cluster,
-            line_adjustment_need(remaining, justify),
+            need,
             &mut self.line_adjustments,
             &mut self.line_scratch,
+            LineRecorder {
+                line: line_ordinal,
+                start: start_cluster,
+                end: end_cluster,
+                trace,
+            },
         );
 
         let mut placed = Vec::with_capacity(clusters.len());
         let mut cursor = i64::from(indent)
             .saturating_add(i64::from(ruby_leading))
             .saturating_add(alignment_offset);
-        let mut block_extent = paragraph.text.size().block();
+        // Decided before anything is placed, because a construct is centered in
+        // the line and the line is as wide as its widest construct: centering
+        // against the extent known *so far* centers against a number a later
+        // construct can still raise. `docs/adr/0030` records what that cost.
+        let mut block_extent = line_block_extent(paragraph, start_cluster, end_cluster);
         let mut local = 0;
         while local < clusters.len() {
             let ordinal = start_cluster.saturating_add(local);
@@ -715,8 +895,27 @@ impl Composer {
             {
                 let segment = furawake_segment(paragraph, group, columns, line_gap, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, segment.range.end),
+                        Fact::Furawake {
+                            columns,
+                            lanes: segment.lanes.len(),
+                            line_gap: segment.line_gap,
+                            advance: segment.advance,
+                            block_extent: segment.block_extent,
+                        },
+                    );
+                }
                 block_extent = block_extent.max(segment.block_extent);
-                place_furawake_segment(paragraph, &segment, cursor, block_origin, &mut placed);
+                place_furawake_segment(
+                    paragraph,
+                    &segment,
+                    cursor,
+                    block_origin,
+                    block_extent,
+                    &mut placed,
+                );
                 cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
                 local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
             } else if let Some(group) = warichu_cluster_range(paragraph, ordinal)
@@ -724,7 +923,24 @@ impl Composer {
             {
                 let segment = warichu_segment(paragraph, group, start_cluster, end_cluster);
                 previous_ordinal = segment.range.end.saturating_sub(1);
-                place_warichu_segment(paragraph, &segment, cursor, block_origin, &mut placed);
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, segment.range.end),
+                        Fact::Warichu {
+                            first_width: segment.first_width,
+                            second_width: segment.second_width,
+                            advance: segment.advance,
+                        },
+                    );
+                }
+                place_warichu_segment(
+                    paragraph,
+                    &segment,
+                    cursor,
+                    block_origin,
+                    block_extent,
+                    &mut placed,
+                );
                 cursor = cursor.saturating_add(i64::from(segment.advance));
                 local = local.saturating_add(segment.range.end.saturating_sub(ordinal));
             } else if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal)
@@ -739,30 +955,25 @@ impl Composer {
                         sum.saturating_add(i64::from(cluster.advance()))
                     });
                 block_extent = block_extent.max(clamp_i32(horizontal_width));
-                let mut member_block = i64::from(block_origin)
-                    .saturating_sub(horizontal_width.checked_div(2).unwrap_or(0));
-                for (member_local, cluster) in paragraph.text.clusters()[ordinal..group_end]
-                    .iter()
-                    .enumerate()
-                {
-                    let member_ordinal = ordinal.saturating_add(member_local);
-                    let size = cluster.size_override().unwrap_or(paragraph.text.size());
-                    let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
-                    let (writing_mode, transform) =
-                        local_orientation(paragraph, member_ordinal, frame);
-                    placed.push(ClusterPlacement {
-                        origin: PlacementOrigin::Cluster(member_ordinal),
-                        range: cluster.range(),
-                        inline: clamp_i32(cursor),
-                        block: clamp_i32(member_block),
-                        advance: cluster.advance(),
-                        size,
-                        frame,
-                        writing_mode,
-                        transform,
-                    });
-                    member_block = member_block.saturating_add(i64::from(cluster.advance()));
+                if trace.wants(Categories::STRUCTURE) {
+                    trace.push(
+                        line_site(paragraph, line_ordinal, ordinal, group_end),
+                        Fact::TateChuYoko {
+                            members: member_count,
+                            horizontal_width,
+                            block_extent: clamp_i32(horizontal_width),
+                        },
+                    );
                 }
+                place_tate_chu_yoko_group(
+                    paragraph,
+                    ordinal..group_end,
+                    cursor,
+                    block_origin,
+                    block_extent,
+                    clamp_i32(horizontal_width),
+                    &mut placed,
+                );
                 cursor = cursor.saturating_add(i64::from(self.line_advances[local]));
                 local = local.saturating_add(member_count);
             } else {
@@ -794,19 +1005,26 @@ impl Composer {
             ));
         }
 
+        trace_placed_clusters(line_ordinal, start_cluster..end_cluster, &placed, trace);
+
         let range = if let (Some(first), Some(last)) = (clusters.first(), clusters.last()) {
             first.range().start..last.range().end
         } else {
             0..0
         };
         let occupied = cursor.saturating_sub(alignment_offset);
-        let hanging = hanging_amount(
-            paragraph,
-            style,
-            end_cluster,
-            occupied,
-            i64::from(paragraph.line_extent),
-        );
+        let available = i64::from(paragraph.line_extent);
+        let hanging = hanging_amount(paragraph, style, end_cluster, occupied, available);
+        if hanging != 0 && trace.wants(Categories::HANGING) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::Hanging {
+                    occupied,
+                    available,
+                    amount: hanging,
+                },
+            );
+        }
         let mut line = Line {
             range,
             inline_origin: clamp_i32(alignment_offset),
@@ -825,7 +1043,98 @@ impl Composer {
             &mut line,
             &mut self.line_scratch.construct_ordinals,
         );
+        if trace.wants(Categories::PLACE) {
+            trace.push(
+                line_site(paragraph, line_ordinal, start_cluster, end_cluster),
+                Fact::LineFinished {
+                    inline_origin: line.inline_origin,
+                    block_origin: line.block_origin,
+                    inline_extent: line.inline_extent,
+                    block_extent: line.block_extent,
+                    clusters: line.clusters.len(),
+                    attachments: line.attachments.len(),
+                },
+            );
+        }
         line
     }
 }
 
+
+/// The block extent a line takes, decided before anything on it is placed.
+///
+/// A construct is centered in its line and the line is as wide as its widest
+/// construct, so the two cannot be settled in one pass: a construct placed
+/// against the extent known so far is centered against a number that a later
+/// construct on the same line can still raise. This walks the same branches the
+/// placement loop does and answers only the extent question, so the placement
+/// loop can start from the answer.
+///
+/// Annotations are not counted. They are reserved after the body is placed and
+/// stand beside it, so a construct is centered in the body the line composed,
+/// not in the room its ruby needed.
+fn line_block_extent(paragraph: &Paragraph, start_cluster: usize, end_cluster: usize) -> i32 {
+    let mut extent = paragraph.text.size().block();
+    let mut ordinal = start_cluster;
+    while ordinal < end_cluster {
+        if let Some((group, columns, line_gap)) = furawake_cluster_range(paragraph, ordinal)
+            .filter(|(group, _, _)| group.start == ordinal)
+        {
+            let segment = furawake_segment(paragraph, group, columns, line_gap, end_cluster);
+            extent = extent.max(segment.block_extent);
+            ordinal = segment.range.end.max(ordinal.saturating_add(1));
+        } else if let Some(group) = warichu_cluster_range(paragraph, ordinal)
+            .filter(|group| group.start.max(start_cluster) == ordinal)
+        {
+            // A warichu's two lanes share the one em the line already reserves,
+            // so it raises nothing; it is named here only to step past it.
+            let segment = warichu_segment(paragraph, group, start_cluster, end_cluster);
+            ordinal = segment.range.end.max(ordinal.saturating_add(1));
+        } else if let Some(group) = tate_chu_yoko_cluster_range(paragraph, ordinal)
+            .filter(|group| group.start == ordinal)
+        {
+            let group_end = group.end.min(end_cluster);
+            let width = paragraph.text.clusters()[ordinal..group_end]
+                .iter()
+                .fold(0_i64, |sum, cluster| {
+                    sum.saturating_add(i64::from(cluster.advance()))
+                });
+            extent = extent.max(clamp_i32(width));
+            ordinal = group_end.max(ordinal.saturating_add(1));
+        } else {
+            let cluster = &paragraph.text.clusters()[ordinal];
+            let size = cluster.size_override().unwrap_or(paragraph.text.size());
+            extent = extent.max(size.block());
+            ordinal = ordinal.saturating_add(1);
+        }
+    }
+    extent
+}
+
+/// Where a construct of `construct_extent` starts, centered in a line of
+/// `line_extent` whose block origin is `block_origin`.
+///
+/// The answer is the construct's **low** edge along the physical block axis,
+/// which is the block-start edge in `HorizontalTb` and the block-end edge in
+/// `VerticalRl`, because that axis runs backwards there. Callers that name a
+/// cell by its block-start edge add the cell's own extent back in vertical
+/// writing; `place_furawake_segment` and `place_warichu_segment` do that for
+/// their lanes and the tate-chu-yoko loop does it for its members.
+///
+/// When the construct is wider than the line the surplus is split evenly, which
+/// is the same expression: a line already grew to hold anything that could be
+/// wider, so this is centering, not clamping.
+fn construct_block_start(
+    paragraph: &Paragraph,
+    block_origin: i32,
+    line_extent: i32,
+    construct_extent: i32,
+) -> i64 {
+    let surplus = i64::from(line_extent).saturating_sub(i64::from(construct_extent));
+    match paragraph.writing_mode {
+        WritingMode::HorizontalTb => i64::from(block_origin).saturating_add(surplus / 2),
+        WritingMode::VerticalRl => i64::from(block_origin)
+            .saturating_sub(i64::from(line_extent))
+            .saturating_add(surplus / 2),
+    }
+}

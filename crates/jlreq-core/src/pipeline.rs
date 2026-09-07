@@ -23,6 +23,7 @@ use crate::style::{
     RubyAlignment, RubyOverhangIndent, RubyOverhangKana, SentenceMedialDividingMark, Style,
     UnlistedCodePoint,
 };
+use crate::trace::{Categories, Fact, Phase, Site, Trace};
 
 const INFINITE_COST: u128 = u128::MAX;
 // These stage files expand in this module so the private pipeline contract and public API
@@ -125,6 +126,297 @@ mod tests {
             block_extent: 1_000,
             clusters,
             attachments: Vec::new(),
+        }
+    }
+
+    /// A deliberately naive minimum width: the same sum `minimum_prefix` encodes, added one
+    /// cluster at a time with no index at all.
+    ///
+    /// `fast_minimum_width` is the only one of the three indexed measurements with no slow
+    /// counterpart in shipped code — it exists solely to bound the search — so its oracle has
+    /// to be written here. That is the point of the idiom: a second implementation that is
+    /// obviously correct and obviously too slow to ship.
+    fn oracle_minimum_width(paragraph: &Paragraph, start: usize, end: usize) -> i64 {
+        let Some(last) = end.checked_sub(1) else {
+            return 0;
+        };
+        let mut sum = 0_i64;
+        for ordinal in start..last {
+            if super::is_western_word_space(paragraph, ordinal) {
+                continue;
+            }
+            sum = sum.saturating_add(i64::from(paragraph.text.clusters()[ordinal].advance()));
+        }
+        sum
+    }
+
+    /// A deliberately naive reduction capacity: what the whole ladder would find at every
+    /// internal boundary, summed, plus whatever the line end can give up.
+    ///
+    /// This is what `reduction_prefix` and `line_end_reduction` encode between them. Summing
+    /// them one boundary at a time is the same statement without the index.
+    fn oracle_reduction_capacity(
+        paragraph: &Paragraph,
+        style: &Style,
+        start: usize,
+        end: usize,
+    ) -> i64 {
+        let Some(last) = end.checked_sub(1) else {
+            return 0;
+        };
+        let mut sites = Vec::new();
+        let mut capacity = 0_i64;
+        for ordinal in start..last {
+            sites.clear();
+            if paragraph
+                .text
+                .clusters()
+                .get(ordinal.saturating_add(1))
+                .is_some()
+            {
+                if super::is_western_word_space(paragraph, ordinal) {
+                    let cluster = &paragraph.text.clusters()[ordinal];
+                    let room = super::effective_cluster_body_advance(paragraph, ordinal)
+                        .saturating_sub(super::quarter_inline_size(paragraph, cluster))
+                        .max(0);
+                    super::push_reduction_site(
+                        &mut sites,
+                        0,
+                        cluster
+                            .size_override()
+                            .unwrap_or(paragraph.text.size())
+                            .inline(),
+                        room,
+                        1,
+                        false,
+                    );
+                }
+                super::append_table_reduction_sites(paragraph, style, ordinal, 0, &mut sites);
+            }
+            for site in &sites {
+                capacity = capacity.saturating_add(i64::from(site.capacity));
+            }
+        }
+        sites.clear();
+        super::append_line_end_reduction_site(paragraph, style, last, 0, &mut sites);
+        for site in &sites {
+            capacity = capacity.saturating_add(i64::from(site.capacity));
+        }
+        capacity
+    }
+
+    /// Paragraphs that reach the indexed measurement path, chosen so the index has something
+    /// different to encode in each.
+    fn indexed_cases() -> Vec<(&'static str, Paragraph)> {
+        vec![
+            (
+                "ideographic",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .build()
+                    .expect("valid ideographic paragraph"),
+            ),
+            (
+                "punctuation",
+                Paragraph::builder(text("日、本。語（版）"), 4_000)
+                    .build()
+                    .expect("valid punctuation paragraph"),
+            ),
+            (
+                "western-spaces",
+                Paragraph::builder(
+                    mapped_text("a bc d ", Frame::Proportional, |_, cluster| cluster),
+                    4_000,
+                )
+                .build()
+                .expect("valid proportional paragraph"),
+            ),
+            (
+                "mixed-script",
+                Paragraph::builder(
+                    mapped_text("和文Latin和", Frame::Proportional, |_, cluster| cluster),
+                    4_000,
+                )
+                .build()
+                .expect("valid mixed paragraph"),
+            ),
+            (
+                "indented",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .first_line_indent(1_000)
+                    .build()
+                    .expect("valid indented paragraph"),
+            ),
+            (
+                "vertical",
+                Paragraph::builder(text("日本語組版処理"), 4_000)
+                    .writing_mode(WritingMode::VerticalRl)
+                    .build()
+                    .expect("valid vertical paragraph"),
+            ),
+            (
+                "emphasis",
+                Paragraph::builder(text("日本語組版"), 4_000)
+                    .constructs([Construct::emphasis_dots(3..6, '・')])
+                    .build()
+                    .expect("valid emphasis paragraph"),
+            ),
+            (
+                "tate-chu-yoko",
+                Paragraph::builder(text("第12章です"), 4_000)
+                    .constructs([Construct::tate_chu_yoko(3..5)])
+                    .writing_mode(WritingMode::VerticalRl)
+                    .build()
+                    .expect("valid tate-chu-yoko paragraph"),
+            ),
+        ]
+    }
+
+    /// The indexed fast path and the naive one agree on **every** span, not only on whole
+    /// paragraphs.
+    ///
+    /// `pipeline.rs`'s search oracle established this idiom for line breaking: run a
+    /// deliberately quadratic, obviously-correct implementation beside the indexed one and
+    /// require identical answers. The three prefix-sum measurements had only whole-paragraph
+    /// spot checks, and a prefix index is exactly the kind of code whose off-by-one lives at
+    /// an interior boundary — the first cluster of a line, the last, a line of one cluster —
+    /// which a whole-paragraph check never visits.
+    ///
+    /// This walks every `(start, end)` pair of every case under every published profile, at
+    /// two line numbers so the first-line indent is exercised on both sides.
+    #[test]
+    fn indexed_measurement_matches_the_naive_sum_for_every_span() {
+        let profiles = [
+            Style::jlreq_2020(),
+            Style::book_2020(),
+            Style::magazine_2020(),
+            Style::newspaper_2020(),
+            Style::jis_reading_2020(),
+        ];
+        let mut spans = 0_usize;
+        for (name, paragraph) in indexed_cases() {
+            for style in &profiles {
+                let mut composer = super::Composer::new();
+                composer.prepare_candidates(&paragraph);
+                composer.prepare_indexes(&paragraph, style);
+                assert!(
+                    composer.prepared.fast_measure,
+                    "{name}: the case must reach the indexed path"
+                );
+                let clusters = paragraph.text.clusters();
+                let source = paragraph.text.source().len();
+                let offset = |ordinal: usize| -> usize {
+                    clusters
+                        .get(ordinal)
+                        .map_or(source, |cluster| cluster.range().start)
+                };
+                for end in 0..=clusters.len() {
+                    for start in 0..=end {
+                        for line_number in [0_usize, 1] {
+                            let indexed = super::fast_measure_line(
+                                &composer.prepared,
+                                &paragraph,
+                                style,
+                                start,
+                                end,
+                                line_number,
+                            );
+                            let naive = super::measure_line(
+                                &paragraph,
+                                style,
+                                offset(start),
+                                offset(end),
+                                line_number,
+                            );
+                            assert_eq!(
+                                indexed, naive,
+                                "{name}: measurement of clusters {start}..{end} on line \
+                                 {line_number} differs between the index and the naive sum"
+                            );
+
+                            for available in [0_i64, 1_000, 2_000, 4_000, 40_000] {
+                                assert_eq!(
+                                    super::fast_width_after_available_reduction(
+                                        &composer.prepared,
+                                        &paragraph,
+                                        style,
+                                        start,
+                                        end,
+                                        indexed,
+                                        available,
+                                    ),
+                                    super::width_after_available_reduction(
+                                        &paragraph,
+                                        style,
+                                        offset(start),
+                                        offset(end),
+                                        naive,
+                                        available,
+                                    ),
+                                    "{name}: reduction of clusters {start}..{end} against \
+                                     {available} differs between the index and the ladder"
+                                );
+                            }
+                            spans = spans.saturating_add(1);
+                        }
+                    }
+                }
+            }
+        }
+        // A floor, not a target: it is here so the sweep cannot silently become empty.
+        assert!(spans > 2_000, "the sweep must be wide: {spans} spans");
+    }
+
+    /// The two indexes the search bounds itself with agree with recomputation.
+    ///
+    /// `fast_minimum_width` and the reduction capacity never reach the caller — they only
+    /// decide when the search may stop extending a line. A wrong bound does not produce a
+    /// wrong number anywhere a user can see; it silently drops the arrangement that would
+    /// have won. Nothing else in the workspace would notice.
+    #[test]
+    fn the_search_bounds_match_recomputation_for_every_span() {
+        let style = Style::jlreq_2020();
+        for (name, paragraph) in indexed_cases() {
+            let mut composer = super::Composer::new();
+            composer.prepare_candidates(&paragraph);
+            composer.prepare_indexes(&paragraph, &style);
+            let clusters = paragraph.text.clusters().len();
+            for end in 0..=clusters {
+                for start in 0..=end {
+                    if composer.prepared.regular {
+                        assert_eq!(
+                            super::fast_minimum_width(&composer.prepared, start, end),
+                            oracle_minimum_width(&paragraph, start, end),
+                            "{name}: the minimum-width bound for {start}..{end} was recomputed \
+                             differently"
+                        );
+                    }
+                    // The reduction capacity is only ever read inside
+                    // `fast_width_after_available_reduction`, which returns before touching
+                    // the index when the span is empty, so there is nothing to agree about
+                    // there. `fast_minimum_width` had no such guard, which is what this
+                    // sweep found: it is compared above over every pair, degenerate ones
+                    // included.
+                    let Some(last) = end.checked_sub(1).filter(|_| start < end) else {
+                        continue;
+                    };
+                    let indexed =
+                        super::range_sum(&composer.prepared.reduction_prefix, start, last)
+                            .saturating_add(
+                                composer
+                                    .prepared
+                                    .line_end_reduction
+                                    .get(last)
+                                    .copied()
+                                    .unwrap_or(0),
+                            );
+                    assert_eq!(
+                        indexed,
+                        oracle_reduction_capacity(&paragraph, &style, start, end),
+                        "{name}: the reserved reduction capacity for {start}..{end} was \
+                         recomputed differently"
+                    );
+                }
+            }
         }
     }
 
@@ -2175,17 +2467,20 @@ mod tests {
         assert_eq!(segment.block_extent, 2_100);
         assert_eq!(segment.advance, 3_500);
         let mut placed = Vec::new();
-        super::place_furawake_segment(&paragraph, &segment, 100, 0, &mut placed);
+        // The line extent the composer would pass: max(em 1000, segment 2100).
+        // Centered in 2100 the two lanes are flush, so the first is at the block
+        // origin and the second one lane plus one gap along.
+        super::place_furawake_segment(&paragraph, &segment, 100, 0, 2_100, &mut placed);
         assert_eq!(
             placed
                 .iter()
                 .map(|item| (item.inline, item.block, item.advance))
                 .collect::<Vec<_>>(),
             [
-                (100, -550, 1_000),
-                (100, 550, 1_250),
-                (1_350, 550, 1_250),
-                (2_600, 550, 1_000)
+                (100, 0, 1_000),
+                (100, 1_100, 1_250),
+                (1_350, 1_100, 1_250),
+                (2_600, 1_100, 1_000)
             ]
         );
 
@@ -2296,7 +2591,9 @@ mod tests {
             .expect("valid two-member warichu fixture");
         let two_segment = super::warichu_segment(&two, 0..2, 0, 2);
         let mut placed = Vec::new();
-        super::place_warichu_segment(&two, &two_segment, 50, 0, &mut placed);
+        // A warichu reserves no more than the paragraph em, so the line extent
+        // the composer passes is that em and the lanes are unmoved by centering.
+        super::place_warichu_segment(&two, &two_segment, 50, 0, 1_000, &mut placed);
         assert_eq!(
             placed
                 .iter()
@@ -2316,6 +2613,7 @@ mod tests {
             &vertical_segment,
             50,
             0,
+            1_000,
             &mut vertical_placed,
         );
         assert_eq!(
@@ -2624,6 +2922,91 @@ mod tests {
         assert_eq!(script_line.attachments[0].block(), 0);
         assert_eq!(script_line.block_extent, 2_000);
 
+        // Subscript mirrors to the opposite block side: below the text in
+        // horizontal writing, and the line reserves the same space there.
+        let subscript = Paragraph::builder(text("ab"), 4_000)
+            .constructs([Construct::script_at(
+                0..2,
+                text("x"),
+                crate::ScriptPosition::Subscript,
+            )])
+            .build()
+            .expect("valid subscript paragraph");
+        let mut subscript_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &subscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut subscript_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(subscript_line.attachments.len(), 1);
+        assert_eq!(subscript_line.attachments[0].inline(), 500);
+        assert_eq!(subscript_line.attachments[0].block(), 2_000);
+        assert_eq!(subscript_line.block_extent, 2_000);
+
+        // Opposite sides reserve space independently, so a line carrying both
+        // grows by the sum, not the maximum.
+        let both = Paragraph::builder(text("ab"), 4_000)
+            .constructs([
+                Construct::script(0..1, text("x")),
+                Construct::script_at(1..2, text("y"), crate::ScriptPosition::Subscript),
+            ])
+            .build()
+            .expect("valid two-sided paragraph");
+        let mut both_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &both,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut both_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(both_line.attachments.len(), 2);
+        assert_eq!(both_line.block_extent, 3_000);
+
+        // Vertical writing mirrors left instead of below.
+        let vertical_subscript = Paragraph::builder(text("ab"), 4_000)
+            .writing_mode(WritingMode::VerticalRl)
+            .constructs([Construct::script_at(
+                0..2,
+                text("x"),
+                crate::ScriptPosition::Subscript,
+            )])
+            .build()
+            .expect("valid vertical subscript paragraph");
+        let mut vertical_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &vertical_subscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut vertical_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(vertical_line.attachments[0].block(), 0);
+        let vertical_superscript = Paragraph::builder(text("ab"), 4_000)
+            .writing_mode(WritingMode::VerticalRl)
+            .constructs([Construct::script(0..2, text("x"))])
+            .build()
+            .expect("valid vertical superscript paragraph");
+        let mut vertical_super_line = line(0..2, script_line.clusters.clone());
+        super::place_attachments(
+            &vertical_superscript,
+            &Style::default(),
+            0,
+            0,
+            2,
+            &mut vertical_super_line,
+            &mut construct_ordinals,
+        );
+        assert_eq!(vertical_super_line.attachments[0].block(), 2_000);
+
         let emphasis = Paragraph::builder(text("ab"), 4_000)
             .constructs([Construct::emphasis_dots(0..2, '・')])
             .build()
@@ -2846,8 +3229,54 @@ mod tests {
         }
     }
 
+    /// The exact work a fixed corpus costs, pinned.
+    ///
+    /// The two budget tests below are the real thing and are too slow to run on every push,
+    /// so nothing stood between a commit and an algorithmic regression. Composition is
+    /// integer-only and deterministic, so the work a fixed input costs is a number, not a
+    /// range — the same reasoning the goldens rest on. A change here is a change in how much
+    /// the search explores, and it belongs in the commit message either way.
+    ///
+    /// A moved integer says only *that* the search changed, never what. The trace goldens say
+    /// what: `search.candidate` records every pair weighed with its whole cost breakdown and
+    /// whether it was accepted, and `search.bound` records where the search stopped extending
+    /// a line. Read that diff first — the number here is the alarm, not the report.
+    ///
+    /// These paragraphs are small enough that the whole test is imperceptible.
     #[test]
-    #[ignore = "the release performance gate runs this explicitly"]
+    fn a_fixed_corpus_costs_exactly_this_much_search() {
+        fn transitions(cluster_count: usize, extent: i32, style: &Style) -> usize {
+            let source: String = "日".repeat(cluster_count);
+            let paragraph = break_everywhere(&source, extent, WritingMode::HorizontalTb);
+            let mut composer = super::Composer::new();
+            composer
+                .compose(&paragraph, style)
+                .expect("the pinned corpus composes");
+            composer.transitions
+        }
+
+        let default = Style::default();
+        let observed = [
+            transitions(64, 20_000, &default),
+            transitions(128, 20_000, &default),
+            transitions(256, 20_000, &default),
+            transitions(256, 4_000, &default),
+            transitions(256, 20_000, &Style::book_2020()),
+        ];
+        // 64 -> 128 -> 256 clusters roughly doubles the work rather than quadrupling it:
+        // the search bounds itself, and that shape is what these numbers hold. A narrower
+        // measure costs less because more candidates are refused outright, and the book
+        // profile costs exactly what the default does because the two differ in what a line
+        // is worth, not in how many the search weighs.
+        assert_eq!(observed, [1_177, 2_585, 5_401, 1_521, 5_401]);
+        assert!(
+            observed[2] < observed[0].saturating_mul(8),
+            "the search stopped bounding itself: {observed:?}"
+        );
+    }
+
+    #[test]
+    #[ignore = "slow: `just test` runs it by name, in debug, on every platform"]
     fn ten_thousand_cluster_standard_paragraph_stays_below_the_search_budget() {
         fn transitions(cluster_count: usize) -> usize {
             let source: String = "日".repeat(cluster_count);
@@ -2872,7 +3301,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "the release pathological-input gate runs this explicitly"]
+    #[ignore = "slow: `just test` runs it by name, under --release, on every platform"]
     fn zero_width_pathological_paragraph_stops_at_the_default_search_budget() {
         let source: String = "日".repeat(4_100);
         let clusters = source.char_indices().map(|(start, character)| {
@@ -2907,5 +3336,251 @@ mod tests {
         assert_eq!(error.limit(), limit);
         assert_eq!(error.observed(), limit.saturating_add(1));
         assert_eq!(composer.transitions, limit);
+    }
+
+    /// The corpus the tracing-equivalence tests run over.
+    ///
+    /// It is deliberately shaped to reach every branch that changes the search's work:
+    /// a plain paragraph, both writing modes, a ruby construct, a paragraph that is one
+    /// line, and one that overflows its measure.
+    fn tracing_corpus() -> Vec<(Paragraph, Style)> {
+        let mut corpus = Vec::new();
+        for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+            corpus.push((
+                break_everywhere("日本語組版", 3_000, mode),
+                Style::default(),
+            ));
+            corpus.push((
+                break_everywhere("日本語組版", 60_000, mode),
+                Style::default(),
+            ));
+            corpus.push((
+                break_everywhere("日、本。語（版）", 2_500, mode),
+                Style::book_2020(),
+            ));
+            corpus.push((
+                break_everywhere("あA1あA1あ", 2_000, mode),
+                Style::default(),
+            ));
+        }
+        corpus.push((
+            Paragraph::builder(text("日本語組版"), 2_000)
+                .constructs(vec![Construct::ruby(ruby(
+                    RubyKind::Mono,
+                    0..3,
+                    "にほ",
+                    vec![RubyRun::new(0..3, 0..6)],
+                ))])
+                .breaks(
+                    "日本語組版"
+                        .char_indices()
+                        .skip(1)
+                        .map(|(offset, _)| Break::allowed(offset)),
+                )
+                .widow(Widow::MinimumClusters(2))
+                .build()
+                .expect("valid ruby fixture paragraph"),
+            Style::default(),
+        ));
+        corpus
+    }
+
+    /// Recording must not change the answer, and must not change the work charged for it.
+    ///
+    /// This is the census guard. The three-implementation census cannot be re-run without
+    /// the OCaml and Racket toolchains, so the standing invariant is that core behavior
+    /// on existing input does not move. `compose` and `compose_traced` share one body and
+    /// this holds them to the same layout, the same error, and — the sharper of the two —
+    /// the same charged transition count, which a changed search would move even where
+    /// the final geometry happened to agree.
+    #[test]
+    fn tracing_changes_neither_the_layout_nor_the_charged_work() {
+        for (paragraph, style) in tracing_corpus() {
+            let mut plain = super::Composer::new();
+            let mut traced = super::Composer::new();
+            let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+
+            let expected = plain.compose(&paragraph, &style);
+            let observed = traced.compose_traced(&paragraph, &style, &mut trace);
+
+            assert_eq!(expected, observed);
+            assert_eq!(plain.transitions, traced.transitions);
+            assert_eq!(plain.chosen, traced.chosen);
+        }
+    }
+
+    /// A refused paragraph keeps the decisions taken before the refusal.
+    #[test]
+    fn a_refused_composition_returns_the_same_error_and_keeps_its_trace() {
+        let source = "日本語組版".repeat(64);
+        let paragraph = Paragraph::builder(text(&source), 20_000)
+            .breaks(
+                source
+                    .char_indices()
+                    .skip(1)
+                    .map(|(offset, _)| Break::allowed(offset)),
+            )
+            .build()
+            .expect("valid fixture paragraph");
+        let limits = crate::CompositionLimits::DEFAULT.with_max_search_transitions(4);
+
+        let mut plain = super::Composer::with_limits(limits);
+        let mut traced = super::Composer::with_limits(limits);
+        let mut trace = crate::trace::Trace::new();
+
+        let expected = plain.compose(&paragraph, &Style::default());
+        let observed = traced.compose_traced(&paragraph, &Style::default(), &mut trace);
+
+        assert_eq!(expected, observed);
+        assert!(observed.is_err());
+        assert_eq!(plain.transitions, traced.transitions);
+        let kinds: Vec<&str> = trace
+            .events()
+            .iter()
+            .map(crate::trace::Event::kind)
+            .collect();
+        assert_eq!(kinds, vec!["prepare.paragraph", "search.refused"]);
+        // The refusal says how far the search got, which the `ComposeError` cannot.
+        assert!(matches!(
+            trace.events()[1].fact(),
+            crate::trace::Fact::SearchRefused { charged, limit }
+                if *charged == traced.transitions && *limit == 4
+        ));
+    }
+
+    /// Preparation and search may not speak for a line, because neither is setting one.
+    #[test]
+    fn the_recorded_phases_match_the_stages_that_produced_them() {
+        let paragraph = break_everywhere("日本語組版", 3_000, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        let layout = composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+
+        let kinds: Vec<&str> = trace
+            .events()
+            .iter()
+            .map(crate::trace::Event::kind)
+            .collect();
+        assert_eq!(kinds.first(), Some(&"prepare.paragraph"));
+        assert_eq!(
+            kinds
+                .iter()
+                .filter(|kind| **kind == "search.chosen")
+                .count(),
+            layout.lines().len()
+        );
+        assert!(!trace.is_truncated());
+
+        for event in trace.events() {
+            // Only a decision taken while a line is being set can name one; what the
+            // preparation and the search say is about the paragraph, because neither is
+            // composing a line when it says it.
+            let names_a_line = event.site().line().is_some();
+            let paragraph_scoped = matches!(
+                event.kind(),
+                "prepare.paragraph"
+                    | "search.candidate"
+                    | "search.bound-stop"
+                    | "search.refused-candidate"
+                    | "search.refused"
+            );
+            assert_eq!(names_a_line, !paragraph_scoped, "{}", event.kind());
+        }
+    }
+
+    /// A trace that is off costs an empty vector and records nothing.
+    #[test]
+    fn an_untraced_composition_records_nothing() {
+        let paragraph = break_everywhere("日本語組版", 3_000, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::NONE);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+        assert!(trace.events().is_empty());
+    }
+
+    /// The search's own reasoning is recoverable: what it weighed, what it charged, and
+    /// what a rejected line would have cost.
+    #[test]
+    fn the_search_records_what_it_weighed_and_what_it_refused() {
+        let paragraph = break_everywhere("日本語組版", 2_500, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+        let mut trace = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut trace)
+            .expect("small fixture composes");
+
+        // Destructure while filtering, so the assertions below need no fallible arm.
+        let candidates: Vec<(i64, i64, i64, i64, u128, u128)> = trace
+            .events()
+            .iter()
+            .filter_map(|event| match *event.fact() {
+                crate::trace::Fact::SearchCandidate {
+                    natural_width,
+                    reduced_width,
+                    available,
+                    delta,
+                    edge_cost,
+                    total_cost,
+                    ..
+                } => Some((
+                    natural_width,
+                    reduced_width,
+                    available,
+                    delta,
+                    edge_cost,
+                    total_cost,
+                )),
+                _ => None,
+            })
+            .collect();
+        assert!(!candidates.is_empty());
+        assert!(trace.events().iter().any(|event| matches!(
+            *event.fact(),
+            crate::trace::Fact::SearchCandidate { accepted: true, .. }
+        )));
+
+        // The reduction capacity the search assumed is the difference between the two
+        // widths, which is why the ladder stays quiet during the search.
+        for (natural_width, reduced_width, available, delta, edge_cost, total_cost) in candidates {
+            assert!(reduced_width <= natural_width);
+            assert_eq!(delta, available.saturating_sub(reduced_width));
+            assert!(total_cost >= edge_cost);
+        }
+    }
+
+    /// Every family can be silenced on its own, and silencing one silences nothing else.
+    #[test]
+    fn categories_select_exactly_the_families_they_name() {
+        let paragraph = break_everywhere("日本語組版", 2_500, WritingMode::HorizontalTb);
+        let mut composer = super::Composer::new();
+
+        let mut everything = crate::trace::Trace::with_categories(crate::trace::Categories::ALL);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut everything)
+            .expect("small fixture composes");
+
+        let mut only_search =
+            crate::trace::Trace::with_categories(crate::trace::Categories::SEARCH);
+        composer
+            .compose_traced(&paragraph, &Style::default(), &mut only_search)
+            .expect("small fixture composes");
+
+        assert!(everything.events().len() > only_search.events().len());
+        assert!(
+            only_search
+                .events()
+                .iter()
+                .all(|event| event.category() == crate::trace::Categories::SEARCH)
+        );
+        assert!(
+            everything
+                .events()
+                .iter()
+                .any(|event| event.category() == crate::trace::Categories::SEARCH_CANDIDATES)
+        );
     }
 }

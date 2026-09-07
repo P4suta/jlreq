@@ -174,11 +174,16 @@
 
 ;; Where a stacked structure's own two or more rows stand across the line.
 ;;
-;; The block they make is centered on the main line's own em: a note two half-size
-;; rows deep sits inside the line it interrupts, and a furawake two full rows deep
-;; hangs equally above and below it. The coordinate a placement reports is the
-;; box's own leading edge in the direction the lines progress, so the two writing
-;; modes count from opposite ends of the same stack.
+;; The block they make is centered on the main line's own em here, and `pieces-of`
+;; re-centers it in the block extent the LINE came out at, which is the extent this
+;; one cannot know: the offsets are built during itemization and a line does not
+;; exist yet. See docs/adr/0030 for why the difference matters -- a note two
+;; half-size rows deep sits inside the line it interrupts, and a furawake two full
+;; rows deep is the line's whole depth and fills it.
+;;
+;; The coordinate a placement reports is the box's own leading edge in the direction
+;; the lines progress, so the two writing modes count from opposite ends of the same
+;; stack.
 (define (row-block-offsets heights gap em vertical?)
   (define total
     (chk+ (for/fold ([sum 0]) ([one (in-list heights)]) (chk+ sum one))

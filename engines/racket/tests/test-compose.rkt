@@ -308,7 +308,13 @@
                                     16000
                                     #:writing-mode "vertical-rl"
                                     #:constructs (list (hasheq 'kind "tate-chu-yoko" 'range '(3 5)))))
-                '((0 1000 (0 -366 -66 0))))
+                ;; docs/adr/0030: the run is centered in the LINE's block extent,
+                ;; which is the paragraph's em here because the string is
+                ;; narrower than one. The 267 units it does not fill are split
+                ;; between the two sides, and the string is laid from the far
+                ;; edge inward -- so the members sit at -567 and -134 rather
+                ;; than at the -366 and -66 that centering on the origin gave.
+                '((0 1000 (0 -567 -134 0))))
 
   ;; ------------------------------------------------------------------
   ;; §3.6.3: a tab sign set inside a structure that stacks its text off the line
@@ -528,7 +534,9 @@
                    ((0 0 1250) (1 1250 1500) (2 2750 1000) (3 1250 1000) (4 3750 1000)))))
 
   ;; The block's own two extents are unchanged by either reading: two rows one em deep
-  ;; with a one-fifth-em gap between them is 2200, centered on the paragraph's own em.
+  ;; with a one-fifth-em gap between them is 2200. docs/adr/0030: it is centered in
+  ;; the LINE's block extent, which the block itself made 2200, so the rows fill it
+  ;; exactly and start at the line's own origin.
   (check-equal? (blocks-of (request "※〉〈日※"
                                     (list (cluster* 0 3 1000)
                                           (cluster* 3 6 1000)
@@ -540,7 +548,7 @@
                                     #:breaks (list (break* 9 "allowed"))
                                     #:constructs (list (hasheq 'kind "furawake" 'range '(3 12)
                                                                'columns 2 'line_gap 200))))
-                '((0 2200 (0 -600 -600 600 0))))
+                '((0 2200 (0 0 0 1200 0))))
 
   ;; ------------------------------------------------------------------
   ;; Appendix C: what may be broken

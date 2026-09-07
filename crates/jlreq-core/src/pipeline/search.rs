@@ -116,10 +116,24 @@ fn fast_width_after_available_reduction(
     reduced.saturating_sub(hanging_amount(paragraph, style, end, reduced, available))
 }
 
+/// The floor a line of these clusters could ever shrink to, read from the prefix index.
+///
+/// An empty or inverted span has a floor of zero. Without the second guard `range_sum` would
+/// subtract two prefix entries in the wrong order and return a *negative* floor, which
+/// `search_lower_bound_exceeds` reads as "this line can always be made to fit" and so never
+/// stops extending it.
+///
+/// The search only ever asks for a span whose start precedes its end, so this is a guard
+/// rather than a change of behavior. It is here because a bound wrong in this direction
+/// costs work and never an answer: the search would explore candidates it could have
+/// dropped and still reach the same layout, so nothing downstream would ever report it.
 fn fast_minimum_width(prepared: &PreparedParagraph, start: usize, end: usize) -> i64 {
     let Some(last) = end.checked_sub(1) else {
         return 0;
     };
+    if start >= last {
+        return 0;
+    }
     range_sum(&prepared.minimum_prefix, start, last)
 }
 
@@ -144,9 +158,9 @@ fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<
     }
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::TateChuYoko(_))
+        matches!(construct.structure(), ConstructKind::TateChuYoko(_))
     })?;
-    let ConstructKind::TateChuYoko(range) = construct.kind() else {
+    let ConstructKind::TateChuYoko(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -158,9 +172,9 @@ fn tate_chu_yoko_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<
 fn warichu_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Warichu(_))
+        matches!(construct.structure(), ConstructKind::Warichu(_))
     })?;
-    let ConstructKind::Warichu(range) = construct.kind() else {
+    let ConstructKind::Warichu(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -175,13 +189,13 @@ fn furawake_cluster_range(
 ) -> Option<(Range<usize>, u16, i32)> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Furawake { .. })
+        matches!(construct.structure(), ConstructKind::Furawake { .. })
     })?;
     let ConstructKind::Furawake {
         range,
         columns,
         line_gap,
-    } = construct.kind()
+    } = construct.structure()
     else {
         return None;
     };
@@ -196,9 +210,9 @@ fn furawake_cluster_range(
 fn jidori_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<(Range<usize>, u16)> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Jidori { .. })
+        matches!(construct.structure(), ConstructKind::Jidori { .. })
     })?;
-    let ConstructKind::Jidori { range, cells } = construct.kind() else {
+    let ConstructKind::Jidori { range, cells } = construct.structure() else {
         return None;
     };
     Some((
@@ -215,7 +229,7 @@ fn is_internal_jidori_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
     let boundary = cluster.range().end;
     paragraph
         .find_construct_containing(ordinal, |construct| {
-            matches!(construct.kind(), ConstructKind::Jidori { range, .. }
+            matches!(construct.structure(), ConstructKind::Jidori { range, .. }
                 if range.start < boundary && boundary < range.end)
         })
         .is_some()
@@ -238,7 +252,7 @@ fn is_internal_stacked_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
     paragraph
         .find_construct_containing(ordinal, |construct| {
             matches!(
-                construct.kind(),
+                construct.structure(),
                 ConstructKind::Warichu(range) | ConstructKind::Furawake { range, .. }
                     if range.start < boundary && boundary < range.end
             )
@@ -249,9 +263,9 @@ fn is_internal_stacked_boundary(paragraph: &Paragraph, ordinal: usize) -> bool {
 fn formula_cluster_range(paragraph: &Paragraph, ordinal: usize) -> Option<Range<usize>> {
     paragraph.text.clusters().get(ordinal)?;
     let (_, construct) = paragraph.find_construct_containing(ordinal, |construct| {
-        matches!(construct.kind(), ConstructKind::Formula(_))
+        matches!(construct.structure(), ConstructKind::Formula(_))
     })?;
-    let ConstructKind::Formula(range) = construct.kind() else {
+    let ConstructKind::Formula(range) = construct.structure() else {
         return None;
     };
     Some(
@@ -265,7 +279,7 @@ fn is_internal_furawake_offset(paragraph: &Paragraph, offset: usize) -> bool {
     boundary.checked_sub(1).is_some_and(|ordinal| {
         paragraph
             .find_construct_containing(ordinal, |construct| {
-                matches!(construct.kind(), ConstructKind::Furawake { range, .. }
+                matches!(construct.structure(), ConstructKind::Furawake { range, .. }
                     if range.start < offset && offset < range.end)
             })
             .is_some()

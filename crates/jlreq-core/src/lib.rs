@@ -41,8 +41,10 @@ mod paragraph;
 mod pipeline;
 mod spec;
 pub mod style;
+pub mod trace;
+pub mod verify;
 
-pub use construct::{Construct, Ruby, RubyKind, RubyRun};
+pub use construct::{Construct, Ruby, RubyKind, RubyRun, ScriptPosition};
 pub use layout::{
     Attachment, ClusterPlacement, CoordinateTransform, Diagnostic, Layout, Line, PlacementOrigin,
     Severity,
@@ -61,4 +63,16 @@ pub const SPECIFICATION: &str = "jlreq-2020-08-11+unicode-17.0.0";
 /// Use Composer when composing repeatedly so its temporary buffers can be reused.
 pub fn compose(paragraph: &Paragraph, style: &Style) -> Result<Layout, ComposeError> {
     Composer::new().compose(paragraph, style)
+}
+
+/// Compose one validated paragraph and record why it came out that way.
+///
+/// The answer is the answer [`compose`] gives. See [`trace`] for what is recorded and for
+/// why the recording is outside the compatibility contract the result carries.
+pub fn compose_traced(
+    paragraph: &Paragraph,
+    style: &Style,
+    trace: &mut trace::Trace,
+) -> Result<Layout, ComposeError> {
+    Composer::new().compose_traced(paragraph, style, trace)
 }

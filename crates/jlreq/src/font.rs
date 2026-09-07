@@ -3,6 +3,7 @@
 
 use std::fmt;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(feature = "system-fonts")]
 use crate::OpenTypeTag;
@@ -11,15 +12,77 @@ use crate::units::quantize;
 use crate::units::to_f32;
 use crate::{FontVariation, LayoutError};
 
+pub(crate) fn unknown_font_id() -> LayoutError {
+    LayoutError::invalid_font_request(
+        "font.unknown-id",
+        "the font identifier does not belong to this font library",
+    )
+}
+
+/// Source of the provenance nonce stamped on every registration.
+///
+/// Minting per registration rather than per library is what makes a cloned
+/// library safe: the faces the clone inherited keep their identifiers, while
+/// anything registered afterwards — in either copy — is distinguishable.
+static NEXT_REGISTRATION_NONCE: AtomicU64 = AtomicU64::new(1);
+
 /// Stable identifier assigned by a [`FontLibrary`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FontId(u32);
+///
+/// Equality, ordering, hashing, and [`Debug`](fmt::Debug) identify the
+/// library slot only, which keeps layouts produced from identical bytes and
+/// options bit-identical across distinct libraries. Provenance is checked by
+/// the lookups instead: [`FontLibrary::get`] and [`crate::TextLayout::font`]
+/// return `None` for an identifier minted by a different registration rather
+/// than silently resolving the wrong font. A cloned library keeps the
+/// identifiers it inherited and diverges from its source for every face
+/// registered afterwards.
+#[derive(Clone, Copy)]
+pub struct FontId {
+    index: u32,
+    nonce: u64,
+}
 
 impl FontId {
     /// Numeric value suitable for renderer-side maps.
     #[must_use]
     pub const fn get(self) -> u32 {
-        self.0
+        self.index
+    }
+
+    pub(crate) const fn same_provenance(self, other: Self) -> bool {
+        self.index == other.index && self.nonce == other.nonce
+    }
+}
+
+impl PartialEq for FontId {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl Eq for FontId {}
+
+impl PartialOrd for FontId {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FontId {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
+impl core::hash::Hash for FontId {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+    }
+}
+
+impl fmt::Debug for FontId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "FontId({})", self.index)
     }
 }
 
@@ -145,6 +208,102 @@ impl FontSynthesis {
     }
 }
 
+/// Em-relative design metrics for a registered face.
+///
+/// Values are fractions of the em — design units divided by `unitsPerEm` — so
+/// multiplying by a resolved font size yields layout units. The sign
+/// convention is the font's own: ascent is normally positive, descent and
+/// underline position normally negative. `OS/2` typographic values are
+/// preferred over `hhea` when the font carries them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct FontMetrics {
+    ascent: f32,
+    descent: f32,
+    line_gap: f32,
+    x_height: Option<f32>,
+    cap_height: Option<f32>,
+    underline_position: Option<f32>,
+    underline_thickness: Option<f32>,
+}
+
+impl FontMetrics {
+    /// Em-relative typographic ascent.
+    #[must_use]
+    pub const fn ascent(self) -> f32 {
+        self.ascent
+    }
+
+    /// Em-relative typographic descent, normally negative.
+    #[must_use]
+    pub const fn descent(self) -> f32 {
+        self.descent
+    }
+
+    /// Em-relative extra distance the font recommends between lines.
+    #[must_use]
+    pub const fn line_gap(self) -> f32 {
+        self.line_gap
+    }
+
+    /// Em-relative x-height, when the font declares one.
+    #[must_use]
+    pub const fn x_height(self) -> Option<f32> {
+        self.x_height
+    }
+
+    /// Em-relative cap height, when the font declares one.
+    #[must_use]
+    pub const fn cap_height(self) -> Option<f32> {
+        self.cap_height
+    }
+
+    /// Em-relative underline center position, when the font declares one.
+    #[must_use]
+    pub const fn underline_position(self) -> Option<f32> {
+        self.underline_position
+    }
+
+    /// Em-relative underline thickness, when the font declares one.
+    #[must_use]
+    pub const fn underline_thickness(self) -> Option<f32> {
+        self.underline_thickness
+    }
+}
+
+fn em_relative_metrics(raw: crate::sfnt::RawMetrics) -> FontMetrics {
+    let units_per_em = f32::from(raw.units_per_em);
+    let em = move |value: i16| f32::from(value) / units_per_em;
+    FontMetrics {
+        ascent: em(raw.ascent),
+        descent: em(raw.descent),
+        line_gap: em(raw.line_gap),
+        x_height: raw.x_height.map(em),
+        cap_height: raw.cap_height.map(em),
+        underline_position: raw.underline_position.map(em),
+        underline_thickness: raw.underline_thickness.map(em),
+    }
+}
+
+fn table_bytes<'a>(font: &harfrust::FontRef<'a>, tag: [u8; 4]) -> Option<&'a [u8]> {
+    let data = font.table_data(harfrust::Tag::new(&tag))?;
+    Some(data.as_bytes())
+}
+
+fn derived_family(font: &harfrust::FontRef<'_>) -> Option<String> {
+    crate::sfnt::family_from_name_table(table_bytes(font, *b"name")?)
+}
+
+fn derived_metrics(font: &harfrust::FontRef<'_>) -> Option<FontMetrics> {
+    crate::sfnt::metrics_from_tables(
+        table_bytes(font, *b"head"),
+        table_bytes(font, *b"hhea"),
+        table_bytes(font, *b"OS/2"),
+        table_bytes(font, *b"post"),
+    )
+    .map(em_relative_metrics)
+}
+
 /// Font bytes retained by a completed layout for renderer use.
 #[derive(Clone)]
 #[non_exhaustive]
@@ -156,6 +315,7 @@ pub struct FontResource {
     pub(crate) style: FontStyle,
     pub(crate) default_variations: Vec<FontVariation>,
     pub(crate) synthesis: FontSynthesis,
+    pub(crate) metrics: Option<FontMetrics>,
     pub(crate) shaper_data: Arc<harfrust::ShaperData>,
 }
 
@@ -234,6 +394,16 @@ impl FontResource {
     pub const fn synthesis(&self) -> FontSynthesis {
         self.synthesis
     }
+
+    /// Em-relative design metrics, when the face carries well-formed
+    /// `head` and `hhea` tables.
+    ///
+    /// Renderers use these for underline, strikethrough, and baseline
+    /// alignment; composition itself never depends on them.
+    #[must_use]
+    pub const fn metrics(&self) -> Option<FontMetrics> {
+        self.metrics
+    }
 }
 
 /// Ordered, in-memory font faces used for primary selection and fallback.
@@ -251,7 +421,7 @@ impl fmt::Debug for FontLibrary {
             .field("fonts", &self.fonts)
             .field("primary", &self.primary)
             .field("fallback_order", &self.fallback_order)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -266,7 +436,13 @@ impl FontLibrary {
         }
     }
 
-    /// Register face zero with default family/style metadata.
+    /// Register face zero, deriving the family name from the font itself.
+    ///
+    /// The family comes from the font's `name` table (typographic family
+    /// preferred), so a later [`SpanStyle`](crate::SpanStyle) family request
+    /// matches the face without a manual [`register_face`](Self::register_face)
+    /// call. A font without a usable name keeps an empty family and is reached
+    /// through primary/fallback order only.
     pub fn register_font<B>(&mut self, bytes: B) -> Result<FontId, LayoutError>
     where
         B: Into<Arc<[u8]>>,
@@ -274,15 +450,10 @@ impl FontLibrary {
         self.register_face(bytes, 0, "", FontStyle::default())
     }
 
-    /// Alias for [`register_font`](Self::register_font), convenient in builder-style setup.
-    pub fn add_font<B>(&mut self, bytes: B) -> Result<FontId, LayoutError>
-    where
-        B: Into<Arc<[u8]>>,
-    {
-        self.register_font(bytes)
-    }
-
     /// Register one face from TTF, OTF, or TTC bytes.
+    ///
+    /// An empty `family` asks the library to derive one from the font's
+    /// `name` table, exactly like [`register_font`](Self::register_font).
     pub fn register_face<B>(
         &mut self,
         bytes: B,
@@ -315,10 +486,23 @@ impl FontLibrary {
     ) -> Result<FontId, LayoutError> {
         let font = harfrust::FontRef::from_index(&bytes, face_index)
             .map_err(|_| LayoutError::invalid_font(face_index))?;
+        let family = if family.is_empty() {
+            derived_family(&font).unwrap_or(family)
+        } else {
+            family
+        };
+        let metrics = derived_metrics(&font);
         let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
-        let ordinal = u32::try_from(self.fonts.len())
-            .map_err(|_| LayoutError::invalid_document("font.too-many-ids", None))?;
-        let id = FontId(ordinal);
+        let ordinal = u32::try_from(self.fonts.len()).map_err(|_| {
+            LayoutError::invalid_font_request(
+                "font.too-many-ids",
+                "the library already holds the maximum number of font identifiers",
+            )
+        })?;
+        let id = FontId {
+            index: ordinal,
+            nonce: NEXT_REGISTRATION_NONCE.fetch_add(1, Ordering::Relaxed),
+        };
         self.fonts.push(FontResource {
             id,
             bytes,
@@ -327,6 +511,7 @@ impl FontLibrary {
             style,
             default_variations,
             synthesis,
+            metrics,
             shaper_data,
         });
         self.fallback_order.push(id);
@@ -336,24 +521,9 @@ impl FontLibrary {
         Ok(id)
     }
 
-    /// Alias for [`register_face`](Self::register_face).
-    pub fn add_face<B>(
-        &mut self,
-        bytes: B,
-        face_index: u32,
-        family: impl Into<String>,
-        style: FontStyle,
-    ) -> Result<FontId, LayoutError>
-    where
-        B: Into<Arc<[u8]>>,
-    {
-        self.register_face(bytes, face_index, family, style)
-    }
-
     /// Make a registered face the `.notdef` source and first fallback candidate.
     pub fn set_primary(&mut self, id: FontId) -> Result<(), LayoutError> {
-        self.get(id)
-            .ok_or_else(|| LayoutError::invalid_document("font.unknown-id", None))?;
+        self.get(id).ok_or_else(unknown_font_id)?;
         self.primary = Some(id);
         Ok(())
     }
@@ -366,7 +536,7 @@ impl FontLibrary {
         let mut next = Vec::new();
         for id in ids {
             if self.get(id).is_none() {
-                return Err(LayoutError::invalid_document("font.unknown-id", None));
+                return Err(unknown_font_id());
             }
             if !next.contains(&id) {
                 next.push(id);
@@ -406,12 +576,24 @@ impl FontLibrary {
     }
 
     /// Look up registration metadata.
+    ///
+    /// Returns `None` for an identifier minted by a different
+    /// [`FontLibrary`], even when the slot index is in range.
     #[must_use]
     pub fn get(&self, id: FontId) -> Option<&FontResource> {
-        self.fonts.get(id.0 as usize).filter(|font| font.id == id)
+        self.fonts
+            .get(id.index as usize)
+            .filter(|font| font.id.same_provenance(id))
+    }
+
+    pub(crate) fn has_family(&self, family: &str) -> bool {
+        self.fonts
+            .iter()
+            .any(|font| font.family.eq_ignore_ascii_case(family))
     }
 
     #[cfg(feature = "system-fonts")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "system-fonts")))]
     /// Resolve and copy one system family face through Fontique.
     ///
     /// System selection is intentionally opt-in and is not covered by the cross-platform
@@ -445,8 +627,12 @@ impl FontLibrary {
                 QueryStatus::Stop
             });
         }
-        let (bytes, index, selected_synthesis) = selected
-            .ok_or_else(|| LayoutError::invalid_document("font.system-family-not-found", None))?;
+        let (bytes, index, selected_synthesis) = selected.ok_or_else(|| {
+            LayoutError::invalid_font_request(
+                "font.system-family-not-found",
+                "no installed system font matches the requested family",
+            )
+        })?;
         let default_variations = selected_synthesis
             .variation_settings()
             .iter()
@@ -508,18 +694,28 @@ impl FontLibrary {
 mod tests {
     use super::*;
 
+    const TEST_NONCE: u64 = 7;
+
+    const fn test_id(index: u32) -> FontId {
+        FontId {
+            index,
+            nonce: TEST_NONCE,
+        }
+    }
+
     fn resource(id: u32, face_index: u32, family: &str, style: FontStyle) -> FontResource {
         let bytes = Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF);
         let font = harfrust::FontRef::from_index(&bytes, 0).unwrap();
         let shaper_data = Arc::new(harfrust::ShaperData::new(&font));
         FontResource {
-            id: FontId(id),
+            id: test_id(id),
             bytes,
             face_index,
             family: family.to_owned(),
             style,
             default_variations: Vec::new(),
             synthesis: FontSynthesis::default(),
+            metrics: None,
             shaper_data,
         }
     }
@@ -533,14 +729,14 @@ mod tests {
                 resource(1, 7, "Family", italic),
                 resource(2, 9, "Fallback", regular),
             ],
-            primary: Some(FontId(0)),
-            fallback_order: vec![FontId(0), FontId(1), FontId(2)],
+            primary: Some(test_id(0)),
+            fallback_order: vec![test_id(0), test_id(1), test_id(2)],
         }
     }
 
     #[test]
     fn identifiers_resources_and_libraries_have_exact_observable_metadata() {
-        assert_eq!(FontId(42).get(), 42);
+        assert_eq!(test_id(42).get(), 42);
         let font = resource(
             42,
             7,
@@ -565,10 +761,211 @@ mod tests {
     }
 
     #[test]
+    fn registration_derives_family_and_metrics_from_the_font() {
+        let mut library = FontLibrary::new();
+        let id = library
+            .register_font(Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF))
+            .unwrap();
+        let resource = library.get(id).unwrap();
+        assert_eq!(resource.family(), "Noto Sans CJK JP");
+        assert!(library.has_family("noto sans cjk jp"));
+        assert!(!library.has_family("Absent Family"));
+
+        let metrics = resource.metrics().unwrap();
+        assert_eq!(metrics.ascent().to_bits(), (880.0_f32 / 1000.0).to_bits());
+        assert_eq!(metrics.descent().to_bits(), (-120.0_f32 / 1000.0).to_bits());
+        assert_eq!(metrics.line_gap().to_bits(), 0.0_f32.to_bits());
+        assert_eq!(
+            metrics.x_height().map(f32::to_bits),
+            Some((543.0_f32 / 1000.0).to_bits())
+        );
+        assert_eq!(
+            metrics.cap_height().map(f32::to_bits),
+            Some((733.0_f32 / 1000.0).to_bits())
+        );
+        assert_eq!(
+            metrics.underline_position().map(f32::to_bits),
+            Some((-125.0_f32 / 1000.0).to_bits())
+        );
+        assert_eq!(
+            metrics.underline_thickness().map(f32::to_bits),
+            Some((50.0_f32 / 1000.0).to_bits())
+        );
+
+        // An explicit family always wins over derivation.
+        let explicit = library
+            .register_face(
+                Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF),
+                0,
+                "Custom",
+                FontStyle::default(),
+            )
+            .unwrap();
+        assert_eq!(library.get(explicit).unwrap().family(), "Custom");
+    }
+
+    #[test]
+    fn identifier_ordering_and_hashing_observe_the_slot_and_nothing_else() {
+        use core::cmp::Ordering;
+        use core::hash::{Hash as _, Hasher as _};
+
+        let first = test_id(1);
+        let second = test_id(2);
+        let foreign = FontId {
+            index: 1,
+            nonce: TEST_NONCE.saturating_add(1),
+        };
+
+        // Ordering is total, agrees with cmp, and ignores provenance.
+        assert_eq!(first.partial_cmp(&second), Some(Ordering::Less));
+        assert_eq!(second.partial_cmp(&first), Some(Ordering::Greater));
+        assert_eq!(first.partial_cmp(&first), Some(Ordering::Equal));
+        assert_eq!(first.partial_cmp(&foreign), Some(Ordering::Equal));
+        assert_eq!(first.cmp(&second), Ordering::Less);
+        assert!(first < second);
+        assert!(second > first);
+
+        // Hashing is defined and slot-based, so a BTreeMap or hashed cache
+        // keyed by identifier behaves the same across libraries.
+        let digest = |id: FontId| {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            id.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(digest(first), digest(foreign));
+        assert_ne!(digest(first), digest(second));
+        let empty = std::collections::hash_map::DefaultHasher::new();
+        let mut hashed = std::collections::hash_map::DefaultHasher::new();
+        first.hash(&mut hashed);
+        assert_ne!(
+            hashed.finish(),
+            empty.finish(),
+            "hashing must write the slot, not nothing"
+        );
+    }
+
+    #[test]
+    fn metrics_convert_every_design_value_to_its_own_em_fraction() {
+        let raw = crate::sfnt::RawMetrics {
+            units_per_em: 2_048,
+            ascent: 1_800,
+            descent: -512,
+            line_gap: 256,
+            x_height: Some(1_024),
+            cap_height: Some(1_434),
+            underline_position: Some(-256),
+            underline_thickness: Some(102),
+        };
+        let metrics = em_relative_metrics(raw);
+        let em = |value: f32| (value / 2_048.0).to_bits();
+        assert_eq!(metrics.ascent().to_bits(), em(1_800.0));
+        assert_eq!(metrics.descent().to_bits(), em(-512.0));
+        assert_eq!(metrics.line_gap().to_bits(), em(256.0));
+        assert_eq!(metrics.x_height().map(f32::to_bits), Some(em(1_024.0)));
+        assert_eq!(metrics.cap_height().map(f32::to_bits), Some(em(1_434.0)));
+        assert_eq!(
+            metrics.underline_position().map(f32::to_bits),
+            Some(em(-256.0))
+        );
+        assert_eq!(
+            metrics.underline_thickness().map(f32::to_bits),
+            Some(em(102.0))
+        );
+
+        // Absent optional values stay absent rather than becoming zero.
+        let sparse = em_relative_metrics(crate::sfnt::RawMetrics {
+            x_height: None,
+            cap_height: None,
+            underline_position: None,
+            underline_thickness: None,
+            ..raw
+        });
+        assert_eq!(sparse.x_height(), None);
+        assert_eq!(sparse.cap_height(), None);
+        assert_eq!(sparse.underline_position(), None);
+        assert_eq!(sparse.underline_thickness(), None);
+    }
+
+    #[test]
+    fn identifiers_from_another_library_never_resolve_even_in_bounds() {
+        let mut first = FontLibrary::new();
+        let mut second = FontLibrary::new();
+        let first_id = first
+            .register_font(Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF))
+            .unwrap();
+        let second_id = second
+            .register_font(Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF))
+            .unwrap();
+
+        // Slot equality is deliberate: identical bytes and options stay
+        // bit-identical across libraries.
+        assert_eq!(first_id, second_id);
+        assert_eq!(first_id.get(), second_id.get());
+        assert!(!first_id.same_provenance(second_id));
+        assert!(first_id.same_provenance(first_id));
+        assert_eq!(format!("{first_id:?}"), "FontId(0)");
+
+        // Lookups check provenance: the in-bounds foreign identifier fails.
+        assert!(first.get(first_id).is_some());
+        assert!(first.get(second_id).is_none());
+        assert!(second.get(first_id).is_none());
+        assert_eq!(
+            first
+                .set_primary(second_id)
+                .expect_err("a foreign identifier must be rejected")
+                .code(),
+            "font.unknown-id"
+        );
+        assert_eq!(
+            first
+                .set_fallback_order([second_id])
+                .expect_err("a foreign identifier must be rejected")
+                .code(),
+            "font.unknown-id"
+        );
+
+        // A clone keeps the identifiers it inherited...
+        let mut cloned = first.clone();
+        assert!(cloned.get(first_id).is_some());
+
+        // ...and diverges from its source for every later registration, so a
+        // slot both copies filled independently never resolves across them.
+        let from_source = first
+            .register_face(
+                Arc::<[u8]>::from(font_test_data::TINOS_SUBSET),
+                0,
+                "FromSource",
+                FontStyle::default(),
+            )
+            .unwrap();
+        let from_clone = cloned
+            .register_face(
+                Arc::<[u8]>::from(font_test_data::NOTO_SANS_JP_CFF),
+                0,
+                "FromClone",
+                FontStyle::default(),
+            )
+            .unwrap();
+        assert_eq!(from_source, from_clone, "both filled the same slot");
+        assert_eq!(
+            first.get(from_source).map(FontResource::family),
+            Some("FromSource")
+        );
+        assert_eq!(
+            cloned.get(from_clone).map(FontResource::family),
+            Some("FromClone")
+        );
+        assert!(cloned.get(from_source).is_none());
+        assert!(first.get(from_clone).is_none());
+    }
+
+    #[test]
     fn fallback_order_deduplicates_and_appends_every_omitted_face() {
         let mut library = fixture_library();
-        library.set_fallback_order([FontId(2), FontId(2)]).unwrap();
-        assert_eq!(library.fallback_order, [FontId(2), FontId(0), FontId(1)]);
+        library
+            .set_fallback_order([test_id(2), test_id(2)])
+            .unwrap();
+        assert_eq!(library.fallback_order, [test_id(2), test_id(0), test_id(1)]);
     }
 
     #[test]
@@ -577,15 +974,15 @@ mod tests {
         let requested = FontStyle::new(500, 90, FontSlant::Italic);
         assert_eq!(
             library.ordered_candidates(&["family".into(), "FAMILY".into()], requested),
-            [FontId(1), FontId(0), FontId(2)]
+            [test_id(1), test_id(0), test_id(2)]
         );
         assert_eq!(
             library.ordered_candidates(&["Fallback".into()], FontStyle::default()),
-            [FontId(2), FontId(0), FontId(1)]
+            [test_id(2), test_id(0), test_id(1)]
         );
         assert_eq!(
             library.ordered_candidates(&[], FontStyle::default()),
-            [FontId(0), FontId(1), FontId(2)]
+            [test_id(0), test_id(1), test_id(2)]
         );
     }
 
@@ -595,7 +992,7 @@ mod tests {
         let mut changed = base.clone();
         assert_eq!(base, changed);
 
-        changed.id = FontId(1);
+        changed.id = test_id(1);
         assert_ne!(base, changed);
         changed = base.clone();
         changed.face_index = 1;

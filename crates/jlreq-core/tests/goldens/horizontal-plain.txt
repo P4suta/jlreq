@@ -1,0 +1,23 @@
+# horizontal-plain
+# the ordinary case: an even paragraph broken to fit a narrow measure
+# lines=4 diagnostics=0
+jlreq.trace/1 events=19 categories=0x07fb truncated=0
+0000 prepare.paragraph        P   c0..10 b0..30 clusters=10 candidates=11 constructs=0 fast=1 extent=3000 mode=horizontal-tb align=justify
+0001 search.chosen            L00 c0..3 b0..9 line=0 start=0 end=3 edge=0 3.1.1
+0002 line.fit                 L00 c0..3 b0..9 last=0 content=3000 avail=3000 remaining=0 clusters=3 justify=0 need=0 offset=0 3.8.1
+0003 space.boundary           L00 c0 b0..3 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0004 space.boundary           L00 c1 b3..6 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0005 line.finished            L00 c0..3 b0..9 inline=0 block=0 extent=3000 block_extent=1000 clusters=3 attachments=0 3.8.1
+0006 search.chosen            L01 c3..6 b9..18 line=1 start=3 end=6 edge=0 3.1.1
+0007 line.fit                 L01 c3..6 b9..18 last=0 content=3000 avail=3000 remaining=0 clusters=3 justify=0 need=0 offset=0 3.8.1
+0008 space.boundary           L01 c3 b9..12 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0009 space.boundary           L01 c4 b12..15 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0010 line.finished            L01 c3..6 b9..18 inline=0 block=1000 extent=3000 block_extent=1000 clusters=3 attachments=0 3.8.1
+0011 search.chosen            L02 c6..9 b18..27 line=2 start=6 end=9 edge=0 3.1.1
+0012 line.fit                 L02 c6..9 b18..27 last=0 content=3000 avail=3000 remaining=0 clusters=3 justify=0 need=0 offset=0 3.8.1
+0013 space.boundary           L02 c6 b18..21 before=19 after=15 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-15
+0014 space.boundary           L02 c7 b21..24 before=15 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-15,cl-19
+0015 line.finished            L02 c6..9 b18..27 inline=0 block=2000 extent=3000 block_extent=1000 clusters=3 attachments=0 3.8.1
+0016 search.chosen            L03 c9 b27..30 line=3 start=9 end=10 edge=40000 3.1.1
+0017 line.fit                 L03 c9 b27..30 last=1 content=1000 avail=3000 remaining=2000 clusters=1 justify=0 need=0 offset=0 3.8.1
+0018 line.finished            L03 c9 b27..30 inline=0 block=3000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1

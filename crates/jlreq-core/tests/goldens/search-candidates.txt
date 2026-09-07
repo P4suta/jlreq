@@ -1,0 +1,53 @@
+# search-candidates
+# every pair the search weighed, including the ones it charged and dropped
+# lines=4 diagnostics=0
+jlreq.trace/1 events=49 categories=0x0fff truncated=0
+0000 prepare.paragraph        P   c0..7 b0..21 clusters=7 candidates=8 constructs=0 fast=1 extent=2000 mode=horizontal-tb align=justify
+0001 search.candidate         P   c0 b0..3 start=0 end=1 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=1000000 last=0 accepted=1 3.8.1
+0002 search.candidate         P   c1 b3..6 start=1 end=2 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=2000000 last=0 accepted=1 3.8.1
+0003 search.candidate         P   c0..2 b0..6 start=0 end=2 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=0 last=0 accepted=1 3.8.1
+0004 search.candidate         P   c2 b6..9 start=2 end=3 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=1000000 last=0 accepted=1 3.8.1
+0005 search.candidate         P   c1..3 b3..9 start=1 end=3 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=1000000 last=0 accepted=1 3.8.1
+0006 search.candidate         P   c0..3 b0..9 start=0 end=3 natural=3000 reduced=3000 avail=2000 delta=-1000 badness=1010000000 disc=0 warichu=0 formula=0 widow=0 edge=1010000000 total=1010000000 last=0 accepted=0 3.8.1
+0007 search.candidate         P   c3 b9..12 start=3 end=4 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=2000000 last=0 accepted=1 3.8.1
+0008 search.candidate         P   c2..4 b6..12 start=2 end=4 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=0 last=0 accepted=1 3.8.1
+0009 search.candidate         P   c1..4 b3..12 start=1 end=4 natural=3000 reduced=3000 avail=2000 delta=-1000 badness=1010000000 disc=0 warichu=0 formula=0 widow=0 edge=1010000000 total=1011000000 last=0 accepted=0 3.8.1
+0010 search.candidate         P   c0..4 b0..12 start=0 end=4 natural=4000 reduced=4000 avail=2000 delta=-2000 badness=4010000000 disc=0 warichu=0 formula=0 widow=0 edge=4010000000 total=4010000000 last=0 accepted=0 3.8.1
+0011 search.bound-stop        P   c0..4 b0..12 start=0 end=4 minimum=3000 avail=2000 best=0 3.8.1
+0012 search.candidate         P   c4 b12..15 start=4 end=5 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=1000000 last=0 accepted=1 3.8.1
+0013 search.candidate         P   c3..5 b9..15 start=3 end=5 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=1000000 last=0 accepted=1 3.8.1
+0014 search.candidate         P   c2..5 b6..15 start=2 end=5 natural=3000 reduced=3000 avail=2000 delta=-1000 badness=1010000000 disc=0 warichu=0 formula=0 widow=0 edge=1010000000 total=1010000000 last=0 accepted=0 3.8.1
+0015 search.candidate         P   c1..5 b3..15 start=1 end=5 natural=4000 reduced=4000 avail=2000 delta=-2000 badness=4010000000 disc=0 warichu=0 formula=0 widow=0 edge=4010000000 total=4011000000 last=0 accepted=0 3.8.1
+0016 search.bound-stop        P   c1..5 b3..15 start=1 end=5 minimum=3000 avail=2000 best=1000000 3.8.1
+0017 search.candidate         P   c5 b15..18 start=5 end=6 natural=1000 reduced=1000 avail=2000 delta=1000 badness=1000000 disc=0 warichu=0 formula=0 widow=0 edge=1000000 total=2000000 last=0 accepted=1 3.8.1
+0018 search.candidate         P   c4..6 b12..18 start=4 end=6 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=0 last=0 accepted=1 3.8.1
+0019 search.candidate         P   c3..6 b9..18 start=3 end=6 natural=3000 reduced=3000 avail=2000 delta=-1000 badness=1010000000 disc=0 warichu=0 formula=0 widow=0 edge=1010000000 total=1011000000 last=0 accepted=0 3.8.1
+0020 search.candidate         P   c2..6 b6..18 start=2 end=6 natural=4000 reduced=4000 avail=2000 delta=-2000 badness=4010000000 disc=0 warichu=0 formula=0 widow=0 edge=4010000000 total=4010000000 last=0 accepted=0 3.8.1
+0021 search.bound-stop        P   c2..6 b6..18 start=2 end=6 minimum=3000 avail=2000 best=0 3.8.1
+0022 search.candidate         P   c6 b18..21 start=6 end=7 natural=1000 reduced=1000 avail=2000 delta=1000 badness=10000 disc=0 warichu=0 formula=0 widow=0 edge=10000 total=10000 last=1 accepted=1 3.8.1
+0023 search.candidate         P   c5..7 b15..21 start=5 end=7 natural=2000 reduced=2000 avail=2000 delta=0 badness=0 disc=0 warichu=0 formula=0 widow=0 edge=0 total=1000000 last=1 accepted=0 3.8.1
+0024 search.candidate         P   c4..7 b12..21 start=4 end=7 natural=3000 reduced=3000 avail=2000 delta=-1000 badness=1010000000 disc=0 warichu=0 formula=0 widow=0 edge=1010000000 total=1010000000 last=1 accepted=0 3.8.1
+0025 search.candidate         P   c3..7 b9..21 start=3 end=7 natural=4000 reduced=4000 avail=2000 delta=-2000 badness=4010000000 disc=0 warichu=0 formula=0 widow=0 edge=4010000000 total=4011000000 last=1 accepted=0 3.8.1
+0026 search.bound-stop        P   c3..7 b9..21 start=3 end=7 minimum=3000 avail=2000 best=10000 3.8.1
+0027 search.chosen            L00 c0..2 b0..6 line=0 start=0 end=2 edge=0 3.1.1
+0028 line.fit                 L00 c0..2 b0..6 last=0 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
+0029 space.boundary           L00 c0 b0..3 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0030 place.cluster            L00 c0..2 b0..3 ordinal=0 inline=0 block=0 advance=1000 transform=identity
+0031 place.cluster            L00 c0..2 b3..6 ordinal=1 inline=1000 block=0 advance=1000 transform=identity
+0032 line.finished            L00 c0..2 b0..6 inline=0 block=0 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
+0033 search.chosen            L01 c2..4 b6..12 line=1 start=2 end=4 edge=0 3.1.1
+0034 line.fit                 L01 c2..4 b6..12 last=0 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
+0035 space.boundary           L01 c2 b6..9 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0036 place.cluster            L01 c2..4 b6..9 ordinal=2 inline=0 block=1000 advance=1000 transform=identity
+0037 place.cluster            L01 c2..4 b9..12 ordinal=3 inline=1000 block=1000 advance=1000 transform=identity
+0038 line.finished            L01 c2..4 b6..12 inline=0 block=1000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
+0039 search.chosen            L02 c4..6 b12..18 line=2 start=4 end=6 edge=0 3.1.1
+0040 line.fit                 L02 c4..6 b12..18 last=0 content=2000 avail=2000 remaining=0 clusters=2 justify=0 need=0 offset=0 3.8.1
+0041 space.boundary           L02 c4 b12..15 before=19 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-19
+0042 place.cluster            L02 c4..6 b12..15 ordinal=4 inline=0 block=2000 advance=1000 transform=identity
+0043 place.cluster            L02 c4..6 b15..18 ordinal=5 inline=1000 block=2000 advance=1000 transform=identity
+0044 line.finished            L02 c4..6 b12..18 inline=0 block=2000 extent=2000 block_extent=1000 clusters=2 attachments=0 3.8.1
+0045 search.chosen            L03 c6 b18..21 line=3 start=6 end=7 edge=10000 3.1.1
+0046 line.fit                 L03 c6 b18..21 last=1 content=1000 avail=2000 remaining=1000 clusters=1 justify=0 need=0 offset=0 3.8.1
+0047 place.cluster            L03 c6 b18..21 ordinal=6 inline=0 block=3000 advance=1000 transform=identity
+0048 line.finished            L03 c6 b18..21 inline=0 block=3000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1

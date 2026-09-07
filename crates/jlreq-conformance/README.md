@@ -11,6 +11,8 @@ for JLReq 2020 line-composition engines. It speaks NDJSON with an external engin
 every message identifies `jlreq.conformance/1` and
 `jlreq-2020-08-11+unicode-17.0.0`.
 
+Install with `cargo install jlreq-conformance`.
+
 ```text
 jlreq-conformance [OPTIONS] list [SUITE.ndjson]
 jlreq-conformance [OPTIONS] validate [SUITE.ndjson|-]

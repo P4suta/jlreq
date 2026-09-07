@@ -29,7 +29,8 @@ fn aggregate_run(
             range: start..end,
             advance: 0,
             size: style.size,
-            frame: frame_for(piece),
+            inline_size: style.size,
+            frame: resolve_frame(style.frame, piece),
             role: classify_role(source, start..end, style.role),
             bidi_level,
             variations: Arc::clone(variations),
@@ -48,6 +49,15 @@ fn aggregate_run(
         }
     }
     result
+}
+
+fn resolve_frame(asserted: crate::MetricsFrame, piece: &str) -> jlreq_core::Frame {
+    match asserted {
+        crate::MetricsFrame::FullEm => jlreq_core::Frame::FullEm,
+        crate::MetricsFrame::Proportional => jlreq_core::Frame::Proportional,
+        crate::MetricsFrame::HalfEm => jlreq_core::Frame::HalfEm,
+        _ => frame_for(piece),
+    }
 }
 
 fn frame_for(piece: &str) -> jlreq_core::Frame {
@@ -69,6 +79,8 @@ fn classify_role(
     asserted: TextRole,
 ) -> Option<jlreq_core::ClusterRole> {
     if asserted != TextRole::Text {
+        // Plain deliberately maps to the core Text role, which both
+        // suppresses inference and states plain prose explicitly.
         return Some(asserted.core());
     }
     let mut characters = source[range.clone()].chars();

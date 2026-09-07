@@ -1,0 +1,42 @@
+# kinsoku-refusal
+# a closing bracket at a boundary, which kinsoku refuses as a break
+# lines=5 diagnostics=2
+jlreq.trace/1 events=38 categories=0x07fb truncated=0
+0000 prepare.paragraph        P   c0..9 b0..27 clusters=9 candidates=10 constructs=0 fast=1 extent=2000 mode=horizontal-tb align=justify
+0001 search.refused-candidate P   c2..2 b6..6 candidate=2 3.1.9
+0002 search.refused-candidate P   c3..3 b9..9 candidate=3 3.1.9
+0003 search.refused-candidate P   c6..6 b18..18 candidate=6 3.1.9
+0004 search.refused-candidate P   c7..7 b21..21 candidate=7 3.1.9
+0005 search.chosen            L00 c0 b0..3 line=0 start=0 end=1 edge=1000000 3.1.1
+0006 line.fit                 L00 c0 b0..3 last=0 content=1000 avail=2000 remaining=1000 clusters=1 justify=0 need=0 offset=0 3.8.1
+0007 line.finished            L00 c0 b0..3 inline=0 block=0 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1
+0008 search.chosen            L01 c1..4 b3..12 line=1 start=1 end=4 edge=1010000000 3.1.1
+0009 line.fit                 L01 c1..4 b3..12 last=0 content=3500 avail=2000 remaining=-1500 clusters=3 justify=0 need=-1500 offset=0 3.8.1
+0010 space.boundary           L01 c1 b3..6 before=01 after=15 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-01,cl-15
+0011 space.boundary           L01 c2 b6..9 before=15 after=02 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-15,cl-02
+0012 reduce.site              L01 c3 b9..12 boundary=2 weight=1000 capacity=500 stage=2 discrete=1 3.8.3
+0013 reduce.stage             L01 c1..4 b3..12 stage=1 need=1500 discrete=0 capacity=0 taken=0 remaining=1500 3.8.3
+0014 reduce.stage             L01 c1..4 b3..12 stage=2 need=1500 discrete=500 capacity=0 taken=0 remaining=1000 3.8.3
+0015 reduce.stage             L01 c1..4 b3..12 stage=3 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0016 reduce.stage             L01 c1..4 b3..12 stage=4 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0017 reduce.stage             L01 c1..4 b3..12 stage=5 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0018 reduce.stage             L01 c1..4 b3..12 stage=6 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0019 line.finished            L01 c1..4 b3..12 inline=0 block=1000 extent=3000 block_extent=1000 clusters=3 attachments=0 3.8.1
+0020 search.chosen            L02 c4 b12..15 line=2 start=4 end=5 edge=1000000 3.1.1
+0021 line.fit                 L02 c4 b12..15 last=0 content=1000 avail=2000 remaining=1000 clusters=1 justify=0 need=0 offset=0 3.8.1
+0022 line.finished            L02 c4 b12..15 inline=0 block=2000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1
+0023 search.chosen            L03 c5..8 b15..24 line=3 start=5 end=8 edge=1010000000 3.1.1
+0024 line.fit                 L03 c5..8 b15..24 last=0 content=3500 avail=2000 remaining=-1500 clusters=3 justify=0 need=-1500 offset=0 3.8.1
+0025 space.boundary           L03 c5 b15..18 before=01 after=15 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-01,cl-15
+0026 space.boundary           L03 c6 b18..21 before=15 after=02 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-15,cl-02
+0027 reduce.site              L03 c7 b21..24 boundary=2 weight=1000 capacity=500 stage=2 discrete=1 3.8.3
+0028 reduce.stage             L03 c5..8 b15..24 stage=1 need=1500 discrete=0 capacity=0 taken=0 remaining=1500 3.8.3
+0029 reduce.stage             L03 c5..8 b15..24 stage=2 need=1500 discrete=500 capacity=0 taken=0 remaining=1000 3.8.3
+0030 reduce.stage             L03 c5..8 b15..24 stage=3 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0031 reduce.stage             L03 c5..8 b15..24 stage=4 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0032 reduce.stage             L03 c5..8 b15..24 stage=5 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0033 reduce.stage             L03 c5..8 b15..24 stage=6 need=1000 discrete=0 capacity=0 taken=0 remaining=1000 3.8.3
+0034 line.finished            L03 c5..8 b15..24 inline=0 block=3000 extent=3000 block_extent=1000 clusters=3 attachments=0 3.8.1
+0035 search.chosen            L04 c8 b24..27 line=4 start=8 end=9 edge=10000 3.1.1
+0036 line.fit                 L04 c8 b24..27 last=1 content=1000 avail=2000 remaining=1000 clusters=1 justify=0 need=0 offset=0 3.8.1
+0037 line.finished            L04 c8 b24..27 inline=0 block=4000 extent=1000 block_extent=1000 clusters=1 attachments=0 3.8.1

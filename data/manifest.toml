@@ -19,7 +19,7 @@ sha256 = "18b9799b32a8aaa857bd7a632394e116e444ea2923071e0741c884f343eff42c"
 
 [[file]]
 path = "crates/jlreq-conformance/suite.ndjson"
-sha256 = "8f8f70b5f193a140994c8ca42bde5e46a445f55465b6b098012f7ffd0ccbadcf"
+sha256 = "87d85077d4acb40ab4cfb96e040d8bd95414a496bebd00af5da9ebfe3b44ec08"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/appendix_a.rs"
@@ -63,11 +63,11 @@ sha256 = "427eb11a74775b95524a244f6ca80811154561ace2694d90c0793ad4c5051c9c"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"
-sha256 = "e75e3651a359f3886308b0a01867d18538d4e62423498f405c9b5e1e8c204221"
+sha256 = "52de1d083fb050f5f4fa26069a664cc1ce3db31bf6e35010744852117cade7eb"
 
 [[file]]
 path = "docs/public-api.toml"
-sha256 = "ee6fde8f360f03405ad3e84bf505d70e26290d20582600fec6663a9b185d7301"
+sha256 = "66d8da996cec7d801eaa121403974a840c050963d4b5e49f08b7a6aac95d692c"
 
 [[file]]
 path = "spec/PROVENANCE.toml"

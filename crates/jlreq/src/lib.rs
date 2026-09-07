@@ -1,10 +1,18 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 
 /// Dependency-free `no_std + alloc` composition API for already-shaped text.
 pub use jlreq_core as core;
+/// The 22 JLReq 2020 policy alternatives, as the typed values [`StyleBuilder`] takes.
+///
+/// [`Style`] is the knob and this module is its vocabulary, so choosing anything
+/// other than the default reading needs no second crate in `Cargo.toml`:
+/// `jlreq::style::KinsokuLevel` is the same type as `jlreq_core::style::KinsokuLevel`.
+pub use jlreq_core::style;
+pub use jlreq_core::{Style, StyleBuilder, StyleError};
 
 mod document;
 mod engine;
@@ -12,17 +20,23 @@ mod error;
 mod font;
 mod options;
 mod result;
+mod sfnt;
+pub mod trace;
 mod units;
+pub mod verify;
 
 pub use document::{
-    Document, DocumentBuilder, RubyKind, RubyRun, ScriptPosition, SpanStyle, TextRole,
+    Document, DocumentBuilder, InlineConstruct, MetricsFrame, ParagraphStyle, RubyKind, RubyRun,
+    ScriptPosition, SpanStyle, TextRole,
 };
 pub use engine::LayoutEngine;
 pub use error::{LayoutError, OptionKind, Resource};
-pub use font::{FontId, FontLibrary, FontResource, FontSlant, FontStyle, FontSynthesis};
+pub use font::{
+    FontId, FontLibrary, FontMetrics, FontResource, FontSlant, FontStyle, FontSynthesis,
+};
 pub use options::{
     Alignment, BaseDirection, FontVariation, LayoutOptions, OpenTypeFeature, OpenTypeTag,
-    ResourceLimits, WritingMode,
+    ResourceLimits, RubyScale, TabAlignment, TabStop, Widow, WritingMode,
 };
 pub use result::{
     Affinity, AnnotationSource, Diagnostic, DiagnosticSeverity, GlyphPlacement, GlyphTransform,

@@ -24,6 +24,7 @@ items = [
   "DocumentBuilder",
   "FontId",
   "FontLibrary",
+  "FontMetrics",
   "FontResource",
   "FontSlant",
   "FontStyle",
@@ -32,27 +33,40 @@ items = [
   "GlyphPlacement",
   "GlyphTransform",
   "HitTest",
+  "InlineConstruct",
   "LayoutEngine",
   "LayoutError",
   "LayoutOptions",
+  "MetricsFrame",
   "OpenTypeFeature",
   "OpenTypeTag",
   "OptionKind",
+  "ParagraphStyle",
   "Point",
   "Rect",
   "Resource",
   "ResourceLimits",
+  "RubyScale",
   "RubyKind",
   "RubyRun",
   "ScriptPosition",
   "SpanStyle",
+  "Style",
+  "StyleBuilder",
+  "StyleError",
+  "TabAlignment",
+  "TabStop",
   "TextLayout",
   "TextLine",
   "TextRole",
+  "Widow",
   "WritingMode",
   "core",
   "layout",
   "layout_document",
+  "style",
+  "trace",
+  "verify",
 ]
 
 [[module]]
@@ -82,6 +96,7 @@ items = [
   "RubyKind",
   "RubyRun",
   "SPECIFICATION",
+  "ScriptPosition",
   "Severity",
   "ShapedText",
   "Size",
@@ -93,7 +108,10 @@ items = [
   "Widow",
   "WritingMode",
   "compose",
+  "compose_traced",
   "style",
+  "trace",
+  "verify",
 ]
 
 [[module]]
@@ -125,6 +143,44 @@ items = [
   "StyleError",
   "UnlistedCodePoint",
 ]
+
+# The decision trace. Deliberately outside the compatibility promise the other modules
+# carry: these names exist so a person can read why a layout came out as it did, and
+# `docs/adr/0028` records why that channel is allowed to move between releases while the
+# result and its diagnostics are not.
+[[module]]
+path = "jlreq_core::trace"
+items = ["Categories", "Event", "Fact", "RuleAddress", "Site", "Trace"]
+
+# The invariant harness. Also outside the compatibility promise: it exists so a caller, a
+# test, or a fuzz target can ask whether a layout is self-consistent, and the set of
+# invariants it names is expected to grow.
+[[module]]
+path = "jlreq_core::verify"
+items = ["Fault", "Report", "inspect"]
+
+# The facade half of the same channel, and outside the compatibility promise for the same
+# reason. It answers what the core cannot see: how the document was cut up, how graphemes
+# became shaping runs, and which face was asked to cover each one.
+[[module]]
+path = "jlreq::trace"
+items = [
+  "Categories",
+  "DocumentTrace",
+  "Event",
+  "Fact",
+  "RunDirection",
+  "Script",
+  "Site",
+]
+
+# The facade half of the invariant harness, outside the compatibility promise for the same
+# reason as the core's. It states what must be true of the physical geometry a renderer is
+# handed — that the cells a glyph is drawn into, the ones hit testing measures against, and
+# the ones carets are cut from are the same cells — and that set is expected to grow.
+[[module]]
+path = "jlreq::verify"
+items = ["Fault", "Report", "inspect"]
 
 # One dedicated enum for every alternative the generated JLReq 2020 policy inventory
 # records. The count is held against `spec/derived/questions.tsv` in both directions.

@@ -4,8 +4,11 @@
 use std::ops::Range;
 use std::sync::Arc;
 
+use icu_segmenter::options::{SentenceBreakInvariantOptions, WordBreakInvariantOptions};
+use icu_segmenter::{GraphemeClusterSegmenter, SentenceSegmenter, WordSegmenter};
+
 use crate::units::{finite, quantize, to_f32};
-use crate::{FontId, FontResource, LayoutError, OptionKind, WritingMode};
+use crate::{FontId, FontResource, LayoutError, LayoutOptions, OptionKind, WritingMode};
 
 /// Physical point represented internally in deterministic 26.6 fixed point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -17,8 +20,8 @@ pub struct Point {
 impl Point {
     /// Validate and quantize a physical point.
     pub fn try_new(x: f32, y: f32) -> Result<Self, LayoutError> {
-        let x = finite(x, OptionKind::ConstructGeometry)?;
-        let y = finite(y, OptionKind::ConstructGeometry)?;
+        let x = finite(x, OptionKind::Point)?;
+        let y = finite(y, OptionKind::Point)?;
         Ok(Self {
             x: quantize(x),
             y: quantize(y),
@@ -103,14 +106,28 @@ impl Rect {
         (self.x, self.y, self.width, self.height)
     }
 
-    fn contains(self, point: Point) -> bool {
+    /// Whether the point lies in this rectangle, edges included.
+    ///
+    /// Every rectangle this crate returns is a layout cell, and cells meet edge
+    /// to edge, so a point on a shared edge belongs to both. Hit testing here
+    /// resolves that by order rather than by exclusion, and a caller comparing
+    /// a cursor against [`Self::contains`] gets the same answer this crate does.
+    #[must_use]
+    pub fn contains(self, point: Point) -> bool {
         point.x >= self.x
             && point.y >= self.y
             && point.x <= self.x.saturating_add(self.width)
             && point.y <= self.y.saturating_add(self.height)
     }
 
-    fn union(self, other: Self) -> Self {
+    /// The smallest rectangle holding both, in the same quantized units.
+    ///
+    /// [`TextLayout::selection_rects`] returns one rectangle per visually
+    /// contiguous run, so a caller that wants a single repaint region folds
+    /// them with this rather than reimplementing saturating fixed-point
+    /// arithmetic.
+    #[must_use]
+    pub fn union(self, other: Self) -> Self {
         let min_x = self.x.min(other.x);
         let min_y = self.y.min(other.y);
         let max_x = self
@@ -184,10 +201,12 @@ pub struct GlyphPlacement {
     pub(crate) offset_x: i32,
     pub(crate) offset_y: i32,
     pub(crate) font_size: i32,
+    pub(crate) inline_size: i32,
     pub(crate) variations: Arc<[crate::FontVariation]>,
     pub(crate) transform: GlyphTransform,
     pub(crate) bidi_level: u8,
     pub(crate) writing_mode: WritingMode,
+    pub(crate) construct: Option<usize>,
 }
 
 impl GlyphPlacement {
@@ -209,19 +228,30 @@ impl GlyphPlacement {
         self.source_range.clone()
     }
 
-    /// Alias for [`source_range`](Self::source_range).
-    #[must_use]
-    pub fn range(&self) -> Range<usize> {
-        self.source_range()
-    }
-
     /// Annotation-local attribution, if this glyph came from ruby or another attachment.
     #[must_use]
     pub const fn annotation(&self) -> Option<&AnnotationSource> {
         self.annotation.as_ref()
     }
 
-    /// Physical glyph origin.
+    /// Ordinal of the typed construct this glyph belongs to, when it does.
+    ///
+    /// Base glyphs inside a construct's range and the construct's own
+    /// annotation glyphs both report the same ordinal, which indexes
+    /// [`crate::Document::construct`] and matches
+    /// [`AnnotationSource::construct`]. Editors use this to select or
+    /// highlight a whole ruby group or other structure at once.
+    #[must_use]
+    pub const fn construct(&self) -> Option<usize> {
+        self.construct
+    }
+
+    /// Physical glyph origin: the cell's inline-start, block-end corner.
+    ///
+    /// In horizontal text that is the cell's left and bottom edges; in vertical
+    /// text its **right** and top, because the block axis runs in −x. It is the
+    /// corner, not the baseline — see [`Self::draw_origin`] — and it is the
+    /// unoffset one, so a shaper offset moves `draw_origin` and not this.
     #[must_use]
     pub const fn origin(&self) -> Point {
         Point::from_fixed(self.x, self.y)
@@ -229,9 +259,27 @@ impl GlyphPlacement {
 
     /// Physical draw origin after applying the shaper's glyph offset.
     ///
-    /// Renderers should place the glyph outline at this point, then apply
-    /// [`Self::transform`]. [`Self::origin`] remains the unoffset advance-cell
-    /// origin.
+    /// **This is not the baseline.** It is [`Self::origin`] — the cell's
+    /// inline-start, block-end corner — moved by the shaper's own offset for
+    /// this glyph. An outline placed here sits one descent too far along the
+    /// block axis, which for a typical Japanese face is about a tenth of an em:
+    /// small enough to look like hinting, wrong enough to misalign every
+    /// underline. The baseline is one em-relative descent back from the cell's
+    /// block-end edge, and [`FontMetrics::descent`](crate::FontMetrics::descent)
+    /// is negative, which is exactly the correction:
+    ///
+    /// ```rust,ignore
+    /// let cell = glyph.cell_bounds();
+    /// let descent = layout
+    ///     .font(glyph.font_id())
+    ///     .and_then(jlreq::FontResource::metrics)
+    ///     .map_or(0.0, |metrics| metrics.descent());
+    /// let baseline_y = cell.y() + cell.height() + descent * glyph.font_size();
+    /// ```
+    ///
+    /// Apply [`Self::transform`] after positioning. `docs/design/geometry.md`
+    /// states the whole coordinate system, and `examples/render_svg.rs` draws a
+    /// layout using this expression so a wrong reading is visible.
     #[must_use]
     pub const fn draw_origin(&self) -> Point {
         Point::from_fixed(
@@ -288,6 +336,37 @@ impl GlyphPlacement {
         self.font_size
     }
 
+    /// The em **across** the inline axis, where it differs from
+    /// [`Self::font_size`].
+    ///
+    /// One character size is two numbers, not one. JLReq §3.3.3 gives 三分ルビ a
+    /// block extent of half the base em and an inline extent of a third, so a
+    /// reading set at that size is condensed rather than merely small, and a
+    /// single scalar cannot say it. [`ADR 0007`] made the core's size
+    /// anisotropic for this reason; this is the same statement in the drawing
+    /// contract.
+    ///
+    /// Equal to [`Self::font_size_26_6`] for every glyph whose size is square,
+    /// which is all of them unless a
+    /// [`RubyScale`](crate::RubyScale) said otherwise. A renderer sets the face
+    /// at [`Self::font_size`] and scales the inline axis by this over that;
+    /// where they are equal that factor is one and there is nothing to do.
+    ///
+    /// [`ADR 0007`]: https://github.com/P4suta/jlreq
+    #[must_use]
+    pub const fn inline_size_26_6(&self) -> i32 {
+        self.inline_size
+    }
+
+    /// The em across the inline axis, in the caller's unit.
+    ///
+    /// See [`Self::inline_size_26_6`] for what makes it differ from
+    /// [`Self::font_size`].
+    #[must_use]
+    pub fn inline_size(&self) -> f32 {
+        to_f32(self.inline_size)
+    }
+
     /// Effective variable-font settings used for shaping.
     ///
     /// The backing slice is shared by glyphs with the same resolved style.
@@ -315,6 +394,18 @@ impl GlyphPlacement {
         self.transform
     }
 
+    /// The writing mode this glyph's own cell is measured in.
+    ///
+    /// A glyph reached through [`TextLayout::glyphs`] has no line to ask, and
+    /// the block axis it advances along decides where its baseline sits and
+    /// which way [`Self::cell_bounds`] extends. This is normally the layout's
+    /// mode; a tate-chu-yoko run reports the mode its own short horizontal run
+    /// is set in.
+    #[must_use]
+    pub const fn writing_mode(&self) -> WritingMode {
+        self.writing_mode
+    }
+
     /// Resolved UAX #9 embedding level.
     #[must_use]
     pub const fn bidi_level(&self) -> u8 {
@@ -327,7 +418,22 @@ impl GlyphPlacement {
     #[must_use]
     pub fn cell_bounds(&self) -> Rect {
         match (self.writing_mode, self.transform) {
-            (WritingMode::HorizontalTb, _) | (_, GlyphTransform::TateChuYoko) => {
+            // A tate-chu-yoko member stands upright, but it stands in the
+            // column like everything else on its line. Its cell is the width
+            // the composer gave it *across* the column — its own reduced
+            // advance, which is why the line reserves the run's total rather
+            // than an em per member — by one em *down* the column, which is the
+            // one em of column the whole run occupies.
+            (WritingMode::VerticalRl, GlyphTransform::TateChuYoko) => {
+                let width = self.advance_x.abs().max(1);
+                Rect::from_fixed(
+                    self.x.saturating_sub(width),
+                    self.y,
+                    width,
+                    self.inline_size,
+                )
+            },
+            (WritingMode::HorizontalTb, _) => {
                 let width = self.advance_x.abs().max(1);
                 Rect::from_fixed(
                     self.x,
@@ -415,6 +521,10 @@ pub struct TextLine {
     pub(crate) writing_mode: WritingMode,
     pub(crate) glyphs: Vec<GlyphPlacement>,
     pub(crate) hit_bounds: Option<Rect>,
+    pub(crate) index: usize,
+    pub(crate) paragraph_index: usize,
+    pub(crate) first_in_paragraph: bool,
+    pub(crate) last_in_paragraph: bool,
 }
 
 impl TextLine {
@@ -424,13 +534,51 @@ impl TextLine {
         self.range.clone()
     }
 
+    /// Position of this line in [`TextLayout::lines`].
+    #[must_use]
+    pub const fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Ordinal of the source paragraph this line belongs to.
+    ///
+    /// Paragraphs are the segments produced by the paragraph separators
+    /// (`\n`, `\r\n`, U+2028, U+2029), counted from zero.
+    #[must_use]
+    pub const fn paragraph_index(&self) -> usize {
+        self.paragraph_index
+    }
+
+    /// Whether this is its paragraph's first line — where a first-line
+    /// indent renders and a drop cap would sit.
+    #[must_use]
+    pub const fn is_first_in_paragraph(&self) -> bool {
+        self.first_in_paragraph
+    }
+
+    /// Whether this is its paragraph's final line — the line the widow
+    /// policy governs.
+    #[must_use]
+    pub const fn is_last_in_paragraph(&self) -> bool {
+        self.last_in_paragraph
+    }
+
     /// Physical line origin.
     #[must_use]
     pub const fn origin(&self) -> Point {
         self.origin
     }
 
-    /// Occupied inline length.
+    /// Occupied inline length, excluding hanging punctuation.
+    ///
+    /// A line that hangs a full stop or comma past its measure — JLReq's
+    /// `ぶら下げ`, selected by
+    /// [`HangingPunctuation`](jlreq_core::style::HangingPunctuation) — reports
+    /// the length without it, because that is the length the measure was met
+    /// at. The hung glyph is still placed and still has a cell, so
+    /// [`Self::bounds`] covers it and this does not. A renderer painting a line
+    /// background wants the bounds; a caller checking whether the measure was
+    /// met wants this.
     #[must_use]
     pub fn inline_extent(&self) -> f32 {
         to_f32(self.inline_extent)
@@ -440,6 +588,24 @@ impl TextLine {
     #[must_use]
     pub fn block_extent(&self) -> f32 {
         to_f32(self.block_extent)
+    }
+
+    /// Inline-axis demand in signed 26.6 fixed point.
+    ///
+    /// Everything else that carries geometry offers its exact units —
+    /// [`Point::x_26_6`], [`Rect::as_26_6`], [`GlyphPlacement::font_size_26_6`]
+    /// — because comparing a layout against another layout, or against a cell
+    /// this crate returned, is comparing integers. The `f32` forms are for
+    /// arithmetic a renderer does in its own space.
+    #[must_use]
+    pub const fn inline_extent_26_6(&self) -> i32 {
+        self.inline_extent
+    }
+
+    /// Block-axis demand in signed 26.6 fixed point.
+    #[must_use]
+    pub const fn block_extent_26_6(&self) -> i32 {
+        self.block_extent
     }
 
     /// Glyphs in visual draw order, including automatically shaped annotations.
@@ -546,6 +712,7 @@ pub struct TextLayout {
     pub(crate) fonts: Vec<FontResource>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) writing_mode: WritingMode,
+    pub(crate) options: LayoutOptions,
 }
 
 impl TextLayout {
@@ -553,6 +720,23 @@ impl TextLayout {
     #[must_use]
     pub fn source(&self) -> &str {
         &self.source
+    }
+
+    /// Writing mode the layout was produced in.
+    ///
+    /// Available even for an empty layout, which has no lines to ask.
+    #[must_use]
+    pub const fn writing_mode(&self) -> WritingMode {
+        self.writing_mode
+    }
+
+    /// The exact options the layout was produced with.
+    ///
+    /// Editors can clone this value to lay the same content out again after
+    /// an edit without retaining their own copy.
+    #[must_use]
+    pub const fn options(&self) -> &LayoutOptions {
+        &self.options
     }
 
     /// Lines in paragraph order.
@@ -570,13 +754,16 @@ impl TextLayout {
     /// Look up a retained font by its library identifier.
     ///
     /// Retained resources can have non-contiguous identifiers because a
-    /// layout owns only the faces used by its glyphs.
+    /// layout owns only the faces used by its glyphs. An identifier minted by
+    /// a different [`crate::FontLibrary`] returns `None` instead of the wrong
+    /// font, even when its slot index is in range.
     #[must_use]
     pub fn font(&self, id: FontId) -> Option<&FontResource> {
         self.fonts
             .binary_search_by_key(&id, FontResource::id)
             .ok()
             .and_then(|index| self.fonts.get(index))
+            .filter(|font| font.id.same_provenance(id))
     }
 
     /// Union of all physical line-cell bounds, or `None` for an empty layout.
@@ -599,6 +786,345 @@ impl TextLayout {
     /// Iterate every glyph in global visual draw order.
     pub fn glyphs(&self) -> impl Iterator<Item = &GlyphPlacement> {
         self.lines.iter().flat_map(|line| line.glyphs.iter())
+    }
+
+    /// Index of the line holding the caret position `offset`, when one holds it.
+    ///
+    /// Every offset a caret can occupy is addressable: an offset inside a
+    /// line belongs to it, an offset ending a line belongs to that line
+    /// unless the next line starts there (a wrap, where the following line
+    /// owns the position), and an empty line — a blank paragraph — holds its
+    /// own start. Only an offset past the end of the text returns `None`.
+    #[must_use]
+    pub fn line_index_at(&self, offset: usize) -> Option<usize> {
+        let index = self.lines.partition_point(|line| {
+            let held_end = line.range.end.max(line.range.start.saturating_add(1));
+            held_end <= offset
+        });
+        if self
+            .lines
+            .get(index)
+            .is_some_and(|line| line.range.start <= offset)
+        {
+            return Some(index);
+        }
+        // The offset ends the preceding line: a paragraph separator follows,
+        // or the text does.
+        let previous = index.checked_sub(1)?;
+        self.lines
+            .get(previous)
+            .filter(|line| line.range.end == offset)
+            .map(|_| previous)
+    }
+
+    /// The grapheme-cluster boundary strictly after `offset`, when one exists.
+    ///
+    /// This is the position an editor's forward arrow or delete works on;
+    /// stepping bytes or chars instead can land inside a combining sequence
+    /// or emoji. Mid-cluster offsets snap forward to the cluster's end.
+    #[must_use]
+    pub fn next_grapheme_boundary(&self, offset: usize) -> Option<usize> {
+        if offset >= self.source.len() {
+            return None;
+        }
+        GraphemeClusterSegmenter::new()
+            .segment_str(&self.source)
+            .find(|boundary| *boundary > offset)
+    }
+
+    /// The grapheme-cluster boundary strictly before `offset`, when one exists.
+    #[must_use]
+    pub fn prev_grapheme_boundary(&self, offset: usize) -> Option<usize> {
+        if offset == 0 {
+            return None;
+        }
+        let mut previous = None;
+        for boundary in GraphemeClusterSegmenter::new().segment_str(&self.source) {
+            if boundary >= offset.min(self.source.len()) {
+                break;
+            }
+            previous = Some(boundary);
+        }
+        if offset > self.source.len() {
+            return Some(self.source.len());
+        }
+        previous
+    }
+
+    /// The UAX #29 word segment containing `offset`, when one exists.
+    ///
+    /// Segmentation uses the dictionary-backed automatic segmenter, so
+    /// double-click selection works for Japanese text without spaces. The
+    /// enclosing segment is returned even over whitespace or punctuation;
+    /// inspect the source slice to distinguish. `offset` past the end
+    /// returns `None`.
+    #[must_use]
+    pub fn word_range_at(&self, offset: usize) -> Option<Range<usize>> {
+        self.segment_range_at(
+            offset,
+            WordSegmenter::new_auto(WordBreakInvariantOptions::default()).segment_str(&self.source),
+        )
+    }
+
+    /// The UAX #29 sentence segment containing `offset`, when one exists.
+    #[must_use]
+    pub fn sentence_range_at(&self, offset: usize) -> Option<Range<usize>> {
+        self.segment_range_at(
+            offset,
+            SentenceSegmenter::new(SentenceBreakInvariantOptions::default())
+                .segment_str(&self.source),
+        )
+    }
+
+    fn segment_range_at(
+        &self,
+        offset: usize,
+        boundaries: impl Iterator<Item = usize>,
+    ) -> Option<Range<usize>> {
+        if offset >= self.source.len() {
+            return None;
+        }
+        let mut start = 0;
+        for boundary in boundaries {
+            if boundary > offset {
+                return Some(start..boundary);
+            }
+            start = boundary;
+        }
+        None
+    }
+
+    /// The caret one visual position toward the line's inline end.
+    ///
+    /// "Visual" means the reading surface: in bidi text this can jump
+    /// logically, and at a line's end it continues onto the following line.
+    /// The starting position must be a valid caret on this layout.
+    #[must_use]
+    pub fn next_visual_caret(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
+        self.step_visual_caret(offset, affinity, true)
+    }
+
+    /// The caret one visual position toward the line's inline start.
+    #[must_use]
+    pub fn prev_visual_caret(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
+        self.step_visual_caret(offset, affinity, false)
+    }
+
+    fn step_visual_caret(
+        &self,
+        offset: usize,
+        affinity: Affinity,
+        forward: bool,
+    ) -> Option<HitTest> {
+        let current = self.caret_rect(offset, affinity)?;
+        let line_index = self.line_index_for_rect(current)?;
+        let current_inline = self.rect_inline_start(current);
+        let same_line = self
+            .caret_candidates(line_index)
+            .into_iter()
+            .filter(|(rect, _, _)| {
+                if self.line_index_for_rect(*rect) != Some(line_index) {
+                    return false;
+                }
+                let inline = self.rect_inline_start(*rect);
+                if forward {
+                    inline > current_inline
+                } else {
+                    inline < current_inline
+                }
+            })
+            .min_by_key(|(rect, candidate_offset, candidate_affinity)| {
+                let inline = self.rect_inline_start(*rect);
+                let distance = inline.abs_diff(current_inline);
+                (
+                    distance,
+                    *candidate_offset,
+                    matches!(candidate_affinity, Affinity::Downstream),
+                )
+            });
+        if let Some((_, next_offset, next_affinity)) = same_line {
+            return Some(HitTest {
+                byte_offset: next_offset,
+                affinity: next_affinity,
+                inside: true,
+            });
+        }
+        let neighbor = if forward {
+            line_index.saturating_add(1)
+        } else {
+            line_index.checked_sub(1)?
+        };
+        let mut candidates = self.caret_candidates(neighbor);
+        candidates.retain(|(rect, _, _)| self.line_index_for_rect(*rect) == Some(neighbor));
+        let extreme = if forward {
+            candidates
+                .into_iter()
+                .min_by_key(|(rect, candidate_offset, _)| {
+                    (self.rect_inline_start(*rect), *candidate_offset)
+                })
+        } else {
+            candidates
+                .into_iter()
+                .max_by_key(|(rect, candidate_offset, _)| {
+                    (
+                        self.rect_inline_start(*rect),
+                        usize::MAX.saturating_sub(*candidate_offset),
+                    )
+                })
+        };
+        extreme.map(|(_, next_offset, next_affinity)| HitTest {
+            byte_offset: next_offset,
+            affinity: next_affinity,
+            inside: true,
+        })
+    }
+
+    /// The caret at the same inline position on the previous line.
+    ///
+    /// Lines are in reading order, so in horizontal writing this is the line
+    /// above and in vertical writing the column to the right. The first line
+    /// returns `None`.
+    #[must_use]
+    pub fn caret_previous_line(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
+        self.caret_on_neighbor_line(offset, affinity, false)
+    }
+
+    /// The caret at the same inline position on the following line.
+    #[must_use]
+    pub fn caret_next_line(&self, offset: usize, affinity: Affinity) -> Option<HitTest> {
+        self.caret_on_neighbor_line(offset, affinity, true)
+    }
+
+    fn caret_on_neighbor_line(
+        &self,
+        offset: usize,
+        affinity: Affinity,
+        forward: bool,
+    ) -> Option<HitTest> {
+        let current = self.caret_rect(offset, affinity)?;
+        let line_index = self.line_index_for_rect(current)?;
+        let target = if forward {
+            line_index.saturating_add(1)
+        } else {
+            line_index.checked_sub(1)?
+        };
+        let bounds = self.lines.get(target)?.bounds();
+        let point = match self.writing_mode {
+            WritingMode::HorizontalTb => Point::from_fixed(
+                self.rect_inline_start(current),
+                bounds.y.saturating_add(bounds.height / 2),
+            ),
+            WritingMode::VerticalRl => Point::from_fixed(
+                bounds.x.saturating_add(bounds.width / 2),
+                self.rect_inline_start(current),
+            ),
+        };
+        Some(self.hit_test(point))
+    }
+
+    fn rect_inline_start(&self, rect: Rect) -> i32 {
+        match self.writing_mode {
+            WritingMode::HorizontalTb => rect.x,
+            WritingMode::VerticalRl => rect.y,
+        }
+    }
+
+    fn line_index_for_rect(&self, rect: Rect) -> Option<usize> {
+        let center = match self.writing_mode {
+            WritingMode::HorizontalTb => {
+                Point::from_fixed(rect.x, rect.y.saturating_add(rect.height / 2))
+            },
+            WritingMode::VerticalRl => {
+                Point::from_fixed(rect.x.saturating_add(rect.width / 2), rect.y)
+            },
+        };
+        let mut nearest: Option<(usize, i64)> = None;
+        for (index, line) in self.lines.iter().enumerate() {
+            let distance = rect_distance(center, line.bounds());
+            if nearest.is_none_or(|(_, kept)| distance < kept) {
+                nearest = Some((index, distance));
+            }
+        }
+        nearest.map(|(index, _)| index)
+    }
+
+    fn caret_candidates(&self, line_index: usize) -> Vec<(Rect, usize, Affinity)> {
+        let Some(line) = self.lines.get(line_index) else {
+            return Vec::new();
+        };
+        let mut offsets = vec![line.range.start, line.range.end];
+        for glyph in &line.glyphs {
+            if glyph.annotation.is_some() {
+                continue;
+            }
+            offsets.push(glyph.source_range.start);
+            offsets.push(glyph.source_range.end);
+        }
+        offsets.sort_unstable();
+        offsets.dedup();
+        let mut result = Vec::new();
+        for candidate_offset in offsets {
+            for candidate_affinity in [Affinity::Upstream, Affinity::Downstream] {
+                if let Some(rect) = self.caret_rect(candidate_offset, candidate_affinity) {
+                    result.push((rect, candidate_offset, candidate_affinity));
+                }
+            }
+        }
+        result
+    }
+
+    /// Selection rectangles with each line filled to its layout edge.
+    ///
+    /// [`selection_rects`](Self::selection_rects) returns exact glyph-cell
+    /// unions; this variant returns what editors usually paint instead — one
+    /// rectangle per touched line, extended to the line's trailing layout
+    /// edge whenever the selection continues past that line, and to its
+    /// leading edge whenever the selection began earlier. A bidi selection
+    /// yields each line's bounding box rather than split runs. The same
+    /// validity rules apply: an empty or misaligned range yields no
+    /// rectangles.
+    #[must_use]
+    pub fn selection_rects_filled(&self, range: Range<usize>) -> Vec<Rect> {
+        if !is_valid_selection_range(&self.source, &range) {
+            return Vec::new();
+        }
+        let mut result = Vec::new();
+        for line in &self.lines {
+            if line.range.start >= range.end || line.range.end <= range.start {
+                continue;
+            }
+            let clamped = range.start.max(line.range.start)..range.end.min(line.range.end);
+            let pieces = self.selection_rects(clamped.clone());
+            let mut piece_iter = pieces.iter().copied();
+            let Some(first) = piece_iter.next() else {
+                continue;
+            };
+            let merged = piece_iter.fold(first, Rect::union);
+            let bounds = line.bounds();
+            let (mut lead, mut trail) = match self.writing_mode {
+                WritingMode::HorizontalTb => (merged.x, merged.x.saturating_add(merged.width)),
+                WritingMode::VerticalRl => (merged.y, merged.y.saturating_add(merged.height)),
+            };
+            let (line_lead, line_trail) = match self.writing_mode {
+                WritingMode::HorizontalTb => (bounds.x, bounds.x.saturating_add(bounds.width)),
+                WritingMode::VerticalRl => (bounds.y, bounds.y.saturating_add(bounds.height)),
+            };
+            if range.start < line.range.start {
+                lead = lead.min(line_lead);
+            }
+            if range.end > line.range.end {
+                trail = trail.max(line_trail);
+            }
+            result.push(match self.writing_mode {
+                WritingMode::HorizontalTb => {
+                    Rect::from_fixed(lead, merged.y, trail.saturating_sub(lead), merged.height)
+                },
+                WritingMode::VerticalRl => {
+                    Rect::from_fixed(merged.x, lead, merged.width, trail.saturating_sub(lead))
+                },
+            });
+        }
+        result
     }
 
     /// Map a physical point to the nearest logical UTF-8 boundary.
@@ -695,7 +1221,62 @@ impl TextLayout {
                 return Some(empty_line_caret(line));
             }
         }
-        None
+        self.caret_at_an_offset_no_glyph_names(byte_offset)
+    }
+
+    /// A caret for an offset that no glyph begins or ends at, under **either**
+    /// affinity.
+    ///
+    /// Both answers being `None` is the one thing that cannot be right: an
+    /// editor has to be able to put the cursor at every offset the layout
+    /// covers. A tab is the case that reaches here — the composer spends its
+    /// advance without the shaper producing a glyph for it — and the fuzz
+    /// target found it, at offset zero, where an editor opens.
+    ///
+    /// Deliberately not reached when the *other* affinity has an answer:
+    /// nothing ends at the start of the source and nothing starts at its end,
+    /// and those two `None`s are the affinity distinction doing its job.
+    ///
+    /// **The position is the preceding glyph's edge, not the far side of the
+    /// advance that was spent.** For `"A\t"` the caret at offset 2 sits where
+    /// the tab began rather than where it ended, and both affinities return it.
+    /// Placing it correctly needs the composer to keep a caret stop for an
+    /// advance no glyph carries, which is a change in lowering rather than
+    /// here. An editor that can put the cursor at every offset is what this
+    /// method is for, and it does that; an editor that wants the tab's far edge
+    /// has to measure the line.
+    fn caret_at_an_offset_no_glyph_names(&self, byte_offset: usize) -> Option<Rect> {
+        let named = self
+            .lines
+            .iter()
+            .flat_map(|line| line.glyphs.iter())
+            .filter(|glyph| glyph.annotation.is_none())
+            .any(|glyph| {
+                glyph.source_range.start == byte_offset || glyph.source_range.end == byte_offset
+            });
+        if named {
+            return None;
+        }
+        let line = self
+            .lines
+            .iter()
+            .find(|line| line.range.start <= byte_offset && byte_offset <= line.range.end)?;
+        let preceding = line
+            .glyphs
+            .iter()
+            .filter(|glyph| glyph.annotation.is_none())
+            .filter(|glyph| glyph.source_range.end <= byte_offset)
+            .max_by_key(|glyph| glyph.source_range.end);
+        Some(preceding.map_or_else(
+            || empty_line_caret(line),
+            |glyph| {
+                caret_for_bounds(
+                    glyph.cell_bounds(),
+                    is_visual_end(false, glyph.bidi_level),
+                    glyph.writing_mode,
+                )
+            },
+        ))
     }
 
     /// Return one rectangle per visually contiguous selected run on each line.
@@ -816,10 +1397,107 @@ fn ranges_overlap(left: &Range<usize>, right: &Range<usize>) -> bool {
     left.start < right.end && right.start < left.end
 }
 
+/// The three result types a person prints while investigating a layout.
+///
+/// The README used to hand-assemble these strings, which is the usual sign a type owes its
+/// caller a readable default. `Debug` is not that default: it is not a stable format, and it
+/// prints every field at equal weight, so the one that matters is buried.
+///
+/// Coordinates print in caller units, since that is what the caller supplied and what a
+/// renderer consumes; the 26.6 accessors remain for anyone who needs the exact integers.
+impl std::fmt::Display for Diagnostic {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let severity = match self.severity {
+            DiagnosticSeverity::Info => "info",
+            DiagnosticSeverity::Warning => "warning",
+            DiagnosticSeverity::Error => "error",
+        };
+        write!(formatter, "{severity}: {message}", message = self.message)?;
+        if let Some(range) = self.range.as_ref() {
+            write!(formatter, " at bytes {}..{}", range.start, range.end)?;
+        }
+        write!(formatter, " ({code}", code = self.code)?;
+        if let Some(jlreq) = self.jlreq {
+            write!(formatter, ", JLReq {jlreq}")?;
+        }
+        formatter.write_str(")")
+    }
+}
+
+impl std::fmt::Display for TextLine {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mode = match self.writing_mode {
+            WritingMode::HorizontalTb => "horizontal-tb",
+            WritingMode::VerticalRl => "vertical-rl",
+        };
+        write!(
+            formatter,
+            "line {index} of paragraph {paragraph} bytes {start}..{end} \
+             at ({x}, {y}) {inline}x{block} {mode} {glyphs} glyph(s)",
+            index = self.index,
+            paragraph = self.paragraph_index,
+            start = self.range.start,
+            end = self.range.end,
+            x = self.origin.x(),
+            y = self.origin.y(),
+            inline = to_f32(self.inline_extent),
+            block = to_f32(self.block_extent),
+            glyphs = self.glyphs.len(),
+        )
+    }
+}
+
+impl std::fmt::Display for GlyphPlacement {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let origin = self.draw_origin();
+        write!(
+            formatter,
+            "glyph {glyph} from face {face} for bytes {start}..{end} \
+             at ({x}, {y}) advance ({ax}, {ay}) size {size}",
+            glyph = self.glyph_id,
+            face = self.font_id.get(),
+            start = self.source_range.start,
+            end = self.source_range.end,
+            x = origin.x(),
+            y = origin.y(),
+            ax = to_f32(self.advance_x),
+            ay = to_f32(self.advance_y),
+            size = to_f32(self.font_size),
+        )?;
+        // Said only when there is something to say. One character size is two
+        // numbers, and a reading at §3.3.3's 三分ルビ is narrower than the size
+        // it is set at — printing it as square would be the readable default
+        // quietly disagreeing with the geometry.
+        if self.inline_size != self.font_size {
+            write!(formatter, " condensed to {}", to_f32(self.inline_size))?;
+        }
+        if self.transform != GlyphTransform::Identity {
+            let transform = match self.transform {
+                GlyphTransform::Identity => "identity",
+                GlyphTransform::RotateClockwise => "rotate-clockwise",
+                GlyphTransform::TateChuYoko => "tate-chu-yoko",
+            };
+            write!(formatter, " {transform}")?;
+        }
+        if let Some(annotation) = self.annotation.as_ref() {
+            write!(
+                formatter,
+                " annotating construct {}",
+                annotation.construct()
+            )?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    fn test_options() -> LayoutOptions {
+        LayoutOptions::try_new(100.0, 10.0).unwrap()
+    }
 
     fn assert_float(actual: f32, expected: f32) {
         assert_eq!(actual.to_bits(), expected.to_bits());
@@ -845,6 +1523,7 @@ mod tests {
             offset_x: 96,
             offset_y: -128,
             font_size: 192,
+            inline_size: 192,
             variations: Arc::from([crate::FontVariation::try_new(
                 crate::OpenTypeTag::try_new("wght").unwrap(),
                 650.0,
@@ -853,7 +1532,86 @@ mod tests {
             transform: GlyphTransform::RotateClockwise,
             bidi_level: 2,
             writing_mode: mode,
+            construct: Some(3),
         }
+    }
+
+    /// The readable defaults exist so nobody hand-assembles these strings again, so they are
+    /// pinned exactly rather than probed for substrings.
+    #[test]
+    fn the_result_types_read_without_help() {
+        let diagnostic = Diagnostic {
+            code: "layout.overfull",
+            severity: DiagnosticSeverity::Warning,
+            range: Some(4..9),
+            message: "the line could not be reduced to the measure",
+            jlreq: Some("3.8.1"),
+        };
+        assert_eq!(
+            diagnostic.to_string(),
+            "warning: the line could not be reduced to the measure at bytes 4..9 \
+             (layout.overfull, JLReq 3.8.1)"
+        );
+
+        let bare = Diagnostic {
+            code: "font.unknown-family",
+            severity: DiagnosticSeverity::Info,
+            range: None,
+            message: "no registered face declares the requested family",
+            jlreq: None,
+        };
+        assert_eq!(
+            bare.to_string(),
+            "info: no registered face declares the requested family (font.unknown-family)"
+        );
+
+        // A square size says nothing about its inline axis, and a condensed one
+        // says exactly what it narrowed to. Both are pinned, so neither the
+        // silence nor the sentence can drift.
+        let mut condensed = glyph(WritingMode::VerticalRl);
+        condensed.inline_size = 128;
+        assert_eq!(
+            condensed.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3 \
+             condensed to 2 rotate-clockwise annotating construct 3"
+        );
+
+        let placed = glyph(WritingMode::VerticalRl);
+        assert_eq!(
+            placed.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3 \
+             rotate-clockwise annotating construct 3"
+        );
+
+        let line = TextLine {
+            range: 2..5,
+            origin: Point::from_fixed(64, 128),
+            inline_extent: 192,
+            block_extent: 640,
+            writing_mode: WritingMode::HorizontalTb,
+            glyphs: vec![placed],
+            hit_bounds: None,
+            index: 1,
+            paragraph_index: 0,
+            first_in_paragraph: false,
+            last_in_paragraph: true,
+        };
+        assert_eq!(
+            line.to_string(),
+            "line 1 of paragraph 0 bytes 2..5 at (1, 2) 3x10 horizontal-tb 1 glyph(s)"
+        );
+    }
+
+    /// An identity transform stays silent, because the common case must not print noise.
+    #[test]
+    fn an_untransformed_unannotated_glyph_says_only_what_it_must() {
+        let mut plain = glyph(WritingMode::HorizontalTb);
+        plain.transform = GlyphTransform::Identity;
+        plain.annotation = None;
+        assert_eq!(
+            plain.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3"
+        );
     }
 
     fn linear_hit_test(layout: &TextLayout, point: Point) -> HitTest {
@@ -1076,7 +1834,6 @@ mod tests {
         assert_eq!(horizontal.font_id().get(), 0);
         assert_eq!(horizontal.glyph_id(), 77);
         assert_eq!(horizontal.source_range(), 2..5);
-        assert_eq!(horizontal.range(), 2..5);
         let annotation = horizontal.annotation().unwrap();
         assert_eq!(annotation.construct(), 3);
         assert_eq!(annotation.range(), 7..11);
@@ -1100,9 +1857,12 @@ mod tests {
 
         let vertical = glyph(WritingMode::VerticalRl);
         assert_eq!(vertical.cell_bounds().as_26_6(), (-64, 320, 192, 384));
+        // A tate-chu-yoko member stands in the column like everything else on
+        // its line: the cell is a square em at the block-end edge, not the
+        // horizontal cell the run's own upright orientation might suggest.
         let mut tate_chu_yoko = vertical;
         tate_chu_yoko.transform = GlyphTransform::TateChuYoko;
-        assert_eq!(tate_chu_yoko.cell_bounds().as_26_6(), (128, 128, 256, 192));
+        assert_eq!(tate_chu_yoko.cell_bounds().as_26_6(), (-128, 320, 256, 192));
     }
 
     #[test]
@@ -1132,6 +1892,10 @@ mod tests {
             writing_mode: WritingMode::HorizontalTb,
             glyphs,
             hit_bounds,
+            index: 0,
+            paragraph_index: 0,
+            first_in_paragraph: true,
+            last_in_paragraph: true,
         };
         assert_eq!(line.range(), 2..5);
         assert_eq!(line.origin().x_26_6(), 32);
@@ -1148,6 +1912,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: vec![diagnostic],
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         assert_eq!(layout.bounds().unwrap().as_26_6(), (32, 64, 448, 256));
         let before = layout.hit_test(Point::from_fixed(160, 200));
@@ -1197,10 +1962,15 @@ mod tests {
                 writing_mode: WritingMode::HorizontalTb,
                 glyphs: Vec::new(),
                 hit_bounds: None,
+                index: 0,
+                paragraph_index: 0,
+                first_in_paragraph: true,
+                last_in_paragraph: true,
             }],
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         assert_eq!(
             empty_horizontal
@@ -1251,6 +2021,10 @@ mod tests {
                     writing_mode: WritingMode::HorizontalTb,
                     hit_bounds: TextLine::hit_bounds_for(&top_glyphs),
                     glyphs: top_glyphs,
+                    index: 0,
+                    paragraph_index: 0,
+                    first_in_paragraph: true,
+                    last_in_paragraph: true,
                 },
                 TextLine {
                     range: 1..2,
@@ -1260,6 +2034,10 @@ mod tests {
                     writing_mode: WritingMode::HorizontalTb,
                     hit_bounds: TextLine::hit_bounds_for(&bottom_glyphs),
                     glyphs: bottom_glyphs,
+                    index: 0,
+                    paragraph_index: 0,
+                    first_in_paragraph: true,
+                    last_in_paragraph: true,
                 },
                 TextLine {
                     range: 3..3,
@@ -1269,11 +2047,16 @@ mod tests {
                     writing_mode: WritingMode::HorizontalTb,
                     hit_bounds: None,
                     glyphs: Vec::new(),
+                    index: 0,
+                    paragraph_index: 0,
+                    first_in_paragraph: true,
+                    last_in_paragraph: true,
                 },
             ],
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         let wrapped_end = layout.hit_test(Point::from_fixed(48, 32));
@@ -1334,6 +2117,10 @@ mod tests {
             writing_mode: WritingMode::HorizontalTb,
             hit_bounds: TextLine::hit_bounds_for(&visual),
             glyphs: visual,
+            index: 0,
+            paragraph_index: 0,
+            first_in_paragraph: true,
+            last_in_paragraph: true,
         };
         let bidi = TextLayout {
             source: "abcde".into(),
@@ -1341,6 +2128,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
         for glyph in bidi.glyphs() {
             let bounds = glyph.cell_bounds();
@@ -1384,6 +2172,10 @@ mod tests {
             writing_mode: WritingMode::HorizontalTb,
             hit_bounds: TextLine::hit_bounds_for(&visual),
             glyphs: visual,
+            index: 0,
+            paragraph_index: 0,
+            first_in_paragraph: true,
+            last_in_paragraph: true,
         };
         let layout = TextLayout {
             source: "abcde".into(),
@@ -1391,6 +2183,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         assert_eq!(
@@ -1409,6 +2202,301 @@ mod tests {
             layout.selection_rects(0..5),
             [Rect::from_fixed(0, 0, 320, 64)]
         );
+    }
+
+    /// Three stacked lines of two glyphs each: bytes 0..2, 2..4, 4..6.
+    fn stacked_layout() -> TextLayout {
+        let mut lines = Vec::new();
+        for (index, (range, y)) in [(0..2, 0_i32), (2..4, 64), (4..6, 128)]
+            .into_iter()
+            .enumerate()
+        {
+            let mut left = glyph(WritingMode::HorizontalTb);
+            left.annotation = None;
+            left.source_range = range.start..range.start.saturating_add(1);
+            left.x = 0;
+            // The pipeline places a glyph at the line's block origin plus its
+            // own size, so the cell sits inside the line's own band.
+            left.y = y.saturating_add(64);
+            left.advance_x = 64;
+            left.font_size = 64;
+            left.bidi_level = 0;
+            let mut right = left.clone();
+            right.source_range = range.start.saturating_add(1)..range.end;
+            right.x = 64;
+            let glyphs = vec![left, right];
+            lines.push(TextLine {
+                range,
+                origin: Point::from_fixed(-32, y),
+                inline_extent: 192,
+                block_extent: 64,
+                writing_mode: WritingMode::HorizontalTb,
+                hit_bounds: TextLine::hit_bounds_for(&glyphs),
+                glyphs,
+                index,
+                paragraph_index: 0,
+                first_in_paragraph: index == 0,
+                last_in_paragraph: index == 2,
+            });
+        }
+        TextLayout {
+            source: "abcdef".to_owned(),
+            lines,
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
+        }
+    }
+
+    /// Three vertical columns of two glyphs each, contiguous and progressing
+    /// right to left the way `WritingMode::VerticalRl` composes them.
+    fn stacked_vertical_layout() -> TextLayout {
+        let mut lines = Vec::new();
+        for (index, (range, block_origin)) in [(0..2, 0_i32), (2..4, -64), (4..6, -128)]
+            .into_iter()
+            .enumerate()
+        {
+            let mut first = glyph(WritingMode::VerticalRl);
+            first.annotation = None;
+            first.source_range = range.start..range.start.saturating_add(1);
+            // A vertical cell spans `x - font_size ..= x`, so the glyph sits at
+            // the column's own trailing edge.
+            first.x = block_origin;
+            first.y = 0;
+            first.advance_x = 0;
+            first.advance_y = 64;
+            first.font_size = 64;
+            first.bidi_level = 0;
+            first.transform = GlyphTransform::Identity;
+            let mut second = first.clone();
+            second.source_range = range.start.saturating_add(1)..range.end;
+            second.y = 64;
+            let glyphs = vec![first, second];
+            lines.push(TextLine {
+                range,
+                origin: Point::from_fixed(block_origin, 0),
+                inline_extent: 128,
+                block_extent: 64,
+                writing_mode: WritingMode::VerticalRl,
+                hit_bounds: None,
+                glyphs,
+                index,
+                paragraph_index: 0,
+                first_in_paragraph: index == 0,
+                last_in_paragraph: index == 2,
+            });
+        }
+        TextLayout {
+            source: "abcdef".to_owned(),
+            lines,
+            fonts: Vec::new(),
+            diagnostics: Vec::new(),
+            writing_mode: WritingMode::VerticalRl,
+            options: test_options(),
+        }
+    }
+
+    #[test]
+    fn vertical_line_geometry_probes_the_column_it_targets() {
+        let layout = stacked_vertical_layout();
+        let bounds: Vec<_> = layout
+            .lines
+            .iter()
+            .map(|line| line.bounds().as_26_6())
+            .collect();
+        assert_eq!(bounds[0].0.saturating_add(bounds[0].2), 0);
+        assert_eq!(bounds[1].0.saturating_add(bounds[1].2), bounds[0].0);
+
+        // Attribution probes a rectangle's own middle on the block axis, so a
+        // full column resolves to itself while its trailing edge — shared with
+        // the previous column — resolves to the earlier one.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[1].0, 0, bounds[1].2, 1)),
+            Some(1)
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[0].0, 0, 0, 1)),
+            Some(0),
+            "the shared column edge belongs to the earlier column"
+        );
+        // A rectangle straddling two columns is decided by its middle, not by
+        // the column its leading edge happens to start in.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(bounds[2].0.saturating_add(32), 0, 64, 1)),
+            Some(1),
+            "the middle lands on the shared edge, which the earlier column wins"
+        );
+
+        // Column-to-column motion probes the middle of the target column, so
+        // it lands there rather than on its edge or past it.
+        let next = layout
+            .caret_next_line(0, Affinity::Upstream)
+            .expect("a following column exists");
+        assert_eq!(layout.line_index_at(next.byte_offset()), Some(1));
+        let further = layout
+            .caret_next_line(next.byte_offset(), next.affinity())
+            .expect("a third column exists");
+        assert_eq!(layout.line_index_at(further.byte_offset()), Some(2));
+        let back = layout
+            .caret_previous_line(further.byte_offset(), further.affinity())
+            .expect("a preceding column exists");
+        assert_eq!(layout.line_index_at(back.byte_offset()), Some(1));
+    }
+
+    #[test]
+    fn line_geometry_queries_pick_the_line_the_caret_is_actually_on() {
+        let layout = stacked_layout();
+
+        // A caret rect is attributed to the line that holds it, not to a
+        // neighbor: the midpoint of the rect must stay inside its own line.
+        // Affinity picks the side, so the first position is upstream-only and
+        // the last downstream-only; a wrap boundary resolves to the line the
+        // chosen side belongs to.
+        for (offset, affinity, expected) in [
+            (0_usize, Affinity::Upstream, 0_usize),
+            (2, Affinity::Upstream, 1),
+            (2, Affinity::Downstream, 0),
+            (4, Affinity::Upstream, 2),
+            (4, Affinity::Downstream, 1),
+            (6, Affinity::Downstream, 2),
+        ] {
+            let rect = layout
+                .caret_rect(offset, affinity)
+                .unwrap_or_else(|| panic!("offset {offset} {affinity:?} has no caret"));
+            assert_eq!(
+                layout.line_index_for_rect(rect),
+                Some(expected),
+                "caret at {offset} ({affinity:?}) belongs to line {expected}"
+            );
+        }
+
+        // Line-to-line motion lands on the adjacent line, never skipping one
+        // or collapsing onto the same line.
+        let start = layout
+            .caret_next_line(0, Affinity::Upstream)
+            .expect("a following line exists");
+        assert_eq!(layout.line_index_at(start.byte_offset()), Some(1));
+        let further = layout
+            .caret_next_line(start.byte_offset(), start.affinity())
+            .expect("a third line exists");
+        assert_eq!(layout.line_index_at(further.byte_offset()), Some(2));
+        assert_eq!(
+            layout.caret_next_line(further.byte_offset(), further.affinity()),
+            None,
+            "the final line has no following line"
+        );
+        let back = layout
+            .caret_previous_line(further.byte_offset(), further.affinity())
+            .expect("a preceding line exists");
+        assert_eq!(layout.line_index_at(back.byte_offset()), Some(1));
+
+        // Composed lines are contiguous, so attribution has to probe a
+        // rectangle's middle: its own top edge is equally close to the line
+        // above, and the earlier line wins a tie. That keeps a caret from
+        // drifting as it is re-resolved.
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 64, 1, 64)),
+            Some(1),
+            "a rectangle filling the second line belongs to it"
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 64, 1, 0)),
+            Some(0),
+            "a rectangle on the shared edge belongs to the earlier line"
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 0, 1, 64)),
+            Some(0)
+        );
+        assert_eq!(
+            layout.line_index_for_rect(Rect::from_fixed(0, 128, 1, 64)),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn filled_selection_extends_only_the_sides_the_selection_continues_past() {
+        let layout = stacked_layout();
+
+        // A selection confined to one line touches exactly that line, and
+        // needs no extension, so it equals the exact glyph-cell union.
+        let middle = layout.selection_rects_filled(2..4);
+        assert_eq!(middle.len(), 1);
+        let exact_middle = layout
+            .selection_rects(2..4)
+            .into_iter()
+            .reduce(Rect::union)
+            .expect("the middle line is selected");
+        assert_eq!(middle[0].as_26_6(), exact_middle.as_26_6());
+
+        // Spanning three lines fills the interior line edge to edge, extends
+        // the first line only forward, and the last line only backward.
+        let spanning = layout.selection_rects_filled(1..5);
+        assert_eq!(spanning.len(), 3);
+        let bounds: Vec<_> = layout
+            .lines
+            .iter()
+            .map(|line| line.bounds().as_26_6())
+            .collect();
+        assert_eq!(
+            spanning[0].as_26_6().0,
+            64,
+            "the first line keeps its own leading edge"
+        );
+        assert_eq!(
+            spanning[0]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[0].as_26_6().2),
+            bounds[0].0.saturating_add(bounds[0].2),
+            "the first line fills to its trailing edge"
+        );
+        assert_eq!(spanning[1].as_26_6().0, bounds[1].0);
+        assert_eq!(
+            spanning[1]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[1].as_26_6().2),
+            bounds[1].0.saturating_add(bounds[1].2),
+            "the interior line fills both edges"
+        );
+        assert_eq!(spanning[2].as_26_6().0, bounds[2].0);
+        assert_eq!(
+            spanning[2]
+                .as_26_6()
+                .0
+                .saturating_add(spanning[2].as_26_6().2),
+            64,
+            "the last line keeps its own trailing edge"
+        );
+
+        // A selection that starts exactly where a line starts, or ends
+        // exactly where one ends, extends nothing: only continuing past the
+        // line reaches its layout edge, which is wider than its glyphs here.
+        let bounds_of_middle = layout.lines[1].bounds().as_26_6();
+        assert!(
+            bounds_of_middle.0 < 0,
+            "the line cell reaches past its glyphs"
+        );
+        let flush_start = layout.selection_rects_filled(2..3);
+        assert_eq!(flush_start.len(), 1);
+        assert_eq!(
+            flush_start[0].as_26_6().0,
+            0,
+            "a selection flush with the line start keeps the glyph edge"
+        );
+        let flush_end = layout.selection_rects_filled(3..4);
+        assert_eq!(flush_end.len(), 1);
+        assert_eq!(
+            flush_end[0]
+                .as_26_6()
+                .0
+                .saturating_add(flush_end[0].as_26_6().2),
+            128,
+            "a selection flush with the line end keeps the glyph edge"
+        );
+        assert!(layout.selection_rects_filled(3..3).is_empty());
     }
 
     #[test]
@@ -1435,6 +2523,10 @@ mod tests {
                 writing_mode: WritingMode::HorizontalTb,
                 hit_bounds: TextLine::hit_bounds_for(&glyphs),
                 glyphs,
+                index: 0,
+                paragraph_index: 0,
+                first_in_paragraph: true,
+                last_in_paragraph: true,
             });
         }
         let layout = TextLayout {
@@ -1443,6 +2535,7 @@ mod tests {
             fonts: Vec::new(),
             diagnostics: Vec::new(),
             writing_mode: WritingMode::HorizontalTb,
+            options: test_options(),
         };
 
         for x in [-32, 0, 63, 64, 96, 160] {

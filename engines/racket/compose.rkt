@@ -1644,7 +1644,7 @@
        ;; only its sign differs.
        (define block-origin block)
        (define-values (placements marks)
-         (place para style items first last found origin block-origin))
+         (place para style items first last found origin block-origin block-extent))
        (define one
          (line (item-start (vector-ref items first))
                (item-end (vector-ref items last))
@@ -1675,7 +1675,7 @@
 
 ;; Where every cluster of one line stands, and the advance the line was composed
 ;; from.
-(define (place para style items first last found origin block-origin)
+(define (place para style items first last found origin block-origin block-extent)
   (define writing-mode (paragraph-writing-mode para))
   (define advances (shape-advances found))
   (define gaps (shape-gaps found))
@@ -1724,7 +1724,8 @@
              (chk+ (chk+ (chk+ cursor (vector-ref advances offset))
                          (vector-ref gaps (add1 offset)))
                    (vector-ref fixed (add1 offset)))
-             (cons (reverse (pieces-of one cursor block-origin (vector-ref designed offset) writing-mode
+             (cons (reverse (pieces-of para one cursor block-origin block-extent
+                                        (vector-ref designed offset) writing-mode
                                         (hash-ref spots (+ first offset) #f)))
                    out)
              (cons (reverse (marks-of para one cursor block-origin writing-mode designed offset count))
@@ -1810,7 +1811,7 @@
 ;; and one narrower than it sits inside it on both -- and the half of an odd width
 ;; that the center does not divide is taken from the leading side, which is the
 ;; rounding `div-trunc` already does toward zero.
-(define (pieces-of one cursor block-origin designed writing-mode found)
+(define (pieces-of para one cursor block-origin block-extent designed writing-mode found)
   (define members (item-members one))
   (cond
     [found
@@ -1841,17 +1842,69 @@
      ;; Every other kind carries its members' own two offsets, because it decided
      ;; where they go when it was built: a tate-chu-yoko run centered its string
      ;; across the line, a furawake laid its rows out one after another.
-     (for/list ([found (in-list members)])
-       (placed (piece-index found)
-               (piece-start found)
-               (piece-end found)
-               (chk+ cursor (piece-inline found))
-               (chk+ block-origin (piece-block found))
-               (piece-advance found)
-               (piece-size found)
-               (piece-frame found)
-               (piece-writing-mode found)
-               (piece-transform found)))]))
+     ;;
+     ;; Both centered it on the PARAGRAPH's em, which is the only extent either
+     ;; knew at the time, and the line is as deep as its deepest item. Where the
+     ;; two differ the structure was drawn half the surplus away from where it
+     ;; belongs, onto the line beside it. docs/adr/0030 corrected that, and this
+     ;; is where the line's own extent finally reaches the members: a construct
+     ;; is centered in the block extent of the line that holds it.
+     ;;
+     ;; The surplus is halved once, over the whole difference, rather than by
+     ;; correcting an already-halved number: two truncations do not make the one
+     ;; the other implementations make, and a unit is a difference.
+     (define em (extent-block (paragraph-size para)))
+     (define vertical? (eq? writing-mode 'vertical-rl))
+     (cond
+       [(eq? (item-kind one) 'tate-chu-yoko)
+        ;; The string is set across the line and its members are laid from one
+        ;; edge of it, so their positions come from the line rather than from
+        ;; the offsets the run was built with. In vertical composition a
+        ;; placement names its box's far edge, which is one advance further on.
+        (define across
+          (for/fold ([sum 0]) ([found (in-list members)]) (chk+ sum (piece-advance found))))
+        (define surplus (div-trunc (chk- block-extent across) 2))
+        (let walk ([rest members]
+                   [edge (if vertical? (chk+ (- block-extent) surplus) surplus)]
+                   [out '()])
+          (cond
+            [(null? rest) (reverse out)]
+            [else
+             (define found (car rest))
+             (walk (cdr rest)
+                   (chk+ edge (piece-advance found))
+                   (cons (placed (piece-index found)
+                                 (piece-start found)
+                                 (piece-end found)
+                                 (chk+ cursor (piece-inline found))
+                                 (chk+ block-origin
+                                       (if vertical? (chk+ edge (piece-advance found)) edge))
+                                 (piece-advance found)
+                                 (piece-size found)
+                                 (piece-frame found)
+                                 (piece-writing-mode found)
+                                 (piece-transform found))
+                         out))]))]
+       [else
+        ;; A stack's rows were laid from `em / 2 - total / 2` and want to be laid
+        ;; from `(extent - total) / 2`. The two writing modes count from opposite
+        ;; ends of the same stack, so the correction is negated with them.
+        (define total (block-room one))
+        (define correction
+          (chk- (div-trunc (chk- block-extent total) 2)
+                (chk- (div-trunc em 2) (div-trunc total 2))))
+        (define shift (if vertical? (- correction) correction))
+        (for/list ([found (in-list members)])
+          (placed (piece-index found)
+                  (piece-start found)
+                  (piece-end found)
+                  (chk+ cursor (piece-inline found))
+                  (chk+ block-origin (chk+ (piece-block found) shift))
+                  (piece-advance found)
+                  (piece-size found)
+                  (piece-frame found)
+                  (piece-writing-mode found)
+                  (piece-transform found)))])]))
 
 ;; The space Table 1 states after the item at `offset`, before any adjustment.
 (define (designed-gap para style items first last offset count)

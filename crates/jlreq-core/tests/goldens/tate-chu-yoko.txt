@@ -1,0 +1,16 @@
+# tate-chu-yoko
+# digits set upright inside vertical writing, which rotate their neighbors
+# lines=1 diagnostics=0
+jlreq.trace/1 events=12 categories=0x0ffb truncated=0
+0000 prepare.paragraph        P   c0..4 b0..8 clusters=4 candidates=4 constructs=1 fast=1 extent=6000 mode=vertical-rl align=justify
+0001 search.chosen            L00 c0..4 b0..8 line=0 start=0 end=3 edge=90000 3.1.1
+0002 line.fit                 L00 c0..4 b0..8 last=1 content=3000 avail=6000 remaining=3000 clusters=4 justify=0 need=0 offset=0 3.8.1
+0003 space.boundary           L00 c0 b0..3 before=19 after=30 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-19,cl-30
+0004 space.boundary           L00 c1 b3..4 before=30 after=30 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-30,cl-30
+0005 space.boundary           L00 c2 b4..5 before=30 after=19 bsize=1000 asize=1000 bsolid=0 asolid=0 terms=0,0 applied=0 B.1@cl-30,cl-19
+0006 tcy.group                L00 c1..3 b3..5 members=2 horizontal=2000 block_extent=2000 3.2.4
+0007 place.cluster            L00 c0..4 b0..3 ordinal=0 inline=0 block=0 advance=1000 transform=identity
+0008 place.cluster            L00 c0..4 b3..4 ordinal=1 inline=1000 block=-1000 advance=1000 transform=tate-chu-yoko
+0009 place.cluster            L00 c0..4 b4..5 ordinal=2 inline=1000 block=0 advance=1000 transform=tate-chu-yoko
+0010 place.cluster            L00 c0..4 b5..8 ordinal=3 inline=2000 block=0 advance=1000 transform=identity
+0011 line.finished            L00 c0..4 b0..8 inline=0 block=0 extent=3000 block_extent=2000 clusters=4 attachments=0 3.8.1

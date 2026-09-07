@@ -93,17 +93,18 @@ fn place_furawake_segment(
     segment: &FurawakeSegment,
     inline: i64,
     block_origin: i32,
+    line_extent: i32,
     placed: &mut Vec<ClusterPlacement>,
 ) {
-    let main_block_extent = paragraph.text.size().block();
-    let mut block = match paragraph.writing_mode {
-        WritingMode::HorizontalTb => i64::from(block_origin).saturating_add(i64::from(
-            main_block_extent.saturating_sub(segment.block_extent) / 2,
-        )),
-        WritingMode::VerticalRl => i64::from(block_origin).saturating_add(i64::from(
-            segment.block_extent.saturating_sub(main_block_extent) / 2,
-        )),
-    };
+    // Centered in the line, not in the paragraph em: the line reserves one em
+    // per column, so centering against one em put every lane half the surplus
+    // early and the first lane onto the line above.
+    let mut block = construct_block_start(paragraph, block_origin, line_extent, segment.block_extent);
+    if paragraph.writing_mode == WritingMode::VerticalRl {
+        // A lane names its cell's block-start edge, which runs backwards here,
+        // so the first lane is the far one and its edge is the segment's end.
+        block = block.saturating_add(i64::from(segment.block_extent));
+    }
     for (lane_index, lane) in segment.lanes.iter().enumerate() {
         let mut cursor = inline;
         for ordinal in lane.clone() {
@@ -275,6 +276,7 @@ fn place_warichu_segment(
     segment: &WarichuSegment,
     cursor: i64,
     block_origin: i32,
+    line_extent: i32,
     placed: &mut Vec<ClusterPlacement>,
 ) {
     let leading_width = segment
@@ -295,15 +297,11 @@ fn place_warichu_segment(
     let first_block_extent = warichu_lane_block_extent(paragraph, &segment.first_lane);
     let second_block_extent = warichu_lane_block_extent(paragraph, &segment.second_lane);
     let total_block_extent = first_block_extent.saturating_add(second_block_extent);
-    let main_block_extent = paragraph.text.size().block();
-    let first_block = match paragraph.writing_mode {
-        WritingMode::HorizontalTb => i64::from(block_origin).saturating_add(i64::from(
-            main_block_extent.saturating_sub(total_block_extent) / 2,
-        )),
-        WritingMode::VerticalRl => i64::from(block_origin).saturating_add(i64::from(
-            total_block_extent.saturating_sub(main_block_extent) / 2,
-        )),
-    };
+    let mut first_block =
+        construct_block_start(paragraph, block_origin, line_extent, total_block_extent);
+    if paragraph.writing_mode == WritingMode::VerticalRl {
+        first_block = first_block.saturating_add(i64::from(total_block_extent));
+    }
     let second_block = match paragraph.writing_mode {
         WritingMode::HorizontalTb => first_block.saturating_add(i64::from(first_block_extent)),
         WritingMode::VerticalRl => first_block.saturating_sub(i64::from(first_block_extent)),
@@ -397,7 +395,7 @@ fn warichu_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
     };
     let mut penalty = 0_i64;
     paragraph.visit_constructs_containing(cluster, |_, construct| {
-        let ConstructKind::Warichu(range) = construct.kind() else {
+        let ConstructKind::Warichu(range) = construct.structure() else {
             return;
         };
         if !(range.start < offset && offset < range.end) {
@@ -423,7 +421,7 @@ fn formula_break_penalty(paragraph: &Paragraph, offset: usize) -> i64 {
         paragraph
             .find_construct_containing(ordinal, |construct| {
                 matches!(
-                    construct.kind(),
+                    construct.structure(),
                     ConstructKind::Formula(range)
                         if range.start == 0
                             && range.end == paragraph.text.source().len()
@@ -486,4 +484,48 @@ fn is_comma(character: char) -> bool {
 
 fn is_middle_dot(character: char) -> bool {
     crate::spec::single_has_class(character, crate::spec::MIDDLE_DOT)
+}
+
+/// Place a tate-chu-yoko group's members side by side across the column.
+///
+/// §3.2.5 sets the string solid from left to right and then aligns it to the
+/// center of the vertical line. The line is the block extent, not the
+/// paragraph's em: centering on `block_origin` put the run half its own width
+/// before the line began, which lands inside the line only when the run is
+/// exactly two members wide.
+fn place_tate_chu_yoko_group(
+    paragraph: &Paragraph,
+    members: Range<usize>,
+    inline: i64,
+    block_origin: i32,
+    line_extent: i32,
+    horizontal_width: i32,
+    placed: &mut Vec<ClusterPlacement>,
+) {
+    let mut edge = construct_block_start(paragraph, block_origin, line_extent, horizontal_width);
+    for ordinal in members {
+        let cluster = &paragraph.text.clusters()[ordinal];
+        let size = cluster.size_override().unwrap_or(paragraph.text.size());
+        let frame = cluster.frame_override().unwrap_or(paragraph.text.frame());
+        let (writing_mode, transform) = local_orientation(paragraph, ordinal, frame);
+        let advance = i64::from(cluster.advance());
+        // A cluster names the block-start edge of its own cell, and which
+        // physical edge that is depends on the writing mode.
+        let block = match paragraph.writing_mode {
+            WritingMode::HorizontalTb => edge,
+            WritingMode::VerticalRl => edge.saturating_add(advance),
+        };
+        placed.push(ClusterPlacement {
+            origin: PlacementOrigin::Cluster(ordinal),
+            range: cluster.range(),
+            inline: clamp_i32(inline),
+            block: clamp_i32(block),
+            advance: cluster.advance(),
+            size,
+            frame,
+            writing_mode,
+            transform,
+        });
+        edge = edge.saturating_add(advance);
+    }
 }

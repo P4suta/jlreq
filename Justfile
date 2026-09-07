@@ -118,6 +118,10 @@ test-ci:
 doc:
     cargo doc --workspace --all-features --no-deps
 
+# Compile every documentation example and run the runnable ones against the fixture font.
+examples:
+    cargo run --quiet -p xtask -- examples
+
 # Build and verify all three public crate archives. Temporary crates.io patches validate the
 # exact-version core dependency before the initial release reaches the registry.
 package:
@@ -152,13 +156,16 @@ wasm:
     rustup target add wasm32-unknown-unknown
     cargo check {{core_crates}} --target wasm32-unknown-unknown --no-default-features
 
-# Exercise input validation, composition/arithmetic, and protocol parsing separately under
-# libFuzzer. Curated seeds are copied below target/ so a run never dirties the source tree.
+# Exercise input validation, composition/arithmetic, protocol parsing, the whole facade,
+# and the handwritten SFNT table readers separately under libFuzzer. Each target is its own
+# failure domain, so a budget spent on one is not spent on another. Curated seeds are copied
+# below target/ so a run never dirties the source tree.
 fuzz-check:
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target input_validation 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target composition 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target protocol_parser 30" } }}
     {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target high_level_layout 30" } }}
+    {{ if os() == "windows" { "cargo +nightly check --manifest-path fuzz/Cargo.toml --bins" } else { "just _fuzz-target font_name_table 30" } }}
 
 # The install-action cargo-fuzz binary is itself built for musl. cargo-fuzz 0.13.2
 # otherwise mistakes that build triple for the fuzz target, but ASan requires the
@@ -168,6 +175,7 @@ fuzz-check-linux-ci:
     just _fuzz-target-linux composition 30
     just _fuzz-target-linux protocol_parser 30
     just _fuzz-target-linux high_level_layout 30
+    just _fuzz-target-linux font_name_table 30
 
 # A single bounded fuzz target. Runtime corpora are disposable target/ state; only
 # fuzz/seeds is reviewed and committed.
@@ -187,6 +195,7 @@ fuzz-scheduled:
     just _fuzz-target-linux composition 900
     just _fuzz-target-linux protocol_parser 900
     just _fuzz-target-linux high_level_layout 900
+    just _fuzz-target-linux font_name_table 900
 
 # Each handwritten product must independently stay above both release thresholds. Generated
 # tables, test fixtures, xtask, and independent engines are covered by their own gates. The
@@ -279,8 +288,10 @@ actionlint:
 
 # Validate every repository-owned POSIX shell entry point, including release packaging and
 # the three-engine census driver.
+# Scripts are listed explicitly: the Windows fallback shell does not expand globs,
+# and an unlisted new script failing the gate loudly beats a glob skipping it silently.
 shellcheck:
-    shellcheck engines/census-all.sh scripts/*.sh
+    shellcheck engines/census-all.sh scripts/check-semver.sh scripts/finalize-release.sh scripts/package-binaries.sh scripts/run-mutation-smoke.sh scripts/verify-crates.sh scripts/verify-release-state.sh
 
 # Reject high-severity GitHub Actions and Dependabot security findings without
 # granting the auditor network or repository credentials.
@@ -530,7 +541,7 @@ check: fmt-check toml-check typos lint design shear reuse shellcheck actionlint 
     @echo "fast local checks passed"
 
 # Every practical CI gate available on a developer machine.
-ci: fmt-check toml-check typos lint feature-matrix test-ci doc package no-std wasm fuzz-check coverage design semver deny shear reuse shellcheck actionlint zizmor msrv conform-engines
+ci: fmt-check toml-check typos lint feature-matrix test-ci doc examples package no-std wasm fuzz-check coverage design semver deny shear reuse shellcheck actionlint zizmor msrv conform-engines
     @echo "local CI passed"
 
 # Release acceptance performs no publication, tag, GitHub Release, or external settings

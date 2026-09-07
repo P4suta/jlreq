@@ -130,8 +130,8 @@ caller-owned object. Scratch and cache state remain valid for the next engine ca
 The dependency-free core retains its one-way implementation pipeline:
 
 ```text
-model/style/limits → spec → normalize/rules → construct
-                   → paragraph → compose/place → layout → public API
+model/style/limits → spec → normalize → construct
+                   → paragraph → layout → trace → pipeline → public API
 ```
 
 All core source coordinates are UTF-8 byte offsets or ranges; geometry is bounded integer
