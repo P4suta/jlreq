@@ -578,17 +578,37 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
     }
 }
 
+/// A click in the middle of what some bytes were drawn into answers with those
+/// bytes.
+///
+/// The question is asked of the **bytes**, not of each glyph. One cluster can
+/// shape to several glyphs — a base and a combining mark — and the mark carries
+/// no advance, so its cell is a sliver one unit wide whose middle is a point it
+/// shares with the cell before it. Asking that sliver where its own middle is
+/// asks which of two touching cells owns their common edge, which is a question
+/// about `Rect::contains` rather than about the layout. The union of the cells
+/// the bytes were drawn into has a middle that belongs to nobody else.
 fn check_hit_tests(layout: &TextLayout, report: &mut Report) {
     for line in layout.lines() {
+        let mut cells: Vec<(Range<usize>, Rect)> = Vec::new();
         for glyph in line.glyphs() {
             if glyph.annotation().is_some() {
                 continue;
             }
-            let Some(point) = center(glyph.cell_bounds()) else {
+            let range = glyph.source_range();
+            let cell = glyph.cell_bounds();
+            if let Some((_, bounds)) = cells.iter_mut().find(|(seen, _)| *seen == range) {
+                *bounds = bounds.union(cell);
+            } else {
+                cells.push((range, cell));
+            }
+        }
+
+        for (range, cell) in cells {
+            let Some(point) = center(cell) else {
                 continue;
             };
             let hit = layout.hit_test(point);
-            let range = glyph.source_range();
             if hit.byte_offset() < range.start || hit.byte_offset() > range.end {
                 report.note(Fault::HitTestMissesItsOwnCell {
                     line: line.index(),

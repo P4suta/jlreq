@@ -132,13 +132,13 @@ proof = "FRAME_PROPORTIONAL is bit 4 and does not overlap the accumulated bits 0
 [[equivalent]]
 mutant = "crates/jlreq/src/result.rs:981:54: replace / with % in TextLayout::caret_on_neighbor_line"
 exclude_re = '^crates/jlreq/src/result[.]rs:981:54: replace / with % in TextLayout::caret_on_neighbor_line$'
-source_sha256 = "9091857b18b491f8194e284de7559f29d8c6df7e61273c40f7612b47f69c3ea3"
+source_sha256 = "6fd40fa033d3540f37ed561f7f886b9c4db19b9a69f7b6dc2685677151f98baa"
 proof = "The probe only has to land inside the column it targets. Both `x + width / 2` and `x + width % 2` do: the remainder is 0 or 1, and `Rect::contains` includes the edges, so each point lies within `x ..= x + width`. Where the target's leading edge is shared with the next column, `line_index_for_rect` keeps the first line at equal distance, and the target is the earlier of the two in both motion directions. The horizontal branch of the same expression is not equivalent and is covered by `line_geometry_queries_pick_the_line_the_caret_is_actually_on`."
 
 [[equivalent]]
 mutant = "crates/jlreq/src/result.rs:1056:46: replace || with && in TextLayout::selection_rects_filled"
 exclude_re = '^crates/jlreq/src/result[.]rs:1056:46: replace [|][|] with && in TextLayout::selection_rects_filled$'
-source_sha256 = "9091857b18b491f8194e284de7559f29d8c6df7e61273c40f7612b47f69c3ea3"
+source_sha256 = "6fd40fa033d3540f37ed561f7f886b9c4db19b9a69f7b6dc2685677151f98baa"
 proof = "The disjunction skips lines the selection does not touch; it is a fast path, not a correctness guard. A line the conjunction fails to skip produces the clamped range `range.start.max(line.start) .. range.end.min(line.end)`, whose start exceeds its end for any non-overlapping line. `selection_rects` rejects such a range in `is_valid_selection_range` and returns no rectangles, so the loop reaches the same `continue` one step later with the same result."
 
 [[equivalent]]
