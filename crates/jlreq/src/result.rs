@@ -1464,6 +1464,13 @@ impl std::fmt::Display for GlyphPlacement {
             ay = to_f32(self.advance_y),
             size = to_f32(self.font_size),
         )?;
+        // Said only when there is something to say. One character size is two
+        // numbers, and a reading at §3.3.3's 三分ルビ is narrower than the size
+        // it is set at — printing it as square would be the readable default
+        // quietly disagreeing with the geometry.
+        if self.inline_size != self.font_size {
+            write!(formatter, " condensed to {}", to_f32(self.inline_size))?;
+        }
         if self.transform != GlyphTransform::Identity {
             let transform = match self.transform {
                 GlyphTransform::Identity => "identity",
@@ -1556,6 +1563,17 @@ mod tests {
         assert_eq!(
             bare.to_string(),
             "info: no registered face declares the requested family (font.unknown-family)"
+        );
+
+        // A square size says nothing about its inline axis, and a condensed one
+        // says exactly what it narrowed to. Both are pinned, so neither the
+        // silence nor the sentence can drift.
+        let mut condensed = glyph(WritingMode::VerticalRl);
+        condensed.inline_size = 128;
+        assert_eq!(
+            condensed.to_string(),
+            "glyph 77 from face 0 for bytes 2..5 at (3.5, 3) advance (4, -6) size 3 \
+             condensed to 2 rotate-clockwise annotating construct 3"
         );
 
         let placed = glyph(WritingMode::VerticalRl);
