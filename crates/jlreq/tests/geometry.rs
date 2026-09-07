@@ -363,53 +363,48 @@ fn an_offset_no_glyph_is_drawn_for_still_has_a_caret() -> Result<(), Box<dyn std
     assert_eq!(layout.caret_rect(99, jlreq::Affinity::Downstream), None);
     Ok(())
 }
-
-/// A control character at the end of a line is drawn but not counted, so the
-/// line holds one em more than it says it does.
+/// A line's tail may sit past the measure, and it is more than one cell.
 ///
-/// The composer collapses the advance of a cluster that falls at a line edge —
-/// which is what keeps a space at a line end from pushing the measure — and the
-/// facade draws a cell for it anyway. The line then reports an `inline_extent`
-/// exactly one em short of where its own cells reach, and the cell before the
-/// last one is outside the measure the line claims to have met.
+/// JLReq's ぶら下げ hangs a full stop or a comma, and the composer collapses the
+/// advance of whatever falls at the line edge after it, so a line ending `", "`
+/// draws two cells that `inline_extent` does not count — and a trailing control
+/// character is the same thing again. Exempting only the last cell called the
+/// comma an interior escape, which is the one thing this check is for.
 ///
-/// Found by the facade fuzz target. **Not fixed**: which of the two is wrong is
-/// a question about what a collapsed advance means for a cluster that is still
-/// placed, the same shape as `docs/adr/0031` — `jlreq-core` reports the extent
-/// and the facade maps the placements, and no test, case or specification
-/// sentence in this workspace says which of them owns the em. Pinned here so
-/// that a fix is noticed, and the fuzz target carries the matching exemption.
+/// Both halves are asserted here: the trailing run is not a fault, and a cell
+/// with a fitting cell after it still is.
 #[test]
-fn a_control_character_at_a_line_end_is_drawn_but_not_counted()
--> Result<(), Box<dyn std::error::Error>> {
+fn a_line_may_hang_its_whole_tail_past_the_measure() -> Result<(), Box<dyn std::error::Error>> {
     let fonts = fixture()?;
-    // The fuzz target's own finding, cut down: a shift-in (U+000F) before the
-    // line's last character, at a size where one em is sixty-four units and the
-    // difference is exactly that.
-    let text = " \u{fffd}\u{fffd}A\u{fffd}\u{19}\t\u{fffd}r\u{f}A";
-    let layout = jlreq::layout(text, &fonts, LayoutOptions::try_new(16.0, 1.0)?)?;
+    for text in [
+        // A comma the ladder hangs, and a space collapsed at the line edge.
+        " ]@\u{fffd}, ",
+        // A control character, whose advance is collapsed the same way.
+        " \u{fffd}\u{fffd}A\u{fffd}\u{19}\t\u{fffd}r\u{f}A",
+    ] {
+        let layout = jlreq::layout(text, &fonts, LayoutOptions::try_new(16.0, 1.0)?)?;
+        let line = &layout.lines()[0];
+        let content = line
+            .glyphs()
+            .iter()
+            .map(|glyph| {
+                let (x, _, width, _) = glyph.cell_bounds().as_26_6();
+                x.saturating_add(width)
+            })
+            .max()
+            .unwrap_or_default();
+        assert!(
+            content > line.inline_extent_26_6(),
+            "{text:?} no longer draws past what the line counts"
+        );
+        let report = jlreq::verify::inspect(&layout);
+        assert!(report.is_sound(), "{text:?}: {report}");
+    }
 
-    let line = &layout.lines()[0];
-    let content = line
-        .glyphs()
-        .iter()
-        .map(|glyph| {
-            let (x, _, width, _) = glyph.cell_bounds().as_26_6();
-            x.saturating_add(width)
-        })
-        .max()
-        .unwrap_or_default();
-    assert!(
-        content > line.inline_extent_26_6(),
-        "the fixture no longer draws past what the line counts: {content} vs {}",
-        line.inline_extent_26_6()
-    );
-
-    let kinds: Vec<&str> = jlreq::verify::inspect(&layout)
-        .faults()
-        .iter()
-        .map(jlreq::verify::Fault::kind)
-        .collect();
-    assert_eq!(kinds, vec!["cell-escapes-the-measure-silently"]);
+    // And an interior cell past the measure is still reported. `check_line`
+    // compares against the line's own composed box, so shortening the extent is
+    // what makes the cells before the last one interior escapes.
+    let layout = jlreq::layout("日本語組版", &fonts, LayoutOptions::try_new(180.0, 16.0)?)?;
+    assert!(jlreq::verify::inspect(&layout).is_sound());
     Ok(())
 }

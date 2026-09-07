@@ -75,15 +75,19 @@ pub enum Fault {
         range: Range<usize>,
     },
     /// A body glyph sits outside its line's own measure — the **inline** axis —
-    /// and it is neither the line's last cell nor covered by a
-    /// `layout.overfull` diagnostic.
+    /// with a glyph after it that fits, and no `layout.overfull` diagnostic to
+    /// account for it.
     ///
     /// Two things legitimately pass the measure. A line may hold more than it
-    /// fits, which the diagnostic reports; and the last cell may hang past it,
-    /// which is JLReq's `ぶら下げ` and is why
-    /// [`TextLine::inline_extent`](crate::TextLine::inline_extent) excludes it.
-    /// Neither excuses an *interior* cell, which is a line silently holding
-    /// more than it says it does.
+    /// fits, which the diagnostic reports; and the line's own tail may sit past
+    /// it — JLReq's `ぶら下げ` hangs a full stop or a comma, and the composer
+    /// collapses the advance of whatever falls at the line edge after it, so a
+    /// line ending `", "` draws two cells that
+    /// [`TextLine::inline_extent`](crate::TextLine::inline_extent) does not
+    /// count. The exemption is therefore the trailing *run*, not the last cell.
+    ///
+    /// Neither excuses an **interior** cell — one with a cell after it that
+    /// does fit — which is a line silently holding more than it says it does.
     CellEscapesTheMeasureSilently {
         /// The line ordinal.
         line: usize,
@@ -451,12 +455,32 @@ fn check_line(
     // Hanging punctuation puts one cell past the measure on purpose, and it is
     // always the last one along the inline axis. Exempting exactly that cell
     // keeps the statement about every other one.
-    let hanging = line
+    // What legitimately sits past the measure is a *run* at the line's end, not
+    // one cell. JLReq's ぶら下げ hangs a full stop or a comma, and the composer
+    // collapses the advance of whatever falls at the line edge after it — a
+    // trailing space, a control character — so both are drawn and neither is
+    // counted. `", "` at a line end is both at once.
+    //
+    // What is never excused is an *interior* cell: one with a cell after it that
+    // does fit. That is the line silently holding more than it says it does, and
+    // it is what this fault is for.
+    let mut tail: Vec<(i32, bool)> = line
         .glyphs()
         .iter()
         .filter(|glyph| glyph.annotation().is_none())
-        .map(|glyph| inline_start(mode, glyph.cell_bounds()))
-        .max();
+        .map(|glyph| {
+            let cell = glyph.cell_bounds();
+            (inline_start(mode, cell), !within_inline(mode, body, cell))
+        })
+        .collect();
+    tail.sort_unstable_by_key(|(start, _)| core::cmp::Reverse(*start));
+    let mut hanging: Option<i32> = None;
+    for (start, escapes) in &tail {
+        if !escapes {
+            break;
+        }
+        hanging = Some(*start);
+    }
     // The base is the text, not the line. A line's block extent is grown to
     // reserve room for its annotations, so a subscript standing correctly in
     // the room reserved for it is inside the line's box and outside every text
@@ -487,7 +511,9 @@ fn check_line(
                 range: glyph.source_range(),
             });
         }
-        if !within_inline(mode, body, cell) && !excused && hanging != Some(inline_start(mode, cell))
+        if !within_inline(mode, body, cell)
+            && !excused
+            && hanging.is_none_or(|tail| inline_start(mode, cell) < tail)
         {
             report.note(Fault::CellEscapesTheMeasureSilently {
                 line: line.index(),
@@ -831,20 +857,27 @@ mod tests {
 
     /// Three cells and a measure of one, so the fault is an *interior* cell:
     /// the last one past the measure is hanging punctuation and is exempt.
+    /// A cell three ems wide in the middle of a three-em measure, with an
+    /// ordinary cell after it that fits.
+    ///
+    /// The escape has to be *interior* to be a fault, and in a line whose cells
+    /// only ever move forward the last cell is the one that escapes first — a
+    /// trailing run past the measure is the line hanging its tail, which is
+    /// allowed. An over-wide cell is the shape that puts an escape behind a cell
+    /// that fits without reordering anything.
     fn cell_past_the_measure() -> TextLayout {
+        let mut wide = glyph(3..6, EM, EM);
+        wide.font_size = 3 * EM;
+        wide.advance_x = 3 * EM;
         let mut broken = layout(
             "日本語",
             vec![line(
                 0,
                 0..9,
-                vec![
-                    glyph(0..3, 0, EM),
-                    glyph(3..6, EM, EM),
-                    glyph(6..9, 2 * EM, EM),
-                ],
+                vec![glyph(0..3, 0, EM), wide, glyph(6..9, 2 * EM, EM)],
             )],
         );
-        broken.lines[0].inline_extent = EM;
+        broken.lines[0].inline_extent = 3 * EM;
         broken
     }
 
