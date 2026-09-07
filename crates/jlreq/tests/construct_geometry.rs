@@ -9,7 +9,7 @@
 //! file states what the sweep is sweeping *for*, in exact 26.6 units.
 //!
 //! - **A tate-chu-yoko run is centered in its line.** JLReq §3.2.5 sets the
-//!   string solid from left to right and then aligns it to the centre of the
+//!   string solid from left to right and then aligns it to the center of the
 //!   vertical line. The run was centered on the line's block *origin* instead,
 //!   which is its edge, so it was displaced by `(members − 2) × advance / 2` —
 //!   zero at two members, and enough at three to put a member on the line

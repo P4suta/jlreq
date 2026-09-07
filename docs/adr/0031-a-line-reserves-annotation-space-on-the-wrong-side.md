@@ -118,7 +118,7 @@ cell the walk reached somewhere else entirely, moving an em of text sideways and
 `hit_test` answer with the wrong bytes. A restart is now taken only when the cursor
 really goes from the one cell to the other.
 
-The other half is the pre-correction behaviour surviving where the fix cannot reach, and
+The other half is the pre-correction behavior surviving where the fix cannot reach, and
 it is left alone. Two models were tried and both were worse: computing the gaps in
 visual order breaks every ordinary bidi line, because the difference between two logical
 coordinates means nothing for cells the composer did not place next to each other; and

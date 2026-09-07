@@ -489,7 +489,7 @@ fn is_middle_dot(character: char) -> bool {
 /// Place a tate-chu-yoko group's members side by side across the column.
 ///
 /// §3.2.5 sets the string solid from left to right and then aligns it to the
-/// centre of the vertical line. The line is the block extent, not the
+/// center of the vertical line. The line is the block extent, not the
 /// paragraph's em: centering on `block_origin` put the run half its own width
 /// before the line began, which lands inside the line only when the run is
 /// exactly two members wide.

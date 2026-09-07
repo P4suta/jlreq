@@ -1184,7 +1184,53 @@ impl TextLayout {
                 return Some(empty_line_caret(line));
             }
         }
-        None
+        self.caret_at_an_offset_no_glyph_names(byte_offset)
+    }
+
+    /// A caret for an offset that no glyph begins or ends at, under **either**
+    /// affinity.
+    ///
+    /// Both answers being `None` is the one thing that cannot be right: an
+    /// editor has to be able to put the cursor at every offset the layout
+    /// covers. A tab is the case that reaches here — the composer spends its
+    /// advance without the shaper producing a glyph for it — and the fuzz
+    /// target found it, at offset zero, where an editor opens.
+    ///
+    /// Deliberately not reached when the *other* affinity has an answer:
+    /// nothing ends at the start of the source and nothing starts at its end,
+    /// and those two `None`s are the affinity distinction doing its job.
+    fn caret_at_an_offset_no_glyph_names(&self, byte_offset: usize) -> Option<Rect> {
+        let named = self
+            .lines
+            .iter()
+            .flat_map(|line| line.glyphs.iter())
+            .filter(|glyph| glyph.annotation.is_none())
+            .any(|glyph| {
+                glyph.source_range.start == byte_offset || glyph.source_range.end == byte_offset
+            });
+        if named {
+            return None;
+        }
+        let line = self
+            .lines
+            .iter()
+            .find(|line| line.range.start <= byte_offset && byte_offset <= line.range.end)?;
+        let preceding = line
+            .glyphs
+            .iter()
+            .filter(|glyph| glyph.annotation.is_none())
+            .filter(|glyph| glyph.source_range.end <= byte_offset)
+            .max_by_key(|glyph| glyph.source_range.end);
+        Some(preceding.map_or_else(
+            || empty_line_caret(line),
+            |glyph| {
+                caret_for_bounds(
+                    glyph.cell_bounds(),
+                    is_visual_end(false, glyph.bidi_level),
+                    glyph.writing_mode,
+                )
+            },
+        ))
     }
 
     /// Return one rectangle per visually contiguous selected run on each line.

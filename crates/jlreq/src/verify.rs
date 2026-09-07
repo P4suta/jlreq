@@ -584,7 +584,7 @@ fn check_hit_tests(layout: &TextLayout, report: &mut Report) {
             if glyph.annotation().is_some() {
                 continue;
             }
-            let Some(point) = centre(glyph.cell_bounds()) else {
+            let Some(point) = center(glyph.cell_bounds()) else {
                 continue;
             };
             let hit = layout.hit_test(point);
@@ -656,7 +656,7 @@ fn caret_position(caret: Rect, mode: WritingMode) -> Rect {
     }
 }
 
-fn centre(cell: Rect) -> Option<Point> {
+fn center(cell: Rect) -> Option<Point> {
     let (x, y, width, height) = cell.as_26_6();
     Some(Point::from_fixed(
         x.checked_add(width / 2)?,
@@ -667,30 +667,34 @@ fn centre(cell: Rect) -> Option<Point> {
 /// Does `inner` stay inside `outer` along the axis lines progress down?
 fn within_block(mode: WritingMode, outer: Rect, inner: Rect) -> bool {
     let (ox, oy, ow, oh) = outer.as_26_6();
-    let (ix, iy, iw, ih) = inner.as_26_6();
+    let (inner_x, inner_y, inner_width, inner_height) = inner.as_26_6();
     match mode {
-        WritingMode::VerticalRl => ix >= ox && ix.saturating_add(iw) <= ox.saturating_add(ow),
-        _ => iy >= oy && iy.saturating_add(ih) <= oy.saturating_add(oh),
+        WritingMode::VerticalRl => {
+            inner_x >= ox && inner_x.saturating_add(inner_width) <= ox.saturating_add(ow)
+        },
+        _ => inner_y >= oy && inner_y.saturating_add(inner_height) <= oy.saturating_add(oh),
     }
 }
 
 /// Does `inner` stay inside `outer` along the axis a line runs along?
 fn within_inline(mode: WritingMode, outer: Rect, inner: Rect) -> bool {
     let (ox, oy, ow, oh) = outer.as_26_6();
-    let (ix, iy, iw, ih) = inner.as_26_6();
+    let (inner_x, inner_y, inner_width, inner_height) = inner.as_26_6();
     match mode {
-        WritingMode::VerticalRl => iy >= oy && iy.saturating_add(ih) <= oy.saturating_add(oh),
-        _ => ix >= ox && ix.saturating_add(iw) <= ox.saturating_add(ow),
+        WritingMode::VerticalRl => {
+            inner_y >= oy && inner_y.saturating_add(inner_height) <= oy.saturating_add(oh)
+        },
+        _ => inner_x >= ox && inner_x.saturating_add(inner_width) <= ox.saturating_add(ow),
     }
 }
 
 fn contains(outer: Rect, inner: Rect) -> bool {
     let (ox, oy, ow, oh) = outer.as_26_6();
-    let (ix, iy, iw, ih) = inner.as_26_6();
-    ix >= ox
-        && iy >= oy
-        && ix.saturating_add(iw) <= ox.saturating_add(ow)
-        && iy.saturating_add(ih) <= oy.saturating_add(oh)
+    let (inner_x, inner_y, inner_width, inner_height) = inner.as_26_6();
+    inner_x >= ox
+        && inner_y >= oy
+        && inner_x.saturating_add(inner_width) <= ox.saturating_add(ow)
+        && inner_y.saturating_add(inner_height) <= oy.saturating_add(oh)
 }
 
 /// A cell's coordinate along the inline axis, whichever axis that is.
@@ -909,8 +913,26 @@ mod tests {
     /// A line whose glyph is attributed to bytes the line's own range does not
     /// end at: `caret_rect` finds no glyph edge at the line's end and no empty
     /// line to fall back to, so neither affinity places a caret there.
+    /// A line edge that is not a character boundary, so `caret_rect` refuses it
+    /// under both affinities and an editor has nowhere to put the cursor.
+    ///
+    /// It used to be enough to give a line a range longer than its glyphs, but
+    /// `caret_rect` now answers for an offset no glyph names — a tab is the
+    /// real case — so the only way left to have no caret at all is an offset
+    /// that is not addressable. The lines still partition the source, so this
+    /// witness breaks the one thing its name says.
     fn line_edge_with_no_caret() -> TextLayout {
-        layout("日本語", vec![line(0, 0..9, vec![glyph(0..3, 0, EM)])])
+        layout(
+            "日本語",
+            vec![
+                line(0, 0..1, vec![glyph(0..3, 0, EM)]),
+                line(
+                    1,
+                    1..9,
+                    vec![glyph(3..6, 0, 2 * EM), glyph(6..9, EM, 2 * EM)],
+                ),
+            ],
+        )
     }
 
     fn witness_layouts() -> Vec<TextLayout> {

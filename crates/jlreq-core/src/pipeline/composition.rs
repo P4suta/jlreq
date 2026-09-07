@@ -883,7 +883,7 @@ impl Composer {
             .saturating_add(alignment_offset);
         // Decided before anything is placed, because a construct is centered in
         // the line and the line is as wide as its widest construct: centering
-        // against the extent known *so far* centres against a number a later
+        // against the extent known *so far* centers against a number a later
         // construct can still raise. `docs/adr/0030` records what that cost.
         let mut block_extent = line_block_extent(paragraph, start_cluster, end_cluster);
         let mut local = 0;
