@@ -1199,6 +1199,15 @@ impl TextLayout {
     /// Deliberately not reached when the *other* affinity has an answer:
     /// nothing ends at the start of the source and nothing starts at its end,
     /// and those two `None`s are the affinity distinction doing its job.
+    ///
+    /// **The position is the preceding glyph's edge, not the far side of the
+    /// advance that was spent.** For `"A\t"` the caret at offset 2 sits where
+    /// the tab began rather than where it ended, and both affinities return it.
+    /// Placing it correctly needs the composer to keep a caret stop for an
+    /// advance no glyph carries, which is a change in lowering rather than
+    /// here. An editor that can put the cursor at every offset is what this
+    /// method is for, and it does that; an editor that wants the tab's far edge
+    /// has to measure the line.
     fn caret_at_an_offset_no_glyph_names(&self, byte_offset: usize) -> Option<Rect> {
         let named = self
             .lines

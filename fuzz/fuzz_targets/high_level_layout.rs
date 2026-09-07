@@ -35,6 +35,13 @@ fn check_geometry(layout: &jlreq::TextLayout) {
         .faults()
         .iter()
         .filter(|fault| {
+            // The exemption is for one fault on one shape, not for every fault
+            // a line of that shape can produce. Widening it to the line would
+            // hide a cell, an annotation or a hit-testing defect that happened
+            // to land on a reordered construct.
+            if !matches!(fault, jlreq::verify::Fault::CellEscapesTheMeasureSilently { .. }) {
+                return true;
+            }
             let line = fault.line().and_then(|line| layout.lines().get(line));
             !line.is_some_and(deferred_by_adr_0031)
         })

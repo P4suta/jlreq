@@ -75,6 +75,15 @@ impl Categories {
     /// How many break opportunities of each strength reached the composer.
     pub const BREAKS: Self = Self(0x0010);
     /// The core's own composition events, tagged with the paragraph they came from.
+    ///
+    /// **Selecting or clearing this changes nothing.** Which core events exist
+    /// is decided by the core's own category set — the second argument to
+    /// [`DocumentTrace::with_categories`] and
+    /// [`DocumentTrace::set_core_categories`] — and those events are folded in
+    /// whole rather than filtered again here, because two switches for one
+    /// thing is one switch too many. The bit is kept because the set is public
+    /// and its width is part of the API; the recorded traces select core events
+    /// through the core set and leave this clear.
     pub const CORE: Self = Self(0x0020);
     /// How the composer's logical placements became physical cells.
     ///
@@ -543,6 +552,12 @@ impl DocumentTrace {
         if core.is_truncated() {
             self.truncated = true;
         }
+        // Deliberately `push` rather than `record`: what the core produces is
+        // chosen by the core's own category set, which `core_trace` already
+        // handed it, and asking a second time here would mean two switches for
+        // one thing. `Categories::CORE` is the one that does nothing —
+        // documented on the constant, and the `breaks` golden is a corpus entry
+        // whose facade set omits it while carrying core events on purpose.
         for event in core.take_events() {
             let bytes = event.site().bytes();
             let site = Site::in_paragraph(
@@ -1011,6 +1026,39 @@ mod tests {
         }
         let kinds: Vec<_> = trace.events().iter().map(Event::kind).collect();
         assert_eq!(kinds, ["face.chosen", "face.fallback"]);
+    }
+
+    /// Core events answer to the *core's* category set and to nothing else.
+    ///
+    /// `Categories::CORE` looks like a second switch for them and is not: they
+    /// reach the document through `absorb`, which folds them in whole. The
+    /// `breaks` golden depends on it — its facade set is `0x0011`, with this
+    /// bit clear, and it carries `search.chosen` — so the constant's doc says
+    /// the bit is inert and this says the same thing where it can fail.
+    #[test]
+    fn the_core_set_alone_decides_which_core_events_arrive() {
+        for facade in [Categories::ALL, Categories::ALL.without(Categories::CORE)] {
+            let mut document =
+                DocumentTrace::with_categories(facade, jlreq_core::trace::Categories::ALL);
+            let mut core = document.core_trace();
+            compose_fixture(&mut core);
+            assert!(!core.events().is_empty(), "the fixture produced nothing");
+            document.absorb(0, 0, &mut core);
+            assert!(core.events().is_empty(), "absorb leaves the core drained");
+            assert!(
+                !document.events().is_empty(),
+                "facade categories {:#06x} dropped the core's events",
+                facade.bits()
+            );
+        }
+
+        // And the core's set is the one that decides: cleared, nothing arrives.
+        let mut document =
+            DocumentTrace::with_categories(Categories::ALL, jlreq_core::trace::Categories::NONE);
+        let mut core = document.core_trace();
+        compose_fixture(&mut core);
+        document.absorb(0, 0, &mut core);
+        assert!(document.events().is_empty());
     }
 
     #[test]

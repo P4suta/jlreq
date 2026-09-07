@@ -273,6 +273,16 @@ pub fn inspect(layout: &Layout, paragraph: &Paragraph) -> Report {
 /// its end. A layout that dropped or duplicated input would show up here and nowhere else.
 fn check_coverage(lines: &[Line], source: usize, report: &mut Report) {
     let Some(first) = lines.first() else {
+        // No lines at all still has to answer for the source. `Layout` is
+        // publicly constructible, so a caller can hand `inspect` a default one
+        // beside a paragraph that holds text, and returning here called that
+        // sound — a layout covering none of its input.
+        if source != 0 {
+            report.note(Fault::CoverageEndsEarly {
+                observed: 0,
+                source,
+            });
+        }
         return;
     };
     if first.range().start != 0 {
@@ -915,6 +925,25 @@ mod tests {
             &paragraph,
         );
         assert!(report.is_sound(), "{report}");
+    }
+
+    /// A layout with no lines at all still has to answer for the source.
+    ///
+    /// `Layout` is publicly constructible, so `inspect` can be handed a default
+    /// one beside a paragraph that holds text — and it called that sound, which
+    /// is the one answer a layout covering none of its input cannot give. An
+    /// empty source is the case where nothing is owed and nothing is said.
+    #[test]
+    fn a_layout_with_no_lines_still_answers_for_the_source() {
+        let report = inspect(&Layout::default(), &paragraph("あい", 2_000));
+        assert_eq!(
+            report.faults(),
+            [Fault::CoverageEndsEarly {
+                observed: 0,
+                source: 6,
+            }]
+        );
+        assert!(inspect(&Layout::default(), &paragraph("", 2_000)).is_sound());
     }
 
     /// And one step the other way is a fault, so the comparisons are not simply
