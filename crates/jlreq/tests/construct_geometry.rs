@@ -424,6 +424,15 @@ fn a_three_part_ruby_is_condensed_across_the_inline_axis() -> Result<(), Box<dyn
                 // size under either scale, and condenses from there.
                 assert_eq!(glyph.font_size_26_6(), EM / 2, "{mode:?}");
                 assert_eq!(glyph.inline_size_26_6(), inline_em, "{mode:?}");
+                // The caller's unit says the same thing. Asked separately
+                // because it is a separate accessor, and one that reported a
+                // constant would agree with the fixed-point one nowhere.
+                assert!(
+                    (glyph.inline_size() - f32::from(i16::try_from(inline_em)?) / 64.0).abs()
+                        < f32::EPSILON,
+                    "{mode:?}: {} is not {inline_em} in 26.6",
+                    glyph.inline_size()
+                );
             }
             assert_eq!(ruby[0].cell_bounds().as_26_6(), expected, "{mode:?}");
 

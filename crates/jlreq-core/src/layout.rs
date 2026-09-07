@@ -529,6 +529,23 @@ mod tests {
         );
         assert_eq!(Layout::default().to_string(), "empty layout");
 
+        // Two lines, so the separator between them is exercised rather than
+        // only the one before the diagnostics: a single line never asks which
+        // ordinals get a newline in front of them.
+        let without_attachments = Line {
+            attachments: alloc::vec![],
+            ..line.clone()
+        };
+        let two = Layout {
+            lines: alloc::vec![line.clone(), without_attachments],
+            diagnostics: alloc::vec![],
+        };
+        assert_eq!(
+            two.to_string(),
+            "0: line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s), 1 attachment(s)\n\
+             1: line bytes 0..3 at (0, 0) 1000x1000 1 cluster(s)"
+        );
+
         // Diagnostics with no lines still print one per line rather than
         // running together, which is the case the leading separator is for.
         let diagnostics_only = Layout {
