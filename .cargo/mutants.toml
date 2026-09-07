@@ -15,6 +15,6 @@ exclude_re = [
   '^crates/jlreq-core/src/generated[.]rs:37:5: replace [|] with \^$',
   '^crates/jlreq-core/src/generated[.]rs:38:5: replace [|] with \^$',
   '^crates/jlreq-core/src/generated[.]rs:55:41: replace < with <= in ascends$',
-  '^crates/jlreq/src/result[.]rs:981:54: replace / with % in TextLayout::caret_on_neighbor_line$',
-  '^crates/jlreq/src/result[.]rs:1056:46: replace [|][|] with && in TextLayout::selection_rects_filled$',
+  '^crates/jlreq/src/result[.]rs:1018:54: replace / with % in TextLayout::caret_on_neighbor_line$',
+  '^crates/jlreq/src/result[.]rs:1093:46: replace [|][|] with && in TextLayout::selection_rects_filled$',
 ]

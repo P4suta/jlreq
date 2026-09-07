@@ -241,6 +241,19 @@ fn annotation_options(options: &LayoutOptions) -> LayoutOptions {
     result
 }
 
+/// The same, at the size the caller declared the reading is set at.
+///
+/// A ruby annotation is shaped at its **block** em, because that is the size a
+/// renderer sets the face to; the inline em is then a condensation of those
+/// outlines, which `PreparedText::condense_inline` applies. At
+/// [`RubyScale::HALF`] the two are equal and this is `annotation_options`.
+pub(crate) fn ruby_annotation_options(options: &LayoutOptions) -> LayoutOptions {
+    let mut result = options.clone();
+    result.font_size = options.ruby_scale().resolve_block(options.font_size);
+    result.alignment = Alignment::Start;
+    result
+}
+
 fn ruby_runs(
     kind: crate::RubyKind,
     local_base: &Range<usize>,

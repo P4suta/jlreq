@@ -36,7 +36,7 @@ pub use font::{
 };
 pub use options::{
     Alignment, BaseDirection, FontVariation, LayoutOptions, OpenTypeFeature, OpenTypeTag,
-    ResourceLimits, TabAlignment, TabStop, Widow, WritingMode,
+    ResourceLimits, RubyScale, TabAlignment, TabStop, Widow, WritingMode,
 };
 pub use result::{
     Affinity, AnnotationSource, Diagnostic, DiagnosticSeverity, GlyphPlacement, GlyphTransform,

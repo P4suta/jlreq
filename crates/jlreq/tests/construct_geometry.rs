@@ -368,3 +368,75 @@ fn a_furawake_in_a_reordered_line_is_still_wrong() -> Result<(), Box<dyn std::er
     );
     Ok(())
 }
+
+/// A reading declared at 三分ルビ is condensed, not merely small.
+///
+/// JLReq §3.3.3 gives it a block extent of half the base em and an inline
+/// extent of a third. One scalar cannot say that, which is why
+/// [`GlyphPlacement::inline_size`] exists and why `docs/adr/0033` adds it: the
+/// face is still set at half — 512 of the paragraph's 1024 — and the outlines
+/// are narrowed to 341, which is 1024 × 240/720 truncated, the third stated in
+/// ADR-0007's 1/720 em.
+///
+/// Asked in both writing modes because the axis that narrows is the text's, not
+/// the screen's: it is the cell's width in horizontal writing and its height in
+/// vertical, and a condensation applied to a screen axis would be right in one
+/// and wrong in the other.
+#[test]
+fn a_three_part_ruby_is_condensed_across_the_inline_axis() -> Result<(), Box<dyn std::error::Error>>
+{
+    let fonts = fixture()?;
+    for (mode, half_cell, third_cell) in [
+        // (mode, one ruby cell at RubyScale::HALF, the same at THIRD)
+        (
+            WritingMode::HorizontalTb,
+            (86, -512, 512, 512),
+            (171, -512, 341, 512),
+        ),
+        (
+            WritingMode::VerticalRl,
+            (0, 86, 512, 512),
+            (0, 171, 512, 341),
+        ),
+    ] {
+        for (scale, expected, inline_em) in [
+            (jlreq::RubyScale::HALF, half_cell, 512),
+            (jlreq::RubyScale::THIRD, third_cell, 341),
+        ] {
+            let mut builder = DocumentBuilder::new("漢字とルビ");
+            builder.group_ruby(0..6, "かんじ")?;
+            let document = builder.build()?;
+            let layout = jlreq::layout_document(
+                &document,
+                &fonts,
+                LayoutOptions::try_new(400.0, 16.0)?
+                    .with_writing_mode(mode)
+                    .with_ruby_scale(scale),
+            )?;
+
+            let ruby: Vec<&jlreq::GlyphPlacement> = layout
+                .glyphs()
+                .filter(|glyph| glyph.annotation().is_some())
+                .collect();
+            assert_eq!(ruby.len(), 3, "{mode:?}: the reading is three clusters");
+            for glyph in &ruby {
+                // The block em never moves: a renderer sets the face at this
+                // size under either scale, and condenses from there.
+                assert_eq!(glyph.font_size_26_6(), EM / 2, "{mode:?}");
+                assert_eq!(glyph.inline_size_26_6(), inline_em, "{mode:?}");
+            }
+            assert_eq!(ruby[0].cell_bounds().as_26_6(), expected, "{mode:?}");
+
+            // The advance narrows with the em, so the reading still partitions
+            // its base rather than overhanging what the composer reserved.
+            let (_, _, width, height) = ruby[0].cell_bounds().as_26_6();
+            let along = match mode {
+                WritingMode::VerticalRl => height,
+                _ => width,
+            };
+            assert_eq!(along, inline_em, "{mode:?}: the cell follows the advance");
+            assert!(jlreq::verify::inspect(&layout).is_sound(), "{mode:?}");
+        }
+    }
+    Ok(())
+}

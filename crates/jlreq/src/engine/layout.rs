@@ -645,6 +645,7 @@ impl LayoutEngine {
                     range: item.range.clone(),
                     advance: 0,
                     size: item.effective.size,
+                    inline_size: item.effective.size,
                     frame: jlreq_core::Frame::Proportional,
                     role: None,
                     bidi_level: item.level.number(),
@@ -850,8 +851,8 @@ impl LayoutEngine {
                     runs,
                     ..
                 } => {
-                    let annotation_options = annotation_options(options);
-                    let annotation_prepared = self.prepare_text(
+                    let annotation_options = ruby_annotation_options(options);
+                    let mut annotation_prepared = self.prepare_text(
                         PrepareRequest {
                             source: annotation,
                             paragraph_index: paragraph.index,
@@ -864,8 +865,19 @@ impl LayoutEngine {
                         call,
                             trace,
                     )?;
-                    let shaped =
-                        annotation_prepared.to_core(annotation, annotation_options.font_size)?;
+                    // §3.3.3's inline em, which is the block em unless the
+                    // caller declared 三分ルビ or a size of its own.
+                    let inline_em = options.ruby_scale().resolve_inline(options.font_size);
+                    annotation_prepared.condense_inline(
+                        inline_em,
+                        annotation_options.font_size,
+                        options.writing_mode,
+                    );
+                    let shaped = annotation_prepared.to_core_sized(
+                        annotation,
+                        inline_em,
+                        annotation_options.font_size,
+                    )?;
                     let core_runs = ruby_runs(
                         *kind,
                         &local_range,

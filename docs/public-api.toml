@@ -46,6 +46,7 @@ items = [
   "Rect",
   "Resource",
   "ResourceLimits",
+  "RubyScale",
   "RubyKind",
   "RubyRun",
   "ScriptPosition",

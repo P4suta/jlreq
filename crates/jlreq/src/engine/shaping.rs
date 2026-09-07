@@ -29,6 +29,7 @@ fn aggregate_run(
             range: start..end,
             advance: 0,
             size: style.size,
+            inline_size: style.size,
             frame: resolve_frame(style.frame, piece),
             role: classify_role(source, start..end, style.role),
             bidi_level,

@@ -25,6 +25,14 @@ use jlreq::{
     LayoutOptions, TextLayout, WritingMode,
 };
 
+/// The annotation stream of each construct this example adds, by ordinal.
+///
+/// An annotation glyph's `source_range` indexes its construct's own stream
+/// rather than the paragraph, so nothing but the writer of the document can
+/// turn one back into characters. Only the ruby has a stream; a tate-chu-yoko
+/// run and a warichu are body text set differently.
+const ANNOTATIONS: [&str; 3] = ["にほんご", "", ""];
+
 fn main() -> Result<(), Box<dyn Error>> {
     let path = std::env::args()
         .nth(1)
@@ -43,7 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // reading of the contract puts somewhere else entirely.
     let text = "日本語組版の座標系\n漢字と12と割注。";
     let mut document = DocumentBuilder::new(text);
-    document.group_ruby(0..9, "にほんご")?;
+    document.group_ruby(0..9, ANNOTATIONS[0])?;
     document.tate_chu_yoko(37..39)?;
     document.warichu(42..48)?;
     let document = document.build()?;
@@ -53,14 +61,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vertical = jlreq::layout_document(
         &document,
         &fonts,
-        options.with_writing_mode(WritingMode::VerticalRl),
+        options.clone().with_writing_mode(WritingMode::VerticalRl),
+    )?;
+    // The same document with §3.3.3's 三分ルビ. Its reading is set at the same
+    // size down the block axis and narrowed to a third across the inline one,
+    // so the two horizontal panels differ in exactly one thing and the
+    // condensation is the thing you are looking at.
+    let condensed = jlreq::layout_document(
+        &document,
+        &fonts,
+        options.with_ruby_scale(jlreq::RubyScale::THIRD),
     )?;
 
     let mut svg = String::new();
     writeln!(
         svg,
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"760\" height=\"360\" \
-         viewBox=\"0 0 760 360\">"
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"760\" height=\"560\" \
+         viewBox=\"0 0 760 560\">"
     )?;
     writeln!(
         svg,
@@ -77,6 +94,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     draw(&mut svg, &horizontal, 60.0, 70.0, "horizontal-tb")?;
     draw(&mut svg, &vertical, 700.0, 70.0, "vertical-rl")?;
+    draw(
+        &mut svg,
+        &condensed,
+        60.0,
+        340.0,
+        "horizontal-tb, RubyScale::THIRD (三分ルビ)",
+    )?;
 
     writeln!(svg, "</svg>")?;
     std::fs::write(&out, svg)?;
@@ -167,14 +191,37 @@ fn draw(
                 continue;
             };
             let (x, y) = text_origin(layout, glyph);
-            let rotate = if glyph.transform() == GlyphTransform::RotateClockwise {
-                format!(" transform=\"rotate(90 {x} {y})\"")
-            } else {
+            // One `transform`, built from both things that can move a glyph.
+            // SVG takes the attribute once; emitting it twice silently drops
+            // one, which is the sort of thing this example exists to not do.
+            let mut operations = Vec::new();
+            if glyph.transform() == GlyphTransform::RotateClockwise {
+                operations.push(format!("rotate(90 {x} {y})"));
+            }
+            // One character size is two numbers: the face is set at
+            // `font_size` and the inline axis is narrowed to `inline_size`,
+            // which is a third of the base em for JLReq §3.3.3's 三分ルビ and
+            // equal to it for everything else. Drawing without this puts a
+            // half-em outline in a third of an em of advance — drawn text off
+            // its own cells, which is what this file makes visible.
+            if let Some(factor) = condensation(glyph) {
+                let axis = match glyph.writing_mode() {
+                    WritingMode::VerticalRl => format!("1 {factor}"),
+                    _ => format!("{factor} 1"),
+                };
+                operations.push(format!(
+                    "translate({x} {y}) scale({axis}) translate({} {})",
+                    -x, -y
+                ));
+            }
+            let transform = if operations.is_empty() {
                 String::new()
+            } else {
+                format!(" transform=\"{}\"", operations.join(" "))
             };
             writeln!(
                 svg,
-                "<text x=\"{x}\" y=\"{y}\" font-size=\"{}\" fill=\"#1a1a1a\"{rotate}>{}</text>",
+                "<text x=\"{x}\" y=\"{y}\" font-size=\"{}\" fill=\"#1a1a1a\"{transform}>{}</text>",
                 glyph.font_size(),
                 escape(text)
             )?;
@@ -210,10 +257,15 @@ fn text_origin(layout: &TextLayout, glyph: &GlyphPlacement) -> (f32, f32) {
 }
 
 fn glyph_text<'a>(layout: &'a TextLayout, glyph: &GlyphPlacement) -> Option<&'a str> {
-    if glyph.annotation().is_some() {
-        return None;
-    }
-    layout.source().get(glyph.source_range())
+    let Some(annotation) = glyph.annotation() else {
+        return layout.source().get(glyph.source_range());
+    };
+    // An annotation glyph is attributed to its construct's own stream, not to
+    // the paragraph, so the paragraph source cannot resolve it. This example
+    // wrote the document, so it is the one thing here that knows the readings.
+    ANNOTATIONS
+        .get(annotation.construct())
+        .and_then(|stream: &&str| stream.get(annotation.range()))
 }
 
 /// Minimal RFC 4648 encoder, so the example keeps the workspace's no-extra-dependency rule.
@@ -241,4 +293,18 @@ fn escape(value: &str) -> String {
         .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+/// How far the inline axis is narrowed, where it is narrowed at all.
+///
+/// `None` for a square size, which is every glyph unless the caller declared a
+/// [`jlreq::RubyScale`] that is not `HALF`. `docs/design/geometry.md` states
+/// the ratio; this is that sentence, executed.
+fn condensation(glyph: &jlreq::GlyphPlacement) -> Option<f32> {
+    let block = glyph.font_size_26_6();
+    let inline = glyph.inline_size_26_6();
+    if inline == block || block <= 0 {
+        return None;
+    }
+    Some(glyph.inline_size() / glyph.font_size())
 }

@@ -34,6 +34,8 @@ pub enum OptionKind {
     FirstLineIndent,
     /// An explicit tab-stop position.
     TabStop,
+    /// A ruby size, as a fraction of the base em.
+    RubyScale,
 }
 
 /// A finite resource bounded by [`crate::ResourceLimits`].

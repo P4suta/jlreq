@@ -872,6 +872,7 @@ mod tests {
             offset_x: 0,
             offset_y: 0,
             font_size: EM,
+            inline_size: EM,
             variations: Arc::from([]),
             transform: GlyphTransform::Identity,
             bidi_level: 0,

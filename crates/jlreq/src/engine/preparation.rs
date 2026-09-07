@@ -246,6 +246,9 @@ struct PreparedCluster {
     range: Range<usize>,
     advance: i32,
     size: i32,
+    /// The em across the inline axis, which is `size` unless a `RubyScale`
+    /// condensed this cluster. `docs/adr/0033`.
+    inline_size: i32,
     frame: jlreq_core::Frame,
     role: Option<jlreq_core::ClusterRole>,
     bidi_level: u8,
@@ -264,10 +267,18 @@ impl PreparedText {
         source: &str,
         default_size: i32,
     ) -> Result<jlreq_core::ShapedText, LayoutError> {
-        let size = jlreq_core::Size::square(default_size)?;
+        self.to_core_with(source, jlreq_core::Size::square(default_size)?)
+    }
+
+    /// The core text at a stated default em, which `to_core` makes square.
+    fn to_core_with(
+        &self,
+        source: &str,
+        size: jlreq_core::Size,
+    ) -> Result<jlreq_core::ShapedText, LayoutError> {
         let mut clusters = Vec::with_capacity(self.clusters.len());
         for cluster in &self.clusters {
-            let local_size = jlreq_core::Size::square(cluster.size)?;
+            let local_size = jlreq_core::Size::new(cluster.inline_size, cluster.size)?;
             let mut core = jlreq_core::Cluster::new(cluster.range.clone(), cluster.advance)
                 .with_size(local_size)
                 .with_frame(cluster.frame);
@@ -306,6 +317,7 @@ impl PreparedText {
             }
             cluster.advance /= 2;
             cluster.size = (cluster.size / 2).max(1);
+            cluster.inline_size = (cluster.inline_size / 2).max(1);
             for glyph in &mut cluster.glyphs {
                 glyph.x_advance /= 2;
                 glyph.y_advance /= 2;
@@ -315,6 +327,58 @@ impl PreparedText {
         }
     }
 
+
+    /// Condense every cluster across the **inline** axis to `inline` per em,
+    /// having been shaped at `block` per em.
+    ///
+    /// JLReq §3.3.3's 三分ルビ is a reading whose block extent is half the base
+    /// em and whose inline extent is a third: the same outlines set at the
+    /// block size and then narrowed, which is what `Frame` and the cluster's
+    /// advance have to agree on. Only the inline component moves — the axis is
+    /// the text's, not the screen's, so it is x in horizontal writing and y in
+    /// vertical — and `inline_size` records where it landed so a renderer can
+    /// apply the same factor to the outline it draws.
+    ///
+    /// A no-op at [`RubyScale::HALF`](crate::RubyScale::HALF), where the two
+    /// ems are equal. Odd units truncate, as halving does.
+    fn condense_inline(&mut self, inline: i32, block: i32, mode: WritingMode) {
+        if inline == block || block <= 0 {
+            return;
+        }
+        let scale = |value: i32| -> i32 {
+            let scaled = i64::from(value)
+                .saturating_mul(i64::from(inline))
+                .checked_div(i64::from(block))
+                .unwrap_or_default();
+            i32::try_from(scaled).unwrap_or(i32::MAX)
+        };
+        for cluster in &mut self.clusters {
+            cluster.inline_size = scale(cluster.inline_size).max(1);
+            cluster.advance = scale(cluster.advance);
+            for glyph in &mut cluster.glyphs {
+                match mode {
+                    WritingMode::VerticalRl => {
+                        glyph.y_advance = scale(glyph.y_advance);
+                        glyph.y_offset = scale(glyph.y_offset);
+                    },
+                    WritingMode::HorizontalTb => {
+                        glyph.x_advance = scale(glyph.x_advance);
+                        glyph.x_offset = scale(glyph.x_offset);
+                    },
+                }
+            }
+        }
+    }
+
+    /// The core text, with an axis-specific default em rather than a square one.
+    fn to_core_sized(
+        &self,
+        source: &str,
+        inline: i32,
+        block: i32,
+    ) -> Result<jlreq_core::ShapedText, LayoutError> {
+        self.to_core_with(source, jlreq_core::Size::new(inline, block)?)
+    }
     fn is_boundary(&self, offset: usize, source_len: usize) -> bool {
         offset == 0
             || offset == source_len

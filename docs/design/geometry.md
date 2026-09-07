@@ -103,6 +103,29 @@ let baseline_y = cell.y() + cell.height() + descent * glyph.font_size();
 places its own baseline at the point it is given, so if the expression were wrong the
 example's glyphs would sit off their own drawn cells.
 
+## One character size is two numbers
+
+`GlyphPlacement::font_size` is the size the face is **set** at — the block-axis em.
+`GlyphPlacement::inline_size` is the em across the inline axis. They are equal for every
+glyph unless a [`RubyScale`](../adr/0033-one-character-size-is-two-numbers.md) said
+otherwise, and where they differ the glyph is *condensed*: JLReq §3.3.3 gives 三分ルビ a
+block extent of half the base em and an inline extent of a third, which is a narrowed
+reading rather than a smaller one, and no single scalar states it.
+
+A renderer sets the face at `font_size` and scales the inline axis by the ratio:
+
+```rust,ignore
+let condense = glyph.inline_size() / glyph.font_size(); // 1.0 unless the ruby is condensed
+```
+
+The axis is the text's, not the screen's: it narrows a cell's **width** in horizontal
+writing and its **height** in vertical. The cell already follows it — a cell's inline
+extent is the composer's advance, and the advance is condensed with the em — so
+`cell_bounds` needs no correction; only the outline does.
+
+`docs/adr/0007` made the core's size anisotropic for this reason and
+`docs/adr/0033` carried it into this contract.
+
 ## What a line reports
 
 `TextLine::inline_extent` is the length the measure was met at, **excluding hanging

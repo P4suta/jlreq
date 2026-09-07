@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 jlreq contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::units::{finite, non_negative, positive, quantize, to_f32};
+use crate::units::{finite, non_negative, positive, quantize, rounded_f32_to_i32, to_f32};
 use crate::{LayoutError, OptionKind};
 
 /// Physical writing mode requested from the high-level pipeline.
@@ -391,6 +391,116 @@ impl Default for ResourceLimits {
     }
 }
 
+/// The size a ruby annotation is set at, one em per axis.
+///
+/// JLReq §3.3.3 names two. The principal one is half the base size,
+/// [`Self::HALF`]. The other is 三分ルビ, [`Self::THIRD`], whose block extent is
+/// half the base em and whose **inline** extent is a third — a reading that is
+/// condensed, not merely small, which is why one scalar cannot state it and
+/// [`GlyphPlacement::inline_size`](crate::GlyphPlacement::inline_size) exists.
+///
+/// The specification closes neither set: for headings at twelve points or more
+/// it says only that the ruby "is generally smaller than half the size of the
+/// base characters", with no ratio given. So this states a size rather than
+/// selecting from a list, and [`Self::try_new`] is that third case.
+///
+/// Held in units of 1/720 of the base em, which is
+/// [ADR 0007](https://github.com/P4suta/jlreq)'s unit: the fractions the
+/// specification names are halves, thirds, quarters, fifths and eighths, whose
+/// lowest common multiple is 120, and 720 keeps a quantity at either named ruby
+/// scale exact when it is restated in base ems.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RubyScale {
+    inline: u16,
+    block: u16,
+}
+
+/// One base em, in the unit [`RubyScale`] states its axes in.
+const EM_720: u16 = 720;
+
+impl RubyScale {
+    /// §3.3.3's principal ruby size: half the base em on both axes.
+    pub const HALF: Self = Self {
+        inline: EM_720 / 2,
+        block: EM_720 / 2,
+    };
+
+    /// §3.3.3's 三分ルビ: a third of the base em across the inline axis, half
+    /// down the block axis.
+    pub const THIRD: Self = Self {
+        inline: EM_720 / 3,
+        block: EM_720 / 2,
+    };
+
+    /// State a size §3.3.3 does not name, as fractions of the base em.
+    ///
+    /// Both axes must be finite, positive, and no larger than the base: a
+    /// reading set wider or taller than the text it annotates is not ruby. The
+    /// fractions are quantized to 1/720 of the base em, so the two named sizes
+    /// round-trip exactly and anything else lands on the nearest 720th.
+    pub fn try_new(inline: f32, block: f32) -> Result<Self, LayoutError> {
+        Ok(Self {
+            inline: fraction_of_em(inline)?,
+            block: fraction_of_em(block)?,
+        })
+    }
+
+    /// The inline-axis em, as a fraction of the base em.
+    #[must_use]
+    pub fn inline(self) -> f32 {
+        f32::from(self.inline) / f32::from(EM_720)
+    }
+
+    /// The block-axis em, as a fraction of the base em.
+    #[must_use]
+    pub fn block(self) -> f32 {
+        f32::from(self.block) / f32::from(EM_720)
+    }
+
+    /// This scale's inline axis against a base em in 26.6 units.
+    pub(crate) fn resolve_inline(self, base: i32) -> i32 {
+        resolve(base, self.inline)
+    }
+
+    /// This scale's block axis against a base em in 26.6 units.
+    pub(crate) fn resolve_block(self, base: i32) -> i32 {
+        resolve(base, self.block)
+    }
+}
+
+impl Default for RubyScale {
+    /// [`RubyScale::HALF`], which is what §3.3.3 calls the principle.
+    fn default() -> Self {
+        Self::HALF
+    }
+}
+
+/// Offered once per axis rather than once with an axis argument, for the reason
+/// ADR 0007 gives about `Em::resolve`: an axis-free length is a length a later
+/// call site can put on the wrong axis.
+fn resolve(base: i32, axis: u16) -> i32 {
+    let scaled = i64::from(base)
+        .saturating_mul(i64::from(axis))
+        .checked_div(i64::from(EM_720))
+        .unwrap_or_default();
+    // Never zero: a size of no extent is not a size, and the composer divides
+    // by it.
+    i32::try_from(scaled).unwrap_or(i32::MAX).max(1)
+}
+
+fn fraction_of_em(value: f32) -> Result<u16, LayoutError> {
+    if !value.is_finite() || value <= 0.0 || value > 1.0 {
+        return Err(LayoutError::invalid_option(
+            OptionKind::RubyScale,
+            "a ruby axis must be a finite fraction of the base em, above zero and at most one",
+        ));
+    }
+    // Clamped rather than rejected at the low end: the guard above already
+    // bounds the domain, and one 720th is the smallest size this unit states.
+    let units = rounded_f32_to_i32(value * f32::from(EM_720)).clamp(1, i32::from(EM_720));
+    Ok(u16::try_from(units).unwrap_or(EM_720))
+}
+
 /// Validated controls for automatic shaping and line layout.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -409,6 +519,7 @@ pub struct LayoutOptions {
     pub(crate) widow: Widow,
     pub(crate) first_line_indent: i32,
     pub(crate) tab_stops: Vec<TabStop>,
+    pub(crate) ruby_scale: RubyScale,
     pub(crate) limits: ResourceLimits,
 }
 
@@ -433,6 +544,7 @@ impl LayoutOptions {
             widow: Widow::Allow,
             first_line_indent: 0,
             tab_stops: Vec::new(),
+            ruby_scale: RubyScale::HALF,
             limits: ResourceLimits::default(),
         })
     }
@@ -565,6 +677,17 @@ impl LayoutOptions {
         self
     }
 
+    /// Set the size ruby annotations are composed at.
+    ///
+    /// Ruby only. §3.3.9 fixes the emphasis dot at half the base and makes it
+    /// no one's parameter, and a reference mark and a superscript are sized the
+    /// same way, so this moves the reading and nothing else.
+    #[must_use]
+    pub const fn with_ruby_scale(mut self, value: RubyScale) -> Self {
+        self.ruby_scale = value;
+        self
+    }
+
     /// Replace all high-level resource limits.
     #[must_use]
     pub const fn with_limits(mut self, value: ResourceLimits) -> Self {
@@ -656,6 +779,12 @@ impl LayoutOptions {
         &self.tab_stops
     }
 
+    /// Current ruby size.
+    #[must_use]
+    pub const fn ruby_scale(&self) -> RubyScale {
+        self.ruby_scale
+    }
+
     /// Current limits.
     #[must_use]
     pub const fn limits(&self) -> ResourceLimits {
@@ -734,5 +863,82 @@ mod tests {
         };
         assert_eq!(hash(first), hash(same_cell));
         assert_ne!(hash(first), hash(different));
+    }
+}
+
+#[cfg(test)]
+mod ruby_scale_tests {
+    use super::{EM_720, RubyScale};
+
+    /// The two sizes §3.3.3 names are exact in this unit, which is the whole
+    /// reason ADR-0007 chose 1/720 of the em rather than a float.
+    /// Exactness is claimed in the 1/720 unit, not in `f32`: a third is not a
+    /// binary fraction, which is the whole reason ADR-0007 picked an integer
+    /// unit whose lowest common multiple covers what the specification names.
+    #[test]
+    fn the_two_named_sizes_are_exact() {
+        assert_eq!(RubyScale::HALF.resolve_inline(EM_720.into()), 360);
+        assert_eq!(RubyScale::THIRD.resolve_inline(EM_720.into()), 240);
+        assert_eq!(RubyScale::default(), RubyScale::HALF);
+
+        // And they round-trip through the public constructor, which is where a
+        // caller who does not want the constants comes in.
+        assert_eq!(RubyScale::try_new(0.5, 0.5).unwrap(), RubyScale::HALF);
+        assert_eq!(
+            RubyScale::try_new(1.0 / 3.0, 0.5).unwrap(),
+            RubyScale::THIRD
+        );
+
+        // The reported fractions are the same numbers, to within the step the
+        // unit takes.
+        let step = 1.0 / f32::from(EM_720);
+        assert!((RubyScale::HALF.inline() - 0.5).abs() < step);
+        assert!((RubyScale::THIRD.inline() - 1.0 / 3.0).abs() < step);
+        assert!((RubyScale::THIRD.block() - 0.5).abs() < step);
+    }
+
+    /// A base em resolves per axis, and the two named sizes divide a 720-unit
+    /// em without a remainder — which is what "exact" is claiming.
+    #[test]
+    fn each_axis_resolves_against_the_base_em_on_its_own() {
+        assert_eq!(RubyScale::HALF.resolve_inline(720), 360);
+        assert_eq!(RubyScale::HALF.resolve_block(720), 360);
+        assert_eq!(RubyScale::THIRD.resolve_inline(720), 240);
+        assert_eq!(RubyScale::THIRD.resolve_block(720), 360);
+        // The axes are not interchangeable: swapping them is a different size.
+        assert_ne!(
+            RubyScale::THIRD.resolve_inline(1024),
+            RubyScale::THIRD.resolve_block(1024)
+        );
+        // 1024 × 240/720 truncates to 341, which is what the geometry test pins.
+        assert_eq!(RubyScale::THIRD.resolve_inline(1024), 341);
+        // Never zero: a size of no extent is not a size.
+        assert_eq!(RubyScale::THIRD.resolve_inline(1), 1);
+        assert_eq!(RubyScale::HALF.resolve_block(i32::MAX), i32::MAX / 2);
+    }
+
+    /// A ruby larger than its base is not ruby, and neither is one of no size.
+    #[test]
+    fn a_size_outside_the_base_is_refused() {
+        for (inline, block) in [
+            (0.0, 0.5),
+            (0.5, 0.0),
+            (-0.5, 0.5),
+            (1.5, 0.5),
+            (0.5, 1.5),
+            (f32::NAN, 0.5),
+            (0.5, f32::INFINITY),
+        ] {
+            assert!(
+                RubyScale::try_new(inline, block).is_err(),
+                "({inline}, {block}) was accepted"
+            );
+        }
+        // One whole em on both axes is the boundary and is allowed: §3.3.3
+        // states no lower bound for headings, and the guard is about larger.
+        assert!(RubyScale::try_new(1.0, 1.0).is_ok());
+        // A fraction smaller than one 720th still states a size.
+        let smallest = RubyScale::try_new(1.0 / f32::from(EM_720) / 4.0, 0.5).unwrap();
+        assert_eq!(smallest.resolve_inline(EM_720.into()), 1);
     }
 }

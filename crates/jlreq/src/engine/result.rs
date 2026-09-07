@@ -388,6 +388,7 @@ fn place_raw_glyph(
         offset_x,
         offset_y,
         font_size: cluster.size,
+        inline_size: cluster.inline_size,
         variations: Arc::clone(&cluster.variations),
         transform,
         bidi_level: cluster.bidi_level,

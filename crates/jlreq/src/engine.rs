@@ -70,6 +70,7 @@ mod tests {
             range,
             advance: 256,
             size: 192,
+            inline_size: 192,
             frame: jlreq_core::Frame::Proportional,
             role: None,
             bidi_level: level,

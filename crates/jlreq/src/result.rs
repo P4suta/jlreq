@@ -201,6 +201,7 @@ pub struct GlyphPlacement {
     pub(crate) offset_x: i32,
     pub(crate) offset_y: i32,
     pub(crate) font_size: i32,
+    pub(crate) inline_size: i32,
     pub(crate) variations: Arc<[crate::FontVariation]>,
     pub(crate) transform: GlyphTransform,
     pub(crate) bidi_level: u8,
@@ -335,6 +336,37 @@ impl GlyphPlacement {
         self.font_size
     }
 
+    /// The em **across** the inline axis, where it differs from
+    /// [`Self::font_size`].
+    ///
+    /// One character size is two numbers, not one. JLReq §3.3.3 gives 三分ルビ a
+    /// block extent of half the base em and an inline extent of a third, so a
+    /// reading set at that size is condensed rather than merely small, and a
+    /// single scalar cannot say it. [`ADR 0007`] made the core's size
+    /// anisotropic for this reason; this is the same statement in the drawing
+    /// contract.
+    ///
+    /// Equal to [`Self::font_size_26_6`] for every glyph whose size is square,
+    /// which is all of them unless a
+    /// [`RubyScale`](crate::RubyScale) said otherwise. A renderer sets the face
+    /// at [`Self::font_size`] and scales the inline axis by this over that;
+    /// where they are equal that factor is one and there is nothing to do.
+    ///
+    /// [`ADR 0007`]: https://github.com/P4suta/jlreq
+    #[must_use]
+    pub const fn inline_size_26_6(&self) -> i32 {
+        self.inline_size
+    }
+
+    /// The em across the inline axis, in the caller's unit.
+    ///
+    /// See [`Self::inline_size_26_6`] for what makes it differ from
+    /// [`Self::font_size`].
+    #[must_use]
+    pub fn inline_size(&self) -> f32 {
+        to_f32(self.inline_size)
+    }
+
     /// Effective variable-font settings used for shaping.
     ///
     /// The backing slice is shared by glyphs with the same resolved style.
@@ -394,7 +426,12 @@ impl GlyphPlacement {
             // one em of column the whole run occupies.
             (WritingMode::VerticalRl, GlyphTransform::TateChuYoko) => {
                 let width = self.advance_x.abs().max(1);
-                Rect::from_fixed(self.x.saturating_sub(width), self.y, width, self.font_size)
+                Rect::from_fixed(
+                    self.x.saturating_sub(width),
+                    self.y,
+                    width,
+                    self.inline_size,
+                )
             },
             (WritingMode::HorizontalTb, _) => {
                 let width = self.advance_x.abs().max(1);
@@ -1479,6 +1516,7 @@ mod tests {
             offset_x: 96,
             offset_y: -128,
             font_size: 192,
+            inline_size: 192,
             variations: Arc::from([crate::FontVariation::try_new(
                 crate::OpenTypeTag::try_new("wght").unwrap(),
                 650.0,
