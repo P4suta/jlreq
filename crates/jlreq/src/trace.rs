@@ -1091,4 +1091,43 @@ mod tests {
         );
         assert!(rendered.contains("0000 P00 text.breaks"), "{rendered}");
     }
+
+    /// The set algebra and the three settings a caller configures a trace with.
+    ///
+    /// Every one of these survived mutation: `with` still passed with `|` moved
+    /// to `^`, which is the same answer for disjoint sets and the wrong one the
+    /// moment a family is in both; and the setters still passed when replaced
+    /// by nothing at all, because the corpus configures a trace once and never
+    /// reconfigures one.
+    #[test]
+    fn a_family_already_in_a_set_survives_being_added_again() {
+        let breaks = Categories::NONE.with(Categories::BREAKS);
+        assert_eq!(breaks.with(Categories::BREAKS), breaks);
+        assert_eq!(
+            Categories::BREAKS.with(Categories::RUNS),
+            Categories::NONE
+                .with(Categories::RUNS)
+                .with(Categories::BREAKS)
+        );
+        assert_eq!(Categories::ALL.with(Categories::ALL), Categories::ALL);
+    }
+
+    #[test]
+    fn a_trace_reports_the_settings_it_was_last_given() {
+        let mut trace = DocumentTrace::new();
+        trace.set_categories(Categories::BREAKS);
+        assert_eq!(trace.categories(), Categories::BREAKS);
+        trace.set_categories(Categories::RUNS);
+        assert_eq!(trace.categories(), Categories::RUNS);
+
+        trace.set_core_categories(jlreq_core::trace::Categories::NONE);
+        assert_eq!(trace.core_categories(), jlreq_core::trace::Categories::NONE);
+        trace.set_core_categories(jlreq_core::trace::Categories::ALL);
+        assert_eq!(trace.core_categories(), jlreq_core::trace::Categories::ALL);
+
+        trace.set_max_events(7);
+        assert_eq!(trace.max_events(), 7);
+        trace.set_max_events(0);
+        assert_eq!(trace.max_events(), 0);
+    }
 }

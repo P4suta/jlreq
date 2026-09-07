@@ -1231,4 +1231,160 @@ mod tests {
             },
         ]
     }
+
+    /// The geometry predicates, at the exact edges they decide.
+    ///
+    /// They are private helpers reached through `inspect`, and a corpus only
+    /// exercises the answers its own fixtures happen to need: every one of
+    /// them survived a mutation that moved a `<` to a `<=`, turned an `&&`
+    /// into an `||`, or deleted the vertical arm outright. A predicate is
+    /// cheapest to state directly, so here it is stated directly.
+    mod predicates {
+        use crate::WritingMode;
+        use crate::result::{Point, Rect, TextLine};
+        use crate::verify::{
+            block_origin, caret_position, contains, inline_start, within_block, within_inline,
+        };
+
+        const EM: i32 = 1024;
+
+        /// A horizontal line: one em down the block axis, four along the inline.
+        fn horizontal() -> Rect {
+            Rect::from_fixed(0, 0, 4 * EM, EM)
+        }
+
+        /// The same line turned: the block axis is x and runs one em.
+        fn vertical() -> Rect {
+            Rect::from_fixed(0, 0, EM, 4 * EM)
+        }
+
+        fn outer(mode: WritingMode) -> Rect {
+            match mode {
+                WritingMode::VerticalRl => vertical(),
+                _ => horizontal(),
+            }
+        }
+
+        #[test]
+        fn a_cell_flush_with_an_edge_is_inside_and_one_unit_past_it_is_not() {
+            for mode in [WritingMode::HorizontalTb, WritingMode::VerticalRl] {
+                let box_of = outer(mode);
+                // Flush at both ends of both axes: the edges are inclusive, so
+                // `<` and `<=` are not the same predicate here.
+                let (flush_block, flush_inline) = match mode {
+                    WritingMode::VerticalRl => (
+                        Rect::from_fixed(0, 0, EM, EM),
+                        Rect::from_fixed(0, 3 * EM, EM, EM),
+                    ),
+                    _ => (
+                        Rect::from_fixed(0, 0, EM, EM),
+                        Rect::from_fixed(3 * EM, 0, EM, EM),
+                    ),
+                };
+                assert!(within_block(mode, box_of, flush_block), "{mode:?}");
+                assert!(within_inline(mode, box_of, flush_inline), "{mode:?}");
+
+                // One unit past each edge in turn, so neither half of either
+                // conjunction can be dropped and neither arm deleted.
+                let (block_low, block_high, inline_low, inline_high) = match mode {
+                    WritingMode::VerticalRl => (
+                        Rect::from_fixed(-1, 0, EM, EM),
+                        Rect::from_fixed(1, 0, EM, EM),
+                        Rect::from_fixed(0, -1, EM, EM),
+                        Rect::from_fixed(0, 3 * EM + 1, EM, EM),
+                    ),
+                    _ => (
+                        Rect::from_fixed(0, -1, EM, EM),
+                        Rect::from_fixed(0, 1, EM, EM),
+                        Rect::from_fixed(-1, 0, EM, EM),
+                        Rect::from_fixed(3 * EM + 1, 0, EM, EM),
+                    ),
+                };
+                assert!(!within_block(mode, box_of, block_low), "{mode:?}");
+                assert!(!within_block(mode, box_of, block_high), "{mode:?}");
+                assert!(!within_inline(mode, box_of, inline_low), "{mode:?}");
+                assert!(!within_inline(mode, box_of, inline_high), "{mode:?}");
+            }
+
+            // `contains` asks four things, and each of them alone is enough.
+            assert!(contains(horizontal(), Rect::from_fixed(0, 0, 4 * EM, EM)));
+            for escaping in [
+                Rect::from_fixed(-1, 0, EM, EM),
+                Rect::from_fixed(0, -1, EM, EM),
+                Rect::from_fixed(4 * EM, 0, EM, EM),
+                Rect::from_fixed(0, 1, EM, EM),
+            ] {
+                assert!(!contains(horizontal(), escaping), "{escaping:?}");
+            }
+        }
+
+        #[test]
+        fn each_axis_is_named_after_the_text_and_not_the_screen() {
+            let cell = Rect::from_fixed(7, 11, EM, EM);
+            assert_eq!(inline_start(WritingMode::HorizontalTb, cell), 7);
+            assert_eq!(inline_start(WritingMode::VerticalRl, cell), 11);
+
+            let line = TextLine {
+                range: 0..0,
+                origin: Point::from_fixed(7, 11),
+                inline_extent: 0,
+                block_extent: 0,
+                writing_mode: WritingMode::HorizontalTb,
+                glyphs: Vec::new(),
+                hit_bounds: None,
+                index: 0,
+                paragraph_index: 0,
+                first_in_paragraph: true,
+                last_in_paragraph: true,
+            };
+            assert_eq!(block_origin(&line, WritingMode::HorizontalTb), 11);
+            assert_eq!(block_origin(&line, WritingMode::VerticalRl), 7);
+        }
+
+        /// A caret is one unit thick so that it can be filled; the position it
+        /// marks is the caret without that unit, on whichever axis carries it.
+        #[test]
+        fn a_caret_position_is_the_caret_without_its_thickness() {
+            let horizontal =
+                caret_position(Rect::from_fixed(3, 5, 1, EM), WritingMode::HorizontalTb);
+            assert_eq!(horizontal.as_26_6(), (3, 5, 0, EM));
+            let vertical = caret_position(Rect::from_fixed(3, 5, EM, 1), WritingMode::VerticalRl);
+            assert_eq!(vertical.as_26_6(), (3, 5, EM, 0));
+        }
+    }
+
+    /// A line is excused from the measure by an overfull diagnostic whose range
+    /// **overlaps** it, and the ranges are half-open.
+    ///
+    /// The overlap test survived every mutation of both its comparisons and of
+    /// the conjunction between them, because no fixture puts a diagnostic's
+    /// range flush against a line's edge — the one place the answer changes.
+    #[test]
+    fn an_overfull_range_excuses_the_lines_it_overlaps_and_no_others() {
+        let mut broken = cell_past_the_measure();
+        broken.lines[0].range = 3..6;
+        broken.source = "日本語".to_owned();
+
+        for (range, excused) in [
+            // Ends exactly where the line begins, and begins exactly where it
+            // ends: half-open, so neither touches it.
+            (0..3, false),
+            (6..9, false),
+            // One byte over each edge in turn.
+            (0..4, true),
+            (5..9, true),
+            (3..6, true),
+        ] {
+            let mut layout = broken.clone();
+            layout.diagnostics = vec![crate::result::Diagnostic {
+                code: "layout.overfull",
+                severity: crate::DiagnosticSeverity::Warning,
+                range: Some(range.clone()),
+                message: "the line holds more than its measure",
+                jlreq: Some("3.8.1"),
+            }];
+            let reported = kinds(&inspect(&layout)).contains(&"cell-escapes-the-measure-silently");
+            assert_eq!(reported, !excused, "{range:?}");
+        }
+    }
 }

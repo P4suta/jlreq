@@ -1048,4 +1048,17 @@ mod tests {
         assert_eq!(taken.len(), 1);
         assert!(trace.events().is_empty());
     }
+
+    /// The ceiling reads back as whatever it was last set to.
+    ///
+    /// It survived being replaced by a constant, because the corpus sets it
+    /// once and every fixture is well under it.
+    #[test]
+    fn the_event_ceiling_is_the_one_last_set() {
+        let mut trace = Trace::new();
+        trace.set_max_events(7);
+        assert_eq!(trace.max_events(), 7);
+        trace.set_max_events(0);
+        assert_eq!(trace.max_events(), 0);
+    }
 }

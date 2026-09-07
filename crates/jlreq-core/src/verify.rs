@@ -874,4 +874,90 @@ mod tests {
             Some("attachment-escapes-its-annotation")
         );
     }
+
+    /// Zero is not negative, a range that ends exactly at the source has not
+    /// escaped it, and the first line has no predecessor to meet.
+    ///
+    /// Every comparison below survived a mutation that moved it by one — `<` to
+    /// `<=`, `>` to `>=` — because the corpus only ever asks them well away from
+    /// their edge. Each of these is one step from a fault and must not be one.
+    #[test]
+    fn the_edge_of_every_comparison_is_sound() {
+        let mut flush = line(0..3, 0);
+        flush.inline_extent = 0;
+        flush.block_extent = 0;
+        flush.clusters = vec![ClusterPlacement {
+            advance: 0,
+            ..placement(0..3)
+        }];
+        let source = shaped("あ");
+        let paragraph = Paragraph::builder(source, 1_000)
+            .constructs([crate::construct::Construct::emphasis_dots(0..3, '・')])
+            .build()
+            .expect("a one-cluster paragraph builds");
+        let report = inspect(
+            &layout(
+                vec![flush],
+                vec![Diagnostic {
+                    code: "layout.overfull",
+                    severity: Severity::Warning,
+                    range: Some(0..3),
+                    jlreq: "3.8.1",
+                }],
+            ),
+            &paragraph,
+        );
+        assert!(report.is_sound(), "{report}");
+    }
+
+    /// And one step the other way is a fault, so the comparisons are not simply
+    /// always true either.
+    #[test]
+    fn one_step_past_each_edge_is_reported() {
+        let mut negative = line(0..3, 0);
+        negative.inline_extent = -1;
+        let paragraph = Paragraph::builder(shaped("あ"), 1_000)
+            .build()
+            .expect("a one-cluster paragraph builds");
+        let faults = inspect(&layout(vec![negative], Vec::new()), &paragraph);
+        assert!(
+            faults
+                .faults()
+                .iter()
+                .any(|fault| matches!(fault, Fault::ExtentIsNegative { .. })),
+            "{faults}"
+        );
+
+        let mut advancing = line(0..3, 0);
+        advancing.clusters = vec![ClusterPlacement {
+            advance: -1,
+            ..placement(0..3)
+        }];
+        let faults = inspect(&layout(vec![advancing], Vec::new()), &paragraph);
+        assert!(
+            faults
+                .faults()
+                .iter()
+                .any(|fault| matches!(fault, Fault::ClusterAdvanceIsNegative { .. })),
+            "{faults}"
+        );
+
+        let escaping = layout(
+            vec![line(0..3, 0)],
+            vec![Diagnostic {
+                code: "layout.overfull",
+                severity: Severity::Warning,
+                range: Some(0..4),
+                jlreq: "3.8.1",
+            }],
+        );
+        let faults = inspect(&escaping, &paragraph);
+        assert!(
+            faults
+                .faults()
+                .iter()
+                .any(|fault| matches!(fault, Fault::DiagnosticEscapesTheSource { .. })),
+            "{faults}"
+        );
+    }
 }
