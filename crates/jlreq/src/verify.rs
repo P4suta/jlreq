@@ -1320,7 +1320,8 @@ mod tests {
         use crate::WritingMode;
         use crate::result::{Point, Rect, TextLine};
         use crate::verify::{
-            block_origin, caret_position, contains, inline_start, within_block, within_inline,
+            block_origin, caret_position, contains, inline_size, inline_start, within_block,
+            within_inline,
         };
 
         const EM: i32 = 1024;
@@ -1397,9 +1398,11 @@ mod tests {
 
         #[test]
         fn each_axis_is_named_after_the_text_and_not_the_screen() {
-            let cell = Rect::from_fixed(7, 11, EM, EM);
+            let cell = Rect::from_fixed(7, 11, EM, 2 * EM);
             assert_eq!(inline_start(WritingMode::HorizontalTb, cell), 7);
             assert_eq!(inline_start(WritingMode::VerticalRl, cell), 11);
+            assert_eq!(inline_size(WritingMode::HorizontalTb, cell), EM);
+            assert_eq!(inline_size(WritingMode::VerticalRl, cell), 2 * EM);
 
             let line = TextLine {
                 range: 0..0,
