@@ -408,3 +408,88 @@ fn a_line_may_hang_its_whole_tail_past_the_measure() -> Result<(), Box<dyn std::
     assert!(jlreq::verify::inspect(&layout).is_sound());
     Ok(())
 }
+
+/// `docs/adr/0032`: the line a forced break leaves behind reports an inline
+/// extent shorter than the text it holds, and says nothing about it.
+///
+/// Both numbers are pinned because the pair is the defect: 1024 is the measure
+/// to the unit, which is what keeps `inline_extent > line_extent` false in the
+/// composer and `layout.overfull` silent about this line. The layout itself is
+/// sound — every cell is where the composer put it — so no `Fault` reports
+/// this and nothing but an exact assertion can.
+///
+/// It fails when `jlreq-core`'s composer is corrected. That is when ADR-0032
+/// closes; the numbers below are then the ones to update or delete.
+#[test]
+fn a_line_after_a_forced_break_under_reports_its_extent() -> Result<(), Box<dyn std::error::Error>>
+{
+    let fonts = fixture()?;
+    let text = "\u{fffd}\u{fffd}Zc !\u{fffd}";
+    let options = LayoutOptions::try_new(16.0, 8.0)?.with_writing_mode(WritingMode::HorizontalTb);
+
+    let mut builder = DocumentBuilder::new(text);
+    builder.discretionary_break(8)?;
+    let broken = jlreq::layout_document(&builder.build()?, &fonts, options.clone())?;
+    let remainder = broken
+        .lines()
+        .get(1)
+        .ok_or("the break did not split the text")?;
+    assert_eq!(remainder.range(), 8..13);
+    assert_eq!(
+        remainder.inline_extent_26_6(),
+        1024,
+        "the line's own account"
+    );
+    assert_eq!(cell_span(remainder), 1664, "the text it actually holds");
+    // Both ends, which is what the fault's leading-run exemption turns on: the
+    // line's box is 0..1024 and its cells begin before it and end past it.
+    let cells: Vec<(i32, i32)> = remainder
+        .glyphs()
+        .iter()
+        .map(|glyph| {
+            let (x, _, width, _) = glyph.cell_bounds().as_26_6();
+            (x, x.saturating_add(width))
+        })
+        .collect();
+    assert_eq!(cells, vec![(-128, 384), (384, 896), (1024, 1536)]);
+    assert!(
+        !broken
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| diagnostic.code() == "layout.overfull")
+            .any(|diagnostic| diagnostic.range() == Some(remainder.range())),
+        "the composer has started saying this line is overfull"
+    );
+    assert!(
+        jlreq::verify::inspect(&broken).is_sound(),
+        "the cells are where the composer put them; only the summary is wrong"
+    );
+
+    // Without the break every line accounts for itself exactly, which is what
+    // makes the row above a defect rather than the em cell's ordinary overhang.
+    let whole = jlreq::layout(text, &fonts, options)?;
+    for line in whole.lines() {
+        assert_eq!(
+            line.inline_extent_26_6(),
+            cell_span(line),
+            "line {} without a forced break",
+            line.index()
+        );
+    }
+    Ok(())
+}
+
+/// How far a line's cells reach along the inline axis, start to end.
+fn cell_span(line: &jlreq::TextLine) -> i32 {
+    let cells = || {
+        line.glyphs()
+            .iter()
+            .map(|glyph| glyph.cell_bounds().as_26_6())
+    };
+    let start = cells().map(|(x, _, _, _)| x).min().unwrap_or_default();
+    let end = cells()
+        .map(|(x, _, width, _)| x.saturating_add(width))
+        .max()
+        .unwrap_or_default();
+    end.saturating_sub(start)
+}

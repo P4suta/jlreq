@@ -84,10 +84,15 @@ pub enum Fault {
     /// collapses the advance of whatever falls at the line edge after it, so a
     /// line ending `", "` draws two cells that
     /// [`TextLine::inline_extent`](crate::TextLine::inline_extent) does not
-    /// count. The exemption is therefore the trailing *run*, not the last cell.
+    /// count. The exemption is therefore the trailing *run*, not the last cell —
+    /// and the leading run alongside it, for a line whose cells overrun its own
+    /// account of itself at both ends, which
+    /// [ADR 0032](https://github.com/P4suta/jlreq) records and says is fitted
+    /// rather than derived.
     ///
-    /// Neither excuses an **interior** cell — one with a cell after it that
-    /// does fit — which is a line silently holding more than it says it does.
+    /// None of that excuses an **interior** cell — one with a fitting cell on
+    /// each side of it — which is a line silently holding more than it says it
+    /// does.
     CellEscapesTheMeasureSilently {
         /// The line ordinal.
         line: usize,
@@ -175,6 +180,13 @@ pub enum Fault {
     },
     /// A hit test in the middle of a glyph's own cell answered with bytes
     /// outside that glyph.
+    ///
+    /// Asked only of a cell whose interior no other cell in the layout
+    /// intersects. A cell is one em along the inline axis while an advance is
+    /// whatever the font says, so cells overlap by construction, and where two
+    /// of them hold a point there is no single owner to demand — which of them
+    /// answers is [`TextLayout::hit_test`]'s tie-break, stated by its own
+    /// tests. [ADR 0032](https://github.com/P4suta/jlreq) records the bound.
     HitTestMissesItsOwnCell {
         /// The line ordinal.
         line: usize,
@@ -452,19 +464,24 @@ fn check_line(
     let excused = overfull
         .iter()
         .any(|range| range.start < line.range().end && line.range().start < range.end);
-    // Hanging punctuation puts one cell past the measure on purpose, and it is
-    // always the last one along the inline axis. Exempting exactly that cell
-    // keeps the statement about every other one.
-    // What legitimately sits past the measure is a *run* at the line's end, not
-    // one cell. JLReq's ぶら下げ hangs a full stop or a comma, and the composer
-    // collapses the advance of whatever falls at the line edge after it — a
-    // trailing space, a control character — so both are drawn and neither is
-    // counted. `", "` at a line end is both at once.
+    // What legitimately sits outside the measure is a *run* at the line's end,
+    // not one cell. JLReq's ぶら下げ hangs a full stop or a comma, and the
+    // composer collapses the advance of whatever falls at the line edge after
+    // it — a trailing space, a control character — so both are drawn and
+    // neither is counted. `", "` at a line end is both at once.
     //
-    // What is never excused is an *interior* cell: one with a cell after it that
-    // does fit. That is the line silently holding more than it says it does, and
-    // it is what this fault is for.
-    let mut tail: Vec<(i32, bool)> = line
+    // A run at the line's *start* is excused only when there is one at its end
+    // as well. A forced break can leave a line whose cells overrun its own
+    // account of itself in both directions, which is `docs/adr/0032`; a run off
+    // the start with the end flush is text laid before the line begins, which
+    // is `docs/adr/0031`'s furawake and stays reported. That second clause is
+    // the line between the two layouts this project can measure and nothing
+    // more — ADR-0032 says so, and says what to do with a third.
+    //
+    // What is never excused is an *interior* cell: one with a fitting cell on
+    // each side of it. That is the line silently holding more than it says it
+    // does, and it is what this fault is for.
+    let mut inline: Vec<(i32, bool)> = line
         .glyphs()
         .iter()
         .filter(|glyph| glyph.annotation().is_none())
@@ -473,14 +490,22 @@ fn check_line(
             (inline_start(mode, cell), !within_inline(mode, body, cell))
         })
         .collect();
-    tail.sort_unstable_by_key(|(start, _)| core::cmp::Reverse(*start));
-    let mut hanging: Option<i32> = None;
-    for (start, escapes) in &tail {
-        if !escapes {
-            break;
-        }
-        hanging = Some(*start);
-    }
+    inline.sort_unstable_by_key(|(start, _)| *start);
+    let escaping = |(_, escapes): &&(i32, bool)| *escapes;
+    // The inner edge of each escaping end run, or `None` where that end fits.
+    let trailing = inline
+        .iter()
+        .rev()
+        .take_while(escaping)
+        .map(|(start, _)| *start)
+        .last();
+    let leading = trailing.and_then(|_| {
+        inline
+            .iter()
+            .take_while(escaping)
+            .map(|(start, _)| *start)
+            .last()
+    });
     // The base is the text, not the line. A line's block extent is grown to
     // reserve room for its annotations, so a subscript standing correctly in
     // the room reserved for it is inside the line's box and outside every text
@@ -511,9 +536,11 @@ fn check_line(
                 range: glyph.source_range(),
             });
         }
+        let start = inline_start(mode, cell);
         if !within_inline(mode, body, cell)
             && !excused
-            && hanging.is_none_or(|tail| inline_start(mode, cell) < tail)
+            && leading.is_none_or(|edge| start > edge)
+            && trailing.is_none_or(|edge| start < edge)
         {
             report.note(Fault::CellEscapesTheMeasureSilently {
                 line: line.index(),
@@ -622,41 +649,65 @@ fn check_carets(layout: &TextLayout, report: &mut Report) {
 /// about `Rect::contains` rather than about the layout. The union of the cells
 /// the bytes were drawn into has a middle that belongs to nobody else.
 fn check_hit_tests(layout: &TextLayout, mode: WritingMode, report: &mut Report) {
+    // One entry per cluster, from the whole layout rather than a line at a
+    // time: `hit_test` chooses a line before it chooses a glyph, so a cell in
+    // the line next door is as much a rival for a point as one beside it.
+    let mut cells: Vec<(usize, Range<usize>, Rect)> = Vec::new();
     for line in layout.lines() {
-        let mut cells: Vec<(Range<usize>, Rect)> = Vec::new();
+        let first = cells.len();
         for glyph in line.glyphs() {
             if glyph.annotation().is_some() {
                 continue;
             }
             let range = glyph.source_range();
             let cell = glyph.cell_bounds();
-            if let Some((_, bounds)) = cells.iter_mut().find(|(seen, _)| *seen == range) {
+            if let Some((_, _, bounds)) = cells
+                .iter_mut()
+                .skip(first)
+                .find(|(_, seen, _)| *seen == range)
+            {
                 *bounds = bounds.union(cell);
             } else {
-                cells.push((range, cell));
+                cells.push((line.index(), range, cell));
             }
         }
+    }
 
-        for (range, cell) in cells {
-            // A cluster the shaper gave no advance — a combining mark standing
-            // on its own — has a cell with no interior along the inline axis.
-            // Every point in it is a point of the cell beside it too, because
-            // `Rect::contains` includes edges, so there is no position that
-            // could answer with these bytes and no question to ask.
-            if inline_size(mode, cell) <= 1 {
-                continue;
-            }
-            let Some(point) = center(cell) else {
-                continue;
-            };
-            let hit = layout.hit_test(point);
-            if hit.byte_offset() < range.start || hit.byte_offset() > range.end {
-                report.note(Fault::HitTestMissesItsOwnCell {
-                    line: line.index(),
-                    range,
-                    answered: hit.byte_offset(),
-                });
-            }
+    for (position, (line, range, cell)) in cells.iter().enumerate() {
+        // A cluster the shaper gave no advance — a combining mark standing on
+        // its own — has a cell with no interior along the inline axis. Every
+        // point in it is a point of the cell beside it too, because
+        // `Rect::contains` includes edges, so there is no position that could
+        // answer with these bytes and no question to ask.
+        if inline_size(mode, *cell) <= 1 {
+            continue;
+        }
+        let Some(point) = center(*cell) else {
+            continue;
+        };
+        // A cell is one em along the inline axis while an advance is whatever
+        // the font says, so a proportional cluster reaches over its neighbour
+        // by construction — and a hung comma, a collapsed control character and
+        // a construct's own lanes all put cells on top of each other on
+        // purpose. Where two cells hold the same point there is no single owner
+        // to demand: which of them answers is `better_hit`'s tie-break, stated
+        // by `hit_test`'s own tests rather than inferred from geometry. Asking
+        // only where a point has exactly one possible owner is what makes any
+        // other answer a defect rather than a preference.
+        if cells
+            .iter()
+            .enumerate()
+            .any(|(other, (_, _, bounds))| other != position && bounds.contains(point))
+        {
+            continue;
+        }
+        let hit = layout.hit_test(point);
+        if hit.byte_offset() < range.start || hit.byte_offset() > range.end {
+            report.note(Fault::HitTestMissesItsOwnCell {
+                line: *line,
+                range: range.clone(),
+                answered: hit.byte_offset(),
+            });
         }
     }
 }
@@ -978,13 +1029,29 @@ mod tests {
         )
     }
 
-    /// Two cells at one place, attributed to bytes far enough apart that the
-    /// answer for one cannot also be an answer for the other.
+    /// A line whose box reaches across the text of the line after it.
+    ///
+    /// `hit_test` picks a line before it picks a glyph — nearest
+    /// [`TextLine::bounds`], earliest wins a tie — so every point in the second
+    /// line's only cell is answered for out of the first line, with bytes three
+    /// characters away. The cell stays inside its own line's box and shares its
+    /// interior with no other cell, which is what leaves this the only thing
+    /// wrong here.
+    ///
+    /// Two cells at one place stood here until `check_hit_tests` stopped
+    /// judging that shape: cells that overlap have no one owner, and which of
+    /// them answers is a tie-break rather than a defect.
     fn cell_the_hit_test_cannot_reach() -> TextLayout {
-        layout(
+        let mut broken = layout(
             "日本語",
-            vec![line(0, 0..9, vec![glyph(0..3, 0, EM), glyph(6..9, 0, EM)])],
-        )
+            vec![
+                line(0, 0..6, vec![glyph(0..3, 0, EM)]),
+                line(1, 6..9, vec![glyph(6..9, EM, EM)]),
+            ],
+        );
+        broken.lines[0].inline_extent = 3 * EM;
+        broken.lines[1].origin = Point::from_fixed(EM, 0);
+        broken
     }
 
     /// A line whose glyph is attributed to bytes the line's own range does not
@@ -1032,6 +1099,22 @@ mod tests {
         let report = inspect(&sound_layout());
         assert!(report.is_sound(), "{report}");
         assert_eq!(report.to_string(), "sound");
+
+        // A layout whose cells overlap, which every proportional advance
+        // produces and no witness above does. Cell 1 starts 100 units into
+        // cell 0, so each holds the other's middle and neither has an owner to
+        // ask about: `check_hit_tests` passes both over. Without that, the
+        // middle of cell 1 answers with byte 3 — cell 0's end — against a range
+        // of 6..9, and this reports a fault it has no business reporting.
+        let report = inspect(&layout(
+            "日本語",
+            vec![line(
+                0,
+                0..9,
+                vec![glyph(0..3, 0, EM), glyph(6..9, 100, EM)],
+            )],
+        ));
+        assert!(report.is_sound(), "overlapping cells: {report}");
     }
 
     /// Compared against the line's composed box, not against

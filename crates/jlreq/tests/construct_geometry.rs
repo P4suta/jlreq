@@ -36,6 +36,7 @@
 //! what makes the numbers round. The relationships hold at any advance; the
 //! exact coordinates belong to this fixture.
 
+use std::ops::Range;
 use std::sync::Arc;
 
 use jlreq::{DocumentBuilder, FontLibrary, FontStyle, LayoutOptions, WritingMode};
@@ -345,6 +346,25 @@ fn a_furawake_in_a_reordered_line_is_still_wrong() -> Result<(), Box<dyn std::er
         vec!["cell-escapes-the-measure-silently"; kinds.len()],
         "the only thing wrong here is the lane that went past the measure"
     );
-    assert!(!kinds.is_empty(), "docs/adr/0031's furawake case is fixed");
+    // The two lane cells by name, not just by kind. `docs/adr/0032` narrowed
+    // this fault's exemption, and the first rule tried — excusing a run at the
+    // line's start the way one at its end is excused — silenced exactly these
+    // two and nothing else. Only an assertion that says *which* cells could
+    // tell that apart from a correction.
+    let ranges: Vec<Range<usize>> = jlreq::verify::inspect(&layout)
+        .faults()
+        .iter()
+        .filter_map(|fault| match fault {
+            jlreq::verify::Fault::CellEscapesTheMeasureSilently { range, .. } => {
+                Some(range.clone())
+            },
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        ranges,
+        vec![7..8, 8..9],
+        "docs/adr/0031's furawake case has moved or been fixed"
+    );
     Ok(())
 }

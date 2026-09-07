@@ -201,11 +201,11 @@ it holds the annotation combinations of ADR 0031 above.
 | lines partition the source, separators excepted | `verify::inspect` — `coverage-*`, `lines-do-not-meet` |
 | lines never overlap and never reverse direction | `verify::inspect` — `lines-overlap`, `block-progression-reverses` |
 | a cell stays inside its line on the block axis | `verify::inspect` — `cell-escapes-its-line` |
-| an interior cell stays inside the measure (inline axis) | `verify::inspect` — `cell-escapes-the-measure-silently` |
+| an **interior** cell stays inside the measure (inline axis) — a run at the line's end is ぶら下げ, a run at its start is excused only alongside one at its end ([ADR 0032](../adr/0032-a-forced-break-leaves-a-line-that-under-reports-itself.md)) | `verify::inspect` — `cell-escapes-the-measure-silently` |
 | an annotation stands beside its base, not over it | `verify::inspect` — `annotation-overlaps-its-base` |
 | an annotation stands on no other line's text | `verify::inspect` — `annotation-overlaps-another-line`, which today reports the open defect of [ADR 0031](../adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md) |
 | a caret stands on some line | `verify::inspect` — `caret-stands-on-no-line` |
-| a click in a cell answers with that cell's bytes | `verify::inspect` — `hit-test-misses-its-own-cell` |
+| a click in a cell **no other cell holds** answers with that cell's bytes — cells are em boxes over proportional advances, so where two of them share a point the owner is `better_hit`'s tie-break, not a geometric fact ([ADR 0032](../adr/0032-a-forced-break-leaves-a-line-that-under-reports-itself.md)) | `verify::inspect` — `hit-test-misses-its-own-cell` |
 | `origin` is the cell's inline-start, block-end corner | a unit test, because both sides are derived from the same fields and a check with no possible witness is a guess |
 | the exact coordinates of a known layout | `crates/jlreq/tests/geometry.rs` |
 | every step the facade took | the `draw.cell` and `draw.line` goldens |
