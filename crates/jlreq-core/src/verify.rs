@@ -297,7 +297,10 @@ fn check_coverage(lines: &[Line], source: usize, report: &mut Report) {
             previous_end = range.end;
             continue;
         }
-        if ordinal > 0 && chained && range.start != previous_end {
+        // There is no `ordinal > 0` guard here: `previous_end` starts as the first
+        // line's own start, so the first line always meets it and a guard could
+        // never decide anything.
+        if chained && range.start != previous_end {
             report.note(Fault::LinesDoNotMeet {
                 line: ordinal,
                 previous_end,
@@ -890,6 +893,10 @@ mod tests {
             advance: 0,
             ..placement(0..3)
         }];
+        // An attachment whose range is empty has not escaped its annotation, and
+        // neither has one that ends exactly where the annotation does: both
+        // comparisons are strict and one step in from each is the whole point.
+        flush.attachments = vec![attachment(0, 0..0)];
         let source = shaped("あ");
         let paragraph = Paragraph::builder(source, 1_000)
             .constructs([crate::construct::Construct::emphasis_dots(0..3, '・')])

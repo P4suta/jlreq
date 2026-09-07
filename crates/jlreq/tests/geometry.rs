@@ -310,3 +310,56 @@ fn a_warichu_reads_the_way_its_writing_mode_does() -> Result<(), Box<dyn std::er
     }
     Ok(())
 }
+
+/// Every offset the layout covers has a caret, including one no glyph is drawn
+/// for.
+///
+/// A tab spends its advance without the shaper producing a glyph, so nothing in
+/// the layout begins or ends at the offset in front of it and both affinities
+/// answered `None` — an editor opening on such a document had nowhere to put
+/// the cursor. The facade fuzz target found it at offset zero, which is exactly
+/// where an editor opens.
+///
+/// The coordinates are stated rather than merely asked to exist: the caret has
+/// to be at the *start* of the line, and a rule that found some other cell's
+/// edge would satisfy an is-it-`Some` test just as well.
+#[test]
+fn an_offset_no_glyph_is_drawn_for_still_has_a_caret() -> Result<(), Box<dyn std::error::Error>> {
+    let fonts = fixture()?;
+    let layout = jlreq::layout("\t日本", &fonts, LayoutOptions::try_new(180.0, 16.0)?)?;
+
+    // Nothing is drawn for the tab, so no glyph names offset 0 or offset 1.
+    assert!(
+        layout
+            .glyphs()
+            .all(|glyph| glyph.source_range().start != 0 && glyph.source_range().end != 0),
+        "the fixture no longer has an offset without a glyph"
+    );
+
+    let caret = layout
+        .caret_rect(0, jlreq::Affinity::Downstream)
+        .ok_or("no caret at the offset an editor opens at")?;
+    assert_eq!(caret.as_26_6(), (0, 0, 1, 1024));
+    assert_eq!(
+        layout
+            .caret_rect(0, jlreq::Affinity::Upstream)
+            .map(jlreq::Rect::as_26_6),
+        Some((0, 0, 1, 1024)),
+        "both affinities answer, because neither has a glyph to prefer"
+    );
+
+    // The offset after the tab is a different place, so the rule is finding the
+    // offset's own position rather than the line's start for everything. That one
+    // is named by a glyph, so it is the ordinary path answering.
+    let after_tab = layout
+        .caret_rect(1, jlreq::Affinity::Upstream)
+        .ok_or("no caret after the tab")?;
+    assert!(
+        after_tab.as_26_6().0 > caret.as_26_6().0,
+        "the caret after the tab is past the one before it: {after_tab:?}"
+    );
+
+    // An offset the layout does not cover is still refused.
+    assert_eq!(layout.caret_rect(99, jlreq::Affinity::Downstream), None);
+    Ok(())
+}
