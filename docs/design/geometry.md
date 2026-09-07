@@ -129,7 +129,7 @@ is followed by an annotated one, the annotation lands on the bare line's charact
 
 That is a defect, it is reproducible, and it is not fixed:
 [ADR 0031](../adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md) records it, the
-two models that would correct it, and why neither can be checked here.
+two models that would correct it, and why the specification does not say which is right.
 `verify::inspect` reports it as `annotation-overlaps-another-line`, and
 `ANNOTATION_ON_A_WRAPPED_LINE` in
 [`crates/jlreq/tests/construct_matrix.rs`](../../crates/jlreq/tests/construct_matrix.rs) pins

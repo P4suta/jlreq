@@ -91,14 +91,33 @@ byte-identical, which is the evidence that the change is the one intended and no
 shift. The facade's `constructs` golden moved because the warichu halved; its diff was read
 line by line.
 
-**The 122,199-request differential census cannot be re-run in this environment and has not
-validated this change.** The census is the workspace's strongest evidence that composed
-output matches the independent OCaml and Racket engines, and it is the evidence this change
-does not have. What it has instead: three conformance cases whose values were derived from
-the specification text, a construct sweep whose unsound set is empty, and the fact that
-nothing outside the three constructs moved at all.
+**All three implementations had the same defect, and all three are corrected.** The
+independent OCaml and Racket engines centered a construct in the paragraph's em exactly as
+`jlreq-core` did — OCaml in `stack_offsets` and `tate_chu_yoko_member_offset`, Racket in
+`row-block-offsets` and `run-item` — and their own doc comments said so in as many words.
+That is not three implementations agreeing; it is one reading of §3.2.5 written down three
+times.
+
+The conformance case is the arbiter, and it contradicted itself. `3.2.5/tate-chu-yoko-solid-centered-group`
+declares `block_origin: 0` and `block_extent: 1200`, so the line runs `[-1200, 0]`, and then
+put the last member's cell at `[-200, 200]` — two hundred units past the origin, onto the
+line beside it, while `[-1200, -1000]` of the box it declared stood empty.
+`3.7.2/furawake-declared-sublines-horizontal` does the same in the other direction: a box of
+`[0, 2200]` with its first lane at `[-600, 400]`.
+
+With the same correction made in each engine, **all eighty-nine conformance cases pass
+against all three**, the OCaml engine's own 690 checks pass, and the Racket engine's own
+10,197 tests pass. Four engine unit tests moved, each pinning the geometry the correction
+changed, and each new value was checked against the arithmetic the other two implementations
+now share.
+
+The full 122,199-request census is a different and larger run, and it has not been made. What
+this change has instead: three implementations that agree case for case, three conformance
+values derived from the specification text rather than blessed from output, a construct sweep
+whose unsound set is what `docs/adr/0031` records and nothing more, and the fact that nothing
+outside the three constructs moved at all.
 
 `crates/jlreq/tests/construct_matrix.rs` is the gate that would have caught all of this. It
-sweeps thirteen constructs across five lengths and both writing modes and holds the set of
-unsound combinations empty; a construct that breaks at a length nobody chose now fails a
+sweeps thirteen constructs across five lengths and both writing modes and pins the set of
+unsound combinations exactly; a construct that breaks at a length nobody chose now fails a
 test rather than waiting to be looked at.

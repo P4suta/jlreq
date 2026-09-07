@@ -169,8 +169,8 @@ fn range(clusters: usize) -> std::ops::Range<usize> {
 ///
 /// Found by this sweep together with `annotation-overlaps-another-line`, and
 /// **not fixed**: the correction moves body and annotation coordinates on all
-/// 27 attachment-bearing conformance cases, and the differential census that
-/// would check it cannot be run here.
+/// 27 attachment-bearing conformance cases and in both independent engines,
+/// and §3.3 states no inter-line box model to derive the new values from.
 /// [ADR 0031](../../../docs/adr/0031-a-line-reserves-annotation-space-on-the-wrong-side.md)
 /// records the defect, both candidate models, and what it waits on.
 const ANNOTATION_ON_A_WRAPPED_LINE: &[(&str, usize, &str)] = &[

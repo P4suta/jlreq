@@ -661,8 +661,8 @@ let run () =
      ordinary cluster would and every member after it follows by its own advance. *)
   Check.equal_string "a tate-chu-yoko run is centered across the line" ~expected:"(1000/1000) 0:-500:500:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko"
     ~actual:(vertical ~extent:4000 ~runs:[ (0, 2) ] [ digit "1"; digit "2" ]);
-  Check.equal_string "and half of an odd width is taken toward the line's own origin"
-    ~expected:"(1000/1233) 0:-616:300:horizontal-tb/tate-chu-yoko 0:-316:433:horizontal-tb/tate-chu-yoko 0:117:500:horizontal-tb/tate-chu-yoko"
+  Check.equal_string "and a run wider than the em fills the line it widened"
+    ~expected:"(1000/1233) 0:-933:300:horizontal-tb/tate-chu-yoko 0:-500:433:horizontal-tb/tate-chu-yoko 0:0:500:horizontal-tb/tate-chu-yoko"
     ~actual:
       (vertical ~extent:4000 ~runs:[ (0, 3) ]
          [ digit ~advance:300 "1"; digit ~advance:433 "2"; digit ~advance:500 "3" ]);
@@ -1002,12 +1002,12 @@ let run () =
   (* §3.7.2: every furawake-gyou starts at the same place, the block is as long as its
      longest line, its own height is the line's, and its center is the text's. *)
   Check.equal_string "a furawake sets its declared columns, centered across the line"
-    ~expected:"(2000/2200) [0:-600+1000 0:600+1000 1000:600+1000] []"
+    ~expected:"(2000/2200) [0:0+1000 0:1200+1000 1000:1200+1000] []"
     ~actual:
       (built ~extent:3000 ~constructs:[ Furawake (0, 3, 2, 200) ]
          ~breaks:[ (1, Paragraph.Mandatory) ] [ p base; p base; p base ]);
   Check.equal_string "and centers them the other way in vertical composition"
-    ~expected:"(2000/2200) [0:600+1000 0:-600+1000 1000:-600+1000] []"
+    ~expected:"(2000/2200) [0:0+1000 0:-1200+1000 1000:-1200+1000] []"
     ~actual:
       (built ~mode:Model.Vertical_rl ~extent:3000 ~constructs:[ Furawake (0, 3, 2, 200) ]
          ~breaks:[ (1, Paragraph.Mandatory) ] [ p base; p base; p base ]);

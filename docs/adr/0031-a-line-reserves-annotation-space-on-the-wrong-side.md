@@ -81,14 +81,21 @@ Two models would correct it, and both move coordinates that a differential censu
    `block_extent` means — so the same cases move anyway.
 
 Either way all twenty-seven attachment-bearing conformance cases change, body coordinates
-included. §3.3 gives no inter-line box model to derive the new values from — unlike
-[ADR 0030](0030-a-construct-is-centered-in-its-line.md), where §3.2.5's "align the whole string
-to the center of the vertical line" named the answer — so every value would be a new
-unverifiable claim, and the 122,199-request OCaml/Racket census that would check them cannot
-be run in this environment.
+included, and so does the same code in the OCaml and Racket engines, which reserve annotation
+space the same way.
+
+That is not what stops it. [ADR 0030](0030-a-construct-is-centered-in-its-line.md) made a
+correction of exactly that shape, in all three implementations, and checked it: the engines
+build and run locally and the eighty-nine conformance cases are the arbiter. What ADR 0030
+had and this does not is **a sentence to derive the values from**. §3.2.5 says "align the
+whole string to the center of the vertical line", and the case that disagreed with it
+disagreed with its own declared `block_extent` as well, so the right numbers were readable
+off the specification and off the case. §3.3 states no inter-line box model at all. Every
+new value would be this project's invention, written into three implementations at once and
+into the cases that are supposed to check them — which is how a defect becomes a contract.
 
 Recording a defect that the project can see, reproduce and measure is worth more than a
-correction it cannot check.
+correction it would have to invent the answer to.
 
 ## What was built instead
 
