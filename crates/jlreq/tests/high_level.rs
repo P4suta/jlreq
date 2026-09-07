@@ -739,10 +739,20 @@ fn lines_carry_indices_paragraph_membership_and_offset_lookup() -> Result<(), Bo
     assert_eq!(layout.line_index_at(text.len()), Some(3));
     assert_eq!(layout.line_index_at(text.len().saturating_add(1)), None);
 
-    // Every offset a caret walk visits resolves to a line.
+    // Every offset a caret walk visits resolves to a line, and the walk ends.
+    //
+    // The bound is not decoration: a step that stops advancing walks forever,
+    // and a test that hangs reports nothing. Two caret positions per byte is
+    // already more than this text can offer.
     let mut offset = 0;
     let mut affinity = Affinity::Upstream;
+    let mut hops = 0_usize;
     while let Some(next) = layout.next_visual_caret(offset, affinity) {
+        hops = hops.saturating_add(1);
+        assert!(
+            hops <= text.len().saturating_mul(2),
+            "the visual walk must terminate; it reached {offset} after {hops} hops"
+        );
         offset = next.byte_offset();
         affinity = next.affinity();
         assert!(
