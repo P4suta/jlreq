@@ -15,8 +15,7 @@ settings during preparation.
   used by a candidate.
 - Require the branch to be current before merge and prevent required checks from being
   bypassed by ordinary maintainers.
-- Confirm Dependabot has no open update pull request and code/dependency scanning has no
-  high or critical alert before approving a release candidate.
+- Confirm Mend-hosted Renovate has no open update pull request and code/dependency scanning has no high or critical alert before approving a release candidate.
 
 ## `release` environment
 

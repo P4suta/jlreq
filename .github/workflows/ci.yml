@@ -16,8 +16,8 @@
 #                        and gated by the conform-racket job alone.
 #
 # Policy:
-#   - Every third-party action is SHA-pinned (Dependabot bumps them weekly); the comment
-#     records the human-readable version.
+#   - Every third-party action is SHA-pinned; the comment records the human-readable version.
+#     Mend-hosted Renovate updates the pins under the shared P4suta policy.
 #   - Every job runs the same `just` recipe a developer runs locally, so CI and the dev box
 #     cannot drift.
 #   - `no_std`, `wasm`, and `purity` are required gates, not advisory ones. They are what
