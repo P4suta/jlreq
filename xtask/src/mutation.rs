@@ -602,7 +602,7 @@ mod tests {
         let parsed = parse_ledger(
             "[[exclusion]]\npath = \"a.rs\"\nsha256 = \"00\"\nkind = \"generated\"\nprovenance = \"data/manifest.toml\"\nreason = \"why\"\n\n[[equivalent]]\nmutant = \"a.rs:1\"\nexclude_re = '^a$'\nsource_sha256 = \"11\"\nproof = \"same\"\n",
         );
-        assert!(parsed.violations.is_empty());
+        assert_eq!(parsed.violations, [] as [std::string::String; 0]);
         assert_eq!(parsed.exclusions.len(), 1);
         assert_eq!(parsed.equivalents.len(), 1);
         assert_eq!(parsed.equivalents[0].exclude_re, "^a$");
@@ -759,10 +759,9 @@ mod tests {
 
     #[test]
     fn the_repository_ledger_holds_without_posix_tools() {
-        assert!(
-            run(&[])
-                .expect("the mutation ledger is readable")
-                .is_empty()
+        assert_eq!(
+            run(&[]).expect("the mutation ledger is readable"),
+            [] as [std::string::String; 0]
         );
     }
 }

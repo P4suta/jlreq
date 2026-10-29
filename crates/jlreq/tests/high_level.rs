@@ -68,8 +68,8 @@ fn plain_horizontal_and_vertical_text_are_draw_ready() -> Result<(), Box<dyn Err
     let (fonts, _, _) = fixture_fonts()?;
     let text = "日本語A12";
     let horizontal = jlreq::layout(text, &fonts, LayoutOptions::try_new(240.0, 16.0)?)?;
-    assert!(!horizontal.lines().is_empty());
-    assert!(!horizontal.fonts().is_empty());
+    assert_ne!(horizontal.lines(), []);
+    assert_ne!(horizontal.fonts(), []);
     assert!(horizontal.glyphs().all(|glyph| {
         let range = glyph.source_range();
         range.start <= range.end && range.end <= text.len()
@@ -163,7 +163,7 @@ fn paragraph_breaks_tabs_and_empty_input_are_defined() -> Result<(), Box<dyn Err
         &fonts,
         LayoutOptions::try_new(160.0, 16.0)?.with_writing_mode(WritingMode::VerticalRl),
     )?;
-    assert!(empty.lines().is_empty());
+    assert_eq!(empty.lines(), []);
     assert_eq!(empty.glyphs().count(), 0);
     assert_eq!(empty.writing_mode(), WritingMode::VerticalRl);
     assert_eq!(empty.options().writing_mode(), WritingMode::VerticalRl);
@@ -259,7 +259,7 @@ fn resolved_size_variations_and_draw_cells_match_shaping_runs() -> Result<(), Bo
     let resource = layout
         .font(id)
         .ok_or_else(|| std::io::Error::other("variable font was not retained"))?;
-    assert!(resource.default_variations().is_empty());
+    assert_eq!(resource.default_variations(), []);
     assert!(resource.synthesis().is_empty());
     assert!(layout.bounds().is_some());
     Ok(())
@@ -396,7 +396,7 @@ fn limits_fail_atomically_and_engine_remains_reusable() -> Result<(), Box<dyn Er
     ));
 
     let recovered = engine.layout("A", &fonts, LayoutOptions::try_new(200.0, 16.0)?)?;
-    assert!(!recovered.lines().is_empty());
+    assert_ne!(recovered.lines(), []);
     let one_shot = jlreq::layout("A", &fonts, LayoutOptions::try_new(200.0, 16.0)?)?;
     assert_eq!(recovered, one_shot);
     Ok(())
@@ -422,7 +422,10 @@ fn hit_caret_and_selection_round_trip_in_both_writing_modes() -> Result<(), Box<
                 .caret_rect(hit.byte_offset(), hit.affinity())
                 .is_some()
         );
-        assert!(!layout.selection_rects(0..layout.source().len()).is_empty());
+        assert_ne!(
+            layout.selection_rects(0..layout.source().len()),
+            [] as [jlreq::Rect; 0]
+        );
     }
     Ok(())
 }
@@ -479,7 +482,7 @@ fn public_configuration_and_font_metadata_are_observable() -> Result<(), Box<dyn
     assert_eq!(resource.family(), "Primary");
     assert_eq!(resource.style(), style);
     assert_eq!(resource.bytes(), font_test_data::NOTO_SANS_JP_CFF);
-    assert!(!format!("{resource:?} {fonts:?}").is_empty());
+    assert_ne!(format!("{resource:?} {fonts:?}"), "");
 
     let mut foreign = FontLibrary::new();
     let in_bounds = foreign.register_font(bytes(font_test_data::TINOS_SUBSET))?;
@@ -922,7 +925,7 @@ fn visual_caret_motion_walks_lines_and_crosses_them() -> Result<(), Box<dyn Erro
         line_trailing,
         "the first selected line fills to its trailing edge"
     );
-    assert!(layout.selection_rects_filled(0..0).is_empty());
+    assert_eq!(layout.selection_rects_filled(0..0), [] as [jlreq::Rect; 0]);
     Ok(())
 }
 
@@ -1468,8 +1471,8 @@ fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn 
     assert_eq!(replaced.features(), [feature, feature]);
     assert_eq!(replaced.variations(), [variation]);
     let cleared = replaced.with_features([]).with_variations([]);
-    assert!(cleared.features().is_empty());
-    assert!(cleared.variations().is_empty());
+    assert_eq!(cleared.features(), []);
+    assert_eq!(cleared.variations(), []);
     let options = options.with_limits(ResourceLimits::default());
     assert_eq!(options.limits(), ResourceLimits::default());
     assert!(
@@ -1501,7 +1504,7 @@ fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn 
         Alignment::Justify,
     ] {
         let layout = jlreq::layout("ABC", &fonts, options.clone().with_alignment(alignment))?;
-        assert!(!layout.lines().is_empty());
+        assert_ne!(layout.lines(), []);
     }
     for direction in [BaseDirection::LeftToRight, BaseDirection::RightToLeft] {
         let layout = jlreq::layout(
@@ -1509,7 +1512,7 @@ fn all_option_values_validate_quantize_and_reach_layout() -> Result<(), Box<dyn 
             &fonts,
             options.clone().with_base_direction(direction),
         )?;
-        assert!(!layout.lines().is_empty());
+        assert_ne!(layout.lines(), []);
     }
     Ok(())
 }
@@ -1547,7 +1550,7 @@ fn span_roles_and_document_validation_are_typed() -> Result<(), Box<dyn Error>> 
     let document = builder.build()?;
     assert_eq!(document.text(), text);
     let layout = jlreq::layout_document(&document, &fonts, LayoutOptions::try_new(200.0, 16.0)?)?;
-    assert!(!layout.lines().is_empty());
+    assert_ne!(layout.lines(), []);
     assert!(SpanStyle::new().with_font_size(0.0).is_err());
     assert!(SpanStyle::new().with_language("ja_JP").is_err());
 
@@ -1748,7 +1751,7 @@ fn every_high_level_resource_limit_has_a_stable_error() -> Result<(), Box<dyn Er
             LayoutError::ResourceLimit { resource, .. } if resource == expected_resource
         ));
         assert_eq!(error.code(), expected_code);
-        assert!(!error.to_string().is_empty());
+        assert_ne!(error.to_string(), "");
     }
 
     let mut builder = DocumentBuilder::new("A");
@@ -1811,9 +1814,9 @@ fn error_codes_ranges_displays_and_sources_are_stable() -> Result<(), Box<dyn Er
         core_composition,
     ];
     for error in errors {
-        assert!(!error.code().is_empty());
+        assert_ne!(error.code(), "");
         let _ = error.range();
-        assert!(!error.to_string().is_empty());
+        assert_ne!(error.to_string(), "");
         let _ = error.source();
     }
     Ok(())
@@ -1895,11 +1898,10 @@ fn renderer_geometry_and_interaction_accessors_are_complete() -> Result<(), Box<
             .is_none()
     );
     assert!(layout.caret_rect(1, Affinity::Downstream).is_none());
-    assert!(layout.selection_rects(0..0).is_empty());
-    assert!(
-        layout
-            .selection_rects(0..layout.source().len().saturating_add(1))
-            .is_empty()
+    assert_eq!(layout.selection_rects(0..0), [] as [jlreq::Rect; 0]);
+    assert_eq!(
+        layout.selection_rects(0..layout.source().len().saturating_add(1)),
+        [] as [jlreq::Rect; 0]
     );
     for rect in layout.selection_rects(0..layout.source().len()) {
         let _ = (

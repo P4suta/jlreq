@@ -1083,7 +1083,7 @@ mod tests {
         indexed.collect_constructs_overlapping(3, 5, &mut ordinals);
         assert_eq!(ordinals, [0, 2]);
         indexed.collect_constructs_overlapping(0, 1, &mut ordinals);
-        assert!(ordinals.is_empty());
+        assert_eq!(ordinals, [] as [usize; 0]);
 
         let (first, _) = indexed
             .find_construct_containing(2, |_| true)

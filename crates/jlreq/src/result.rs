@@ -1938,8 +1938,8 @@ mod tests {
             layout.selection_rects(2..5)[0].as_26_6(),
             (128, 128, 256, 192)
         );
-        assert!(layout.selection_rects(0..2).is_empty());
-        assert!(layout.selection_rects(5..6).is_empty());
+        assert_eq!(layout.selection_rects(0..2), [] as [Rect; 0]);
+        assert_eq!(layout.selection_rects(5..6), [] as [Rect; 0]);
 
         let mut rtl = layout.clone();
         rtl.lines[0].glyphs[0].bidi_level = 1;
@@ -2496,7 +2496,7 @@ mod tests {
             128,
             "a selection flush with the line end keeps the glyph edge"
         );
-        assert!(layout.selection_rects_filled(3..3).is_empty());
+        assert_eq!(layout.selection_rects_filled(3..3), [] as [Rect; 0]);
     }
 
     #[test]

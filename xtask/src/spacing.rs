@@ -824,7 +824,7 @@ mod tests {
         let (prohibited, hang, terms) = spacing_cell(&cell).expect("well formed");
         assert!(!prohibited);
         assert_eq!(hang, "RawHang::OverCharacter");
-        assert!(terms.is_empty());
+        assert_eq!(terms, [] as [(bool, i32); 0]);
     }
 
     #[test]
@@ -832,7 +832,7 @@ mod tests {
         let cell = row("cl-14", "line-head", "×", "");
         let (prohibited, _, terms) = spacing_cell(&cell).expect("well formed");
         assert!(prohibited);
-        assert!(terms.is_empty());
+        assert_eq!(terms, [] as [(bool, i32); 0]);
     }
 
     #[test]

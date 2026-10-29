@@ -1001,7 +1001,7 @@ mod tests {
         for fact in every_fact() {
             trace.record(site(), fact);
         }
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), []);
         assert!(!trace.is_truncated());
     }
 
@@ -1058,7 +1058,7 @@ mod tests {
         let mut core = document.core_trace();
         compose_fixture(&mut core);
         document.absorb(0, 0, &mut core);
-        assert!(document.events().is_empty());
+        assert_eq!(document.events(), []);
     }
 
     #[test]
@@ -1078,7 +1078,7 @@ mod tests {
         trace.record(site(), every_fact().swap_remove(0));
         let taken = trace.take_events();
         assert_eq!(taken.len(), 1);
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), []);
         assert_eq!(trace.categories(), Categories::ALL);
         assert_eq!(
             trace.core_categories(),
@@ -1087,7 +1087,7 @@ mod tests {
         trace.record(site(), every_fact().swap_remove(1));
         assert_eq!(trace.events().len(), 1);
         trace.clear();
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), []);
     }
 
     #[test]
@@ -1100,9 +1100,9 @@ mod tests {
             .iter()
             .map(|event| event.site().bytes())
             .collect();
-        assert!(!local.is_empty());
+        assert_ne!(local, [] as [Range<usize>; 0]);
         document.absorb(3, 100, &mut core);
-        assert!(core.events().is_empty());
+        assert_eq!(core.events(), []);
         for (event, expected) in document.events().iter().zip(local) {
             assert_eq!(event.site().paragraph(), Some(3));
             assert_eq!(
