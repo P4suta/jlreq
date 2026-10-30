@@ -48,16 +48,16 @@ jobs:
         run: rustup toolchain install stable --profile minimal --no-self-update
         env:
           RUSTUP_PERMIT_COPY_RENAME: "1"
-      - uses: taiki-e/install-action@b6ff580856c41316412a0b9b60540fbc6f8c82cc # v2.86.7
+      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
         with:
           tool: just@1.50.0,cargo-mutants@27.1.0,nextest@0.9.140
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: just mutants "$MUTANT_CRATE" "$MUTANT_SHARD"
         env:
           MUTANT_CRATE: ${{ matrix.crate }}
           MUTANT_SHARD: ${{ matrix.shard.index }}/4
       - if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutants-${{ matrix.crate }}-${{ matrix.shard.display }}-of-4
           path: mutants.out/
