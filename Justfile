@@ -126,35 +126,35 @@ examples:
 # exact-version core dependency before the initial release reaches the registry.
 package:
     cargo fetch --locked
-    cargo package -p jlreq-core --locked {{package_dirty}}
-    cargo package -p jlreq --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
-    cargo package -p jlreq-conformance --locked {{package_dirty}} --offline --config .cargo/initial-release-patch.toml
+    cargo package -p jlreq-core --locked {{ package_dirty }}
+    cargo package -p jlreq --locked {{ package_dirty }} --offline --config .cargo/initial-release-patch.toml
+    cargo package -p jlreq-conformance --locked {{ package_dirty }} --offline --config .cargo/initial-release-patch.toml
     sh scripts/verify-crates.sh
 
 # Ask Cargo to execute its complete crates.io publication preflight while retaining the
 # upload locally. The patch validates jlreq and jlreq-conformance before their first
 # dependencies have appeared in the index; published metadata still carries only version 0.1.0.
 publish-dry-run:
-    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-core
-    cargo publish --dry-run --locked {{package_dirty}} -p jlreq --config .cargo/initial-release-patch.toml
-    cargo publish --dry-run --locked {{package_dirty}} -p jlreq-conformance --config .cargo/initial-release-patch.toml
+    cargo publish --dry-run --locked {{ package_dirty }} -p jlreq-core
+    cargo publish --dry-run --locked {{ package_dirty }} -p jlreq --config .cargo/initial-release-patch.toml
+    cargo publish --dry-run --locked {{ package_dirty }} -p jlreq-conformance --config .cargo/initial-release-patch.toml
 
 # Compile no-default, every individual feature, and representative feature pairs.
 feature-matrix:
     cargo hack check --workspace --all-targets --each-feature
-    cargo hack check {{core_crates}} --feature-powerset --depth 2
+    cargo hack check {{ core_crates }} --feature-powerset --depth 2
 
 # Prove that the layout core remains no_std. This is the mechanical half of
 # docs/adr/0001; `just purity` is the declarative half.
 no-std:
     rustup target add thumbv7em-none-eabi
-    cargo build {{core_crates}} --target thumbv7em-none-eabi --no-default-features
+    cargo build {{ core_crates }} --target thumbv7em-none-eabi --no-default-features
 
 # Prove the core builds for the browser, which no font- or IO-coupled layout
 # engine can do (docs/adr/0003).
 wasm:
     rustup target add wasm32-unknown-unknown
-    cargo check {{core_crates}} --target wasm32-unknown-unknown --no-default-features
+    cargo check {{ core_crates }} --target wasm32-unknown-unknown --no-default-features
 
 # Exercise input validation, composition/arithmetic, protocol parsing, the whole facade,
 # and the handwritten SFNT table readers separately under libFuzzer. Each target is its own
@@ -181,15 +181,15 @@ fuzz-check-linux-ci:
 # fuzz/seeds is reviewed and committed.
 [private]
 _fuzz-target target seconds:
-    mkdir -p target/fuzz-corpus/{{target}}
-    cp fuzz/seeds/{{target}}/* target/fuzz-corpus/{{target}}/
-    cargo +nightly fuzz run {{target}} target/fuzz-corpus/{{target}} --fuzz-dir fuzz {{ if os() == "linux" { "--target x86_64-unknown-linux-gnu" } else { "" } }} -- -max_total_time={{seconds}} -timeout=10
+    mkdir -p target/fuzz-corpus/{{ target }}
+    cp fuzz/seeds/{{ target }}/* target/fuzz-corpus/{{ target }}/
+    cargo +nightly fuzz run {{ target }} target/fuzz-corpus/{{ target }} --fuzz-dir fuzz {{ if os() == "linux" { "--target x86_64-unknown-linux-gnu" } else { "" } }} -- -max_total_time={{ seconds }} -timeout=10
 
 [private]
 _fuzz-target-linux target seconds:
-    just _fuzz-target {{target}} {{seconds}}
+    just _fuzz-target {{ target }} {{ seconds }}
 
-# Scheduled sanitizer budget: fifteen minutes for each independent failure domain.
+# Manual fuzz campaign: fifteen minutes per target.
 fuzz-scheduled:
     just _fuzz-target-linux input_validation 900
     just _fuzz-target-linux composition 900
@@ -323,8 +323,8 @@ mutants crate="" shard="":
     cargo run --quiet -p xtask -- mutation-ledger
     cargo mutants {{ if crate == "" { mutant_crates } else { "-p " + crate } }} {{ if shard == "" { "" } else { "--shard " + shard } }} --all-features --test-tool cargo --minimum-test-timeout 120 --no-times --colors=never -j 4
 
-# Pull requests exercise only mutations in the changed Rust surface; weekly and release
-# workflows run the complete sharded gate above.
+# Changed-line mutations support focused manual checks.
+# Release acceptance runs the complete product inventory.
 mutants-smoke base shard="":
     cargo run --quiet -p xtask -- mutation-ledger
     sh scripts/run-mutation-smoke.sh {{ quote(base) }} {{ if shard == "" { "" } else { quote(shard) } }}
@@ -343,7 +343,7 @@ mutation-ledger:
 # with no `target/` yet (CI, before any cargo build has made one) fails before dune gets a
 # chance to build anything. Creating it first makes this recipe work on its own.
 ocaml-build:
-    mkdir -p {{DUNE_BUILD_DIR}}
+    mkdir -p {{ DUNE_BUILD_DIR }}
     dune build engines/ocaml
 
 # Build the OCaml engine and run its own unit tests: the startup census of the
@@ -358,7 +358,7 @@ ocaml-test: ocaml-build
 # the JSON or the specification tables are broken. `ocaml-gate` is what gates a merge, and
 # at M9 it becomes this recipe by construction.
 conform-ocaml: ocaml-build
-    cargo run --quiet -p jlreq-conformance -- run {{ocaml_engine}}
+    cargo run --quiet -p jlreq-conformance -- run {{ ocaml_engine }}
 
 # Run the cases of milestones M1 through M<m> against the OCaml engine: everything the
 # engine claims to answer bit for bit, and nothing it does not. `m` is `0` until M1 lands,
@@ -372,11 +372,11 @@ ocaml-milestone m: ocaml-test
 # it named — an identifier matching nothing (a typo, or a case renamed in the suite) would
 # otherwise shrink the gate without saying so.
 _ocaml-milestone m:
-    mkdir -p {{milestone_dir}}
-    i=1; while [ "$i" -le {{m}} ]; do cat engines/ocaml/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{milestone_dir}}/ids.txt
-    grep -F -f {{milestone_dir}}/ids.txt crates/jlreq-conformance/suite.ndjson > {{milestone_dir}}/suite.ndjson
-    test "$(wc -l < {{milestone_dir}}/ids.txt)" -eq "$(wc -l < {{milestone_dir}}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
-    cargo run --quiet -p jlreq-conformance -- run {{ocaml_engine}} {{milestone_dir}}/suite.ndjson
+    mkdir -p {{ milestone_dir }}
+    i=1; while [ "$i" -le {{ m }} ]; do cat engines/ocaml/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{ milestone_dir }}/ids.txt
+    grep -F -f {{ milestone_dir }}/ids.txt crates/jlreq-conformance/suite.ndjson > {{ milestone_dir }}/suite.ndjson
+    test "$(wc -l < {{ milestone_dir }}/ids.txt)" -eq "$(wc -l < {{ milestone_dir }}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
+    cargo run --quiet -p jlreq-conformance -- run {{ ocaml_engine }} {{ milestone_dir }}/suite.ndjson
 
 # The engine gate CI runs, and the one place that says how much of the suite the engine is
 # held to today. engines/ocaml/milestones/CURRENT names that milestone, so advancing it is
@@ -396,7 +396,7 @@ ocaml-gate:
 build-engine-racket:
     mkdir -p engines/racket/bin
     raco make engines/racket/main.rkt
-    raco exe -o {{racket_engine}} engines/racket/main.rkt
+    raco exe -o {{ racket_engine }} engines/racket/main.rkt
 
 # Run the Racket engine's own unit tests: the integer contract, the TSV reader, the
 # envelope, the startup census of the specification tables, and the cross-check of the
@@ -414,7 +414,7 @@ test-engine-racket:
 # the JSON or the specification tables are broken. `racket-gate` is what gates a merge,
 # and at M9 it becomes this recipe by construction.
 conform-racket: build-engine-racket
-    cargo run --quiet -p jlreq-conformance -- run {{racket_engine}}
+    cargo run --quiet -p jlreq-conformance -- run {{ racket_engine }}
 
 # Run the cases of milestones M1 through M<m> against the Racket engine: everything the
 # engine claims to answer bit for bit, and nothing it does not. `m` is `0` until M1 lands,
@@ -428,11 +428,11 @@ racket-milestone m: build-engine-racket test-engine-racket
 # it named — an identifier matching nothing (a typo, or a case renamed in the suite) would
 # otherwise shrink the gate without saying so.
 _racket-milestone m:
-    mkdir -p {{racket_milestone_dir}}
-    i=1; while [ "$i" -le {{m}} ]; do cat engines/racket/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{racket_milestone_dir}}/ids.txt
-    grep -F -f {{racket_milestone_dir}}/ids.txt crates/jlreq-conformance/suite.ndjson > {{racket_milestone_dir}}/suite.ndjson
-    test "$(wc -l < {{racket_milestone_dir}}/ids.txt)" -eq "$(wc -l < {{racket_milestone_dir}}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
-    cargo run --quiet -p jlreq-conformance -- run {{racket_engine}} {{racket_milestone_dir}}/suite.ndjson
+    mkdir -p {{ racket_milestone_dir }}
+    i=1; while [ "$i" -le {{ m }} ]; do cat engines/racket/milestones/M$i.ids; i=$((i + 1)); done | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' -e '/^$/d' -e 's|.*|"id":"&",|' > {{ racket_milestone_dir }}/ids.txt
+    grep -F -f {{ racket_milestone_dir }}/ids.txt crates/jlreq-conformance/suite.ndjson > {{ racket_milestone_dir }}/suite.ndjson
+    test "$(wc -l < {{ racket_milestone_dir }}/ids.txt)" -eq "$(wc -l < {{ racket_milestone_dir }}/suite.ndjson)" || { echo "a milestone identifier names no case in the built-in suite" >&2; exit 1; }
+    cargo run --quiet -p jlreq-conformance -- run {{ racket_engine }} {{ racket_milestone_dir }}/suite.ndjson
 
 # The Racket engine gate CI runs, and the one place that says how much of the suite that
 # engine is held to today. engines/racket/milestones/CURRENT names that milestone, so
@@ -463,7 +463,7 @@ conform-engines:
 # Explain one case's difference by JSON path; exits 1 when the answers differ.
 diffcase case *arguments: ocaml-build
     cargo build --quiet -p jlreq-conformance --bins
-    {{diffcase_probe}} {{case}} --engine {{ocaml_engine}} --reference {{sample_engine}} --suite crates/jlreq-conformance/suite.ndjson {{arguments}}
+    {{ diffcase_probe }} {{ case }} --engine {{ ocaml_engine }} --reference {{ sample_engine }} --suite crates/jlreq-conformance/suite.ndjson {{ arguments }}
 
 # Generate one synthetic census, run it through both engines, and report how many answers
 # disagree. `kind` is `spacing`, `break`, `reduction`, `expansion`, `vertical` or
@@ -482,21 +482,21 @@ diffcase case *arguments: ocaml-build
 # Generate one synthetic class-pair census and diff both engines' answers to it.
 census kind: ocaml-build
     cargo build --quiet -p jlreq-conformance --bins
-    mkdir -p {{census_dir}}
-    {{census_probe}} generate {{kind}} > {{census_dir}}/{{kind}}.requests.ndjson
-    {{ocaml_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.ocaml.raw
-    {{sample_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.rust.raw
-    {{census_probe}} normalize < {{census_dir}}/{{kind}}.ocaml.raw > {{census_dir}}/{{kind}}.ocaml.ndjson
-    {{census_probe}} normalize < {{census_dir}}/{{kind}}.rust.raw > {{census_dir}}/{{kind}}.rust.ndjson
-    diff {{census_dir}}/{{kind}}.rust.ndjson {{census_dir}}/{{kind}}.ocaml.ndjson > {{census_dir}}/{{kind}}.diff || true
-    echo "census {{kind}}: $(wc -l < {{census_dir}}/{{kind}}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{census_dir}}/{{kind}}.diff || true) differing response(s) -- {{census_dir}}/{{kind}}.diff"
+    mkdir -p {{ census_dir }}
+    {{ census_probe }} generate {{ kind }} > {{ census_dir }}/{{ kind }}.requests.ndjson
+    {{ ocaml_engine }} < {{ census_dir }}/{{ kind }}.requests.ndjson > {{ census_dir }}/{{ kind }}.ocaml.raw
+    {{ sample_engine }} < {{ census_dir }}/{{ kind }}.requests.ndjson > {{ census_dir }}/{{ kind }}.rust.raw
+    {{ census_probe }} normalize < {{ census_dir }}/{{ kind }}.ocaml.raw > {{ census_dir }}/{{ kind }}.ocaml.ndjson
+    {{ census_probe }} normalize < {{ census_dir }}/{{ kind }}.rust.raw > {{ census_dir }}/{{ kind }}.rust.ndjson
+    diff {{ census_dir }}/{{ kind }}.rust.ndjson {{ census_dir }}/{{ kind }}.ocaml.ndjson > {{ census_dir }}/{{ kind }}.diff || true
+    echo "census {{ kind }}: $(wc -l < {{ census_dir }}/{{ kind }}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{ census_dir }}/{{ kind }}.diff || true) differing response(s) -- {{ census_dir }}/{{ kind }}.diff"
 
 # The choice is made out of Appendix A alone: fewest classes listing the key first, then a
 # single scalar over a sequence, then an empty Remarks cell, then document order.
 #
 # Print the representative code point a census addresses each character class by, as TSV.
 census-classes: ocaml-build
-    {{census_probe}} classes
+    {{ census_probe }} classes
 
 # The same census, against the Racket engine.
 #
@@ -515,21 +515,21 @@ census-classes: ocaml-build
 # because key order is not part of an answer.
 census-racket kind: build-engine-racket ocaml-build
     cargo build --quiet -p jlreq-conformance --bins
-    mkdir -p {{census_dir}}
-    {{census_probe}} generate {{kind}} > {{census_dir}}/{{kind}}.requests.ndjson
-    {{racket_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.racket.raw
-    {{sample_engine}} < {{census_dir}}/{{kind}}.requests.ndjson > {{census_dir}}/{{kind}}.rust.raw
-    {{census_probe}} normalize < {{census_dir}}/{{kind}}.racket.raw > {{census_dir}}/{{kind}}.racket.ndjson
-    {{census_probe}} normalize < {{census_dir}}/{{kind}}.rust.raw > {{census_dir}}/{{kind}}.rust.ndjson
-    diff {{census_dir}}/{{kind}}.rust.ndjson {{census_dir}}/{{kind}}.racket.ndjson > {{census_dir}}/{{kind}}.racket.diff || true
-    echo "census-racket {{kind}}: $(wc -l < {{census_dir}}/{{kind}}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{census_dir}}/{{kind}}.racket.diff || true) differing response(s) -- {{census_dir}}/{{kind}}.racket.diff"
+    mkdir -p {{ census_dir }}
+    {{ census_probe }} generate {{ kind }} > {{ census_dir }}/{{ kind }}.requests.ndjson
+    {{ racket_engine }} < {{ census_dir }}/{{ kind }}.requests.ndjson > {{ census_dir }}/{{ kind }}.racket.raw
+    {{ sample_engine }} < {{ census_dir }}/{{ kind }}.requests.ndjson > {{ census_dir }}/{{ kind }}.rust.raw
+    {{ census_probe }} normalize < {{ census_dir }}/{{ kind }}.racket.raw > {{ census_dir }}/{{ kind }}.racket.ndjson
+    {{ census_probe }} normalize < {{ census_dir }}/{{ kind }}.rust.raw > {{ census_dir }}/{{ kind }}.rust.ndjson
+    diff {{ census_dir }}/{{ kind }}.rust.ndjson {{ census_dir }}/{{ kind }}.racket.ndjson > {{ census_dir }}/{{ kind }}.racket.diff || true
+    echo "census-racket {{ kind }}: $(wc -l < {{ census_dir }}/{{ kind }}.requests.ndjson | tr -d ' ') request(s), $(grep -c '^<' {{ census_dir }}/{{ kind }}.racket.diff || true) differing response(s) -- {{ census_dir }}/{{ kind }}.racket.diff"
 
 # Run every census in the generator registry through Rust, OCaml, and Racket. The script
 # verifies all three pairings, the response cardinality, the ten-kind registry, the
 # 122,199-case floor, and the committed generated summary. Any difference is fatal.
 census-all: ocaml-test build-engine-racket test-engine-racket
     cargo build --quiet -p jlreq-conformance --bins
-    sh engines/census-all.sh {{census_probe}} {{sample_engine}} {{ocaml_engine}} {{racket_engine}} {{census_summary}}
+    sh engines/census-all.sh {{ census_probe }} {{ sample_engine }} {{ ocaml_engine }} {{ racket_engine }} {{ census_summary }}
 
 # The gates that hold the design itself, all of them reading the tree and none of them
 # needing the network (docs/design/api-spine.md).

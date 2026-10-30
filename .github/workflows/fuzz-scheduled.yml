@@ -1,15 +1,18 @@
 # SPDX-FileCopyrightText: 2026 jlreq contributors
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-name: Scheduled fuzz
+name: Fuzz campaign
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "19 2 * * 6"
 
 permissions:
   contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+  RUSTUP_TOOLCHAIN: nightly
 
 concurrency:
   group: scheduled-fuzz
@@ -17,17 +20,21 @@ concurrency:
 
 jobs:
   fuzz:
+    name: Fuzz campaign
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # nightly
         with:
-          toolchain: nightly
-      - uses: taiki-e/install-action@b6ff580856c41316412a0b9b60540fbc6f8c82cc # v2.86.7
+          persist-credentials: false
+      - name: Install nightly Rust
+        run: rustup toolchain install nightly --profile minimal --no-self-update
+        env:
+          RUSTUP_PERMIT_COPY_RENAME: "1"
+      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
         with:
           tool: just@1.50.0,cargo-fuzz@0.13.2
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: fuzz -> target
       - run: just fuzz-scheduled
