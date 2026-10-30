@@ -4,20 +4,15 @@
 
 //! Every documentation example compiles, and the runnable ones run.
 //!
-//! The crate READMEs are already compiled by rustdoc through
-//! `#![doc = include_str!]`, but the root `README.md` and `docs/guide.ja.md`
-//! are rendered by GitHub and crates.io without any compiler ever reading
-//! them — the classic way documentation rots. This gate extracts every Rust
-//! fence from those two files, synthesizes a scratch crate under
-//! `target/doc-examples/` with a path dependency on the facade, compiles each
-//! fence as its own binary, and executes the ones not marked `no_run` against
-//! the packaged fixture font, so the documented programs demonstrably work.
+//! The crate READMEs are compiled by rustdoc through `#![doc = include_str!]`.
+//! This gate checks the root README, English and Japanese guides, and tracing guide.
+//! It extracts their Rust fences into a scratch crate under `target/doc-examples/`.
+//! The scratch crate depends on the facade and compiles each fence as its own binary.
+//! The gate executes runnable fences with the packaged fixture font.
 //!
-//! Fences may be named by an HTML comment on a preceding line:
-//! `<!-- jlreq-example: NAME -->`. The same name appearing in more than one
-//! checked file — the crate README included — requires the fence bodies to be
-//! byte-identical, which is what keeps the root README's claim of showing
-//! "the same example" as the compiled doctest mechanically true.
+//! An HTML comment before a fence can name it: `<!-- jlreq-example: NAME -->`.
+//! Fences sharing a name across checked files, including the crate README, must be byte-identical.
+//! The comparison keeps the English guide's quickstart identical to the compiled doctest.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -35,12 +30,18 @@ pub(crate) const GATE: Gate = Gate {
 };
 
 /// Files whose fences are compiled, and run unless marked `no_run`.
-const SOURCES: &[&str] = &["README.md", "docs/guide.ja.md", "docs/design/tracing.md"];
+const SOURCES: &[&str] = &[
+    "README.md",
+    "docs/guide.md",
+    "docs/guide.ja.md",
+    "docs/design/tracing.md",
+];
 
 /// Files participating in shared-fence identity checks. The crate README is
 /// compiled by rustdoc already, so it is only cross-checked here.
 const SYNC_SOURCES: &[&str] = &[
     "README.md",
+    "docs/guide.md",
     "crates/jlreq/README.md",
     "docs/guide.ja.md",
     "docs/design/tracing.md",
@@ -459,6 +460,59 @@ fn main() {}
     fn binary_names_are_sanitized_and_prefixed() {
         assert_eq!(binary_name("quickstart"), "doc_example_quickstart");
         assert_eq!(binary_name("guide.ja-1"), "doc_example_guide_ja_1");
+    }
+
+    #[test]
+    fn documentation_inventory_preserves_examples_and_shared_partners() {
+        let root = workspace_root().unwrap();
+        let mut fences = Vec::new();
+        let mut violations = Vec::new();
+        for file in SYNC_SOURCES {
+            let text = fs::read_to_string(root.join(file)).unwrap();
+            extract_fences(file, &text, &mut fences, &mut violations);
+        }
+        check_shared_identity(&fences, &mut violations);
+        assert_eq!(violations, Vec::<String>::new());
+
+        let checked: Vec<&Fence> = fences
+            .iter()
+            .filter(|fence| SOURCES.contains(&fence.file) && fence.mode != Mode::Skip)
+            .collect();
+        assert_eq!(checked.len(), 16);
+        assert_eq!(
+            checked
+                .iter()
+                .filter(|fence| fence.mode == Mode::Run)
+                .count(),
+            9
+        );
+        assert_eq!(
+            checked
+                .iter()
+                .filter(|fence| fence.file == "README.md" && fence.mode == Mode::Run)
+                .count(),
+            1
+        );
+
+        let partners: BTreeMap<&str, Vec<&str>> = shared_names(&fences)
+            .into_iter()
+            .map(|(name, group)| {
+                let mut files: Vec<&str> = group.iter().map(|fence| fence.file).collect();
+                files.sort_unstable();
+                (name, files)
+            })
+            .collect();
+        assert_eq!(
+            partners,
+            BTreeMap::from([
+                ("baseline", vec!["docs/guide.ja.md", "docs/guide.md"]),
+                ("document", vec!["crates/jlreq/README.md", "docs/guide.md"]),
+                (
+                    "quickstart",
+                    vec!["crates/jlreq/README.md", "docs/guide.md"]
+                ),
+            ])
+        );
     }
 
     #[test]

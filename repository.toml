@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 jlreq contributors
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name = "jlreq"
+summary = "An unreleased Rust library for Japanese text layout from UTF-8 text and font data"
+install = '''
+# 0.1.0 is unreleased; work from the source checkout.
+git clone https://github.com/P4suta/jlreq.git
+cd jlreq
+mise install
+'''
+usage = '''
+use jlreq::{FontLibrary, LayoutOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let font_path = std::env::args()
+        .nth(1)
+        .ok_or("pass a font file, e.g. NotoSansJP-Regular.otf")?;
+
+    let mut fonts = FontLibrary::new();
+    fonts.register_font(std::fs::read(font_path)?)?;
+
+    let options = LayoutOptions::try_new(240.0, 16.0)?;
+    let layout = jlreq::layout("日本語組版 — draw-ready glyphs", &fonts, options)?;
+
+    println!("{}", layout.glyphs().count());
+    Ok(())
+}
+'''
+usage_language = "rust"
+documentation_index = true
+copyright = "2026 jlreq contributors"
+license = "MIT OR Apache-2.0"
+
+[preserved_licenses]
+mit_sha256 = "069850E3E2EA57783D03E2B8A52ED97F7C2C715DA05C6C2105EC4ED9E1E157F9"
+apache_sha256 = "074E6E32C86A4C0EF8B3ED25B721CA23ACA83DF277CD88106EF7177C354615FF"
+
+[[consent]]
+contributor = "Yasunobu"
+evidence = "https://github.com/P4suta/jlreq/commit/4c0c6f173bfdad9cfd5ee6fc5a521550f1b5b9cb"
