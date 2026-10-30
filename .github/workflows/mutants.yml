@@ -3,7 +3,7 @@
 
 # Manual runs cover all three handwritten Rust products in four shards.
 # Pull-request smoke mutation belongs to CI so its result feeds the single required aggregation gate there.
-# Generated tables and five exact, proof-backed equivalent mutants are the only configured exclusions and are pinned in docs/mutation-ledger.toml.
+# Generated tables and the equivalent mutants in docs/mutation-ledger.toml are the only configured exclusions.
 # A missed or timed-out mutant fails the workflow.
 name: Mutants
 
