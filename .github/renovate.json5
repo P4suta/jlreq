@@ -1,0 +1,28 @@
+// SPDX-FileCopyrightText: 2026 jlreq contributors
+//
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>P4suta/renovate-config"],
+  "packageRules": [
+    {
+      "matchDatasources": ["crate"],
+      "matchPackageNames": ["harfrust", "icu_segmenter", "fontique"],
+      "groupName": null,
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^xtask\\/src\\/examples\\.rs$/"],
+      "matchStrings": [
+        "(?:^|\\r?\\n)[ \\t]*font-test-data[ \\t]*=[ \\t]*\\\\\"(?<currentValue>=[0-9]+\\.[0-9]+\\.[0-9]+)\\\\\"\\\\n"
+      ],
+      "depNameTemplate": "font-test-data",
+      "datasourceTemplate": "crate",
+      "versioningTemplate": "cargo"
+    }
+  ]
+}
