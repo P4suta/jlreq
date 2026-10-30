@@ -257,7 +257,7 @@ fn build_and_run(
          [dependencies]\n\
          jlreq = { path = \"../../crates/jlreq\" }\n\
          jlreq-core = { path = \"../../crates/jlreq-core\" }\n\
-         font-test-data = \"=0.9.1\"\n",
+         font-test-data = \"=0.10.1\"\n",
     )?;
     fs::write(
         sources.join("doc_example_fixture_font.rs"),
