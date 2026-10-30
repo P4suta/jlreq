@@ -2793,7 +2793,10 @@ mod tests {
                 .into_iter()
                 .collect(),
         };
-        assert!(check_allowed_items(&allowed, "pub struct Style; pub fn compose() {}").is_empty());
+        assert_eq!(
+            check_allowed_items(&allowed, "pub struct Style; pub fn compose() {}"),
+            [] as [std::string::String; 0]
+        );
 
         let violations = check_allowed_items(
             &allowed,
@@ -2818,7 +2821,10 @@ mod tests {
             answers: 4,
         }];
         let style_items = ["KinsokuLevel".to_owned()].into_iter().collect();
-        assert!(check_style_choice_mappings(&mappings, &recorded, &style_items).is_empty());
+        assert_eq!(
+            check_style_choice_mappings(&mappings, &recorded, &style_items),
+            [] as [std::string::String; 0]
+        );
 
         let grown = vec![DerivedQuestion {
             path: "kinsoku.level".to_owned(),
@@ -3438,7 +3444,10 @@ mod tests {
                 count: 4,
             }],
         };
-        assert!(check_closed_choices(&control, &derived(4)).is_empty());
+        assert_eq!(
+            check_closed_choices(&control, &derived(4)),
+            [] as [std::string::String; 0]
+        );
         let grown = check_closed_choices(&control, &derived(5));
         assert_eq!(grown.len(), 1, "{grown:?}");
         assert!(grown[0].contains("closes `kinsoku.level` at 4 answer(s)"));

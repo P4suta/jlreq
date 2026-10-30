@@ -524,12 +524,12 @@ mod tests {
         prepared.line_end_reduction.push(5);
         prepared.regular = true;
         prepared.clear();
-        assert!(prepared.candidate_ordinals.is_empty());
-        assert!(prepared.legal_candidates.is_empty());
-        assert!(prepared.natural_prefix.is_empty());
-        assert!(prepared.minimum_prefix.is_empty());
-        assert!(prepared.reduction_prefix.is_empty());
-        assert!(prepared.line_end_reduction.is_empty());
+        assert_eq!(prepared.candidate_ordinals, [] as [usize; 0]);
+        assert_eq!(prepared.legal_candidates, [] as [bool; 0]);
+        assert_eq!(prepared.natural_prefix, [] as [i64; 0]);
+        assert_eq!(prepared.minimum_prefix, [] as [i64; 0]);
+        assert_eq!(prepared.reduction_prefix, [] as [i64; 0]);
+        assert_eq!(prepared.line_end_reduction, [] as [i64; 0]);
         assert!(!prepared.regular);
 
         let mut composer = super::Composer::new();
@@ -558,12 +558,15 @@ mod tests {
         assert_eq!(composer.transitions, 0);
         assert!(composer.candidates.is_empty());
         assert!(composer.nodes.is_empty());
-        assert!(composer.chosen.is_empty());
-        assert!(composer.line_advances.is_empty());
-        assert!(composer.line_adjustments.is_empty());
-        assert!(composer.line_scratch.expansion_sites.is_empty());
-        assert!(composer.line_scratch.construct_ordinals.is_empty());
-        assert!(composer.line_scratch.distribution.assigned.is_empty());
+        assert_eq!(composer.chosen, [] as [usize; 0]);
+        assert_eq!(composer.line_advances, [] as [i32; 0]);
+        assert_eq!(composer.line_adjustments, [] as [i32; 0]);
+        assert_eq!(
+            composer.line_scratch.expansion_sites,
+            [] as [super::ExpansionSite; 0]
+        );
+        assert_eq!(composer.line_scratch.construct_ordinals, [] as [usize; 0]);
+        assert_eq!(composer.line_scratch.distribution.assigned, [] as [i64; 0]);
         assert!(!composer.prepared.regular);
         assert!(!composer.prepared.fast_measure);
     }
@@ -863,7 +866,7 @@ mod tests {
             9,
             &mut sites
         ));
-        assert!(sites.is_empty());
+        assert_eq!(sites, [] as [super::ReductionSite; 0]);
     }
 
     #[test]
@@ -876,7 +879,7 @@ mod tests {
         let mut sites = Vec::new();
         super::push_reduction_site(&mut sites, 2, 10, 0, 1, false);
         super::push_reduction_site(&mut sites, 2, 10, 1, 0, false);
-        assert!(sites.is_empty());
+        assert_eq!(sites, [] as [super::ReductionSite; 0]);
         super::push_reduction_site(&mut sites, 2, 10, 1, 1, true);
         assert_eq!(
             sites,
@@ -956,7 +959,10 @@ mod tests {
         let closing = Paragraph::builder(text("〉"), 2_000)
             .build()
             .expect("valid closing bracket");
-        assert!(super::reduction_sites(&closing, &Style::default(), 1, 1).is_empty());
+        assert_eq!(
+            super::reduction_sites(&closing, &Style::default(), 1, 1),
+            [] as [super::ReductionSite; 0]
+        );
 
         let sites = [
             super::ReductionSite {
@@ -1847,7 +1853,7 @@ mod tests {
         super::visit_ruby_spans(&paragraph, &phonetic, |_, base, annotation| {
             spans.push((base, annotation));
         });
-        assert!(spans.is_empty());
+        assert_eq!(spans, [] as [(Range<usize>, Range<usize>); 0]);
     }
 
     #[test]
@@ -2333,7 +2339,10 @@ mod tests {
             super::proportional_shares(5, &[0, -1], Remainder::Leading),
             [0, 0]
         );
-        assert!(super::proportional_shares(5, &[], Remainder::Leading).is_empty());
+        assert_eq!(
+            super::proportional_shares(5, &[], Remainder::Leading),
+            [] as [i32; 0]
+        );
         assert_eq!(
             super::proportional_shares(i64::MAX, &[i32::MAX, i32::MAX], Remainder::Leading),
             [i32::MAX, i32::MAX]
@@ -2425,7 +2434,7 @@ mod tests {
         ));
         layout.diagnostics.clear();
         super::add_widow_diagnostic(&paragraph, &mut layout);
-        assert!(layout.diagnostics.is_empty());
+        assert_eq!(layout.diagnostics, [] as [crate::Diagnostic; 0]);
     }
 
     #[test]
@@ -3499,7 +3508,7 @@ mod tests {
         composer
             .compose_traced(&paragraph, &Style::default(), &mut trace)
             .expect("small fixture composes");
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), &[] as &[crate::trace::Event]);
     }
 
     /// The search's own reasoning is recoverable: what it weighed, what it charged, and
@@ -3537,7 +3546,7 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(!candidates.is_empty());
+        assert_ne!(candidates, [] as [(i64, i64, i64, i64, u128, u128); 0]);
         assert!(trace.events().iter().any(|event| matches!(
             *event.fact(),
             crate::trace::Fact::SearchCandidate { accepted: true, .. }

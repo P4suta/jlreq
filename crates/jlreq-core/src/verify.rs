@@ -836,7 +836,7 @@ mod tests {
     #[test]
     fn an_attachment_naming_no_construct_is_not_sound() {
         let paragraph = paragraph("日本語", 20_000);
-        assert!(paragraph.constructs().is_empty());
+        assert_eq!(paragraph.constructs(), &[] as &[crate::Construct]);
         let mut only = line(0..9, 0);
         only.attachments = vec![attachment(7, 0..3)];
         let report = inspect(&layout(vec![only], Vec::new()), &paragraph);

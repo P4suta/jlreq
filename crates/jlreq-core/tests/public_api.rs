@@ -997,7 +997,7 @@ fn the_reduction_ladder_does_not_reach_the_seam_between_a_warichu_s_sublines() {
 
     let halfway = compose_at(3_125);
     assert_eq!(halfway.lines()[0].inline_extent(), 3_125);
-    assert!(halfway.diagnostics().is_empty());
+    assert_eq!(halfway.diagnostics(), []);
 }
 
 #[test]
@@ -2212,7 +2212,7 @@ fn tabs_set_off_the_line_do_not_consume_or_require_stops() {
         .writing_mode(mode)
         .build()
         .unwrap_or_else(|error| panic!("{label} rejected its internal tab: {error}"));
-        assert!(paragraph.tab_stops().is_empty());
+        assert_eq!(paragraph.tab_stops(), []);
         compose_ok!(&paragraph, &Style::default());
     }
 
@@ -2712,7 +2712,7 @@ fn hanging_punctuation_closes_only_the_shortfall_reduction_leaves() {
         "hanging changes line accounting, not the shaped placements"
     );
     assert_eq!(hanging.lines()[0].inline_extent(), 1_300);
-    assert!(hanging.diagnostics().is_empty());
+    assert_eq!(hanging.diagnostics(), []);
 }
 
 #[test]
@@ -2861,7 +2861,7 @@ fn composition_limits_are_typed_atomic_and_reusable() {
     let recovered = composer
         .compose(&paragraph, &Style::default())
         .expect("the composer is reusable after an error");
-    assert!(!recovered.lines().is_empty());
+    assert_ne!(recovered.lines(), []);
 
     let static_error = Composer::with_limits(defaults.with_max_clusters(2))
         .compose(&paragraph, &Style::default())
@@ -2892,7 +2892,7 @@ fn composition_limits_are_typed_atomic_and_reusable() {
     let layout = Composer::with_limits(zero)
         .compose(&empty, &Style::default())
         .expect("an empty paragraph always succeeds");
-    assert!(layout.lines().is_empty());
+    assert_eq!(layout.lines(), []);
 }
 
 #[test]

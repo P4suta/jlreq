@@ -61,42 +61,42 @@ reason = "Generated kana-script ranges; just generate-check and just attest veri
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table1.rs"
-sha256 = "c62cc781e23364563767253ef8773667defb939cb324d3221ec5c304c5ebc1d6"
+sha256 = "21db714ce3af25aa11d67f810fc2a4e0a8de656226880e7d4e8c616dcec9be05"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 1 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table2.rs"
-sha256 = "6dd6d8b662bd599519cce318ff0159701012a997d2fcfd9f54776aacb13506e5"
+sha256 = "7c218211e71409c0162c156e89e139d9d0090378bb13090fe0514f1551b31867"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 2 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table3.rs"
-sha256 = "c83b045a37e79d955368aa6ba5d56f1794dde21622962a633204d5d834dd276a"
+sha256 = "bb46e20ca8c86f1946672b39f84fe363f329bc3aa5f15f1240ba671a36ac236f"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 3 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table4.rs"
-sha256 = "6947ac7f5e65f0118502b6933c917650562313fec7e9381d645611b9c35f3f33"
+sha256 = "56a556887aab54cfb36dfb31b3328a980010eea19aace9dc6c571f3b0c57d352"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 4 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table5.rs"
-sha256 = "143c233046c4f4298614d57613d2e7484e28c1b439919e5ec752c292b892ad06"
+sha256 = "365c43da3d24513d6cc2ffcd9707b1e2f78a322e3843aca516dc15242004b405"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 5 cells; just generate-check and just attest verify them byte-for-byte."
 
 [[exclusion]]
 path = "crates/jlreq-core/src/generated/table6.rs"
-sha256 = "427eb11a74775b95524a244f6ca80811154561ace2694d90c0793ad4c5051c9c"
+sha256 = "1059a522b2eca8c78127d91822c9754de28a388510a7169891c04107a7537574"
 kind = "generated"
 provenance = "data/manifest.toml"
 reason = "Generated JLReq Table 6 cells; just generate-check and just attest verify them byte-for-byte."
@@ -132,13 +132,13 @@ proof = "FRAME_PROPORTIONAL is bit 4 and does not overlap the accumulated bits 0
 [[equivalent]]
 mutant = "crates/jlreq/src/result.rs:1018:54: replace / with % in TextLayout::caret_on_neighbor_line"
 exclude_re = '^crates/jlreq/src/result[.]rs:1018:54: replace / with % in TextLayout::caret_on_neighbor_line$'
-source_sha256 = "f6001684565b22bdf301cb53ad56c5b44d6a782e17e416917728d9d62da40d3a"
+source_sha256 = "6c3b9b5563324fcd83e25670892b9688bbc18432d5ddbaf406fdfbe73aef6233"
 proof = "The probe only has to land inside the column it targets. Both `x + width / 2` and `x + width % 2` do: the remainder is 0 or 1, and `Rect::contains` includes the edges, so each point lies within `x ..= x + width`. Where the target's leading edge is shared with the next column, `line_index_for_rect` keeps the first line at equal distance, and the target is the earlier of the two in both motion directions. The horizontal branch of the same expression is not equivalent and is covered by `line_geometry_queries_pick_the_line_the_caret_is_actually_on`."
 
 [[equivalent]]
 mutant = "crates/jlreq/src/result.rs:1093:46: replace || with && in TextLayout::selection_rects_filled"
 exclude_re = '^crates/jlreq/src/result[.]rs:1093:46: replace [|][|] with && in TextLayout::selection_rects_filled$'
-source_sha256 = "f6001684565b22bdf301cb53ad56c5b44d6a782e17e416917728d9d62da40d3a"
+source_sha256 = "6c3b9b5563324fcd83e25670892b9688bbc18432d5ddbaf406fdfbe73aef6233"
 proof = "The disjunction skips lines the selection does not touch; it is a fast path, not a correctness guard. A line the conjunction fails to skip produces the clamped range `range.start.max(line.start) .. range.end.min(line.end)`, whose start exceeds its end for any non-overlapping line. `selection_rects` rejects such a range in `is_valid_selection_range` and returns no rectangles, so the loop reaches the same `continue` one step later with the same result."
 
 [[equivalent]]

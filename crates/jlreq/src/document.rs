@@ -1268,11 +1268,11 @@ mod tests {
         assert_eq!(style.role(), TextRole::Formula);
 
         let defaults = SpanStyle::new();
-        assert!(defaults.families().is_empty());
+        assert_eq!(defaults.families(), [] as [String; 0]);
         assert_eq!(defaults.font_size(), None);
         assert_eq!(defaults.language(), None);
-        assert!(defaults.features().is_empty());
-        assert!(defaults.variations().is_empty());
+        assert_eq!(defaults.features(), []);
+        assert_eq!(defaults.variations(), []);
         assert_eq!(defaults.role(), TextRole::Text);
 
         let replaced = style
@@ -1287,9 +1287,9 @@ mod tests {
             .with_families(Vec::<String>::new())
             .with_features([])
             .with_variations([]);
-        assert!(cleared.families().is_empty());
-        assert!(cleared.features().is_empty());
-        assert!(cleared.variations().is_empty());
+        assert_eq!(cleared.families(), [] as [String; 0]);
+        assert_eq!(cleared.features(), []);
+        assert_eq!(cleared.variations(), []);
 
         assert!(SpanStyle::new().with_language("a".repeat(63)).is_ok());
         assert!(SpanStyle::new().with_language("a".repeat(64)).is_err());
