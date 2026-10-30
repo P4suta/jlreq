@@ -39,27 +39,27 @@ sha256 = "a7e6121bf9cfe63190c4bf3cfccde7b72f640580059fb30e42bf5f0a80fda361"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table1.rs"
-sha256 = "c62cc781e23364563767253ef8773667defb939cb324d3221ec5c304c5ebc1d6"
+sha256 = "21db714ce3af25aa11d67f810fc2a4e0a8de656226880e7d4e8c616dcec9be05"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table2.rs"
-sha256 = "6dd6d8b662bd599519cce318ff0159701012a997d2fcfd9f54776aacb13506e5"
+sha256 = "7c218211e71409c0162c156e89e139d9d0090378bb13090fe0514f1551b31867"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table3.rs"
-sha256 = "c83b045a37e79d955368aa6ba5d56f1794dde21622962a633204d5d834dd276a"
+sha256 = "bb46e20ca8c86f1946672b39f84fe363f329bc3aa5f15f1240ba671a36ac236f"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table4.rs"
-sha256 = "6947ac7f5e65f0118502b6933c917650562313fec7e9381d645611b9c35f3f33"
+sha256 = "56a556887aab54cfb36dfb31b3328a980010eea19aace9dc6c571f3b0c57d352"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table5.rs"
-sha256 = "143c233046c4f4298614d57613d2e7484e28c1b439919e5ec752c292b892ad06"
+sha256 = "365c43da3d24513d6cc2ffcd9707b1e2f78a322e3843aca516dc15242004b405"
 
 [[file]]
 path = "crates/jlreq-core/src/generated/table6.rs"
-sha256 = "427eb11a74775b95524a244f6ca80811154561ace2694d90c0793ad4c5051c9c"
+sha256 = "1059a522b2eca8c78127d91822c9754de28a388510a7169891c04107a7537574"
 
 [[file]]
 path = "docs/conformance-deferrals.toml"
@@ -183,7 +183,7 @@ sha256 = "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
 
 [[file]]
 path = "xtask/src/api.rs"
-sha256 = "cb1d30b9241ef6a93b953d36299b48d061e15bf905b0415efbabcc87578b5afe"
+sha256 = "95aae65c97ae1897764defc5c085d636b10ad32fd4ca6b7341eef04aa5437f38"
 
 [[file]]
 path = "xtask/src/attest.rs"
@@ -195,7 +195,7 @@ sha256 = "12b8b18651712bcecaf516e0df5c334d7b3e7469ccadfa5944bdd481156bc5ed"
 
 [[file]]
 path = "xtask/src/conform.rs"
-sha256 = "2ab65b535fda8ec9ceea6f00ecdb1661282c2f79cf27fd32338f1bf2cb2d8210"
+sha256 = "00f032f05cce54c347933202afcbf4ea5f587ed89488f9cea44a44571b509939"
 
 [[file]]
 path = "xtask/src/defects.rs"
@@ -223,4 +223,4 @@ sha256 = "12e47247d7965060728f8482e5c17f8c5e6a83f3ef4f263a64b44cd56f77c3b7"
 
 [[file]]
 path = "xtask/src/spacing.rs"
-sha256 = "849d9fd8acc91d7876dcbe532f6a7a18ce0d39c998035248666d4a7cd591ea7c"
+sha256 = "cd817082365e2f376d4dc542c2244126152059ff09564428e9e05fd62e0554bc"

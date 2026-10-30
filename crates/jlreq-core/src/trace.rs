@@ -950,7 +950,7 @@ mod tests {
     #[test]
     fn every_fact_states_a_kind_and_a_family() {
         for fact in every_fact() {
-            assert!(!fact.kind().is_empty());
+            assert_ne!(fact.kind(), "");
             assert!(!fact.category().is_empty());
             assert!(Categories::ALL.contains(fact.category()));
         }
@@ -995,7 +995,7 @@ mod tests {
         assert!(!trace.wants(Categories::PREPARE));
         assert!(!trace.wants(Categories::SEARCH));
         trace.push(Site::paragraph(0..1, 0..3), prepared());
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), &[] as &[super::Event]);
         assert!(trace.is_truncated());
     }
 
@@ -1025,7 +1025,7 @@ mod tests {
         assert!(trace.is_truncated());
         trace.clear();
         assert!(!trace.is_truncated());
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), &[] as &[super::Event]);
     }
 
     #[test]
@@ -1046,7 +1046,7 @@ mod tests {
         assert!(prepared().jlreq().is_none());
         let taken = trace.take_events();
         assert_eq!(taken.len(), 1);
-        assert!(trace.events().is_empty());
+        assert_eq!(trace.events(), &[] as &[super::Event]);
     }
 
     /// The ceiling reads back as whatever it was last set to.

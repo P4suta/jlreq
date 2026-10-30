@@ -558,7 +558,7 @@ mod tests {
         );
         let offsets = [0, 1, 3, 4, 6];
         assert_eq!(sorted_offsets_in_range(&offsets, &(1..4)), [1, 3]);
-        assert!(sorted_offsets_in_range(&offsets, &(2..3)).is_empty());
+        assert_eq!(sorted_offsets_in_range(&offsets, &(2..3)), []);
     }
 
     #[test]
@@ -585,15 +585,15 @@ mod tests {
 
         let mut prohibited = DocumentBuilder::new(source);
         prohibited.prohibit_break(3).unwrap();
-        assert!(
+        assert_eq!(
             collect_breaks(
                 &prohibited.build().unwrap(),
                 &(0..6),
                 source,
                 &prepared,
                 &[]
-            )
-            .is_empty()
+            ),
+            [] as [jlreq_core::Break; 0]
         );
 
         let mut mandatory = DocumentBuilder::new(source);
@@ -602,15 +602,15 @@ mod tests {
         assert_eq!(breaks.len(), 1);
         assert!(breaks[0].is_mandatory());
 
-        assert!(
+        assert_eq!(
             collect_breaks(
                 &plain,
                 &(0..6),
                 source,
                 &prepared,
                 &[jlreq_core::Construct::tate_chu_yoko(0..6)]
-            )
-            .is_empty()
+            ),
+            [] as [jlreq_core::Break; 0]
         );
         assert_eq!(
             collect_breaks(
@@ -766,10 +766,9 @@ mod tests {
                 .len(),
             1
         );
-        assert!(
-            collect_tab_stops("no tab", &bounded, bounded.line_extent, &[])
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            collect_tab_stops("no tab", &bounded, bounded.line_extent, &[]).unwrap(),
+            [] as [jlreq_core::TabStop; 0]
         );
 
         // Explicit stops replace the generated ladder and carry their
@@ -789,10 +788,9 @@ mod tests {
                 (48 * 64, jlreq_core::TabAlignment::End),
             ]
         );
-        assert!(
-            collect_tab_stops("no tab", &exact, exact.line_extent, &explicit)
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            collect_tab_stops("no tab", &exact, exact.line_extent, &explicit).unwrap(),
+            [] as [jlreq_core::TabStop; 0]
         );
 
         let source = LayoutOptions::try_new(101.0, 17.0)

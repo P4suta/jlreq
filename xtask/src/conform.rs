@@ -3692,13 +3692,13 @@ mod tests {
         let (found, cases) = examine_file("cases/3.1.9.json", WORKED_CASE, plain());
         assert!(found.is_empty(), "{found:#?}");
         assert_eq!(cases.len(), 2, "the worked case is a pair");
-        assert!(unique_ids(&cases).is_empty());
+        assert_eq!(unique_ids(&cases), [] as [std::string::String; 0]);
         assert!(frame_pairs(&cases).is_empty(), "the pair agrees");
     }
 
     #[test]
     fn the_minimal_case_validates() {
-        assert!(examine(&file_with(MINIMAL)).is_empty());
+        assert_eq!(examine(&file_with(MINIMAL)), [] as [std::string::String; 0]);
     }
 
     #[test]
@@ -3760,7 +3760,10 @@ mod tests {
         let (found, protocol) = examine_protocol_suite("suite.ndjson", &complete);
         assert!(found.is_empty(), "{found:#?}");
         suite.protocol_cases = Some(complete);
-        assert!(suite.protocol_coverage(&protocol).is_empty());
+        assert_eq!(
+            suite.protocol_coverage(&protocol),
+            [] as [std::string::String; 0]
+        );
     }
 
     #[test]
@@ -4196,9 +4199,15 @@ mod tests {
             r#"[{ "item": 1, "em": [1, 2], "units": 360, "referent": "preceding",
                   "rule": "3.1.2" }]"#,
         );
-        assert!(check_trims(&stated, "trims", false).is_empty());
+        assert_eq!(
+            check_trims(&stated, "trims", false),
+            [] as [std::string::String; 0]
+        );
         let celled = json(r#"[{ "item": 1, "referent": "trailing", "rule": "B.1@cl-05,cl-05" }]"#);
-        assert!(check_trims(&celled, "trims", false).is_empty());
+        assert_eq!(
+            check_trims(&celled, "trims", false),
+            [] as [std::string::String; 0]
+        );
         let invented = json(r#"[{ "item": 1, "referent": "preceding", "rule": "3.8.1" }]"#);
         let found = check_trims(&invented, "trims", false);
         assert!(
@@ -4206,13 +4215,19 @@ mod tests {
             "{found:#?}"
         );
         let anonymous = json(r#"[{ "item": 1, "referent": "preceding" }]"#);
-        assert!(!check_trims(&anonymous, "trims", false).is_empty());
+        assert_ne!(
+            check_trims(&anonymous, "trims", false),
+            [] as [std::string::String; 0]
+        );
         assert!(
             check_trims(&anonymous, "trims", true).is_empty(),
             "a forbidden expectation states only what it forbids"
         );
         let owned_by_nobody = json(r#"[{ "item": 1, "referent": "either", "rule": "3.1.2" }]"#);
-        assert!(!check_trims(&owned_by_nobody, "trims", false).is_empty());
+        assert_ne!(
+            check_trims(&owned_by_nobody, "trims", false),
+            [] as [std::string::String; 0]
+        );
     }
 
     #[test]
@@ -4331,7 +4346,7 @@ mod tests {
     #[test]
     fn historical_empty_inputs_do_not_impersonate_the_protocol_suite() {
         let suite = bare_suite();
-        assert!(suite.coverage(&[]).is_empty());
+        assert_eq!(suite.coverage(&[]), [] as [std::string::String; 0]);
         let census = suite.census(&[]);
         assert!(
             census
@@ -4554,7 +4569,10 @@ mod tests {
             "\"rules\": [\"3.1.9\"], \"covers\": [\"B.1@cl-05,*\"],",
         );
         let cases = cases_of(&file_with(&row));
-        assert!(unresolved_addresses(&cases, &inventory(), None).is_empty());
+        assert_eq!(
+            unresolved_addresses(&cases, &inventory(), None),
+            [] as [std::string::String; 0]
+        );
         assert_eq!(
             declared_addresses(&cases, &inventory()).len(),
             3,
@@ -4575,7 +4593,7 @@ mod tests {
 
     #[test]
     fn the_committed_schema_states_the_same_contract() {
-        assert!(check_schema(None, false).is_empty());
+        assert_eq!(check_schema(None, false), [] as [std::string::String; 0]);
         let missing = check_schema(None, true);
         assert!(
             missing
@@ -4594,7 +4612,10 @@ mod tests {
             .flat_map(|(_, fields)| fields.iter().map(|field| format!("\"{field}\"")))
             .collect();
         let whole = format!("{{ \"required\": [{fields}] }}", fields = names.join(", "));
-        assert!(check_schema(Some(&whole), true).is_empty());
+        assert_eq!(
+            check_schema(Some(&whole), true),
+            [] as [std::string::String; 0]
+        );
     }
 
     #[test]

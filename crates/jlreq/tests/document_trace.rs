@@ -449,7 +449,7 @@ fn a_narrowed_trace_records_only_what_it_names() -> Result<(), Box<dyn Error>> {
     let _ = engine.layout_document_traced(&document, &fonts, options, &mut faces_only)?;
 
     assert!(everything.events().len() > faces_only.events().len());
-    assert!(!faces_only.events().is_empty());
+    assert_ne!(faces_only.events(), []);
     assert!(
         faces_only
             .events()

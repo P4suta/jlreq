@@ -1281,8 +1281,8 @@ mod tests {
             "the absent case is the one this check exists for, so it is never silent:              {violations:?} {notes:?}"
         );
         assert!(SEAM.is_empty());
-        assert!(violations.is_empty());
-        assert!(notes.is_empty());
+        assert_eq!(violations, [] as [std::string::String; 0]);
+        assert_eq!(notes, [] as [std::string::String; 0]);
     }
 
     #[test]
